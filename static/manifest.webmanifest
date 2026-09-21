@@ -1,0 +1,31 @@
+{
+	"id": "/",
+	"name": "prosoche",
+	"short_name": "Hub",
+	"description": "A markdown-first daily planner and project hub that reads and writes an Obsidian vault.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#f6f7f9",
+	"theme_color": "#ffffff",
+	"icons": [
+		{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+	],
+	"shortcuts": [
+		{ "name": "Today", "url": "/" },
+		{ "name": "Search", "url": "/search" },
+		{ "name": "Notes", "url": "/notes" }
+	],
+	"share_target": {
+		"action": "/share",
+		"method": "GET",
+		"params": {
+			"title": "share_title",
+			"text": "share_text",
+			"url": "share_url"
+		}
+	}
+}

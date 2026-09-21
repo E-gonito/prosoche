@@ -1,0 +1,16 @@
+node_modules/
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Personal working notes: product spec, phased plan, UI mockup and the
+# machine-specific agent instructions. Not part of the software.
+/private
+/test-results
+/playwright-report
+/.env.e2e

@@ -1,0 +1,57 @@
+<script lang="ts">
+	let { data } = $props();
+	let box: HTMLInputElement | undefined = $state();
+
+	// Focus the box on arrival, but only when there is nothing to read yet, so
+	// landing on results does not steal focus from the list.
+	$effect(() => {
+		if (box && !data.query.trim()) box.focus();
+	});
+	const href = (p: string) => `/notes/${p.split('/').map(encodeURIComponent).join('/')}`;
+
+	/** The index marks matches with «» so the UI can highlight without HTML. */
+	function parts(snippet: string): Array<{ text: string; hit: boolean }> {
+		return snippet.split(/«|»/).map((text, i) => ({ text, hit: i % 2 === 1 }));
+	}
+</script>
+
+<svelte:head><title>{data.query ? `${data.query} · search` : 'Search'} · prosoche</title></svelte:head>
+
+<div class="head">
+	<h1>Search</h1>
+	<form>
+		<input bind:this={box} name="q" value={data.query} placeholder="Search your notes…" aria-label="Search notes" />
+		<button class="btn primary">Search</button>
+	</form>
+</div>
+
+{#if data.query.trim()}
+	<p class="muted count">{data.hits.length} result{data.hits.length === 1 ? '' : 's'} for “{data.query}”</p>
+	{#each data.hits as hit (hit.path)}
+		<a class="card hit" href={href(hit.path)}>
+			<b>{hit.title}</b>
+			<span class="path">{hit.path}</span>
+			<span class="snippet">
+				{#each parts(hit.snippet) as part, i (i)}{#if part.hit}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
+			</span>
+		</a>
+	{:else}
+		<div class="card empty">Nothing matched. Search covers note titles and bodies.</div>
+	{/each}
+{:else}
+	<div class="card empty">Type something to search your vault.</div>
+{/if}
+
+<style>
+	.head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+	.head h1 { margin: 0; font-size: 22px; }
+	form { display: flex; gap: 8px; flex: 1; max-width: 520px; }
+	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; }
+	.count { margin: 0 0 10px; font-size: 13px; }
+	.hit { display: block; text-decoration: none; color: inherit; margin-bottom: 10px; }
+	.hit:hover { border-color: var(--accent); }
+	.hit b { display: block; }
+	.path { display: block; font: 11px var(--mono); color: var(--muted); margin: 2px 0 6px; }
+	.snippet { font-size: 13px; color: var(--muted); }
+	mark { background: #fef08a; color: inherit; border-radius: 2px; }
+</style>

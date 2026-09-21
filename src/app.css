@@ -1,0 +1,102 @@
+/* Design tokens, matching the approved mockup. Light theme only. */
+:root {
+	--bg: #f6f7f9;
+	--panel: #ffffff;
+	--line: #e3e6eb;
+	--text: #1f2328;
+	--muted: #6b7280;
+	--soft: #f0f2f5;
+	--accent: #2f6fed;
+	--accent-soft: #e8f0fe;
+	--q1: #d9534f;
+	--q2: #2f6fed;
+	--q3: #e0a100;
+	--q4: #9aa0a6;
+	--ok: #16a34a;
+	--warn: #b45309;
+	--bad: #b91c1c;
+	--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+	--r: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+	color: var(--text);
+	background: var(--bg);
+}
+
+a { color: var(--accent); }
+
+.btn {
+	border: 1px solid var(--line);
+	background: #fff;
+	border-radius: 8px;
+	padding: 6px 12px;
+	cursor: pointer;
+	font: inherit;
+	font-size: 13px;
+	color: inherit;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.btn:hover { background: var(--soft); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.ghost { border-color: transparent; color: var(--muted); }
+
+.card {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--r);
+	padding: 14px;
+}
+.card h3 {
+	margin: 0 0 10px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--muted);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.card h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.q { font: 11px/1 var(--mono); font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; }
+.q1 { background: var(--q1); }
+.q2 { background: var(--q2); }
+.q3 { background: var(--q3); }
+.q4 { background: var(--q4); }
+
+.tag { font-size: 11px; color: var(--muted); background: var(--soft); border-radius: 4px; padding: 1px 6px; }
+.muted { color: var(--muted); }
+.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; font-size: 13px; }
+.kv b { color: var(--muted); font-weight: 500; }
+
+/* Rendered note content. Kept close to Obsidian's reading view. */
+.prose { font-size: 15px; line-height: 1.62; overflow-wrap: anywhere; }
+.prose h1, .prose h2, .prose h3 { color: #1d4ed8; line-height: 1.3; }
+.prose h1 { font-size: 24px; margin: 0 0 12px; }
+.prose h2 { font-size: 19px; margin: 24px 0 8px; }
+.prose h3 { font-size: 16px; margin: 20px 0 6px; }
+.prose p { margin: 10px 0; }
+.prose ul, .prose ol { padding-left: 22px; margin: 8px 0; }
+.prose li { margin: 3px 0; }
+.prose li input[type='checkbox'] { margin-right: 6px; }
+.prose code { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: 13px var(--mono); }
+.prose pre { background: var(--soft); padding: 12px; border-radius: 8px; overflow-x: auto; }
+.prose pre code { background: none; padding: 0; }
+.prose blockquote { border-left: 3px solid var(--line); margin: 10px 0; padding: 2px 0 2px 14px; color: var(--muted); }
+.prose table { border-collapse: collapse; margin: 12px 0; font-size: 13px; display: block; overflow-x: auto; }
+.prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+.prose th { background: var(--soft); }
+.prose img { max-width: 100%; }
+.prose hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.prose .wl-missing { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }

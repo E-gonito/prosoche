@@ -1,0 +1,207 @@
+<script lang="ts">
+	/**
+	 * A flashcard session: one card, reveal, four grades, repeat.
+	 *
+	 * Holds the queue it was given rather than refetching, so a review works
+	 * on a phone with a bad connection: a card that fails to save says so and
+	 * stays in the session instead of disappearing.
+	 *
+	 * Keyboard on a desktop, thumbs on a phone. Space or a tap on the card
+	 * reveals; 1 to 4 grade; the buttons are the same four in the same order,
+	 * big enough to hit without looking.
+	 */
+	import { GRADES, intervalLabel, schedule, type Grade } from '$lib/shared/sm2';
+	import { applyShift, gradeCard, type Card } from '$lib/client/study';
+
+	let { cards, today, onfinish }: { cards: Card[]; today: string; onfinish?: () => void } = $props();
+
+	let queue = $state<Card[]>([]);
+	let started = $state(false);
+	let at = $state(0);
+	let revealed = $state(false);
+	let saving = $state(false);
+	let problem = $state('');
+	let graded = $state(0);
+	let again = $state(0);
+
+	// A session is a snapshot of the queue it was handed: grading must not
+	// reshuffle it mid-session. Reseeding when `cards` changes is what makes
+	// navigating back to the review page start a fresh session rather than
+	// resume yesterday's.
+	$effect(() => {
+		queue = [...cards];
+		at = 0;
+		revealed = false;
+		graded = 0;
+		again = 0;
+		problem = '';
+		started = true;
+	});
+
+	const card = $derived(queue[at] ?? null);
+	const done = $derived(started && card === null);
+	/** Total attempts left, so a lapsed card coming round again is counted. */
+	const left = $derived(queue.length - at);
+
+	const LABEL: Record<Grade, string> = { again: 'Again', hard: 'Hard', good: 'Good', easy: 'Easy' };
+
+	/** What each button will do, shown on it, straight from the same maths. */
+	const previews = $derived(
+		card ? GRADES.map((g) => ({ grade: g, label: LABEL[g], when: intervalLabel(schedule(card.schedule, g, today).interval) })) : []
+	);
+
+	async function grade(choice: Grade) {
+		if (!card || saving) return;
+		saving = true;
+		problem = '';
+		const result = await gradeCard(card, choice);
+		saving = false;
+
+		if (!result.ok) {
+			problem = result.message;
+			return;
+		}
+
+		graded++;
+		const rest = applyShift(queue, result.value.shift);
+		if (choice === 'again') {
+			// Interval zero means due today, so the card really does come back.
+			again++;
+			queue = [...rest.slice(0, at), ...rest.slice(at + 1), result.value.card];
+		} else {
+			queue = rest;
+			at++;
+		}
+		revealed = false;
+		if (at >= queue.length) onfinish?.();
+	}
+
+	function key(event: KeyboardEvent) {
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
+		if (event.key === ' ' || event.key === 'Enter') {
+			event.preventDefault();
+			if (!revealed) revealed = true;
+			return;
+		}
+		const n = Number(event.key);
+		if (revealed && n >= 1 && n <= 4) {
+			event.preventDefault();
+			void grade(GRADES[n - 1]);
+		}
+	}
+</script>
+
+<svelte:window onkeydown={key} />
+
+{#if card}
+	<div class="session" data-testid="card-review">
+		<div class="progress" aria-label="{left} left">
+			<i style="width: {(graded / Math.max(1, graded + left)) * 100}%"></i>
+		</div>
+		<p class="meta">
+			<span data-testid="card-left">{left} left</span>
+			<span class="ctx" title={card.path}>{card.context}</span>
+		</p>
+
+		<button class="card" data-testid="card" onclick={() => (revealed = true)} aria-expanded={revealed}>
+			<div class="q" data-testid="card-question">{card.question}</div>
+			{#if revealed}
+				<hr />
+				<div class="a" data-testid="card-answer">{card.answer}</div>
+			{:else}
+				<p class="reveal">Tap, or press space, to reveal</p>
+			{/if}
+		</button>
+
+		{#if revealed}
+			<div class="grades" data-testid="grades">
+				{#each previews as preview, i (preview.grade)}
+					<button
+						class="grade {preview.grade}"
+						data-testid="grade-{preview.grade}"
+						disabled={saving}
+						onclick={() => grade(preview.grade)}
+					>
+						<b>{preview.label}</b>
+						<small>{preview.when}</small>
+						<em>{i + 1}</em>
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if problem}<p class="problem" data-testid="card-problem">{problem}</p>{/if}
+		<p class="where"><a href="/notes/{card.path}">Open the note</a></p>
+	</div>
+{:else if done}
+	<div class="finish" data-testid="review-done">
+		<p class="tick">✓</p>
+		<h2>Done for today</h2>
+		<p class="muted">{graded} {graded === 1 ? 'answer' : 'answers'}{again > 0 ? `, ${again} to see again` : ''}.</p>
+		<a class="btn primary" href="/study">Back to study</a>
+	</div>
+{/if}
+
+<style>
+	.session { max-width: 680px; margin: 0 auto; }
+	.progress { height: 4px; border-radius: 2px; background: var(--soft); overflow: hidden; }
+	.progress i { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+	.meta { display: flex; gap: 10px; font-size: 12px; color: var(--muted); margin: 8px 0 12px; }
+	.ctx { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+	.card {
+		display: block;
+		width: 100%;
+		text-align: left;
+		font: inherit;
+		color: inherit;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		padding: 24px;
+		min-height: 190px;
+		cursor: pointer;
+	}
+	.q { font-size: 19px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+	.a { font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+	hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+	.reveal { margin: 18px 0 0; color: var(--muted); font-size: 13px; }
+
+	.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+	.grade {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		padding: 12px 6px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: #fff;
+		font: inherit;
+		cursor: pointer;
+	}
+	.grade:hover:not(:disabled) { background: var(--soft); }
+	.grade:disabled { opacity: 0.5; cursor: default; }
+	.grade b { font-size: 14px; }
+	.grade small { font: 11px var(--mono); color: var(--muted); }
+	.grade em { position: absolute; top: 4px; right: 6px; font: 10px var(--mono); font-style: normal; color: var(--muted); }
+	.again { border-color: #e9c3c3; }
+	.easy { border-color: #bfe3cb; }
+
+	.problem { color: var(--bad); font-size: 13px; }
+	.where { font-size: 12px; margin-top: 14px; }
+
+	.finish { text-align: center; padding: 60px 16px; }
+	.tick { font-size: 44px; color: var(--ok); margin: 0; }
+	.finish h2 { margin: 8px 0; font-size: 20px; }
+	.finish .muted { color: var(--muted); margin-bottom: 18px; }
+
+	@media (max-width: 720px) {
+		.card { padding: 18px; min-height: 150px; }
+		.q { font-size: 17px; }
+		.grades { gap: 6px; }
+		.grade { padding: 14px 2px; }
+		.grade b { font-size: 13px; }
+	}
+</style>
