@@ -7,6 +7,7 @@
 	 * with no note reads exactly the same, minus the note.
 	 */
 	import { invalidateAll } from '$app/navigation';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { logContact } from '$lib/client/api';
 	import type { Task } from '$lib/shared/task';
@@ -40,21 +41,22 @@
 
 <svelte:head><title>{data.name} · prosoche</title></svelte:head>
 
-<header class="head">
-	<h1 data-testid="person-name">{data.name}</h1>
-	{#if data.role || data.org}
-		<p class="who">{[data.role, data.org].filter(Boolean).join(' · ')}</p>
-	{/if}
-	<p class="meta">
-		{#if data.lastContact}
-			Last contact <b>{data.lastContact}</b>
-		{:else}
-			No contact logged yet
+<PageHeader title={data.name} testid="person-name">
+	{#snippet meta()}
+		{#if data.role || data.org}
+			<span>{[data.role, data.org].filter(Boolean).join(' · ')}</span>
 		{/if}
-		· {data.mentions} note{data.mentions === 1 ? '' : 's'} mention{data.mentions === 1 ? 's' : ''} them
-		{#if data.exists}· <a href={href(data.path)}>open their note</a>{/if}
-	</p>
-</header>
+		<span>
+			{#if data.lastContact}
+				Last contact <b>{data.lastContact}</b>
+			{:else}
+				No contact logged yet
+			{/if}
+			· {data.mentions} note{data.mentions === 1 ? '' : 's'} mention{data.mentions === 1 ? 's' : ''} them
+			{#if data.exists}· <a href={href(data.path)}>open their note</a>{/if}
+		</span>
+	{/snippet}
+</PageHeader>
 
 <div class="layout">
 	<div class="column">
@@ -127,11 +129,6 @@
 </div>
 
 <style>
-	.head { margin: 0 0 14px; }
-	h1 { margin: 0; font-size: 22px; }
-	.who { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-	.meta { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
-
 	.layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 	.column { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 

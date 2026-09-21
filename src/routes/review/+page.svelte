@@ -8,6 +8,7 @@
 	 * button for both would be a button people press without reading.
 	 */
 	import { invalidateAll } from '$app/navigation';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Proposal from '$lib/components/Proposal.svelte';
 	import { applyProposal, dismissProposal } from '$lib/client/ai';
 
@@ -48,7 +49,7 @@
 
 <svelte:head><title>Review · prosoche</title></svelte:head>
 
-<h1>Review</h1>
+<PageHeader title="Review" />
 <p class="lead">
 	Changes the app has drafted and not made. Nothing here has touched a note: the weekly review and the
 	morning briefing run while nobody is watching, so they stop and wait.
@@ -90,8 +91,7 @@
 {/each}
 
 <style>
-	h1 { font-size: 22px; margin: 0 0 6px; }
-	.lead { margin: 0 0 16px; max-width: 70ch; color: var(--muted); font-size: 13px; }
+	.lead { margin: -8px 0 16px; max-width: 70ch; color: var(--muted); font-size: 13px; }
 	.item { margin-bottom: 18px; }
 	.what { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-size: 13px; }
 	.what .muted { color: var(--muted); }

@@ -21,6 +21,7 @@
 		type AiSettings,
 		type FeatureId
 	} from '$lib/shared/ai';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { saveAiSettings, undoProposal } from '$lib/client/ai';
 
 	let { data } = $props();
@@ -62,10 +63,11 @@
 
 <svelte:head><title>AI settings · prosoche</title></svelte:head>
 
-<div class="head">
-	<h1>AI</h1>
-	<span class="muted path">{data.settingsPath}</span>
-</div>
+<PageHeader title="AI settings">
+	{#snippet meta()}
+		<span class="path">{data.settingsPath}</span>
+	{/snippet}
+</PageHeader>
 
 <section class="card">
 	<h3>Kill switch</h3>
@@ -184,8 +186,6 @@
 </section>
 
 <style>
-	.head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
-	.head h1 { margin: 0; font-size: 22px; }
 	.path { font: 12px var(--mono); }
 	section { margin-bottom: 14px; }
 	.switch { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }

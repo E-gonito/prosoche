@@ -7,6 +7,7 @@
 	 * worth anything a week later, and a share target can fire by accident from
 	 * a long press. Nothing is written until the button is pressed.
 	 */
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { captureText } from '$lib/client/api';
 
 	let { data } = $props();
@@ -41,7 +42,7 @@
 
 <svelte:head><title>Share · prosoche</title></svelte:head>
 
-<h1>Share to Inbox</h1>
+<PageHeader title="Share to Inbox" />
 
 {#if saved}
 	<div class="card done">
@@ -72,7 +73,6 @@
 {/if}
 
 <style>
-	h1 { font-size: 22px; margin: 0 0 14px; }
 	.card { max-width: 560px; }
 	label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
 	textarea {

@@ -1,16 +1,21 @@
 <script lang="ts">
 	/** The review session. One card at a time, comfortable on a phone. */
 	import CardReview from '$lib/components/CardReview.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 
 	let { data } = $props();
 </script>
 
-<svelte:head><title>Review · Hub</title></svelte:head>
+<svelte:head><title>Review · prosoche</title></svelte:head>
 
-<header class="bar">
-	<a class="back" href="/study{data.workspace ? `?ws=${data.workspace.slug}` : ''}">‹ Study</a>
-	<span class="muted">{data.workspace?.name ?? 'Whole vault'}</span>
-</header>
+<PageHeader
+	title="Review cards"
+	back={{ href: `/study${data.workspace ? `?ws=${data.workspace.slug}` : ''}`, label: '‹ Study' }}
+>
+	{#snippet meta()}
+		<span>{data.workspace?.name ?? 'Whole vault'}</span>
+	{/snippet}
+</PageHeader>
 
 {#if data.cards.length === 0}
 	<div class="empty" data-testid="nothing-due">
@@ -26,8 +31,6 @@
 {/if}
 
 <style>
-	.bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 13px; }
-	.back { text-decoration: none; }
 	.empty { text-align: center; padding: 60px 16px; }
 	.tick { font-size: 44px; color: var(--ok); margin: 0; }
 	.empty h2 { margin: 8px 0; font-size: 20px; }

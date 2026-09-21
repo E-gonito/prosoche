@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import Confirm from '$lib/components/Confirm.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 
 	let { data } = $props();
 
@@ -114,16 +115,17 @@
 
 <svelte:head><title>Sync · prosoche</title></svelte:head>
 
-<div class="head">
-	<h1>Sync</h1>
-	<span class="muted">{data.vaultPath}</span>
-	<div class="actions">
+<PageHeader title="Sync">
+	{#snippet meta()}
+		<span class="path">{data.vaultPath}</span>
+	{/snippet}
+	{#snippet actions()}
 		<button class="btn" onclick={() => simple('pull')} disabled={!!busy}>{busy === 'pull' ? 'Pulling…' : 'Pull'}</button>
 		<button class="btn" onclick={() => simple('rebuild')} disabled={!!busy}>
 			{busy === 'rebuild' ? 'Rebuilding…' : 'Rebuild index'}
 		</button>
-	</div>
-</div>
+	{/snippet}
+</PageHeader>
 
 {#if note}<div class="card msg ok">{note}</div>{/if}
 {#if problem}<div class="card msg bad">{problem}</div>{/if}
@@ -284,9 +286,7 @@
 {/if}
 
 <style>
-	.head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-	.head h1 { margin: 0; font-size: 22px; }
-	.actions { margin-left: auto; display: flex; gap: 8px; }
+	.path { font: 12px var(--mono); }
 	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
 	.msg { margin-bottom: 14px; }
 	.msg.ok { border-color: #a7f3d0; background: #f0fdf4; }
