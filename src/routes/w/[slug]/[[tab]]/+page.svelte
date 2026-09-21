@@ -9,6 +9,7 @@
 	 * form here that would rewrite someone's file behind their back.
 	 */
 	import { invalidateAll } from '$app/navigation';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Widget from '$lib/components/widgets/Widget.svelte';
 
 	let { data } = $props();
@@ -18,12 +19,14 @@
 
 <svelte:head><title>{data.workspace.name} · prosoche</title></svelte:head>
 
-<div class="head">
-	<span class="dot" style="--dot: {data.workspace.color}"></span>
-	<h1 data-testid="workspace-name">{data.workspace.name}</h1>
-	<code class="tag">#{data.workspace.tag}</code>
-	<a class="btn" data-testid="edit-definition" href={data.definition}>Edit definition</a>
-</div>
+<PageHeader title={data.workspace.name} dot={data.workspace.color} testid="workspace-name">
+	{#snippet meta()}
+		<code class="tag">#{data.workspace.tag}</code>
+	{/snippet}
+	{#snippet actions()}
+		<a class="btn" data-testid="edit-definition" href={data.definition}>Edit definition</a>
+	{/snippet}
+</PageHeader>
 
 <nav class="tabs" data-testid="tabs" aria-label="{data.workspace.name} tabs">
 	{#each data.tabs as tab, i (tab.slug)}
@@ -38,7 +41,7 @@
 
 {#if data.widgets.length === 0}
 	<p class="empty">
-		This tab lists no widgets the hub knows. Edit the workspace file to name some from the catalogue.
+		This tab lists no widgets prosoche knows. Edit the workspace file to name some from the catalogue.
 	</p>
 {:else}
 	<div class="grid">
@@ -55,11 +58,7 @@
 </p>
 
 <style>
-	.head { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
-	.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--dot); flex: none; }
-	h1 { margin: 0; font-size: 20px; }
 	.tag { font: 12px var(--mono); color: var(--muted); }
-	.head .btn { margin-left: auto; }
 
 	.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 	.tabs a {
@@ -81,7 +80,5 @@
 
 	@media (max-width: 720px) {
 		.grid { grid-template-columns: 1fr; }
-		.head .btn { margin-left: 0; }
-		.head { flex-wrap: wrap; }
 	}
 </style>

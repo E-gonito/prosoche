@@ -48,15 +48,17 @@
 
 <a class="badge {tone}" href="/sync" title={summary}>
 	<i></i>
-	{#if !status}
-		checking…
-	{:else if status.conflicts.length}
-		{status.conflicts.length} conflict{status.conflicts.length === 1 ? '' : 's'}
-	{:else if status.error}
-		sync error
-	{:else}
-		pulled {ago(status.lastPull)}{#if status.pending.length}, {status.pending.length} pending{/if}
-	{/if}
+	<span class="say">
+		{#if !status}
+			checking…
+		{:else if status.conflicts.length}
+			{status.conflicts.length} conflict{status.conflicts.length === 1 ? '' : 's'}
+		{:else if status.error}
+			sync error
+		{:else}
+			pulled {ago(status.lastPull)}{#if status.pending.length}, {status.pending.length} pending{/if}
+		{/if}
+	</span>
 </a>
 
 <style>
@@ -77,4 +79,14 @@
 	.ok i { background: var(--ok); }
 	.warn i { background: var(--q3); }
 	.bad i { background: var(--bad); }
+
+	/*
+	 * On a phone only the dot survives. The words cost more room than the
+	 * header has, and the colour already answers the question the badge is
+	 * for; the title and the link to /sync carry the detail.
+	 */
+	@media (max-width: 720px) {
+		.badge { padding: 5px; }
+		.say { display: none; }
+	}
 </style>

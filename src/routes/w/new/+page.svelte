@@ -11,6 +11,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { createWorkspace } from '$lib/client/cards';
 
 	let { data } = $props();
@@ -48,7 +49,7 @@
 
 <svelte:head><title>New workspace · prosoche</title></svelte:head>
 
-<h1>New workspace</h1>
+<PageHeader title="New workspace" />
 <p class="lead">
 	A workspace is one markdown file in your vault. It says which folders and tag belong to it, and which
 	widgets each of its tabs shows.
@@ -128,8 +129,7 @@
 </form>
 
 <style>
-	h1 { font-size: 20px; margin: 0 0 6px; }
-	.lead { color: var(--muted); font-size: 13px; margin: 0 0 14px; max-width: 60ch; }
+	.lead { color: var(--muted); font-size: 13px; margin: -8px 0 14px; max-width: 60ch; }
 	form { max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
 	.field { display: flex; align-items: center; gap: 12px; }
 	.field > span { flex: none; width: 90px; font-size: 12px; color: var(--muted); }

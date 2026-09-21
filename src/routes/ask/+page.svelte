@@ -8,6 +8,7 @@
 	 * are links rather than footnotes, because the point of them is to be
 	 * followed when an answer looks wrong.
 	 */
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RunSettings from '$lib/components/RunSettings.svelte';
 	import { askQuestion } from '$lib/client/ai';
 	import { scopeLabel, type Answer, type Refusal, type RunSettings as Run, type Scope } from '$lib/shared/ai';
@@ -68,10 +69,11 @@
 
 <svelte:head><title>Ask · prosoche</title></svelte:head>
 
-<div class="head">
-	<h1>Ask</h1>
-	<a class="btn ghost" href="/settings/ai" data-testid="ai-settings-link">AI settings</a>
-</div>
+<PageHeader title="Ask">
+	{#snippet actions()}
+		<a class="btn ghost" href="/settings/ai" data-testid="ai-settings-link">AI settings</a>
+	{/snippet}
+</PageHeader>
 
 {#if !data.enabled}
 	<div class="card empty" data-testid="ask-off">
@@ -150,8 +152,6 @@
 {/if}
 
 <style>
-	.head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-	.head h1 { margin: 0; font-size: 22px; flex: 1; }
 	.asker { display: flex; flex-direction: column; gap: 10px; }
 	form { display: flex; gap: 8px; flex-wrap: wrap; }
 	select,

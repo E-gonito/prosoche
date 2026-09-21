@@ -3,7 +3,7 @@
 	 * Anything tagged `#pin`, and one click to unpin it.
 	 *
 	 * Unpinning here writes the same single-line edit the rest of the app does,
-	 * so a pin removed in the hub is a pin removed in Obsidian.
+	 * so a pin removed in prosoche is a pin removed in Obsidian.
 	 */
 	import { displayText, type Task } from '$lib/shared/task';
 	import { editTask } from '$lib/client/api';

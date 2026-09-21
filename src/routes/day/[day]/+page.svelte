@@ -4,6 +4,7 @@
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { createDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag, registerDropZone } from '$lib/client/drag.svelte';
@@ -78,17 +79,16 @@
 
 <svelte:head><title>{data.label} · prosoche</title></svelte:head>
 
-<div class="head">
-	<h1>{data.label}</h1>
-	<div class="actions">
+<PageHeader title={data.label}>
+	{#snippet actions()}
 		<a class="btn" href="/day/{data.prev}" aria-label="Previous day">‹</a>
 		{#if !data.isToday}<a class="btn" href="/">Today</a>{/if}
 		<a class="btn" href="/day/{data.next}" aria-label="Next day">›</a>
 		{#if data.exists}
 			<a class="btn" href="/notes/{data.path.split('/').map(encodeURIComponent).join('/')}">Edit note</a>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</PageHeader>
 
 {#if problem}
 	<div class="card problem" role="status">{problem}</div>
@@ -224,9 +224,6 @@
 		white-space: nowrap;
 		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 	}
-	.head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-	.head h1 { margin: 0; font-size: 22px; }
-	.actions { margin-left: auto; display: flex; gap: 8px; }
 	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
 	.main, .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 	.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: 12px; }

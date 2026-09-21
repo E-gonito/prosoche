@@ -1,7 +1,7 @@
 {
 	"id": "/",
 	"name": "prosoche",
-	"short_name": "Hub",
+	"short_name": "prosoche",
 	"description": "A markdown-first daily planner and project hub that reads and writes an Obsidian vault.",
 	"start_url": "/",
 	"scope": "/",

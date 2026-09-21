@@ -50,7 +50,7 @@ test.describe('the AI layer, switched off', () => {
 		// Better than a box that takes a question and then refuses it: the page
 		// says what is wrong and where to change it.
 		await expect(page.locator('body')).toContainText('AI is switched off');
-		await expect(page.getByRole('link', { name: /Settings/ })).toBeVisible();
+		await expect(page.locator('main').getByRole('link', { name: /Settings/ })).toBeVisible();
 		await expect(page.getByTestId('ask-question')).toHaveCount(0);
 	});
 

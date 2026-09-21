@@ -1,4 +1,6 @@
 <script lang="ts">
+	import PageHeader from '$lib/components/PageHeader.svelte';
+
 	let { data } = $props();
 	let box: HTMLInputElement | undefined = $state();
 
@@ -17,13 +19,14 @@
 
 <svelte:head><title>{data.query ? `${data.query} · search` : 'Search'} · prosoche</title></svelte:head>
 
-<div class="head">
-	<h1>Search</h1>
-	<form>
-		<input bind:this={box} name="q" value={data.query} placeholder="Search your notes…" aria-label="Search notes" />
-		<button class="btn primary">Search</button>
-	</form>
-</div>
+<PageHeader title="Search">
+	{#snippet actions()}
+		<form>
+			<input bind:this={box} name="q" value={data.query} placeholder="Search your notes…" aria-label="Search notes" />
+			<button class="btn primary">Search</button>
+		</form>
+	{/snippet}
+</PageHeader>
 
 {#if data.query.trim()}
 	<p class="muted count">{data.hits.length} result{data.hits.length === 1 ? '' : 's'} for “{data.query}”</p>
@@ -43,9 +46,7 @@
 {/if}
 
 <style>
-	.head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
-	.head h1 { margin: 0; font-size: 22px; }
-	form { display: flex; gap: 8px; flex: 1; max-width: 520px; }
+	form { display: flex; gap: 8px; flex: 1; min-width: 240px; max-width: 520px; }
 	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; }
 	.count { margin: 0 0 10px; font-size: 13px; }
 	.hit { display: block; text-decoration: none; color: inherit; margin-bottom: 10px; }

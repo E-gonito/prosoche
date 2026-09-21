@@ -4,6 +4,7 @@
 	 * `queue()`; this component renders it and offers the one action that
 	 * changes it, which is starting something.
 	 */
+	import Icon from '$lib/components/Icon.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import { setResourceStatus, type Resource } from '$lib/client/study';
 	import type { LoadedWidget } from '$lib/shared/widgets';
@@ -33,7 +34,11 @@
 			{#each data.items as item (item.path)}
 				<li data-testid="queue-item" class:busy={busy === item.path}>
 					<a class="name" href="/notes/{item.path}" title={item.title}>{item.title}</a>
-					{#if item.url}<a class="src" href={item.url} target="_blank" rel="noreferrer" title="Open the original">↗</a>{/if}
+					{#if item.url}
+						<a class="src" href={item.url} target="_blank" rel="noreferrer" title="Open the original">
+							<Icon name="external-link" label="Open the original" />
+						</a>
+					{/if}
 					{#if item.status === 'queued'}
 						<button class="btn ghost" data-testid="start" onclick={() => start(item)}>Start</button>
 					{:else}
@@ -54,7 +59,8 @@
 	.busy { opacity: 0.5; }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	.name:hover { color: var(--accent); }
-	.src { flex: none; color: var(--muted); text-decoration: none; }
+	.src { flex: none; display: inline-flex; color: var(--muted); text-decoration: none; }
+	.src:hover { color: var(--accent); }
 	.none { margin: 0; color: var(--muted); font-size: 13px; }
 	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
 	button { flex: none; padding: 2px 8px; font-size: 12px; }

@@ -107,7 +107,7 @@
 		</p>
 	{:else}
 		<p class="empty" data-testid="timesheet-empty">
-			No timesheet note under {data.folder}. The hub looks for notes named TIMESHEET…, and reads them; it never writes one.
+			No timesheet note under {data.folder}. prosoche looks for notes named TIMESHEET…, and reads them; it never writes one.
 		</p>
 	{/if}
 </div>

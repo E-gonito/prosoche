@@ -7,7 +7,7 @@ test.describe('search', () => {
 	test('finds a note by body text and highlights the match', async ({ page }) => {
 		await page.goto('/search');
 		await page.getByLabel('Search notes').fill('complement');
-		await page.getByRole('button', { name: 'Search' }).click();
+		await page.getByRole('button', { name: 'Search', exact: true }).click();
 		// Not a count: another fixture may legitimately use the same word, and a
 		// test that breaks when it does is testing the fixture, not the search.
 		const handbook = page.locator('.hit').filter({ hasText: 'Handbook' });

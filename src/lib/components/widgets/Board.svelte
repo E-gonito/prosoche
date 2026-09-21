@@ -20,6 +20,7 @@
 	import { createCard, moveCard } from '$lib/client/cards';
 	import { editTask } from '$lib/client/api';
 	import { drag, registerDropZone, startDrag } from '$lib/client/drag.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import CardDrawer from '../CardDrawer.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
@@ -191,7 +192,7 @@
 								{#if card.task.due}<span class="due" data-testid="card-due">Due {card.task.due}</span>{/if}
 								{#if card.blockers.length}
 									<span class="blocked" data-testid="card-blocked" title={blockerTitle(card)}>
-										⛔ {card.blockers.length}
+										<Icon name="ban" size={12} />{card.blockers.length}
 									</span>
 								{/if}
 								<span class="src" title={card.task.path}>{noteName(card.task.path)}</span>
@@ -342,7 +343,7 @@
 	.open:hover { color: var(--accent); }
 	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; font-size: 11px; color: var(--muted); }
 	.due { font-family: var(--mono); }
-	.blocked { color: var(--bad); }
+	.blocked { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
 	.src { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
 	.move {
 		margin-top: 6px;
