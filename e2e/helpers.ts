@@ -3,7 +3,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-export const VAULT = '/tmp/prosoche-e2e/vault';
+/** The throwaway vault, matching playwright.config.ts and its E2E_ROOT override. */
+export const VAULT = `${process.env.E2E_ROOT ?? '/tmp/prosoche-e2e'}/vault`;
 
 /**
  * The timeline's scale, mirrored from `Timeline.svelte`.

@@ -4,7 +4,7 @@ import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { VAULT, vaultFile, resetVault } from './helpers';
 
-const UNDO = '/tmp/prosoche-e2e/undo';
+const UNDO = `${process.env.E2E_ROOT ?? '/tmp/prosoche-e2e'}/undo`;
 const git = (...args: string[]) => execFileSync('git', ['-C', VAULT, ...args], { encoding: 'utf8' });
 
 test.describe('sync', () => {

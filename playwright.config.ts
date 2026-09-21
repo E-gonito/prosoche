@@ -1,7 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
-const VAULT = '/tmp/prosoche-e2e/vault';
-const PORT = 4173;
+/**
+ * Where the throwaway vault lives and which port the built server takes. Both
+ * default to fixed values so one `npm run e2e` needs nothing set, and both
+ * read the environment so two suites can run side by side without sharing a
+ * vault or fighting over the port.
+ */
+const ROOT = process.env.E2E_ROOT ?? '/tmp/prosoche-e2e';
+const VAULT = `${ROOT}/vault`;
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 /**
  * The suite drives the real built server against a disposable vault, because
@@ -28,7 +35,7 @@ export default defineConfig({
 		actionTimeout: 10_000
 	},
 	webServer: {
-		command: `node e2e/make-vault.mjs && HUB_VAULT=${VAULT} HUB_DB=/tmp/prosoche-e2e/index.db HUB_UNDO=/tmp/prosoche-e2e/undo PORT=${PORT} HOST=127.0.0.1 node build/index.js`,
+		command: `E2E_VAULT=${VAULT} E2E_REMOTE=${ROOT}/remote.git node e2e/make-vault.mjs && HUB_VAULT=${VAULT} HUB_DB=${ROOT}/index.db HUB_UNDO=${ROOT}/undo PORT=${PORT} HOST=127.0.0.1 node build/index.js`,
 		port: PORT,
 		reuseExistingServer: false,
 		timeout: 60_000
