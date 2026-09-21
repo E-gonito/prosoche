@@ -15,7 +15,7 @@ test.describe('the shell', () => {
 			['Today', /\/day\//]
 		] as const) {
 			await page.goto('/');
-			await page.locator('nav').getByRole('link', { name: label, exact: false }).click();
+			await page.locator('nav.sidebar').getByRole('link', { name: label, exact: false }).click();
 			await expect(page).toHaveURL(pattern);
 			await expect(page.locator('main h1').first()).toBeVisible();
 		}
@@ -23,15 +23,39 @@ test.describe('the shell', () => {
 
 	test('the sidebar collapses and the choice survives a reload', async ({ page }) => {
 		await page.goto('/');
-		const label = page.locator('nav a').first().locator('.lb');
+		const label = page.locator('nav.sidebar a').first().locator('.lb');
 		await expect(label).toBeVisible();
 		await page.getByRole('button', { name: /Collapse sidebar/ }).click();
 		await expect(label).toBeHidden();
 		await page.reload();
-		await expect(page.locator('nav a').first().locator('.lb')).toBeHidden();
+		await expect(page.locator('nav.sidebar a').first().locator('.lb')).toBeHidden();
 		// Put it back, so later tests see the default.
 		await page.getByRole('button', { name: /Expand sidebar/ }).click();
-		await expect(page.locator('nav a').first().locator('.lb')).toBeVisible();
+		await expect(page.locator('nav.sidebar a').first().locator('.lb')).toBeVisible();
+	});
+
+	test('settings is in the sidebar, at the bottom, and goes to the AI page', async ({ page }) => {
+		await page.goto('/');
+		const settings = page.locator('nav.sidebar').getByRole('link', { name: 'Settings' });
+		await expect(settings).toBeVisible();
+		// Below every other destination, which is the whole point of pinning it.
+		const links = page.locator('nav.sidebar a');
+		const last = links.nth((await links.count()) - 1);
+		await expect(last).toHaveAttribute('href', '/settings/ai');
+		await settings.click();
+		await expect(page).toHaveURL(/\/settings\/ai$/);
+		await expect(page.locator('main .head h1')).toContainText('AI');
+	});
+
+	test('the header offers the palette to anyone who does not know the chord', async ({ page }) => {
+		await page.goto('/');
+		const jump = page.getByTestId('jump');
+		await expect(jump).toContainText('Search or jump to');
+		// The binding is shown, so pressing it once is enough to learn it.
+		await expect(jump.locator('kbd')).toContainText('K');
+		await jump.click();
+		await expect(page.getByTestId('palette')).toBeVisible();
+		await expect(page.getByTestId('palette-input')).toBeFocused();
 	});
 
 	test('the health endpoint reports a working index', async ({ request }) => {

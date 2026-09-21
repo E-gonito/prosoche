@@ -7,15 +7,53 @@ test.use({ viewport: { width: 412, height: 915 }, hasTouch: true });
 test.describe('on a phone', () => {
 	test.beforeEach(async ({ request }) => await resetVault(request));
 
-	test('the sidebar is an icon rail and the day still fits', async ({ page }) => {
+	/*
+	 * The sidebar used to narrow to an icon rail here. It is gone instead: a
+	 * column of unlabelled icons cost width a phone does not have and put every
+	 * target under the thumb's reach. The bar at the bottom replaces it.
+	 */
+	test('the sidebar is gone and a bottom bar takes its place', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.locator('nav a').first()).toBeVisible();
-		await expect(page.locator('nav a').first().locator('.lb')).toBeHidden();
+		await expect(page.locator('nav.sidebar')).toBeHidden();
+
+		const bar = page.getByTestId('tabbar');
+		await expect(bar).toBeVisible();
+		const items = bar.locator('a, button');
+		await expect(items).toHaveCount(5);
+		await expect(items).toHaveText([/Today/, /Study/, /Notes/, /Search/, /More/]);
+
+		// Where you are is marked, and the root is Today however it redirects.
+		await expect(bar.locator('[aria-current="page"]')).toHaveText(/Today/);
+
+		// Every target is big enough to hit without aiming.
+		for (let i = 0; i < 5; i++) {
+			const box = await items.nth(i).boundingBox();
+			expect(box!.height).toBeGreaterThanOrEqual(44);
+		}
+
 		// Nothing spills sideways.
 		const overflow = await page.evaluate(
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
 		);
 		expect(overflow).toBeLessThanOrEqual(1);
+	});
+
+	test('More opens the palette, which is where the workspaces are', async ({ page }) => {
+		await page.goto('/');
+		await page.getByTestId('tab-more').tap();
+		await expect(page.getByTestId('palette')).toBeVisible();
+		await page.keyboard.type('polish');
+		await expect(page.getByTestId('palette-row').first()).toBeVisible();
+	});
+
+	test('the bar never covers the bottom of the page', async ({ page }) => {
+		await page.goto('/');
+		const reserved = await page.evaluate(() => {
+			const main = document.querySelector('main')!;
+			return parseFloat(getComputedStyle(main).paddingBottom);
+		});
+		const bar = (await page.getByTestId('tabbar').boundingBox())!;
+		expect(reserved).toBeGreaterThanOrEqual(bar.height);
 	});
 
 	test('the day stacks into one column', async ({ page }) => {

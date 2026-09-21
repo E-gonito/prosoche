@@ -67,7 +67,7 @@
 		<SyncBadge />
 	</header>
 
-	<nav class="rail" aria-label="Sections">
+	<nav class="sidebar" aria-label="Sections">
 		<div class="group">
 			{#each NAV as item (item.href)}
 				<a href={item.href} class:active={active(item.href)} title={collapsed ? item.label : undefined}>
@@ -95,7 +95,7 @@
 
 	<main>{@render children()}</main>
 
-	<nav class="tabs" aria-label="Sections" data-testid="tabbar">
+	<nav class="tabbar" aria-label="Sections" data-testid="tabbar">
 		{#each TABS as tab (tab.label)}
 			{#if tab.href === null}
 				<button onclick={() => palette.show()} data-testid="tab-more">
@@ -165,7 +165,7 @@
 		padding: 0 5px;
 	}
 
-	nav.rail {
+	nav.sidebar {
 		background: var(--panel);
 		border-right: 1px solid var(--line);
 		padding: 12px 10px;
@@ -173,10 +173,10 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.collapsed nav.rail { padding: 12px 6px; }
+	.collapsed nav.sidebar { padding: 12px 6px; }
 	/* Settings sits against the floor, away from the day-to-day list. */
 	.group.bottom { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
-	nav.rail a {
+	nav.sidebar a {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -185,7 +185,7 @@
 		color: var(--text);
 		text-decoration: none;
 	}
-	nav.rail .new { color: var(--muted); font-size: 13px; }
+	nav.sidebar .new { color: var(--muted); font-size: 13px; }
 	.dot::before {
 		content: '';
 		width: 9px;
@@ -201,10 +201,10 @@
 		border-radius: 999px;
 		padding: 1px 6px;
 	}
-	.collapsed nav.rail .count { display: none; }
-	nav.rail a:hover { background: var(--soft); }
-	nav.rail a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-	nav.rail h6 {
+	.collapsed nav.sidebar .count { display: none; }
+	nav.sidebar a:hover { background: var(--soft); }
+	nav.sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+	nav.sidebar h6 {
 		margin: 14px 8px 6px;
 		font-size: 11px;
 		text-transform: uppercase;
@@ -212,28 +212,28 @@
 		color: var(--muted);
 	}
 	.ic { display: inline-flex; width: 16px; justify-content: center; }
-	.collapsed nav.rail a { justify-content: center; padding: 8px 0; }
-	.collapsed nav.rail .lb,
-	.collapsed nav.rail h6 { display: none; }
+	.collapsed nav.sidebar a { justify-content: center; padding: 8px 0; }
+	.collapsed nav.sidebar .lb,
+	.collapsed nav.sidebar h6 { display: none; }
 
 	main { overflow: auto; padding: 20px 24px; }
 
 	/* The bottom bar exists on a phone only; see the media query below. */
-	nav.tabs { display: none; }
+	nav.tabbar { display: none; }
 
 	@media (max-width: 720px) {
 		/* One column: there is no room beside the page for anything. */
 		.shell,
 		.shell.collapsed { grid-template-columns: 1fr; grid-template-rows: 48px 1fr; }
 		header { grid-column: 1; }
-		nav.rail { display: none; }
+		nav.sidebar { display: none; }
 		.collapse { display: none; }
 		.jump { width: auto; padding: 6px; border-radius: 10px; margin-left: auto; }
 		.jump .say, .jump kbd { display: none; }
 
 		main { padding: 14px; padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); }
 
-		nav.tabs {
+		nav.tabbar {
 			position: fixed;
 			left: 0;
 			right: 0;
@@ -244,17 +244,19 @@
 			grid-auto-columns: 1fr;
 			background: var(--panel);
 			border-top: 1px solid var(--line);
+			/* Exactly as tall as `main` reserves, border and safe area included. */
+			height: calc(var(--tabbar) + env(safe-area-inset-bottom));
 			padding-bottom: env(safe-area-inset-bottom);
 		}
-		nav.tabs a,
-		nav.tabs button {
+		nav.tabbar a,
+		nav.tabbar button {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
 			gap: 3px;
 			min-height: 44px;
-			height: var(--tabbar);
+			height: 100%;
 			padding: 0 2px;
 			border: 0;
 			background: none;
@@ -263,7 +265,7 @@
 			text-decoration: none;
 			cursor: pointer;
 		}
-		nav.tabs span { font-size: 11px; line-height: 1; }
-		nav.tabs [aria-current='page'] { color: var(--accent); font-weight: 600; }
+		nav.tabbar span { font-size: 11px; line-height: 1; }
+		nav.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; }
 	}
 </style>

@@ -222,6 +222,8 @@ test.describe('installing on a phone', () => {
 		expect(response.status()).toBe(200);
 		const manifest = JSON.parse(await response.text());
 		expect(manifest.display).toBe('standalone');
+		// What the home screen calls it, which is the product's name.
+		expect(manifest.short_name).toBe('prosoche');
 		expect(manifest.theme_color).toBe('#ffffff');
 		expect(manifest.icons.map((i: { sizes: string }) => i.sizes)).toContain('512x512');
 		expect(manifest.share_target.params.url).toBe('share_url');
