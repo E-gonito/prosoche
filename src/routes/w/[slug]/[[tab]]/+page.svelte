@@ -41,7 +41,7 @@
 
 {#if data.widgets.length === 0}
 	<p class="empty">
-		This tab lists no widgets the hub knows. Edit the workspace file to name some from the catalogue.
+		This tab lists no widgets prosoche knows. Edit the workspace file to name some from the catalogue.
 	</p>
 {:else}
 	<div class="grid">

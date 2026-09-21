@@ -4,6 +4,7 @@
 	 * today's yet", so today's checkbox is the first thing on every row and
 	 * the streak is the second.
 	 */
+	import Icon from '$lib/components/Icon.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import { editTask, type Task } from '$lib/client/api';
 	import type { Habit } from '$lib/client/study';
@@ -57,7 +58,9 @@
 							<i class:on={day.done === true} class:off={day.done === false} title={day.day}></i>
 						{/each}
 					</span>
-					<span class="streak" title="{habit.hit} of {habit.of} days written">{habit.streak}🔥</span>
+					<span class="streak" title="{habit.hit} of {habit.of} days written">
+						{habit.streak}<Icon name="flame" size={12} />
+					</span>
 				</li>
 			{/each}
 		</ul>
@@ -95,7 +98,7 @@
 	.strip i { width: 6px; height: 12px; border-radius: 2px; background: var(--soft); }
 	.strip i.on { background: var(--ok); }
 	.strip i.off { background: #e6b8b8; }
-	.streak { flex: none; font: 11px var(--mono); color: var(--muted); }
+	.streak { flex: none; display: inline-flex; align-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
 	.more { margin-top: 6px; font-size: 12px; padding: 2px 8px; }
 	.none { margin: 0; color: var(--muted); font-size: 13px; }
 	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }

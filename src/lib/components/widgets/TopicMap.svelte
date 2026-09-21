@@ -3,6 +3,7 @@
 	 * The topic map: every topic in scope, nested, with what covers it. The
 	 * gaps are the point, so they are the thing the eye lands on.
 	 */
+	import Icon from '$lib/components/Icon.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import type { TopicCoverage } from '$lib/client/study';
 	import type { LoadedWidget } from '$lib/shared/widgets';
@@ -47,8 +48,12 @@
 						<span class="name">{topic.name}</span>
 					{/if}
 					{#if topic.total > 0}<span class="num" title="checklist">{topic.done}/{topic.total}</span>{/if}
-					{#if topic.resources > 0}<span class="num" title="resources">{topic.resources}📄</span>{/if}
-					{#if topic.cards > 0}<span class="num" title="flashcards">{topic.cards}🗂</span>{/if}
+					{#if topic.resources > 0}
+						<span class="num" title="resources">{topic.resources}<Icon name="file" size={12} /></span>
+					{/if}
+					{#if topic.cards > 0}
+						<span class="num" title="flashcards">{topic.cards}<Icon name="layers" size={12} /></span>
+					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -67,6 +72,6 @@
 	.dot.gap { background: var(--line); border: 1px solid var(--q4); }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	a.name:hover { color: var(--accent); }
-	.num { flex: none; font: 11px var(--mono); color: var(--muted); }
+	.num { flex: none; display: inline-flex; align-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
 	.none { margin: 0; color: var(--muted); font-size: 13px; }
 </style>

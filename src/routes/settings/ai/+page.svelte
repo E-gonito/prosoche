@@ -120,7 +120,7 @@
 		</tbody>
 	</table>
 	<p class="hint">
-		There is no mode that writes without you. The hub never passes
+		There is no mode that writes without you. prosoche never passes
 		<code>--dangerously-skip-permissions</code>, and the CLI is never given the vault as a working directory.
 	</p>
 </section>

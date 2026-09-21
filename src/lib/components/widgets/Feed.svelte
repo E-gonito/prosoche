@@ -76,14 +76,14 @@
 {:else}
 	<div class="off" data-testid="{feed.provider}-not-connected">
 		<p class="why" data-state={feed.status.state}>{feed.status.message}</p>
-		<p class="how">Set {feed.env.length === 1 ? 'this' : 'these'} in the hub's environment and restart it:</p>
+		<p class="how">Set {feed.env.length === 1 ? 'this' : 'these'} in prosoche's environment and restart it:</p>
 		<dl>
 			{#each feed.env as setting (setting.name)}
 				<dt>{setting.name}{#if !setting.required}<span class="opt">optional</span>{/if}</dt>
 				<dd>{setting.note}</dd>
 			{/each}
 		</dl>
-		<p class="how">No token is stored in the vault or the repository. Without one the hub simply does not call {feed.label}.</p>
+		<p class="how">No token is stored in the vault or the repository. Without one prosoche simply does not call {feed.label}.</p>
 	</div>
 {/if}
 
