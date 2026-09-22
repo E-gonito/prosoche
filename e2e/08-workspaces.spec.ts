@@ -72,6 +72,8 @@ test.describe('workspaces and boards', () => {
 	test('moving a card from the keyboard rewrites one character in the note', async ({ page }) => {
 		const before = vaultFile(DECK).split('\n');
 		const card = page.getByTestId('card').filter({ hasText: 'Draft the anonymisation plan' });
+		// The select only comes out once the card is hovered; 17 covers why.
+		await card.hover();
 		await card.getByTestId('move-card').selectOption('in-progress');
 
 		expect(await waitForFile(DECK, (c) => c.includes('- [/] Draft the anonymisation plan'))).toBe(true);
@@ -84,6 +86,7 @@ test.describe('workspaces and boards', () => {
 
 	test('moving a card to a named column tags it and leaves the marker alone', async ({ page }) => {
 		const card = page.getByTestId('card').filter({ hasText: 'Take ownership' });
+		await card.hover();
 		await card.getByTestId('move-card').selectOption('review');
 
 		expect(await waitForFile(DECK, (c) => c.includes('#col/review\n- [ ] Ship'))).toBe(true);
@@ -106,6 +109,7 @@ test.describe('workspaces and boards', () => {
 	test('creating a card appends one line to the deck and nothing else', async ({ page }) => {
 		const before = vaultFile(DECK);
 		const column = page.locator('[data-column="to-do"]');
+		await column.getByTestId('add-card-open').click();
 		await column.getByTestId('new-card').fill('Book the anonymisation review');
 		await column.getByTestId('add-card').click();
 
@@ -149,7 +153,7 @@ test.describe('workspaces and boards', () => {
 	test('the board says what it left out, and promotes a line only when asked', async ({ page }) => {
 		const excluded = page.getByTestId('excluded');
 		await expect(excluded).toContainText('4');
-		await expect(excluded).toContainText('checklist notation');
+		await expect(excluded).toContainText('no quadrant, due date, id or workspace tag');
 
 		await page.getByTestId('review-excluded').click();
 		const line = page.getByTestId('candidate').filter({ hasText: 'an upload with no title' });

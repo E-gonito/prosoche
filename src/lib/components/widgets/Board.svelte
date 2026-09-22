@@ -13,7 +13,19 @@
 	 *
 	 * Dragging is never the only way. Every card carries a column select, which
 	 * works from the keyboard and on a phone where a long drag across a
-	 * horizontally scrolling board is miserable.
+	 * horizontally scrolling board is miserable. On a pointer device that
+	 * select is held back until the card is hovered or focused, because five
+	 * columns of permanently open dropdowns read as a form rather than a board;
+	 * on a touch screen, where there is no hover to reveal it and no good drag
+	 * either, it stays out. Same control, revealed by whatever the device can
+	 * actually do.
+	 *
+	 * Two more things earn their place by what they remove. A column's add form
+	 * is folded behind one ghost button, so four empty columns no longer show
+	 * four text inputs. And a Done or Cancelled column with nothing in it is
+	 * parked behind a toggle, since the common case is a board whose finished
+	 * columns are noise until you want them — which is a preference, so it is
+	 * remembered per device rather than asked again every load.
 	 */
 	import { displayText, type Task } from '$lib/shared/task';
 	import { cardKey, columnFor, compareCards, type BoardWidget, type Card, type Column } from '$lib/shared/board';
@@ -27,6 +39,9 @@
 
 	/** What a board with nothing behind it looks like, so a failed load renders. */
 	const NOTHING: BoardWidget = { workspace: null, columns: [], excluded: 0, candidates: [], deck: '' };
+
+	/** Where the "show the finished columns" preference is kept, per device. */
+	const FINISHED_KEY = 'hub:board-finished';
 
 	let { widget, refresh }: { widget: LoadedWidget; refresh?: () => void } = $props();
 
@@ -47,6 +62,18 @@
 	let busy = $state('');
 	let opened = $state<Task | null>(null);
 	let reviewing = $state(false);
+	// Which column's add form is open, and which card has pinned its column
+	// select open. One of each: two half-typed cards, or a board of open
+	// selects, is the noise this layout exists to remove.
+	let adding = $state('');
+	let revealed = $state('');
+	let showFinished = $state(false);
+	// The column the phone is looking at, which its pills mirror. Empty until
+	// the observer reports one, so the server's first paint highlights nothing
+	// rather than guessing wrong.
+	let active = $state('');
+	let scroller: HTMLDivElement | undefined = $state();
+	let more = $state(false);
 
 	const cards = $derived.by(() => {
 		const fromServer = board.columns.flatMap((column) => column.cards);
@@ -62,12 +89,98 @@
 			cards: cards.filter((card) => columnFor(card.task, columns).key === column.key).sort(compareCards)
 		}))
 	);
+	/**
+	 * A column whose status says the work is over. Read from the status the
+	 * server put on the column rather than from its title, so a workspace that
+	 * calls its column "Shipped" and maps it to `done` is treated the same as
+	 * one that calls it Done, and one that merely mentions the word is not.
+	 */
+	const finished = (column: Column) => column.status === 'done' || column.status === 'cancelled';
+
+	/** Finished columns with nothing in them: what the toggle is about. */
+	const parked = $derived(grouped.filter((group) => finished(group.column) && group.cards.length === 0).length);
+	const shown = $derived(
+		grouped.filter((group) => showFinished || group.cards.length > 0 || !finished(group.column))
+	);
 	const candidates = $derived(
 		board.candidates
 			.map((note) => ({ ...note, tasks: note.tasks.filter((task) => !promoted.has(cardKey(task))) }))
 			.filter((note) => note.tasks.length > 0)
 	);
 	const showReview = $derived(reviewing || cards.length === 0);
+
+	// Read after mounting, like the rail's own collapsed state: the server has
+	// no way to know what this device last chose.
+	$effect(() => {
+		showFinished = localStorage.getItem(FINISHED_KEY) === '1';
+	});
+
+	/**
+	 * Keep the right-edge shadow and the phone's active pill in step with the
+	 * scroller. Re-runs whenever the visible columns change, because both the
+	 * observer's targets and the overflow depend on how many there are.
+	 */
+	$effect(() => {
+		const root = scroller;
+		const groups = shown;
+		if (!root) return;
+
+		const measure = () => {
+			more = root.scrollLeft + root.clientWidth < root.scrollWidth - 1;
+		};
+		measure();
+
+		const ratios = new Map<string, number>();
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					ratios.set((entry.target as HTMLElement).dataset.column ?? '', entry.intersectionRatio);
+				}
+				// Most of the viewport wins, and ties go to the leftmost column,
+				// so a half-and-half scroll position never flickers between two.
+				let best = '';
+				let widest = 0;
+				for (const group of groups) {
+					const ratio = ratios.get(group.column.key) ?? 0;
+					if (ratio > widest) {
+						widest = ratio;
+						best = group.column.key;
+					}
+				}
+				if (best) active = best;
+			},
+			{ root, threshold: [0, 0.25, 0.5, 0.75, 1] }
+		);
+		for (const group of groups) {
+			const element = root.querySelector(`[data-column="${group.column.key}"]`);
+			if (element) observer.observe(element);
+		}
+
+		const resize = new ResizeObserver(measure);
+		resize.observe(root);
+		root.addEventListener('scroll', measure, { passive: true });
+		return () => {
+			observer.disconnect();
+			resize.disconnect();
+			root.removeEventListener('scroll', measure);
+		};
+	});
+
+	function toggleFinished() {
+		showFinished = !showFinished;
+		localStorage.setItem(FINISHED_KEY, showFinished ? '1' : '0');
+	}
+
+	/** Bring a column to the left edge of the scroller, for the phone's pills. */
+	function jumpTo(key: string) {
+		const element = scroller?.querySelector(`[data-column="${key}"]`);
+		if (!scroller || !element) return;
+		const left = scroller.scrollLeft + element.getBoundingClientRect().left - scroller.getBoundingClientRect().left;
+		scroller.scrollTo({ left, behavior: 'smooth' });
+		// Set straight away rather than waiting for the observer, so the pill
+		// answers the tap even while the scroll is still animating.
+		active = key;
+	}
 
 	function applied(task: Task) {
 		problem = '';
@@ -140,6 +253,11 @@
 			destroy: () => off()
 		};
 	}
+
+	/** Take the caret the moment a field is revealed, so one click is enough. */
+	function takesFocus(node: HTMLInputElement) {
+		node.focus();
+	}
 </script>
 
 {#if widget.problem || !widget.data}
@@ -149,86 +267,153 @@
 {:else}
 	{#if problem}<p class="problem" data-testid="board-problem" role="alert">{problem}</p>{/if}
 
-	<div class="columns" data-testid="board">
-		{#each grouped as group (group.column.key)}
-			<section
-				class="col"
-				class:over={drag.zone === zoneId(group.column)}
-				data-testid="column"
-				data-column={group.column.key}
-				use:dropColumn={group.column}
+	<div class="bar">
+		<div class="pills" role="group" data-testid="column-pills" aria-label="Jump to a column">
+			{#each shown as group (group.column.key)}
+				<button
+					class="pill"
+					class:on={active === group.column.key}
+					data-testid="column-pill"
+					data-pill={group.column.key}
+					aria-current={active === group.column.key ? 'true' : undefined}
+					onclick={() => jumpTo(group.column.key)}
+				>
+					{group.column.title}<span class="n">{group.cards.length}</span>
+				</button>
+			{/each}
+		</div>
+
+		{#if parked > 0}
+			<button
+				class="btn ghost finished"
+				data-testid="show-finished"
+				aria-pressed={showFinished}
+				onclick={toggleFinished}
 			>
-				<header>
-					<h4>{group.column.title}</h4>
-					<span class="n">{group.cards.length}</span>
-				</header>
+				{showFinished ? 'Hide finished' : `Show finished (${parked})`}
+			</button>
+		{/if}
+	</div>
 
-				<div class="stack">
-					{#each group.cards as card (cardKey(card.task))}
-						<article
-							class="card"
-							class:dragging={isDragging(card.task)}
-							class:saving={busy === cardKey(card.task)}
-							data-testid="card"
-							data-key={cardKey(card.task)}
-						>
-							<div class="top">
-								<span
-									class="grip"
-									data-testid="card-grip"
-									role="button"
-									tabindex="-1"
-									aria-label="Drag {displayText(card.task.text)} to another column"
-									title="Drag to another column"
-									onpointerdown={(e) => startDrag(card.task, e)}
-								>⠿</span>
-								{#if card.task.quadrant}<span class="q q{card.task.quadrant}">Q{card.task.quadrant}</span>{/if}
-								<button class="open" data-testid="open-card" onclick={() => (opened = card.task)}>
-									{displayText(card.task.text)}
-								</button>
-							</div>
+	<div class="deck" class:more data-testid="board-deck" data-more={more}>
+		<div class="columns" bind:this={scroller} data-testid="board">
+			{#each shown as group (group.column.key)}
+				<section
+					class="col"
+					class:over={drag.zone === zoneId(group.column)}
+					data-testid="column"
+					data-column={group.column.key}
+					use:dropColumn={group.column}
+				>
+					<header>
+						<h4>{group.column.title}</h4>
+						<span class="n">{group.cards.length}</span>
+					</header>
 
-							<div class="meta">
-								{#if card.task.due}<span class="due" data-testid="card-due">Due {card.task.due}</span>{/if}
-								{#if card.blockers.length}
-									<span class="blocked" data-testid="card-blocked" title={blockerTitle(card)}>
-										<Icon name="ban" size={12} />{card.blockers.length}
-									</span>
-								{/if}
-								<span class="src" title={card.task.path}>{noteName(card.task.path)}</span>
-							</div>
-
-							<select
-								class="move"
-								data-testid="move-card"
-								aria-label="Column for {displayText(card.task.text)}"
-								value={group.column.key}
-								onchange={(e) => {
-									const next = columns.find((c) => c.key === e.currentTarget.value);
-									if (next) void move(card.task, next);
-								}}
+					<div class="stack">
+						{#each group.cards as card (cardKey(card.task))}
+							<article
+								class="card"
+								class:dragging={isDragging(card.task)}
+								class:saving={busy === cardKey(card.task)}
+								class:revealed={revealed === cardKey(card.task)}
+								data-testid="card"
+								data-key={cardKey(card.task)}
 							>
-								{#each columns as column (column.key)}
-									<option value={column.key}>{column.title}</option>
-								{/each}
-							</select>
-						</article>
-					{/each}
-				</div>
+								<div class="top">
+									<span
+										class="grip"
+										data-testid="card-grip"
+										role="button"
+										tabindex="-1"
+										aria-label="Drag {displayText(card.task.text)} to another column"
+										title="Drag to another column"
+										onpointerdown={(e) => startDrag(card.task, e)}
+									>⠿</span>
+									{#if card.task.quadrant}<span class="q q{card.task.quadrant}">Q{card.task.quadrant}</span>{/if}
+									<button class="open" data-testid="open-card" onclick={() => (opened = card.task)}>
+										{displayText(card.task.text)}
+									</button>
+								</div>
 
-				<form class="new" onsubmit={(e) => add(e, group.column)}>
-					<input
-						data-testid="new-card"
-						bind:value={drafts[group.column.key]}
-						placeholder="New card"
-						aria-label="New card in {group.column.title}"
-					/>
-					<button class="btn" data-testid="add-card" disabled={!(drafts[group.column.key] ?? '').trim()}>
-						Add
-					</button>
-				</form>
-			</section>
-		{/each}
+								<div class="meta">
+									{#if card.task.due}<span class="due" data-testid="card-due">Due {card.task.due}</span>{/if}
+									{#if card.blockers.length}
+										<span class="blocked" data-testid="card-blocked" title={blockerTitle(card)}>
+											<Icon name="ban" size={11} />{card.blockers.length}
+										</span>
+									{/if}
+									<span class="src" title={card.task.path}>{noteName(card.task.path)}</span>
+								</div>
+
+								<div class="actions">
+									<button
+										class="icon"
+										data-testid="card-more"
+										aria-expanded={revealed === cardKey(card.task)}
+										aria-label="Column picker for {displayText(card.task.text)}"
+										title="Move to another column"
+										onclick={() => (revealed = revealed === cardKey(card.task) ? '' : cardKey(card.task))}
+									>
+										<Icon name="more-horizontal" size={14} />
+									</button>
+									<select
+										class="move"
+										data-testid="move-card"
+										aria-label="Column for {displayText(card.task.text)}"
+										value={group.column.key}
+										onchange={(e) => {
+											const next = columns.find((c) => c.key === e.currentTarget.value);
+											if (next) void move(card.task, next);
+										}}
+									>
+										{#each columns as column (column.key)}
+											<option value={column.key}>{column.title}</option>
+										{/each}
+									</select>
+								</div>
+							</article>
+						{/each}
+					</div>
+
+					{#if adding === group.column.key}
+						<form class="new" onsubmit={(e) => add(e, group.column)}>
+							<input
+								use:takesFocus
+								data-testid="new-card"
+								bind:value={drafts[group.column.key]}
+								placeholder="New card"
+								aria-label="New card in {group.column.title}"
+								onkeydown={(e) => {
+									if (e.key === 'Escape') adding = '';
+								}}
+							/>
+							<button class="btn" data-testid="add-card" disabled={!(drafts[group.column.key] ?? '').trim()}>
+								Add
+							</button>
+							<button
+								type="button"
+								class="icon"
+								data-testid="add-card-cancel"
+								aria-label="Cancel"
+								onclick={() => (adding = '')}
+							>
+								<Icon name="x" size={13} />
+							</button>
+						</form>
+					{:else}
+						<button
+							class="addopen"
+							data-testid="add-card-open"
+							aria-label="Add a card to {group.column.title}"
+							onclick={() => (adding = group.column.key)}
+						>
+							<Icon name="plus" size={13} />Add card
+						</button>
+					{/if}
+				</section>
+			{/each}
+		</div>
 	</div>
 
 	{#if cards.length === 0}
@@ -243,15 +428,14 @@
 				/>
 				<button class="btn primary">Add card</button>
 			</form>
-			<p class="hint">Appends one line to {board.deck}. Anything written in the workspace's notes shows here too.</p>
+			<p class="hint">Appends one line to {board.deck}.</p>
 		</div>
 	{/if}
 
 	{#if board.excluded > 0}
 		<p class="excluded" data-testid="excluded">
-			{board.excluded} checkbox {board.excluded === 1 ? 'line' : 'lines'} in this workspace's notes
-			{board.excluded === 1 ? 'is' : 'are'} not shown: no quadrant, due date, id or workspace tag, so
-			{board.excluded === 1 ? 'it reads' : 'they read'} as checklist notation rather than work.
+			{board.excluded} checkbox {board.excluded === 1 ? 'line is' : 'lines are'} not shown because
+			{board.excluded === 1 ? 'it carries' : 'they carry'} no quadrant, due date, id or workspace tag.
 			{#if !showReview}
 				<button class="link" data-testid="review-excluded" onclick={() => (reviewing = true)}>
 					Review {board.excluded === 1 ? 'it' : 'them'}
@@ -263,10 +447,7 @@
 	{#if showReview && candidates.length > 0}
 		<div class="review" data-testid="promote">
 			<h5>Promote a line to a card</h5>
-			<p class="hint">
-				Give a line a quadrant and it becomes a card, by the same convention the rest of your vault uses.
-				Nothing is promoted for you.
-			</p>
+			<p class="hint">A quadrant is what makes a line a card, and nothing is promoted for you.</p>
 			{#each candidates as note (note.path)}
 				<div class="note">
 					<a class="src" href="/notes/{note.path.split('/').map(encodeURIComponent).join('/')}">{note.title}</a>
@@ -298,6 +479,53 @@
 {/if}
 
 <style>
+	/* The row above the board: the phone's column pills, and the toggle that
+	   parks finished columns. Empty on a desktop board with nothing finished,
+	   which is why it collapses to nothing rather than reserving height. */
+	/* The gap under the row hangs off its children, so a desktop board with
+	   nothing parked leaves no band of empty space where the row would be. */
+	.bar { display: flex; align-items: center; gap: 8px; }
+	.bar > * { margin-bottom: 8px; }
+	.finished { margin-left: auto; flex: none; font-size: 12px; padding: 4px 8px; }
+
+	/* Pills are the phone's way to change column; a desktop just looks across. */
+	.pills { display: none; }
+	.pill {
+		flex: none;
+		min-height: 40px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border: 1px solid var(--line);
+		background: var(--panel);
+		border-radius: 999px;
+		padding: 0 12px;
+		font: inherit;
+		font-size: 13px;
+		color: var(--muted);
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+	.pill .n { font: 11px var(--mono); }
+
+	/* The shadow lives on the wrapper, because a pseudo element on the
+	   scroller itself would scroll away with the columns. */
+	.deck { position: relative; min-width: 0; }
+	.deck::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 6px;
+		width: 28px;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.15s;
+		background: linear-gradient(to right, rgba(255, 255, 255, 0), var(--panel));
+	}
+	.deck.more::after { opacity: 1; }
+
 	.columns {
 		display: flex;
 		gap: 10px;
@@ -306,24 +534,27 @@
 		align-items: flex-start;
 	}
 	.col {
-		flex: 0 0 260px;
+		/* Share the row rather than each taking a fixed slice, so four columns
+		   fill the widget and six scroll instead of clipping the last. */
+		flex: 1 1 220px;
+		min-width: 220px;
 		background: var(--soft);
 		border: 1px solid var(--line);
 		border-radius: 10px;
-		padding: 8px;
-		min-width: 0;
+		padding: 7px;
 	}
 	.col.over { border-color: var(--accent); background: var(--accent-soft); }
-	.col header { display: flex; align-items: center; gap: 6px; margin: 2px 2px 8px; }
+	.col header { display: flex; align-items: center; gap: 6px; margin: 2px 2px 7px; }
 	h4 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-	.n { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
+	.col header .n { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
 
-	.stack { display: flex; flex-direction: column; gap: 6px; }
+	.stack { display: flex; flex-direction: column; gap: 5px; }
 	.card {
+		position: relative;
 		background: var(--panel);
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 7px 8px;
+		padding: 5px 7px 6px;
 	}
 	.card.dragging { opacity: 0.4; }
 	.card.saving { opacity: 0.6; }
@@ -336,18 +567,38 @@
 		background: none;
 		padding: 0;
 		font: inherit;
+		font-size: 13px;
 		color: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.open:hover { color: var(--accent); }
-	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; font-size: 11px; color: var(--muted); }
+	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 11px; color: var(--muted); }
 	.due { font-family: var(--mono); }
 	.blocked { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
-	.src { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+	.src { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
+
+	.icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		background: none;
+		padding: 2px;
+		border-radius: 5px;
+		color: var(--muted);
+		cursor: pointer;
+		line-height: 0;
+	}
+	.icon:hover { background: var(--soft); color: var(--text); }
+
+	/* Touch and narrow screens get the select in the flow, under the card:
+	   there is no hover to reveal it with and no pleasant drag either. */
+	.actions { display: flex; align-items: center; gap: 4px; margin-top: 5px; }
+	.actions .icon { display: none; }
 	.move {
-		margin-top: 6px;
-		width: 100%;
+		flex: 1;
+		min-width: 0;
 		font: 11px inherit;
 		color: var(--muted);
 		border: 1px solid var(--line);
@@ -356,7 +607,25 @@
 		padding: 2px 4px;
 	}
 
-	.new { display: flex; gap: 4px; margin-top: 8px; }
+	.addopen {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
+		width: 100%;
+		min-height: 32px;
+		margin-top: 7px;
+		border: 1px dashed var(--line);
+		border-radius: 8px;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.addopen:hover { background: var(--panel); color: var(--accent); border-color: var(--accent); }
+
+	.new { display: flex; gap: 4px; margin-top: 7px; }
 	.new input {
 		flex: 1;
 		min-width: 0;
@@ -367,7 +636,8 @@
 		font-size: 12px;
 		background: #fff;
 	}
-	.new .btn { padding: 4px 8px; font-size: 12px; }
+	.new .btn { padding: 4px 8px; font-size: 12px; flex: none; }
+	.new .icon { flex: none; }
 
 	.nothing { margin-top: 14px; text-align: center; padding: 18px 12px; border: 1px dashed var(--line); border-radius: 10px; }
 	.lead { margin: 0 0 10px; color: var(--muted); }
@@ -402,9 +672,50 @@
 	.problem { margin: 0 0 8px; font-size: 12px; color: var(--bad); }
 	.hint { font-size: 12px; color: var(--muted); }
 
+	/*
+	 * A pointer device can reveal things by hovering, so the select moves into
+	 * the card's top-right corner and stays out of the way until asked for.
+	 * It is taken out with `visibility` rather than `opacity` so it also leaves
+	 * the tab order, and it is positioned rather than sized to nothing so
+	 * revealing it never reflows the title underneath.
+	 */
+	@media (hover: hover) {
+		/* All the card reserves is the button. The select hangs off it like a
+		   menu, over the meta line, which carries no target to steal: putting
+		   it beside the button instead would either cover the title or squeeze
+		   it to nothing in a 220px column. */
+		.top { padding-right: 22px; }
+		.actions { position: absolute; top: 3px; right: 4px; display: block; margin-top: 0; }
+		.actions .icon { display: inline-flex; opacity: 0.4; }
+		.card:hover .actions .icon,
+		.card:focus-within .actions .icon { opacity: 1; }
+		.move {
+			position: absolute;
+			top: 21px;
+			right: 0;
+			z-index: 2;
+			width: max-content;
+			max-width: 150px;
+			visibility: hidden;
+			background: var(--panel);
+			box-shadow: 0 2px 8px rgba(31, 35, 40, 0.18);
+		}
+		.card:hover .move,
+		.card:focus-within .move,
+		.card.revealed .move { visibility: visible; }
+	}
+
 	@media (max-width: 720px) {
+		/* One column at a time, paged by swiping; the pills say which. */
 		.col { flex: 0 0 82vw; scroll-snap-align: start; }
 		.columns { scroll-snap-type: x mandatory; }
 		.first input { min-width: 0; flex: 1; }
+		.pills { display: flex; flex: 1 1 0; gap: 6px; overflow-x: auto; min-width: 0; padding-bottom: 2px; }
+		.finished { margin-left: 0; }
+		/* Back into the flow, always visible: there is no hover here to ask with. */
+		.top { padding-right: 0; }
+		.actions { position: static; display: flex; margin-top: 5px; }
+		.actions .icon { display: none; }
+		.move { position: static; flex: 1; width: auto; max-width: none; visibility: visible; box-shadow: none; }
 	}
 </style>
