@@ -108,7 +108,7 @@
 		{#if problem}
 			<p class="problem" data-testid="insights-problem">{problem}</p>
 			{#each refusals as refusal, i (i)}
-				<p class="refusal"><span class="badge">{refusal.guardrail}</span> {refusal.title}: {refusal.message}</p>
+				<p class="refusal"><span class="tag bad">{refusal.guardrail}</span> {refusal.title}: {refusal.message}</p>
 			{/each}
 		{/if}
 
@@ -131,8 +131,8 @@
 {/if}
 
 <style>
-	.insights { display: flex; flex-direction: column; gap: 8px; }
-	form { display: flex; gap: 8px; }
+	.insights { display: flex; flex-direction: column; gap: var(--s2); }
+	form { display: flex; gap: var(--s2); }
 	input {
 		flex: 1;
 		min-width: 0;
@@ -140,22 +140,16 @@
 		border-radius: 8px;
 		padding: 7px 10px;
 		font: inherit;
+		background: var(--field);
 	}
-	.scope { font-size: 12px; margin: 0; }
+	.scope { font-size: var(--t12); margin: 0; }
 	.suggestions { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-	.suggestions .btn { font-size: 12px; border-color: var(--line); }
-	.answer { white-space: pre-wrap; font-size: 14px; }
-	.cites { margin: 0; font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-	.stamp { margin: 0; font: 11px var(--mono); }
-	.problem { margin: 0; color: var(--bad); font-size: 13px; }
-	.refusal { margin: 0; font-size: 12px; color: var(--muted); }
-	.badge {
-		font: 11px var(--mono);
-		font-weight: 700;
-		background: var(--bad);
-		color: #fff;
-		border-radius: 4px;
-		padding: 1px 5px;
-	}
-	.muted { color: var(--muted); font-size: 13px; }
+	.suggestions .btn { font-size: var(--t12); border-color: var(--line); }
+	.answer { white-space: pre-wrap; font-size: var(--t14); }
+	.cites { margin: 0; font-size: var(--t12); display: flex; gap: var(--s2); flex-wrap: wrap; }
+	/* A run's numbers, so body text with the figures lined up. */
+	.stamp { margin: 0; font-size: var(--t11); font-variant-numeric: tabular-nums; }
+	.problem { margin: 0; color: var(--bad); font-size: var(--t13); }
+	.refusal { margin: 0; font-size: var(--t12); color: var(--muted); }
+	.muted { color: var(--muted); font-size: var(--t13); }
 </style>

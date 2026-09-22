@@ -127,23 +127,25 @@
 	.layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 	.column { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-	.log-form { display: flex; gap: 8px; }
+	.log-form { display: flex; gap: var(--s2); }
 	.log-form input {
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 13px;
+		font-size: var(--t13);
 		padding: 7px 10px;
 		border: 1px solid var(--line);
 		border-radius: 8px;
+		background: var(--field);
 	}
-	.log { list-style: none; margin: 12px 0 0; padding: 0; font-size: 13px; }
-	.log li { display: flex; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); }
-	.log .day { flex: none; font: 11px var(--mono); color: var(--muted); padding-top: 2px; width: 78px; }
-	.row { display: block; padding: 4px 0; color: var(--accent); text-decoration: none; }
+	.log { list-style: none; margin: var(--s3) 0 0; padding: 0; font-size: var(--t13); }
+	.log li { display: flex; gap: 10px; padding: var(--s1) 0; border-top: 1px solid var(--line); }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.log .day { flex: none; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); padding-top: 2px; width: 78px; }
+	.row { display: block; padding: var(--s1) 0; color: var(--accent); text-decoration: none; }
 	.row:hover { text-decoration: underline; }
-	.problem { margin: 8px 0 0; font-size: 12px; color: var(--bad); }
-	.hint code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 4px; }
+	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
+	.hint code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px var(--s1); }
 
 	@media (max-width: 860px) {
 		.layout { grid-template-columns: 1fr; }

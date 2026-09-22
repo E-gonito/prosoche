@@ -67,15 +67,15 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 7px;
-		font-size: 12px;
+		font-size: var(--t12);
 		color: var(--muted);
 		text-decoration: none;
 		border: 1px solid var(--line);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		padding: 3px 10px;
 	}
 	.badge:hover { background: var(--soft); }
-	i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+	i { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--muted); }
 	.ok i { background: var(--ok); }
 	.warn i { background: var(--q3); }
 	.bad i { background: var(--bad); }

@@ -116,12 +116,9 @@
 
 <style>
 	.shell {
-		/* The phone's bottom bar, named here because `main` reserves room for
-		   it and the bar itself is the thing that is that tall. */
-		--tabbar: 56px;
 		display: grid;
 		grid-template-columns: 220px 1fr;
-		grid-template-rows: 48px 1fr;
+		grid-template-rows: var(--header-h) 1fr;
 		height: 100vh;
 	}
 	.shell.collapsed { grid-template-columns: 56px 1fr; }
@@ -130,8 +127,8 @@
 		grid-column: 1 / 3;
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 0 12px;
+		gap: var(--s3);
+		padding: 0 var(--s3);
 		background: var(--panel);
 		border-bottom: 1px solid var(--line);
 	}
@@ -141,23 +138,23 @@
 	.jump {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		min-width: 0;
 		width: 260px;
 		padding: 5px 10px;
 		border: 1px solid var(--line);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: var(--bg);
 		color: var(--muted);
 		font: inherit;
-		font-size: 13px;
+		font-size: var(--t13);
 		cursor: pointer;
 	}
 	.jump:hover { background: var(--soft); border-color: var(--accent); color: var(--text); }
 	.jump .say { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.jump kbd {
 		flex: none;
-		font: 11px var(--mono);
+		font: var(--t11) var(--mono);
 		color: var(--muted);
 		border: 1px solid var(--line);
 		border-bottom-width: 2px;
@@ -168,24 +165,24 @@
 	nav.sidebar {
 		background: var(--panel);
 		border-right: 1px solid var(--line);
-		padding: 12px 10px;
+		padding: var(--s3) 10px;
 		overflow: auto;
 		display: flex;
 		flex-direction: column;
 	}
-	.collapsed nav.sidebar { padding: 12px 6px; }
+	.collapsed nav.sidebar { padding: var(--s3) 6px; }
 	/* Settings sits against the floor, away from the day-to-day list. */
 	.group.bottom { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
 	nav.sidebar a {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		padding: 7px 10px;
 		border-radius: 8px;
 		color: var(--text);
 		text-decoration: none;
 	}
-	nav.sidebar .new { color: var(--muted); font-size: 13px; }
+	nav.sidebar .new { color: var(--muted); font-size: var(--t13); }
 	.dot::before {
 		content: '';
 		width: 9px;
@@ -193,30 +190,32 @@
 		border-radius: 50%;
 		background: var(--dot);
 	}
+	/* A count, so body text with the figures lined up rather than monospace. */
 	.count {
 		margin-left: auto;
-		font: 11px var(--mono);
+		font-size: var(--t11);
+		font-variant-numeric: tabular-nums;
 		color: var(--muted);
 		background: var(--soft);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		padding: 1px 6px;
 	}
 	.collapsed nav.sidebar .count { display: none; }
 	nav.sidebar a:hover { background: var(--soft); }
 	nav.sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 	nav.sidebar h6 {
-		margin: 14px 8px 6px;
-		font-size: 11px;
+		margin: 14px var(--s2) 6px;
+		font-size: var(--t11);
 		text-transform: uppercase;
 		letter-spacing: 0.6px;
 		color: var(--muted);
 	}
-	.ic { display: inline-flex; width: 16px; justify-content: center; }
+	.ic { display: inline-flex; width: var(--s4); justify-content: center; }
 	.collapsed nav.sidebar a { justify-content: center; padding: 8px 0; }
 	.collapsed nav.sidebar .lb,
 	.collapsed nav.sidebar h6 { display: none; }
 
-	main { overflow: auto; padding: 20px 24px; }
+	main { overflow: auto; padding: 20px var(--s5); }
 
 	/* The bottom bar exists on a phone only; see the media query below. */
 	nav.tabbar { display: none; }
@@ -224,14 +223,14 @@
 	@media (max-width: 720px) {
 		/* One column: there is no room beside the page for anything. */
 		.shell,
-		.shell.collapsed { grid-template-columns: 1fr; grid-template-rows: 48px 1fr; }
+		.shell.collapsed { grid-template-columns: 1fr; grid-template-rows: var(--header-h) 1fr; }
 		header { grid-column: 1; }
 		nav.sidebar { display: none; }
 		.collapse { display: none; }
-		.jump { width: auto; padding: 6px; border-radius: 10px; margin-left: auto; }
+		.jump { width: auto; padding: 6px; border-radius: var(--r); margin-left: auto; }
 		.jump .say, .jump kbd { display: none; }
 
-		main { padding: 14px; padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); }
+		main { padding: 14px; padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
 
 		nav.tabbar {
 			position: fixed;
@@ -245,7 +244,7 @@
 			background: var(--panel);
 			border-top: 1px solid var(--line);
 			/* Exactly as tall as `main` reserves, border and safe area included. */
-			height: calc(var(--tabbar) + env(safe-area-inset-bottom));
+			height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
 			padding-bottom: env(safe-area-inset-bottom);
 		}
 		nav.tabbar a,
@@ -255,6 +254,7 @@
 			align-items: center;
 			justify-content: center;
 			gap: 3px;
+			/* The smallest thing a thumb reliably hits, so not on the scale. */
 			min-height: 44px;
 			height: 100%;
 			padding: 0 2px;
@@ -265,7 +265,7 @@
 			text-decoration: none;
 			cursor: pointer;
 		}
-		nav.tabbar span { font-size: 11px; line-height: 1; }
+		nav.tabbar span { font-size: var(--t11); line-height: 1; }
 		nav.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; }
 	}
 </style>

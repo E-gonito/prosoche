@@ -58,13 +58,14 @@
 
 <style>
 	ul { list-style: none; margin: 0; padding: 0; }
-	li { display: flex; align-items: baseline; gap: 8px; padding: 6px 2px; border-top: 1px solid var(--line); }
+	li { display: flex; align-items: baseline; gap: var(--s2); padding: 6px 2px; border-top: 1px solid var(--line); }
 	li:first-child { border-top: 0; }
 	a { text-decoration: none; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	a:hover { text-decoration: underline; }
-	.when { font: 11px var(--mono); color: var(--muted); flex: none; }
-	.where { font-size: 11px; color: var(--muted); margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.when { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); flex: none; }
+	.where { font-size: var(--t11); color: var(--muted); margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.hint { font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 0; }
 
 	@media (max-width: 720px) {
 		.where { display: none; }

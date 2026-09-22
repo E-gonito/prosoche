@@ -148,7 +148,7 @@
 	.session { max-width: 680px; margin: 0 auto; }
 	.progress { height: 4px; border-radius: 2px; background: var(--soft); overflow: hidden; }
 	.progress i { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
-	.meta { display: flex; gap: 10px; font-size: 12px; color: var(--muted); margin: 8px 0 12px; }
+	.meta { display: flex; gap: 10px; font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 var(--s3); }
 	.ctx { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.card {
@@ -159,44 +159,46 @@
 		color: inherit;
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: 12px;
-		padding: 24px;
+		border-radius: var(--r-lg);
+		padding: var(--s5);
 		min-height: 190px;
 		cursor: pointer;
 	}
 	.q { font-size: 19px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-	.a { font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-	hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
-	.reveal { margin: 18px 0 0; color: var(--muted); font-size: 13px; }
+	.a { font-size: var(--t16); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+	hr { border: 0; border-top: 1px solid var(--line); margin: var(--s4) 0; }
+	.reveal { margin: 18px 0 0; color: var(--muted); font-size: var(--t13); }
 
-	.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+	.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); margin-top: 14px; }
 	.grade {
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
-		padding: 12px 6px;
+		padding: var(--s3) 6px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
-		background: #fff;
+		border-radius: var(--r);
+		background: var(--field);
 		font: inherit;
 		cursor: pointer;
 	}
 	.grade:hover:not(:disabled) { background: var(--soft); }
 	.grade:disabled { opacity: 0.5; cursor: default; }
-	.grade b { font-size: 14px; }
-	.grade small { font: 11px var(--mono); color: var(--muted); }
-	.grade em { position: absolute; top: 4px; right: 6px; font: 10px var(--mono); font-style: normal; color: var(--muted); }
+	.grade b { font-size: var(--t14); }
+	/* What the grade would do next: an interval, so body text with the figures
+	   lined up. The key that answers it stays monospaced, as keys do. */
+	.grade small { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
+	.grade em { position: absolute; top: var(--s1); right: 6px; font: 10px var(--mono); font-style: normal; color: var(--muted); }
 	.again { border-color: #e9c3c3; }
 	.easy { border-color: #bfe3cb; }
 
-	.problem { color: var(--bad); font-size: 13px; }
-	.where { font-size: 12px; margin-top: 14px; }
+	.problem { color: var(--bad); font-size: var(--t13); }
+	.where { font-size: var(--t12); margin-top: 14px; }
 
-	.finish { text-align: center; padding: 60px 16px; }
+	.finish { text-align: center; padding: 60px var(--s4); }
 	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-	.finish h2 { margin: 8px 0; font-size: 20px; }
+	.finish h2 { margin: var(--s2) 0; font-size: var(--t20); }
 	.finish .muted { color: var(--muted); margin-bottom: 18px; }
 
 	/*
@@ -214,7 +216,7 @@
 		.q { font-size: 17px; }
 		.grades { flex: none; gap: 6px; }
 		.grade { padding: 14px 2px; min-height: 56px; }
-		.grade b { font-size: 13px; }
+		.grade b { font-size: var(--t13); }
 		/* A keyboard is not how a phone answers, so its hints are noise. */
 		.grade em { display: none; }
 	}

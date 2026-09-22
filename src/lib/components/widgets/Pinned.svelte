@@ -59,7 +59,7 @@
 				{#if item.task.quadrant}<span class="q q{item.task.quadrant}">Q{item.task.quadrant}</span>{/if}
 				<a href={href(item.task)}>{displayText(item.task.text)}</a>
 				{#if item.workspace && !data.scope}
-					<span class="chip"><span class="dot" style="--dot: {item.workspace.color}"></span>{item.workspace.name}</span>
+					<span class="who"><span class="dot" style="--dot: {item.workspace.color}"></span>{item.workspace.name}</span>
 				{/if}
 				<button
 					class="btn ghost"
@@ -79,8 +79,9 @@
 	li:first-child { border-top: 0; }
 	a { text-decoration: none; flex: 1; min-width: 0; }
 	a:hover { text-decoration: underline; }
-	.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); flex: none; }
-	.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
-	.btn { flex: none; font-size: 12px; padding: 2px 6px; }
-	.problem { margin: 0 0 6px; font-size: 12px; color: var(--bad); }
+	/* A workspace's colour and name, not a pill: see Blocked.svelte. */
+	.who { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t11); color: var(--muted); flex: none; }
+	.dot { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--dot); }
+	.btn { flex: none; font-size: var(--t12); padding: 2px 6px; }
+	.problem { margin: 0 0 6px; font-size: var(--t12); color: var(--bad); }
 </style>

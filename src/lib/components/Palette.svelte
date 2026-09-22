@@ -177,15 +177,15 @@
 		display: flex;
 		justify-content: center;
 		align-items: flex-start;
-		padding: 10vh 16px 16px;
+		padding: 10vh var(--s4) var(--s4);
 		z-index: 50;
 	}
 	.panel {
 		width: min(620px, 100%);
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: 12px;
-		box-shadow: 0 18px 48px rgba(31, 35, 40, 0.18);
+		border-radius: var(--r-lg);
+		box-shadow: var(--shadow-lg);
 		padding: 10px;
 		max-height: 70vh;
 		display: flex;
@@ -196,17 +196,18 @@
 		width: 100%;
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 10px 12px;
+		padding: 10px var(--s3);
 		font: inherit;
 		font-size: 15px;
+		background: var(--field);
 	}
-	input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-	.ask { display: block; font-size: 12px; color: var(--muted); margin: 2px 4px 6px; }
-	.hint, .said { margin: 8px 4px 2px; font-size: 12px; color: var(--muted); }
-	.list { margin-top: 8px; overflow: auto; min-height: 0; }
+	input:focus-visible { outline: var(--focus); outline-offset: -1px; }
+	.ask { display: block; font-size: var(--t12); color: var(--muted); margin: 2px var(--s1) 6px; }
+	.hint, .said { margin: var(--s2) var(--s1) 2px; font-size: var(--t12); color: var(--muted); }
+	.list { margin-top: var(--s2); overflow: auto; min-height: 0; }
 	h6 {
-		margin: 10px 4px 4px;
-		font-size: 11px;
+		margin: 10px var(--s1) var(--s1);
+		font-size: var(--t11);
 		text-transform: uppercase;
 		letter-spacing: 0.6px;
 		color: var(--muted);
@@ -229,7 +230,7 @@
 	.title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.sub {
 		grid-column: 1;
-		font-size: 11px;
+		font-size: var(--t11);
 		color: var(--muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -239,7 +240,7 @@
 		grid-row: 1 / 3;
 		grid-column: 2;
 		align-self: center;
-		font: 11px var(--mono);
+		font: var(--t11) var(--mono);
 		color: var(--muted);
 		border: 1px solid var(--line);
 		border-bottom-width: 2px;
@@ -247,7 +248,7 @@
 		padding: 1px 6px;
 	}
 	mark { background: #fef08a; color: inherit; border-radius: 2px; }
-	.none { margin: 12px 6px; color: var(--muted); font-size: 13px; }
+	.none { margin: var(--s3) 6px; color: var(--muted); font-size: var(--t13); }
 
 	@media (max-width: 720px) {
 		.scrim { padding: 6vh 8px 8px; }

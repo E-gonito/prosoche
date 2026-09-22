@@ -72,20 +72,20 @@
 {/if}
 
 <style>
-	.score { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+	.score { margin: 0 0 var(--s2); font-size: var(--t13); color: var(--muted); }
 	ul { list-style: none; margin: 0; padding: 0; }
-	li { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+	li { display: flex; align-items: center; gap: var(--s2); padding: 5px 0; border-top: 1px solid var(--line); }
 	li:first-child { border-top: 0; }
 	.busy { opacity: 0.5; }
 	.box {
 		flex: none;
-		width: 16px;
-		height: 16px;
+		width: var(--s4);
+		height: var(--s4);
 		padding: 0;
 		border: 1.5px solid #9aa0a6;
 		border-radius: 3px;
-		background: #fff;
-		font-size: 11px;
+		background: var(--field);
+		font-size: var(--t11);
 		line-height: 1;
 		color: #fff;
 		cursor: pointer;
@@ -93,9 +93,9 @@
 	.box:disabled { opacity: 0.4; cursor: default; }
 	.done .box { background: var(--accent); border-color: var(--accent); }
 	.done .text { color: var(--muted); }
-	.text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+	.text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t13); }
 	.strip { flex: none; display: flex; gap: 2px; }
-	.strip i { width: 6px; height: 12px; border-radius: 2px; background: var(--soft); }
+	.strip i { width: 6px; height: var(--s3); border-radius: 2px; background: var(--soft); }
 	.strip i.on { background: var(--ok); }
 	.strip i.off { background: #e6b8b8; }
 	.streak {
@@ -105,13 +105,13 @@
 		justify-content: flex-end;
 		gap: 2px;
 		min-width: 26px;
-		font: 11px var(--mono);
+		font-size: var(--t11);
 		font-variant-numeric: tabular-nums;
 		color: var(--muted);
 	}
-	.more { margin-top: 6px; font-size: 12px; padding: 2px 8px; }
-	.none { margin: 0; color: var(--muted); font-size: 13px; }
-	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
+	.more { margin-top: 6px; font-size: var(--t12); padding: 2px var(--s2); }
+	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
+	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
 	@media (max-width: 720px) {
 		.strip { display: none; }
 	}

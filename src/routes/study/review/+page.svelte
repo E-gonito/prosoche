@@ -34,9 +34,9 @@
 </div>
 
 <style>
-	.empty { text-align: center; padding: 60px 16px; }
+	.empty { text-align: center; padding: 60px var(--s4); }
 	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-	.empty h2 { margin: 8px 0; font-size: 20px; }
+	.empty h2 { margin: var(--s2) 0; font-size: var(--t20); }
 	.empty .muted { margin-bottom: 18px; }
 
 	/*

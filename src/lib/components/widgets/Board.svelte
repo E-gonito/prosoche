@@ -628,7 +628,7 @@
 	.review { margin-top: var(--s3); border-top: 1px solid var(--line); padding-top: 10px; }
 	h5 { margin: 0 0 var(--s1); font-size: var(--t13); }
 	.note { margin-top: 10px; }
-	.note .src { display: block; font-size: 12px; margin: 0 0 2px; max-width: none; }
+	.note .src { display: block; font-size: var(--t12); margin: 0 0 2px; max-width: none; }
 	.line { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t13); }
 	.line .text { flex: 1; min-width: 0; }
 	.qs { display: flex; gap: 3px; flex: none; }

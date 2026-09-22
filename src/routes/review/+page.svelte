@@ -100,11 +100,12 @@
 {/each}
 
 <style>
-	.lead { margin: -8px 0 16px; max-width: 70ch; color: var(--muted); font-size: 13px; }
+	.lead { margin: -8px 0 var(--s4); max-width: 70ch; color: var(--muted); font-size: var(--t13); }
 	.item { margin-bottom: 18px; }
-	.what { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-size: 13px; }
+	.what { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; margin: 0 0 6px; font-size: var(--t13); }
 	.what .muted { color: var(--muted); }
-	.when { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
-	.ok { margin: 0; font-size: 13px; color: var(--ok); }
-	.problem { margin: 0 0 12px; font-size: 13px; color: var(--bad); }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.when { margin-left: auto; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
+	.ok { margin: 0; font-size: var(--t13); color: var(--ok); }
+	.problem { margin: 0 0 var(--s3); font-size: var(--t13); color: var(--bad); }
 </style>

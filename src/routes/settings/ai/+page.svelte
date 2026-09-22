@@ -176,40 +176,43 @@
 	<h3>The ten guardrails</h3>
 	<ol class="rails">
 		{#each Object.entries(GUARDRAILS) as [id, title] (id)}
-			<li><span class="badge">{id}</span> {title}</li>
+			<li><span class="tag">{id}</span> {title}</li>
 		{/each}
 	</ol>
 	<p class="hint">These are code paths, not instructions in a prompt.</p>
 </section>
 
 <style>
-	.path { font: 12px var(--mono); }
+	/* A path, so monospaced. */
+	.path { font: var(--t12) var(--mono); }
 	section { margin-bottom: 14px; }
-	.switch { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
-	table { border-collapse: collapse; width: 100%; font-size: 13px; }
-	th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
-	thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+	.switch { display: flex; align-items: flex-start; gap: 10px; font-size: var(--t14); }
+	table { border-collapse: collapse; width: 100%; font-size: var(--t13); }
+	th, td { text-align: left; padding: 5px var(--s2); border-bottom: 1px solid var(--line); }
+	thead th { font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 	tbody th { font-weight: 500; }
 	select, input {
 		font: inherit;
-		font-size: 13px;
+		font-size: var(--t13);
 		border: 1px solid var(--line);
-		border-radius: 6px;
+		border-radius: var(--r-sm);
 		padding: 3px 6px;
-		background: var(--panel);
+		background: var(--field);
 		color: inherit;
 	}
 	input[type='number'] { width: 76px; }
 	.actions { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-	.ok { color: var(--ok); font-size: 13px; }
-	.bad { color: var(--bad); font-size: 13px; }
-	.spend { margin: 0 0 8px; font-size: 13px; }
-	.log { max-height: 300px; overflow: auto; font: 11px/1.6 var(--mono); white-space: pre; margin: 0; }
-	.snaps { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+	.ok { color: var(--ok); font-size: var(--t13); }
+	.bad { color: var(--bad); font-size: var(--t13); }
+	.spend { margin: 0 0 var(--s2); font-size: var(--t13); }
+	.log { max-height: 300px; overflow: auto; font: var(--t11)/1.6 var(--mono); white-space: pre; margin: 0; }
+	.snaps { list-style: none; margin: 0; padding: 0; font-size: var(--t13); }
 	.snaps li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
-	.when { font: 11px var(--mono); color: var(--muted); }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.when { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
 	.files { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.rails { margin: 0; padding-left: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 13px; }
-	.badge { font: 11px var(--mono); font-weight: 700; background: var(--soft); border-radius: 4px; padding: 1px 5px; }
-	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
+	.rails { margin: 0; padding-left: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s1) var(--s4); font-size: var(--t13); }
+	/* A guardrail's name, drawn as the shared `.tag` but stated firmly. */
+	.rails .tag { font-weight: 700; }
+	code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 </style>

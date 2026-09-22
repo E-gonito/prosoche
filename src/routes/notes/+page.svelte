@@ -60,7 +60,7 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 		align-items: start;
-		gap: 16px;
+		gap: var(--s4);
 	}
 
 	ul { list-style: none; margin: 0; padding: 0; }
@@ -74,8 +74,9 @@
 	li:first-child { border-top: 0; }
 	a { text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	a:hover { text-decoration: underline; }
-	.when { font: 11px var(--mono); color: var(--muted); white-space: nowrap; }
-	.where { grid-column: 1 / 2; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.when { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+	.where { grid-column: 1 / 2; font-size: var(--t11); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	/* One column: two of these side by side would be a column each of ellipsis. */
 	@media (max-width: 720px) {

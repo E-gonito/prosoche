@@ -64,11 +64,12 @@
 	ul { list-style: none; margin: 0; padding: 0; }
 	li { padding: 6px 2px; border-top: 1px solid var(--line); min-width: 0; }
 	li:first-child { border-top: 0; }
-	.line { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
-	.line .text { flex: 1; min-width: 0; font-size: 13px; }
-	.when { font: 11px var(--mono); color: var(--muted); }
+	.line { display: flex; align-items: flex-start; gap: var(--s2); flex-wrap: wrap; }
+	.line .text { flex: 1; min-width: 0; font-size: var(--t13); }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.when { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
 	a { text-decoration: none; }
 	a:hover { text-decoration: underline; }
-	.preview { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+	.preview { display: block; font-size: var(--t12); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.hint { font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 0; }
 </style>

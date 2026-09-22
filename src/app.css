@@ -80,8 +80,8 @@
  *   720px  a phone: one column, the sidebar becomes the bottom tab bar.
  *   960px  too narrow for two widgets side by side: every card takes the row.
  *
- * There are no others. A layout that wants a third is usually a layout that
- * should be using `.widget-grid`.
+ * A page with a two-column layout of its own may name the width at which its
+ * own two columns stop fitting, and three do. Nothing else invents one.
  */
 
 * { box-sizing: border-box; }

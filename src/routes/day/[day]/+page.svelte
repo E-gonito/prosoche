@@ -146,9 +146,9 @@
 				<h3>
 					Timeline
 					<span class="chips right">
-						<span class="stat">{hours}h {mins}m</span>
-						<span class="stat">{doneCount} of {total} done</span>
-						{#if data.overlaps}<span class="stat over">{data.overlaps} overlapping</span>{/if}
+						<span class="chip quiet num">{hours}h {mins}m</span>
+						<span class="chip quiet num">{doneCount} of {total} done</span>
+						{#if data.overlaps}<span class="chip quiet over num">{data.overlaps} overlapping</span>{/if}
 					</span>
 				</h3>
 				<!-- Keyed on the date and the segment: another day is another
@@ -237,78 +237,59 @@
 		pointer-events: none;
 		background: var(--text);
 		color: #fff;
-		border-radius: 6px;
-		padding: 4px 9px;
-		font-size: 12px;
+		border-radius: var(--r-sm);
+		padding: var(--s1) 9px;
+		font-size: var(--t12);
 		max-width: 320px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+		box-shadow: var(--shadow);
 	}
-	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
-	.main, .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-	.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: 12px; }
-	details summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-	details[open] summary { margin-bottom: 12px; }
+	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s4); align-items: start; }
+	.main, .side { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+	.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: var(--s3); }
+	details summary { cursor: pointer; font-size: var(--t12); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+	details[open] summary { margin-bottom: var(--s3); }
 
 	/*
 	 * The timeline card ends where the window does, and the grid scrolls
-	 * inside it. `--chrome` is everything above and below the card that is not
-	 * the card: the app header, this page's own header, the briefing strip,
-	 * the padding `main` adds, and the card's heading and hint. It is a
-	 * measurement rather than a taste, so it is written once and named.
+	 * inside it. `--day-chrome` is everything above and below the card that is
+	 * not the card: the shell's header, this page's own header, the briefing
+	 * strip, the padding `main` adds, and the card's heading and hint. The
+	 * shell's share of it is `--header-h`, from app.css, rather than a second
+	 * copy of the number; the rest is measured here.
 	 */
 	.day-timeline {
-		--chrome: 250px;
+		--day-chrome: calc(var(--header-h) + 202px);
 		display: flex;
 		flex-direction: column;
 		min-height: 320px;
-		max-height: calc(100vh - var(--chrome));
-		max-height: calc(100dvh - var(--chrome));
+		max-height: calc(100vh - var(--day-chrome));
+		max-height: calc(100dvh - var(--day-chrome));
 	}
 
-	.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-	.chip {
-		border: 1px solid var(--line);
-		background: #fff;
-		border-radius: 999px;
-		padding: 3px 10px;
-		font: inherit;
-		font-size: 12px;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-	}
-	.chip.on { background: var(--text); color: #fff; border-color: var(--text); }
-	i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+	/* `.chip` and `.chips` are in app.css; only the spacing is this page's. */
+	.chips { margin-bottom: 10px; }
+	i { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; }
 
 	/* The three numbers a day is judged by, as pills rather than a sentence. */
 	.chips.right { margin-bottom: 0; }
-	.stat {
-		background: var(--soft);
-		border-radius: 999px;
-		padding: 2px 8px;
-		font-size: 11px;
-		color: var(--muted);
-		white-space: nowrap;
-	}
-	.stat.over { color: var(--warn); }
+	.chip.over { color: var(--warn); }
 
 	h4 {
-		margin: 12px 0 2px;
-		font-size: 12px;
+		margin: var(--s3) 0 2px;
+		font-size: var(--t12);
 		color: var(--muted);
 		font-weight: 600;
 		display: flex;
 		align-items: center;
 		gap: 6px;
 	}
-	.backlog { margin-bottom: 16px; }
+	.backlog { margin-bottom: var(--s4); }
 	.backlog h4 { margin-top: 0; }
 	.backlog .right { margin-left: auto; font-weight: 400; }
-	.fenced { display: flex; gap: 8px; align-items: baseline; padding: 5px 4px; border-top: 1px solid var(--line); color: var(--muted); }
+	.fenced { display: flex; gap: var(--s2); align-items: baseline; padding: 5px var(--s1); border-top: 1px solid var(--line); color: var(--muted); }
 	.fenced .text { flex: 1; }
 
 	/* Two columns, both on screen: the segmented control has nothing to do. */
@@ -322,19 +303,19 @@
 		.segmented {
 			display: grid;
 			grid-template-columns: 1fr 1fr;
-			gap: 4px;
-			margin: 0 0 12px;
+			gap: var(--s1);
+			margin: 0 0 var(--s3);
 			padding: 3px;
 			background: var(--soft);
-			border-radius: 999px;
+			border-radius: var(--r-pill);
 		}
 		.segmented button {
 			min-height: 36px;
 			border: 0;
-			border-radius: 999px;
+			border-radius: var(--r-pill);
 			background: none;
 			font: inherit;
-			font-size: 13px;
+			font-size: var(--t13);
 			color: var(--muted);
 			cursor: pointer;
 		}
@@ -349,6 +330,6 @@
 		 * Taller here, and measured differently: the phone adds the segmented
 		 * control and the bottom tab bar, whose height the shell publishes.
 		 */
-		.day-timeline { --chrome: calc(var(--tabbar, 56px) + 330px); }
+		.day-timeline { --day-chrome: calc(var(--header-h) + var(--tabbar-h) + 282px); }
 	}
 </style>

@@ -51,13 +51,14 @@
 {/if}
 
 <style>
-	form { display: flex; gap: 8px; flex: 1; min-width: 240px; max-width: 520px; }
-	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; }
-	.count { margin: 0 0 10px; font-size: 13px; }
+	form { display: flex; gap: var(--s2); flex: 1; min-width: 240px; max-width: 520px; }
+	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) var(--s3); font: inherit; background: var(--field); }
+	.count { margin: 0 0 10px; font-size: var(--t13); }
 	.hit { display: block; text-decoration: none; color: inherit; margin-bottom: 10px; }
 	.hit:hover { border-color: var(--accent); }
 	.hit b { display: block; }
-	.path { display: block; font: 11px var(--mono); color: var(--muted); margin: 2px 0 6px; }
-	.snippet { font-size: 13px; color: var(--muted); }
+	/* A path, so monospaced. */
+	.path { display: block; font: var(--t11) var(--mono); color: var(--muted); margin: 2px 0 6px; }
+	.snippet { font-size: var(--t13); color: var(--muted); }
 	mark { background: #fef08a; color: inherit; border-radius: 2px; }
 </style>

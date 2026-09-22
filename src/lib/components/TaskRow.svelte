@@ -83,8 +83,8 @@
 	.task {
 		display: flex;
 		align-items: baseline;
-		gap: 8px;
-		padding: 7px 4px;
+		gap: var(--s2);
+		padding: 7px var(--s1);
 		border-top: 1px solid var(--line);
 	}
 	.task:first-child { border-top: 0; }
@@ -95,7 +95,7 @@
 		color: var(--muted);
 		cursor: grab;
 		align-self: center;
-		font-size: 13px;
+		font-size: var(--t13);
 		line-height: 1;
 		touch-action: none;
 		user-select: none;
@@ -103,13 +103,13 @@
 	.grip:hover { color: var(--text); }
 	.box {
 		flex: none;
-		width: 16px;
-		height: 16px;
+		width: var(--s4);
+		height: var(--s4);
 		padding: 0;
 		border: 1.5px solid #9aa0a6;
 		border-radius: 3px;
-		background: #fff;
-		font-size: 11px;
+		background: var(--field);
+		font-size: var(--t11);
 		line-height: 1;
 		color: #fff;
 		cursor: pointer;
@@ -118,7 +118,8 @@
 	.box:hover { border-color: var(--accent); }
 	.done .box { background: var(--accent); border-color: var(--accent); }
 	.done .text { text-decoration: line-through; color: var(--muted); }
-	.time { font: 11px var(--mono); color: var(--muted); flex: none; }
+	/* A time is a number, so body text with the figures lined up. */
+	.time { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); flex: none; }
 	/*
 	 * Kept out of the way until the row is under the pointer, because most
 	 * rows are read rather than timed, and always visible once a timer is
@@ -150,5 +151,5 @@
 	.run:hover { color: var(--accent); }
 	.run.timing { color: var(--q1); }
 	.text { flex: 1; min-width: 0; }
-	.path { font-size: 11px; color: var(--muted); flex: none; }
+	.path { font-size: var(--t11); color: var(--muted); flex: none; }
 </style>

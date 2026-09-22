@@ -11,6 +11,7 @@
 	import Unavailable from './Unavailable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { logContact } from '$lib/client/api';
+	import { relativeDay } from '$lib/shared/time';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	interface Person {
@@ -40,24 +41,9 @@
 
 	const href = (name: string) => `/people/${encodeURIComponent(name)}`;
 
-	/** Days between two `YYYY-MM-DD` labels, as whole days, never an instant. */
-	function daysBetween(from: string, to: string): number {
-		const [a, b] = [from, to].map((d) => {
-			const [y, m, day] = d.split('-').map(Number);
-			return Date.UTC(y, m - 1, day);
-		});
-		return Math.round((b - a) / 86_400_000);
-	}
-
-	function ago(day: string | null, today: string): string {
-		if (!day) return 'no contact yet';
-		const days = daysBetween(day, today);
-		if (days <= 0) return 'today';
-		if (days === 1) return 'yesterday';
-		if (days < 14) return `${days} days ago`;
-		if (days < 60) return `${Math.round(days / 7)} weeks ago`;
-		return day;
-	}
+	/** When they were last spoken to, or that they never have been. */
+	const ago = (day: string | null, today: string) =>
+		day ? relativeDay(day, today) : 'no contact yet';
 
 	/**
 	 * Logging from the list refreshes the list rather than navigating: the
@@ -99,7 +85,7 @@
 				{/if}
 				<span class="when">{ago(p.lastContact, data.today)}</span>
 				{#if p.openFollowUps}
-					<a class="badge" href={href(p.name)} title="Open follow-ups">
+					<a class="badge num" href={href(p.name)} title="Open follow-ups">
 						{p.openFollowUps}{#if p.nextDue}<span class="due"> · {p.nextDue}</span>{/if}
 					</a>
 				{/if}
@@ -134,7 +120,7 @@
 	.person {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		flex-wrap: wrap;
 		padding: 7px 2px;
 		border-top: 1px solid var(--line);
@@ -142,39 +128,41 @@
 	.person:first-child { border-top: 0; }
 	.name { font-weight: 600; text-decoration: none; }
 	.name:hover { text-decoration: underline; }
-	.who { font-size: 12px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.when { margin-left: auto; font-size: 12px; color: var(--muted); }
+	.who { font-size: var(--t12); color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.when { margin-left: auto; font-size: var(--t12); color: var(--muted); }
+	/* A count of open follow-ups, so body text with the figures lined up. */
 	.badge {
-		font: 11px var(--mono);
+		font-size: var(--t11);
 		color: var(--accent);
 		background: var(--accent-soft);
-		border-radius: 999px;
-		padding: 2px 8px;
+		border-radius: var(--r-pill);
+		padding: 2px var(--s2);
 		text-decoration: none;
 	}
 	.due { color: var(--muted); }
 	.log {
 		border: 1px solid var(--line);
-		background: #fff;
+		background: var(--field);
 		border-radius: 8px;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--t12);
 		padding: 2px 9px;
 		cursor: pointer;
 		color: var(--muted);
 	}
 	.log:hover { color: var(--accent); border-color: var(--accent); }
-	.entry { flex: 1 0 100%; display: flex; gap: 6px; padding: 4px 0 2px; }
+	.entry { flex: 1 0 100%; display: flex; gap: 6px; padding: var(--s1) 0 2px; }
 	.entry input {
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 13px;
+		font-size: var(--t13);
 		padding: 5px 9px;
 		border: 1px solid var(--line);
 		border-radius: 8px;
+		background: var(--field);
 	}
-	.problem { margin: 8px 0 0; font-size: 12px; color: var(--bad); }
+	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 
 	@media (max-width: 720px) {
 		.who { display: none; }

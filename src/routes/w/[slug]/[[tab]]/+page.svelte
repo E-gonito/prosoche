@@ -62,15 +62,16 @@
 {/if}
 
 <style>
-	.tag { font: 12px var(--mono); color: var(--muted); }
+	/* A tag as the vault writes it, so monospaced. */
+	.tag { font: var(--t12) var(--mono); color: var(--muted); }
 
-	.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+	.tabs { display: flex; gap: var(--s1); flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 	.tabs a {
-		padding: 7px 12px;
+		padding: 7px var(--s3);
 		border-radius: 8px 8px 0 0;
 		color: var(--muted);
 		text-decoration: none;
-		font-size: 13px;
+		font-size: var(--t13);
 		border: 1px solid transparent;
 		border-bottom: 0;
 		margin-bottom: -1px;

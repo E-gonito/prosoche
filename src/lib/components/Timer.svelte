@@ -34,32 +34,33 @@
 	.timer {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		min-width: 0;
 		max-width: 38vw;
-		padding: 3px 4px 3px 10px;
+		padding: 3px var(--s1) 3px 10px;
 		border: 1px solid var(--accent);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: var(--accent-soft);
 		color: var(--accent);
 	}
 	.dot {
 		flex: none;
-		width: 8px;
-		height: 8px;
+		width: var(--s2);
+		height: var(--s2);
 		border-radius: 50%;
 		background: var(--accent);
 		animation: pulse 2s ease-in-out infinite;
 	}
+	/* A running clock, so body text with the figures lined up. */
 	.elapsed {
 		flex: none;
-		font: 13px var(--mono);
+		font-size: var(--t13);
 		font-variant-numeric: tabular-nums;
 		font-weight: 600;
 	}
 	.what {
 		min-width: 0;
-		font-size: 13px;
+		font-size: var(--t13);
 		color: var(--text);
 		overflow: hidden;
 		white-space: nowrap;
@@ -68,17 +69,17 @@
 	.stop {
 		flex: none;
 		border: 0;
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: var(--accent);
 		color: #fff;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--t12);
 		padding: 3px 11px;
 		cursor: pointer;
 	}
 	.stop:hover { filter: brightness(1.08); }
 	.stop:disabled { opacity: 0.6; cursor: default; }
-	.logged { font-size: 12px; color: var(--ok); }
+	.logged { font-size: var(--t12); color: var(--ok); }
 
 	@keyframes pulse {
 		50% { opacity: 0.35; }
