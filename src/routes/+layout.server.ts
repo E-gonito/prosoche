@@ -31,6 +31,9 @@ export const load: LayoutServerLoad = async () => {
 				excludeDailyNotes: true,
 				limit: 200
 			}).length
-		}))
+		})),
+		// '' when not configured, which is the nav and palette's cue to leave
+		// the entry out entirely rather than show a dead link.
+		t3Url: config.t3Url
 	};
 };

@@ -87,6 +87,13 @@
 		</div>
 
 		<div class="group bottom">
+			{#if data.t3Url}
+				<!-- Only shown when HUB_T3_URL is set; a new tab, since the paired
+				     WebSocket session belongs to that origin, not this one. -->
+				<a href={data.t3Url} target="_blank" rel="noopener" title={collapsed ? 'T3 Code' : undefined}>
+					<span class="ic"><Icon name="external-link" /></span><span class="lb">T3 Code</span>
+				</a>
+			{/if}
 			<a href={SETTINGS.href} class:active={page.url.pathname.startsWith('/settings')} title={collapsed ? SETTINGS.label : undefined}>
 				<span class="ic"><Icon name={SETTINGS.icon} /></span><span class="lb">{SETTINGS.label}</span>
 			</a>

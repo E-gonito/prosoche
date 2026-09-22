@@ -112,9 +112,11 @@ class PaletteState {
 	/**
 	 * Register the commands and start listening for keys. Call once, from the
 	 * one component that draws the palette; the returned function undoes both.
+	 * `t3Url` is '' when `HUB_T3_URL` is unset, which leaves the command out
+	 * entirely rather than registering one that opens nothing useful.
 	 */
-	install(): () => void {
-		const off = register(commands(this));
+	install(t3Url = ''): () => void {
+		const off = register(commands(this, t3Url));
 		const stop = listen();
 		return () => {
 			off();
@@ -246,7 +248,7 @@ function row(parts: {
  * registry answers both questions the app has about a command: what key runs
  * it, and what to show in the list.
  */
-function commands(palette: PaletteState): Shortcut[] {
+function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 	const go = (href: string) => () => {
 		palette.close();
 		void goto(href);
@@ -266,6 +268,9 @@ function commands(palette: PaletteState): Shortcut[] {
 		// go repeatedly, and the letters left are worth more elsewhere.
 		{ keys: '', description: 'Review waiting changes', group: 'Go', run: go('/review') },
 		{ keys: '', description: 'AI settings', group: 'Go', run: go('/settings/ai') },
+		// Only offered when HUB_T3_URL is set; opens in a new tab because the
+		// paired WebSocket session belongs to that origin, not this one.
+		...(t3Url ? [{ keys: '', description: 'T3 Code', group: 'Go', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),
 		{
 			keys: 'c',
 			description: 'Quick capture',
