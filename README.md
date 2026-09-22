@@ -151,6 +151,9 @@ modules behind small interfaces, complexity pulled downward, and errors defined
 out of existence where possible. Reading a note that does not exist returns an
 empty note. Writing returns a conflict instead of throwing one.
 
+For the fuller explanation behind what each screen's hint text only gestures
+at, see [`docs/how-it-works.md`](docs/how-it-works.md).
+
 ## The AI layer
 
 Off by default, and it never writes without a click. Every feature that would
