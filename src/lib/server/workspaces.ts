@@ -12,6 +12,7 @@
 
 import { parseNote } from './parse/note';
 import { slugify } from '$lib/shared/slug';
+import { displayText } from '$lib/shared/task';
 import { config } from './config';
 import type { Vault } from './vault/index';
 
@@ -28,6 +29,13 @@ export interface Workspace {
 	color: string;
 	/** Tag that assigns a task to this workspace, without the `#`. */
 	tag: string;
+	/**
+	 * Words that name this workspace in a task the user wrote without a tag,
+	 * e.g. `eye2gene`, `cusina ko`. Matched whole-word and case-insensitively,
+	 * and only as the last resort, because they are a guess where a tag is a
+	 * statement. Empty for a workspace whose file declares none.
+	 */
+	aliases: string[];
 	folders: string[];
 	template: string;
 	tabs: WorkspaceTab[];
@@ -53,12 +61,24 @@ export async function loadWorkspaces(vault: Vault): Promise<Workspace[]> {
 
 /**
  * Which workspace a note or task belongs to, checked in the order the spec
- * fixes: explicit tag, then containing folder, then a `workspace:` field.
- * Returns null for anything unassigned rather than guessing.
+ * fixes: explicit tag, then containing folder, then a `workspace:` field, then
+ * an alias in the task's own words. Returns null for anything unassigned
+ * rather than guessing.
+ *
+ * `text` is the task line's text, and is optional: a caller that does not pass
+ * it simply never reaches the alias rule. Aliases are matched whole-word and
+ * case-insensitively against `displayText(text)`, so "Kaya" claims "Work on
+ * Kaya" and not "Buy a kayak", and a metacharacter in an alias is a character
+ * rather than a pattern.
+ *
+ * Being last is the whole point of the rule. A note inside a workspace's
+ * folder is already claimed by the folder, so it can never be reassigned by a
+ * word in its text; only lines that belong nowhere — the daily notes and the
+ * Inbox — are ever attributed this way.
  */
 export function workspaceFor(
 	workspaces: Workspace[],
-	input: { path: string; tags?: string[]; frontmatter?: Record<string, unknown> }
+	input: { path: string; tags?: string[]; frontmatter?: Record<string, unknown>; text?: string }
 ): Workspace | null {
 	const tags = input.tags ?? [];
 	const byTag = workspaces.find((w) => tags.includes(w.tag));
@@ -74,8 +94,30 @@ export function workspaceFor(
 	if (typeof declared === 'string') {
 		return workspaces.find((w) => w.slug === declared) ?? null;
 	}
+
+	if (input.text) {
+		const words = displayText(input.text);
+		const byAlias = workspaces.find((w) => w.aliases.some((alias) => mentions(words, alias)));
+		if (byAlias) return byAlias;
+	}
 	return null;
 }
+
+/** Whole-word, case-insensitive, and blind to regex metacharacters. */
+function mentions(text: string, alias: string): boolean {
+	let pattern = ALIAS_PATTERNS.get(alias);
+	if (!pattern) {
+		const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		// Word characters rather than `\b`, so an alias ending in punctuation
+		// (`c++`) still matches and `Kaya` still refuses `Kayak`.
+		pattern = new RegExp(`(?<![\\w])${escaped}(?![\\w])`, 'i');
+		ALIAS_PATTERNS.set(alias, pattern);
+	}
+	return pattern.test(text);
+}
+
+/** Compiled once per alias: attribution runs over every block of a week. */
+const ALIAS_PATTERNS = new Map<string, RegExp>();
 
 /**
  * Write the starting set of workspaces into a vault that has none.
@@ -103,6 +145,7 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		name: str(fm.name) ?? slug,
 		color: str(fm.color) ?? '#6b7280',
 		tag: str(fm.tag) ?? `ws/${slug}`,
+		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
 		folders: strList(fm.folders),
 		template: str(fm.template) ?? 'project',
 		tabs: toTabs(fm.tabs),
@@ -138,8 +181,10 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns'> {
+interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases'> {
 	description: string;
+	/** Absent in every shipped seed: a name is not an alias until you say so. */
+	aliases?: string[];
 }
 
 export type NewWorkspace = {
@@ -274,6 +319,12 @@ function renderWorkspace(seed: Seed): string {
 		.map((tab) => `  - title: ${tab.title}\n    widgets: [${tab.widgets.join(', ')}]`)
 		.join('\n');
 	const folders = seed.folders.map((f) => `  - ${JSON.stringify(f)}`).join('\n');
+	// Written only when there is one to write, like every other optional marker
+	// this app produces: an empty `aliases:` in a file the user opens in
+	// Obsidian is a question they never asked.
+	const aliases = seed.aliases?.length
+		? `aliases:\n${seed.aliases.map((a) => `  - ${JSON.stringify(a)}`).join('\n')}\n`
+		: '';
 	return `---
 name: ${seed.name}
 color: "${seed.color}"
@@ -281,7 +332,7 @@ tag: ${seed.tag}
 template: ${seed.template}
 folders:
 ${folders}
-tabs:
+${aliases}tabs:
 ${tabs}
 ---
 

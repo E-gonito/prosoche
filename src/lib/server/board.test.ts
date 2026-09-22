@@ -9,6 +9,7 @@ function workspace(fields: Partial<Workspace> = {}): Workspace {
 		name: 'Work',
 		color: '#2f6fed',
 		tag: 'ws/work',
+		aliases: [],
 		folders: ['Work'],
 		template: 'project',
 		tabs: [],

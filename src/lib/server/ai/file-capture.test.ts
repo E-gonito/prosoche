@@ -41,6 +41,7 @@ const WORKSPACE: Workspace = {
 	name: 'Atlas',
 	color: '#2f6fed',
 	tag: 'ws/atlas',
+	aliases: [],
 	folders: ['Work/Atlas'],
 	template: '',
 	tabs: [],

@@ -28,6 +28,25 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(work.tabs[0]).toEqual({ title: 'Board', widgets: ['board'] });
 	});
 
+	it('writes no aliases block, because none of the seeds has one', async () => {
+		await seedWorkspaces(vault);
+		for (const path of ['work', 'study', 'personal', 'side-projects']) {
+			expect((await vault.read(`_hub/workspaces/${path}.md`)).content).not.toContain('aliases');
+		}
+		expect((await loadWorkspaces(vault)).every((w) => w.aliases.length === 0)).toBe(true);
+	});
+
+	it('reads aliases written as a list or as a single string', async () => {
+		await vault.write('_hub/workspaces/kaya.md', '---\nname: Kaya\naliases:\n  - kaya\n  - "kaya thai"\n---\n');
+		await vault.write('_hub/workspaces/cusina.md', '---\nname: Cusina\naliases: cusina ko\n---\n');
+		await vault.write('_hub/workspaces/quiet.md', '---\nname: Quiet\n---\n');
+
+		const loaded = await loadWorkspaces(vault);
+		expect(loaded.find((w) => w.slug === 'kaya')!.aliases).toEqual(['kaya', 'kaya thai']);
+		expect(loaded.find((w) => w.slug === 'cusina')!.aliases).toEqual(['cusina ko']);
+		expect(loaded.find((w) => w.slug === 'quiet')!.aliases).toEqual([]);
+	});
+
 	it('never overwrites a workspace the user has edited', async () => {
 		await seedWorkspaces(vault);
 		const path = '_hub/workspaces/personal.md';
@@ -54,11 +73,12 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 });
 
 describe('workspaceFor', () => {
-	const ws = (slug: string, tag: string, folders: string[]): Workspace => ({
+	const ws = (slug: string, tag: string, folders: string[], aliases: string[] = []): Workspace => ({
 		slug,
 		name: slug,
 		color: '#000',
 		tag,
+		aliases,
 		folders,
 		deck: 'Inbox/Tasks.md',
 		kanbanColumns: [],
@@ -84,5 +104,71 @@ describe('workspaceFor', () => {
 
 	it('returns null rather than guessing for an unassigned note', () => {
 		expect(workspaceFor(all, { path: 'Journal/2026/09/21.md' })).toBeNull();
+	});
+});
+
+describe('workspaceFor, by alias', () => {
+	const ws = (slug: string, folders: string[], aliases: string[]): Workspace => ({
+		slug,
+		name: slug,
+		color: '#000',
+		tag: `ws/${slug}`,
+		aliases,
+		folders,
+		deck: 'Inbox/Tasks.md',
+		kanbanColumns: [],
+		template: 'project',
+		tabs: [],
+		path: `_hub/workspaces/${slug}.md`
+	});
+	const kaya = ws('kaya', ['Kaya Thai'], ['Kaya', 'kaya thai therapy']);
+	const cusina = ws('cusina-ko', ['Restaurant'], ['cusina ko', 'cusina']);
+	const personal = ws('personal', ['Inbox'], ['personal']);
+	const all = [kaya, cusina, personal];
+	const DAY = 'Journal/2026/09/21.md';
+
+	it('claims a daily block that names the workspace in its words', () => {
+		expect(workspaceFor(all, { path: DAY, text: 'Work on Kaya `Q1`' })?.slug).toBe('kaya');
+	});
+
+	it('matches whole words only, so Kaya is not Kayak', () => {
+		expect(workspaceFor(all, { path: DAY, text: 'Buy a kayak `Q3`' })).toBeNull();
+		expect(workspaceFor(all, { path: DAY, text: 'Read okaya' })).toBeNull();
+		expect(workspaceFor(all, { path: DAY, text: "Kaya's accounts" })?.slug).toBe('kaya');
+	});
+
+	it('matches a multi-word alias, and ignores case', () => {
+		expect(workspaceFor(all, { path: DAY, text: 'Work on Filipino Cusina Ko' })?.slug).toBe('cusina-ko');
+		expect(workspaceFor(all, { path: DAY, text: 'KAYA THAI THERAPY invoices' })?.slug).toBe('kaya');
+	});
+
+	it('reads through the markdown a task line is written in', () => {
+		expect(workspaceFor(all, { path: DAY, text: '**Cusina Ko:** order the menus' })?.slug).toBe('cusina-ko');
+		expect(workspaceFor(all, { path: DAY, text: 'Ring [[Kaya]] about the room' })?.slug).toBe('kaya');
+		// The alias a wikilink displays is what a reader sees, so it is what is
+		// matched: `[[Kaya|the studio]]` reads as "the studio" and claims nothing.
+		expect(workspaceFor(all, { path: DAY, text: 'Ring [[Kaya|the studio]]' })).toBeNull();
+	});
+
+	it('treats a metacharacter in an alias as a character', () => {
+		const odd = [ws('lang', [], ['c++']), ws('any', [], ['a.c'])];
+		expect(workspaceFor(odd, { path: DAY, text: 'Revise c++ templates' })?.slug).toBe('lang');
+		expect(workspaceFor(odd, { path: DAY, text: 'Revise cxx templates' })).toBeNull();
+		expect(workspaceFor(odd, { path: DAY, text: 'Open abc' })).toBeNull();
+		expect(workspaceFor(odd, { path: DAY, text: 'Open a.c' })?.slug).toBe('any');
+	});
+
+	it('is tried last: a tag and a folder both beat it', () => {
+		expect(workspaceFor(all, { path: DAY, tags: ['ws/personal'], text: 'Work on Kaya' })?.slug).toBe('personal');
+		expect(workspaceFor(all, { path: 'Inbox/notes.md', text: 'Work on Kaya' })?.slug).toBe('personal');
+		expect(
+			workspaceFor(all, { path: 'Somewhere/else.md', frontmatter: { workspace: 'personal' }, text: 'Work on Kaya' })
+				?.slug
+		).toBe('personal');
+	});
+
+	it('never guesses when the caller passes no text', () => {
+		expect(workspaceFor(all, { path: DAY })).toBeNull();
+		expect(workspaceFor(all, { path: DAY, text: 'Write the daily log' })).toBeNull();
 	});
 });

@@ -12,6 +12,7 @@ const workspace = (slug: string, folders: string[]): Workspace => ({
 	name: slug,
 	color: '#000',
 	tag: `ws/${slug}`,
+	aliases: [],
 	folders,
 	template: 'project',
 	tabs: [],
