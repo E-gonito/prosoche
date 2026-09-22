@@ -92,3 +92,22 @@ export function displayText(text: string): string {
 	}
 	return out.replace(/\s+/g, ' ').trim();
 }
+
+/**
+ * Task text reduced to something two spellings of the same work agree on:
+ * the rendered words, lower case, with everything that is not a letter, a
+ * digit or a space taken out.
+ *
+ * The one place two task lines are judged to be about the same thing. A time
+ * log line records what was done rather than which line it came from, and a
+ * workspace card the day already plans is the same work written twice, so
+ * both questions are asked with this key. Deliberately blunt: it is used to
+ * match or to skip, never to write.
+ */
+export function matchKey(text: string): string {
+	return displayText(text)
+		.toLowerCase()
+		.replace(/[^a-z0-9 ]+/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+}

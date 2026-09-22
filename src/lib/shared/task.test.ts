@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { displayText, taskMinutes, isOpen, type Task } from './task';
+import { displayText, matchKey, taskMinutes, isOpen, type Task } from './task';
 
 const task = (over: Partial<Task> = {}): Task => ({
 	path: 'a.md',
@@ -72,5 +72,21 @@ describe('isOpen', () => {
 		expect(isOpen(task({ status: 'cancelled' }))).toBe(false);
 		expect(isOpen(task({ status: 'done' }))).toBe(false);
 		expect(isOpen(task({ status: 'blocked' }))).toBe(true);
+	});
+});
+
+describe('matchKey', () => {
+	it.each([
+		['Work on atlas', 'work on atlas'],
+		['**Work** on [[atlas]]', 'work on atlas'],
+		['Work on atlas `Q1` #ws/atlas', 'work on atlas q1 wsatlas'],
+		['  Spaced   out  ', 'spaced out'],
+		['', '']
+	])('reduces %j to %j', (text, key) => {
+		expect(matchKey(text)).toBe(key);
+	});
+
+	it('leaves a card\'s key inside the block that plans it', () => {
+		expect(matchKey('Finish chapter 3 [[Study/Algorithms]] `Q2`')).toContain(matchKey('Finish chapter 3'));
 	});
 });
