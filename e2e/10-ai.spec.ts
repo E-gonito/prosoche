@@ -30,12 +30,18 @@ test.describe('the AI layer, switched off', () => {
 	});
 
 	test('the briefing button is only on today, because only today has a briefing', async ({ page }) => {
-		// A day with a note, so the card is on screen at all; regenerating a
-		// past day's briefing would describe a day that is already over.
+		// Regenerating a past day's briefing would describe a day that is
+		// already over. A past day with no briefing in its note draws no strip
+		// at all now, which is the same statement made more quietly.
 		await page.goto('/day/2026-11-03');
-		await expect(page.getByTestId('briefing')).toBeVisible();
-		await expect(page.getByTestId('briefing')).toContainText('Nothing was written for this day');
+		await expect(page.getByTestId('block').first()).toBeVisible();
 		await expect(page.getByTestId('briefing-regenerate')).toHaveCount(0);
+		await expect(page.getByTestId('briefing')).toHaveCount(0);
+
+		// On today it is there, with the button on it.
+		await page.goto('/');
+		await expect(page.getByTestId('briefing')).toBeVisible();
+		await expect(page.getByTestId('briefing-regenerate')).toBeVisible();
 	});
 
 	test('the review page says what would arrive and that nothing has', async ({ page }) => {

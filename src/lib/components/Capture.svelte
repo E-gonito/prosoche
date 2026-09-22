@@ -1,4 +1,13 @@
 <script lang="ts">
+	/**
+	 * One line into the inbox, from wherever the day is being looked at.
+	 *
+	 * Shaped as a row rather than as a card: it lives at the top of the
+	 * Unscheduled list, because "something I have not done yet" and "something
+	 * I have just thought of" are the same thought half a second apart. The
+	 * text goes to `Inbox/Capture.md` under today's date, never into the note
+	 * on screen, and the confirmation says which file took it.
+	 */
 	import { captureText } from '$lib/client/api';
 	let { onproblem }: { onproblem?: (message: string) => void } = $props();
 
@@ -23,14 +32,23 @@
 	}
 </script>
 
-<form onsubmit={submit}>
-	<input bind:value={text} placeholder="Thought, link or task…" aria-label="Quick capture" disabled={saving} />
-	<button class="btn primary" disabled={saving || !text.trim()}>{saving ? 'Saving…' : 'Add'}</button>
+<form class="row" data-testid="capture-row" onsubmit={submit}>
+	<input
+		bind:value={text}
+		placeholder="Capture a thought or a task…"
+		aria-label="Quick capture"
+		title="Appends to Inbox/Capture.md under today's date"
+		disabled={saving}
+	/>
+	<button class="btn primary add" disabled={saving || !text.trim()}>{saving ? 'Saving…' : 'Add'}</button>
 </form>
-{#if note}<p class="hint">{note}</p>{:else}<p class="hint">Appends to Inbox/Capture.md under today's date. A line written as a task stays a task.</p>{/if}
+{#if note}<p class="hint">{note}</p>{/if}
 
 <style>
-	form { display: flex; gap: 8px; }
-	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; }
+	/* The padding a task row uses, so this reads as the first line of the list. */
+	.row { display: flex; gap: 8px; padding: 4px 4px 8px; }
+	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
 	input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+	.add { flex: none; padding: 6px 10px; }
+	.hint { margin: 0 0 6px; }
 </style>

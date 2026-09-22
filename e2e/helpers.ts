@@ -89,3 +89,28 @@ export async function resetVault(request: { post: (url: string, opts?: unknown) 
 	git('push', '-q', '--force', 'origin', 'master');
 	await request.post('/api/sync', { data: { action: 'rebuild' } });
 }
+
+/**
+ * Put a timeline block in the middle of the grid's window, and give back its
+ * centre.
+ *
+ * The grid scrolls inside a card the height of the window, so where a block
+ * is on screen depends on where that card is scrolled — which, on today,
+ * depends on the time of day the suite happens to run at. Centring it first
+ * makes a gesture test say what it means: from here, that far. It also keeps
+ * the pointer away from the edges of the window, which scroll it on purpose.
+ */
+export async function centreBlock(page: Page, text: string): Promise<{ x: number; y: number }> {
+	const block = page.getByTestId('block').filter({ hasText: text });
+	await block.scrollIntoViewIfNeeded();
+	await page.evaluate((label) => {
+		const view = document.querySelector('[data-testid="timeline-scroll"]') as HTMLElement | null;
+		const el = [...document.querySelectorAll('[data-testid="block"]')].find((b) =>
+			b.textContent?.includes(label)
+		) as HTMLElement | undefined;
+		if (view && el) view.scrollTop = el.offsetTop + el.offsetHeight / 2 - view.clientHeight / 2;
+	}, text);
+	const box = await block.boundingBox();
+	if (!box) throw new Error(`No block reading "${text}"`);
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}

@@ -179,6 +179,9 @@
 	$effect(() => {
 		const el = scroller;
 		if (!el || opened) return;
+		// A window with no height is a column the phone is not showing. Leave
+		// it unopened, so it lands in the right place when it is.
+		if (el.clientHeight === 0) return;
 		opened = true;
 		el.scrollTop = timelineScrollTop({
 			fromMin: range.fromMin,

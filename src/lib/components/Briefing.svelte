@@ -10,8 +10,16 @@
 	 * Regenerating is a button rather than something that happens on arrival.
 	 * A card that quietly spends money every time a page is opened is the kind
 	 * of thing you find out about from a bill.
+	 *
+	 * A strip above the timeline rather than a card beside it, and one that
+	 * folds away: the briefing is read once in the morning and is in the way
+	 * for the rest of the day. Folded or not is remembered per device. It
+	 * draws nothing at all on a day that has neither a briefing nor any
+	 * prospect of one, because a permanent "nothing was written for this day"
+	 * is noise on every day but one.
 	 */
 	import { regenerateBriefing } from '$lib/client/ai';
+	import Icon from '$lib/components/Icon.svelte';
 	import type { BriefingRun } from '$lib/shared/ai';
 
 	let {
@@ -46,6 +54,22 @@
 
 	let failure = $state('');
 
+	let collapsed = $state(false);
+	// Read after mounting, because the server has no idea what this device
+	// last chose and rendering the guess would make the strip jump.
+	$effect(() => {
+		collapsed = localStorage.getItem('hub:briefing-collapsed') === '1';
+	});
+	function fold() {
+		collapsed = !collapsed;
+		localStorage.setItem('hub:briefing-collapsed', collapsed ? '1' : '0');
+	}
+
+	// Something went wrong is not something to hide behind a fold.
+	const open = $derived(!collapsed || Boolean(problem || failure));
+	/** What the strip says about itself while it is folded: its first line. */
+	const gist = $derived(blocks[0]?.[0] ? item(blocks[0][0].replace(/\*\*/g, '')) : '');
+
 	async function regenerate() {
 		if (busy) return;
 		busy = true;
@@ -68,49 +92,87 @@
 	}
 </script>
 
-<div class="card" data-testid="briefing">
-	<h3>
-		Briefing
-		{#if isToday}
-			<button class="right regen" onclick={regenerate} disabled={busy} data-testid="briefing-regenerate">
-				{busy ? 'Thinking…' : current ? 'Regenerate' : 'Generate'}
+{#if isToday || text}
+	<section class="card strip" data-testid="briefing">
+		<div class="bar">
+			<button
+				class="fold"
+				data-testid="briefing-fold"
+				aria-expanded={open}
+				aria-label={open ? 'Hide the briefing' : 'Show the briefing'}
+				onclick={fold}
+			>
+				<Icon name={open ? 'chevron-down' : 'chevron-right'} />
+				<span class="name">Briefing</span>
 			</button>
-		{/if}
-	</h3>
-
-	{#if blocks.length}
-		{#each blocks as lines, i (i)}
-			{@const head = heading(lines[0])}
-			{#if head}
-				<p class="label">{head}</p>
-				<ul>
-					{#each lines.slice(1) as line, j (j)}<li>{item(line)}</li>{/each}
-				</ul>
-			{:else}
-				<p class="prose">{lines.join(' ')}</p>
-			{/if}
-		{/each}
-	{:else if !problem && !failure}
-		<p class="hint">
+			{#if !open && gist}<span class="gist">{gist}</span>{/if}
 			{#if isToday}
-				No briefing yet today. It runs on its own at 07:00, or press Generate.
-			{:else}
-				Nothing was written for this day.
+				<button class="regen" onclick={regenerate} disabled={busy} data-testid="briefing-regenerate">
+					{busy ? 'Thinking…' : current ? 'Regenerate' : 'Generate'}
+				</button>
 			{/if}
-		</p>
-	{/if}
+		</div>
 
-	{#if needsAccept}
-		<p class="hint">
-			This note has no briefing markers yet. Adding them changes your note, so it waits for you on the
-			<a href="/review">review page</a>.
-		</p>
-	{/if}
-	{#if problem || failure}<p class="problem">{problem || failure}</p>{/if}
-</div>
+		{#if open}
+			{#if blocks.length}
+				{#each blocks as lines, i (i)}
+					{@const head = heading(lines[0])}
+					{#if head}
+						<p class="label">{head}</p>
+						<ul>
+							{#each lines.slice(1) as line, j (j)}<li>{item(line)}</li>{/each}
+						</ul>
+					{:else}
+						<p class="prose">{lines.join(' ')}</p>
+					{/if}
+				{/each}
+			{:else if !problem && !failure}
+				<p class="hint">
+					{#if isToday}
+						No briefing yet today. It runs on its own at 07:00, or press Generate.
+					{:else}
+						Nothing was written for this day.
+					{/if}
+				</p>
+			{/if}
+
+			{#if needsAccept}
+				<p class="hint">Adding the markers changes your note, so it waits on the <a href="/review">review page</a>.</p>
+			{/if}
+		{/if}
+		{#if problem || failure}<p class="problem">{problem || failure}</p>{/if}
+	</section>
+{/if}
 
 <style>
-	h3 { display: flex; align-items: center; gap: 8px; }
+	.strip { padding: 8px 12px; }
+	.bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+	.fold {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border: 0;
+		background: none;
+		padding: 2px 0;
+		font: inherit;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.fold:hover { color: var(--text); }
+	.name { font-weight: 600; }
+	/* The first line of the briefing, so the fold still says something. */
+	.gist {
+		flex: 1;
+		min-width: 0;
+		font-size: 13px;
+		color: var(--muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	.regen {
 		margin-left: auto;
 		border: 1px solid var(--line);

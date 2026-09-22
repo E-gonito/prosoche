@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TODAY_NOTE, minutes, waitForFile, resetVault } from './helpers';
+import { TODAY_NOTE, centreBlock, minutes, waitForFile, resetVault } from './helpers';
 
 // Roughly a Galaxy S-series in portrait.
 test.use({ viewport: { width: 412, height: 915 }, hasTouch: true });
@@ -56,16 +56,33 @@ test.describe('on a phone', () => {
 		expect(reserved).toBeGreaterThanOrEqual(bar.height);
 	});
 
-	test('the day stacks into one column', async ({ page }) => {
+	/*
+	 * Stacking the two columns made the day a two-thousand pixel scroll, with
+	 * the half you wanted always below the half you did not. One at a time
+	 * instead, chosen at the top and remembered.
+	 */
+	test('the day is one column at a time, and remembers which', async ({ page }) => {
 		await page.goto('/');
-		const timeline = await page.getByTestId('timeline').boundingBox();
-		const unscheduled = await page.getByTestId('unscheduled').boundingBox();
-		// Stacked, so the panel starts below the timeline rather than beside it.
-		expect(unscheduled!.y).toBeGreaterThan(timeline!.y);
+		await expect(page.getByTestId('day-segment')).toBeVisible();
+		await expect(page.getByTestId('timeline')).toBeVisible();
+		await expect(page.getByTestId('unscheduled')).toBeHidden();
+
+		await page.getByTestId('segment-tasks').tap();
+		await expect(page.getByTestId('unscheduled')).toBeVisible();
+		await expect(page.getByTestId('timeline')).toBeHidden();
+
+		await page.reload();
+		await expect(page.getByTestId('unscheduled')).toBeVisible();
+
+		// Back to the default, so the tests after this one see it.
+		await page.getByTestId('segment-timeline').tap();
+		await expect(page.getByTestId('timeline')).toBeVisible();
 	});
 
 	test('a task can be ticked with a tap', async ({ page }) => {
 		await page.goto('/');
+		// The tasks live in the other segment; the timeline is what opens.
+		await page.getByTestId('segment-tasks').tap();
 		const row = page.getByTestId('task-row').filter({ hasText: 'Twenty push ups' });
 		await row.getByTestId('checkbox').tap();
 		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('- [x] Twenty push ups'))).toBe(true);
@@ -73,14 +90,11 @@ test.describe('on a phone', () => {
 
 	test('a block can be dragged with a finger', async ({ page }) => {
 		await page.goto('/');
-		// The timeline is two pixels a minute, so an afternoon block is below
-		// the fold on a phone. Scroll to it first: a finger cannot reach what
-		// is off screen, and neither can a synthetic pointer.
-		const block = page.getByTestId('block').filter({ hasText: 'Read a book' });
-		await block.scrollIntoViewIfNeeded();
-		const box = await block.boundingBox();
-		const x = box!.x + box!.width / 2;
-		const y = box!.y + box!.height / 2;
+		// The timeline is two pixels a minute inside a card the height of the
+		// screen, so an afternoon block is off the window it scrolls in. Bring
+		// it to the middle first: a finger cannot reach what is not on screen,
+		// and neither can a synthetic pointer.
+		const { x, y } = await centreBlock(page, 'Read a book');
 		await page.touchscreen.tap(x, y);
 		// Playwright's touchscreen has no drag, so use pointer events, which is
 		// what the component listens for either way.
