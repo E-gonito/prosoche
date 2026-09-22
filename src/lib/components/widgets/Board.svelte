@@ -107,10 +107,39 @@
 	);
 	const candidates = $derived(
 		board.candidates
-			.map((note) => ({ ...note, tasks: note.tasks.filter((task) => !promoted.has(cardKey(task))) }))
+			.map((note) => ({
+				...note,
+				// What the server counted but did not send, worked out before the
+				// local filter, so promoting a line does not make this jump.
+				rest: note.count - note.tasks.length,
+				tasks: note.tasks.filter((task) => !promoted.has(cardKey(task)))
+			}))
 			.filter((note) => note.tasks.length > 0)
 	);
 	const showReview = $derived(reviewing || cards.length === 0);
+
+	/**
+	 * What the board left out, said per note: "414 checklist lines in Manual
+	 * Test Plan are not cards". Naming the note is the useful half — a bare
+	 * total says nothing about where to look, and in this vault every one of
+	 * those lines comes from a single test plan. The note's title rather than
+	 * its path, because that is what the review below lists; the path is the
+	 * link inside it.
+	 */
+	const excludedSays = $derived.by(() => {
+		const notes = board.candidates;
+		if (notes.length === 0) return `${board.excluded} checklist lines are not cards.`;
+		if (notes.length === 1) {
+			const [only] = notes;
+			return only.count === 1
+				? `1 checklist line in ${only.title} is not a card.`
+				: `${only.count} checklist lines in ${only.title} are not cards.`;
+		}
+		const named = notes.slice(0, 3).map((note) => `${note.count} in ${note.title}`);
+		const rest = notes.length - named.length;
+		if (rest > 0) named.push(`and ${rest} more ${rest === 1 ? 'note' : 'notes'}`);
+		return `${board.excluded} checklist lines are not cards: ${named.join(', ')}.`;
+	});
 
 	// Read after mounting, like the rail's own collapsed state: the server has
 	// no way to know what this device last chose.
@@ -413,7 +442,7 @@
 
 	{#if cards.length === 0}
 		<div class="nothing" data-testid="board-empty">
-			<p class="lead">Nothing on this board yet.</p>
+			<p class="lead">No cards yet. Add one and it starts {board.deck}.</p>
 			<form class="first" onsubmit={(e) => add(e, columns[0])}>
 				<input
 					data-testid="first-card"
@@ -423,14 +452,13 @@
 				/>
 				<button class="btn primary">Add card</button>
 			</form>
-			<p class="hint">Appends one line to {board.deck}.</p>
+			<p class="hint">Every checkbox in that note is a card, with or without a quadrant.</p>
 		</div>
 	{/if}
 
 	{#if board.excluded > 0}
 		<p class="excluded" data-testid="excluded">
-			{board.excluded} checkbox {board.excluded === 1 ? 'line is' : 'lines are'} not shown because
-			{board.excluded === 1 ? 'it carries' : 'they carry'} no quadrant, due date, id or workspace tag.
+			{excludedSays}
 			{#if !showReview}
 				<button class="link" data-testid="review-excluded" onclick={() => (reviewing = true)}>
 					Review {board.excluded === 1 ? 'it' : 'them'}
@@ -439,13 +467,22 @@
 		</p>
 	{/if}
 
+	<!--
+		One note at a time. A flat list was four hundred lines of someone's test
+		plan with the one note worth looking at buried in it; a disclosure per
+		note makes the choice "which note" first and "which line" second, and
+		the first note is open so the review still starts somewhere.
+	-->
 	{#if showReview && candidates.length > 0}
 		<div class="review" data-testid="promote">
 			<h5>Promote a line to a card</h5>
 			<p class="hint">A quadrant is what makes a line a card, and nothing is promoted for you.</p>
-			{#each candidates as note (note.path)}
-				<div class="note">
-					<a class="src" href="/notes/{note.path.split('/').map(encodeURIComponent).join('/')}">{note.title}</a>
+			{#each candidates as note, i (note.path)}
+				<details class="note" data-testid="candidate-note" open={i === 0}>
+					<summary>
+						{note.title} <span class="n">{note.count} {note.count === 1 ? 'line' : 'lines'}</span>
+					</summary>
+					<a class="src" href="/notes/{note.path.split('/').map(encodeURIComponent).join('/')}">{note.path}</a>
 					{#each note.tasks as task (cardKey(task))}
 						<div class="line" data-testid="candidate">
 							<span class="text">{displayText(task.text)}</span>
@@ -463,7 +500,10 @@
 							</span>
 						</div>
 					{/each}
-				</div>
+					{#if note.rest > 0}
+						<p class="hint">and {note.rest} more in this note; open it to see them all.</p>
+					{/if}
+				</details>
 			{/each}
 		</div>
 	{/if}
@@ -628,7 +668,11 @@
 	.review { margin-top: var(--s3); border-top: 1px solid var(--line); padding-top: 10px; }
 	h5 { margin: 0 0 var(--s1); font-size: var(--t13); }
 	.note { margin-top: 10px; }
-	.note .src { display: block; font-size: var(--t12); margin: 0 0 2px; max-width: none; }
+	/* The native marker is kept, as in the file tree: a disclosure that does
+	   not look like one is worse than a plain list. */
+	.note summary { cursor: pointer; font-size: var(--t13); }
+	.note summary .n { font-size: var(--t11); color: var(--muted); }
+	.note .src { display: block; font-size: var(--t12); margin: 2px 0; max-width: none; }
 	.line { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t13); }
 	.line .text { flex: 1; min-width: 0; }
 	.qs { display: flex; gap: 3px; flex: none; }

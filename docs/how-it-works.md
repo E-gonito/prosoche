@@ -30,16 +30,16 @@ The unscheduled list is exactly what it says: everything in it has no time
 yet. Once a task gets a time, from the grip or the timeline, it moves to the
 timeline and leaves this list.
 
-The day's quadrant-tagged tasks — the ones carrying `Q1` through `Q4` — get
-their own list, and its empty state is deliberately unapologetic: nothing here
-yet, and that is correct rather than broken. The list only shows tasks
-carrying a quadrant, because that is how you mark a line you actually intend
-to do. Right now every task like that lives in a daily note, and those are
-excluded: each one is a copy of your template, so they would repeat the same
-unfinished checklist every day. Other checkbox lines were left out too. They
-are checklist notation inside reference notes, such as the syllabus and the
-manual test plan, rather than work to schedule. Add a `Q1` to one and it will
-appear here.
+Open work from the rest of the vault gets its own list, grouped by workspace.
+Each workspace contributes exactly the open cards its board shows, so a line
+in a project's deck note appears here with nothing else on it, while a line
+elsewhere in that project's notes still needs a quadrant, a due date, an id or
+the workspace's tag. Work no workspace claims has to carry a `Q1` through `Q4`,
+because a quadrant is the only mark of intent such a line has. Daily notes are
+excluded either way: each one is a copy of your template, so they would repeat
+the same unfinished checklist every day. What is left out after that is
+checklist notation inside reference notes, such as a syllabus or a manual test
+plan, rather than work to schedule.
 
 Dragging one of those workspace tasks onto the timeline does something
 different from dragging an unscheduled task: it adds a block to the day's own
@@ -116,14 +116,19 @@ typo, since that is the only way to reach this state.
 
 A board shows the workspace's cards, in the columns the workspace file names.
 A card is a checkbox line carrying a quadrant, a due date, an id or the
-workspace's tag; a checkbox line carrying none of those in this workspace's
-notes is not shown: no quadrant, due date, id or workspace tag, so it reads as
-checklist notation rather than work. The board says how many it left out and
-will show them on request. Give a line a quadrant and it becomes a card, by
-the same convention the rest of your vault uses. Nothing is promoted for you.
+workspace's tag, or one that lives in the workspace's deck note. The deck is
+the board written down, so every checkbox in it is a card whether or not it
+carries anything else; a line anywhere else in the workspace's notes carrying
+none of those marks is not shown, because it reads as checklist notation
+rather than work. The board says how many it left out and which notes they
+came from, and will show them one note at a time on request. Give a line a
+quadrant and it becomes a card, by the same convention the rest of your vault
+uses. Nothing is promoted for you.
 
-Cards are written to the workspace's deck note, appended one line at a time.
-Anything written in the workspace's notes shows here too.
+Cards are written to the workspace's deck note, appended one line at a time,
+and the note is created the first time you add one. Anything written in the
+workspace's notes shows here too. The count beside a workspace in the rail is
+its open cards, the same ones Today lists under "From your workspaces".
 
 ## Sync
 

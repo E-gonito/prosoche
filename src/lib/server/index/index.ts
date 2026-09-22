@@ -54,6 +54,8 @@ export interface TaskQuery {
 	tags?: string[];
 	/** Membership by folder. A task under `Work/` belongs to `Work`. */
 	under?: string[];
+	/** Membership by whole note, for a workspace deck outside its folders. */
+	paths?: string[];
 	statuses?: TaskStatus[];
 	quadrant?: number;
 	requireQuadrant?: boolean;
@@ -232,9 +234,10 @@ export class NoteIndex {
 	 * The one task query. Everything the app asks about tasks goes through it:
 	 * a day's open work, a workspace board, the blocked lens, a tag lens.
 	 *
-	 * `tags` and `under` together say what counts as membership, and they are
-	 * ORed: a task belongs if it carries one of the tags or lives under one of
-	 * the paths. Every other option narrows the result.
+	 * `tags`, `under` and `paths` together say what counts as membership, and
+	 * they are ORed: a task belongs if it carries one of the tags, lives under
+	 * one of the folders, or sits in one of the notes. Every other option
+	 * narrows the result.
 	 *
 	 * `excludePrefixes` exists for a specific reason: this vault's daily notes
 	 * are copies of one template, so every past day contributes the same
@@ -284,6 +287,10 @@ export class NoteIndex {
 		for (const folder of opts.under ?? []) {
 			member.push('t.path LIKE ? ESCAPE \'\\\'');
 			params.push(`${like(folder.replace(/\/$/, ''))}/%`);
+		}
+		for (const path of opts.paths ?? []) {
+			member.push('t.path = ?');
+			params.push(path);
 		}
 		if (member.length) where.push(`(${member.join(' OR ')})`);
 

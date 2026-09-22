@@ -207,7 +207,7 @@ test.describe('a board on a phone', () => {
 	test('names every column in a pill big enough to hit', async ({ page }) => {
 		const pills = page.getByTestId('column-pill');
 		await expect(pills).toHaveCount(4);
-		await expect(pills.first()).toHaveText(/To do4/);
+		await expect(pills.first()).toHaveText(/To do5/);
 		for (const box of await pills.all()) {
 			expect((await box.boundingBox())!.height).toBeGreaterThanOrEqual(40);
 		}
