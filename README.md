@@ -59,12 +59,16 @@ A daily note at `Journal/YYYY/MM/DD.md` containing tasks like:
 Tasks inside that fenced block are shown as a backlog and never edited, because
 Obsidian treats them as text rather than tasks.
 
-`Q1` to `Q4` are Eisenhower quadrants, written as inline code. Everything else
-is ordinary Obsidian: wikilinks, tags, frontmatter.
+`Q1` to `Q4` are Eisenhower quadrants, written as inline code. A `#ws/<slug>`
+tag on a line puts that one task in a workspace, wherever the line lives.
+Everything else is ordinary Obsidian: wikilinks, tags, frontmatter.
 
 Workspaces are markdown too. One file per workspace under `_hub/workspaces/`
 declares where its notes live and which widgets appear on which tab, so the
-layout is editable in Obsidian and travels with the vault.
+layout is editable in Obsidian and travels with the vault. An `aliases:` list
+in that file names the words you already use for the project — `aliases:
+[eye2gene, e2g]` — so a daily block reading "Work on eye2gene" is counted
+against it without your having to tag anything.
 
 ## Running it
 

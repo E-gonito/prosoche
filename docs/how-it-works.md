@@ -82,6 +82,16 @@ lives in the vault, which is what lets a task belong to a workspace without
 living inside one of its folders. Leaving the field empty is fine — folders
 can be added to the file later.
 
+Last of all, an `aliases:` list in the workspace file claims a task that names
+the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily
+block "10:30 - 18:00 Work on eye2gene" counts as eye2gene's time although no
+tag says so. The match is whole-word and ignores case, and it is tried only
+after the tag, the folder and a `workspace:` field have all come up empty, so
+a note sitting in one workspace's folder is never reassigned by a word in its
+text — in practice only daily notes and the Inbox are ever claimed this way.
+The workspace control in a card's drawer writes the tag instead, when you want
+to say it outright.
+
 A tab with no widgets it recognises says so instead of rendering a blank
 space: check the workspace file's `widgets:` list against the catalogue for a
 typo, since that is the only way to reach this state.
