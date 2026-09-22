@@ -78,7 +78,7 @@
 			{#each data.workspaces as w (w.slug)}
 				<a href="/w/{w.slug}" class:active={page.url.pathname.startsWith(`/w/${w.slug}`)} title={w.name}>
 					<span class="ic dot" style="--dot: {w.color}"></span><span class="lb">{w.name}</span>
-					{#if w.urgent}<span class="count" title="{w.urgent} urgent">{w.urgent}</span>{/if}
+					{#if w.open}<span class="count" title="{w.open} open, {w.urgent} of them Q1">{w.open}</span>{/if}
 				</a>
 			{/each}
 			<a href="/w/new" class="new" class:active={page.url.pathname === '/w/new'} title={collapsed ? 'New workspace' : undefined}>

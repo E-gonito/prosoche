@@ -5,6 +5,7 @@ import { renderMarkdown } from '$server/render';
 import { parseNote } from '$server/parse/note';
 import { coveredMinutes, overlappingCount } from '$server/schedule';
 import { workspaceFor } from '$server/workspaces';
+import { openCards } from '$server/board';
 import { config } from '$server/config';
 import { BRIEFING_MARKER } from '$server/ai/guardrails';
 import { readRegion } from '$server/ai/proposal';
@@ -29,26 +30,23 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	// Open work from the rest of the vault, so a day can be filled from it.
 	//
-	// Two exclusions, both learned the hard way from this vault. Daily notes
-	// are copies of one template, so every past day would contribute the same
-	// unfinished checklist. And a `- [ ]` in a syllabus or a test plan is
-	// checklist notation, not a task: a quadrant tag is what marks a line the
-	// user actually intends to do, so that is what this asks for.
+	// Each workspace contributes exactly what its board shows as open, through
+	// the one card rule in `$server/board`, so Today and the board never
+	// disagree about what a project has waiting. Daily notes stay out of it:
+	// they are copies of one template, so every past day would otherwise
+	// contribute the same unfinished checklist.
 	const defs = await workspaces();
 	const exclude = [`${config.hubFolder}/`];
-	const elsewhere = index
-		.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: exclude, excludeDailyNotes: true, requireQuadrant: true, limit: 300 })
-		.map((task) => ({ task, workspace: workspaceFor(defs, { path: task.path }) }));
-
 	const groups = defs
-		.map((w) => ({
-			slug: w.slug,
-			name: w.name,
-			color: w.color,
-			tasks: elsewhere.filter((e) => e.workspace?.slug === w.slug).map((e) => e.task)
-		}))
+		.map((w) => ({ slug: w.slug, name: w.name, color: w.color, tasks: openCards(index, w, defs) }))
 		.filter((g) => g.tasks.length > 0);
-	const unassigned = elsewhere.filter((e) => e.workspace === null).map((e) => e.task);
+
+	// Work no workspace claims. Here a quadrant is still what marks a line as
+	// work, because there is no deck or workspace tag to read it from: a bare
+	// `- [ ]` in a syllabus is notation, and there are hundreds of them.
+	const unassigned = index
+		.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: exclude, excludeDailyNotes: true, requireQuadrant: true, limit: 300 })
+		.filter((task) => workspaceFor(defs, { path: task.path, tags: task.tags }) === null);
 
 	return {
 		day: params.day,
