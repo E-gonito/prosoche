@@ -23,7 +23,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	const parsed = parseNote(note.content, path);
 	const name = basename(path);
-	const editing = url.searchParams.get('edit') !== '0';
+	// Reading is the default and editing is a deliberate act, so the editor is
+	// only mounted when the URL asks for it by name. A link to a note is a link
+	// to its text, never to a text box someone can type into by accident.
+	const editing = url.searchParams.get('edit') === '1';
 
 	return {
 		path,

@@ -99,9 +99,14 @@ test.describe('on a phone', () => {
 
 	test('a note is readable and editable', async ({ page }) => {
 		await page.goto('/notes/Study/Algorithms.md');
-		await expect(page.locator('.cm-content')).toContainText('Algorithms');
-		// The file tree is hidden at this width to leave room for the note.
+		// Reading first, which is what a phone is mostly for.
+		await expect(page.locator('.prose')).toContainText('Algorithms');
+		// The file tree is hidden at this width; the Files button raises it.
 		await expect(page.locator('.tree')).toBeHidden();
+		await expect(page.getByTestId('open-files')).toBeVisible();
+
+		await page.goto('/notes/Study/Algorithms.md?edit=1');
+		await expect(page.locator('.cm-content')).toContainText('Algorithms');
 	});
 
 	test('search works', async ({ page }) => {

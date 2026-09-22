@@ -13,6 +13,7 @@
 	import { markdown } from '@codemirror/lang-markdown';
 	import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
 	import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+	import Icon from '$lib/components/Icon.svelte';
 	import { livePreview } from '$lib/client/editor/live-preview';
 	import { asCard, asCloze, asWikilink, wrap, type TextEdit } from '$lib/client/editor/commands';
 	import { saveNote } from '$lib/client/api';
@@ -182,12 +183,12 @@
 		class="btn"
 		aria-label="Make card"
 		title="Turn the selection into a Question::Answer card. The note needs a #flashcards tag for Spaced Repetition to collect it."
-		onclick={() => applyEdit(asCard)}>✦ Make card</button>
+		onclick={() => applyEdit(asCard)}><Icon name="sparkles" size={14} /> Make card</button>
 	<button
 		class="btn"
 		aria-label="Make cloze"
 		title="Wrap the selection in ==highlight==, read as a cloze deletion"
-		onclick={() => applyEdit(asCloze)}>✦ Make cloze</button>
+		onclick={() => applyEdit(asCloze)}><Icon name="sparkles" size={14} /> Make cloze</button>
 	<span class="state {status}">{label}</span>
 	<button class="btn" onclick={save} disabled={status === 'saving' || status === 'saved'}>Save</button>
 </div>
@@ -239,11 +240,27 @@
 	.editor :global(.cm-line) { padding: 0; }
 	.editor :global(.cm-gutters) { display: none; }
 
-	.editor :global(.cm-h1), .editor :global(.cm-h2), .editor :global(.cm-h3) { color: #1d4ed8; font-weight: 700; }
+	/* A heading is text. Drawn blue it read as a link, and the note's own title
+	   was the worst offender: the first thing on the page looked clickable. Size
+	   and weight say "heading"; the accent colour is reserved for links. */
+	.editor :global(.cm-h1), .editor :global(.cm-h2), .editor :global(.cm-h3) {
+		color: var(--text);
+		font-weight: 700;
+		text-decoration: none;
+	}
 	.editor :global(.cm-h1) { font-size: 1.6em; }
 	.editor :global(.cm-h2) { font-size: 1.3em; }
 	.editor :global(.cm-h3) { font-size: 1.12em; }
-	.editor :global(.cm-h4), .editor :global(.cm-h5), .editor :global(.cm-h6) { color: #1d4ed8; font-weight: 600; }
+	.editor :global(.cm-h4), .editor :global(.cm-h5), .editor :global(.cm-h6) { color: var(--text); font-weight: 600; }
+	/* CodeMirror's default highlight style underlines headings, and underline is
+	   the one decoration a reader takes to mean "link". The line classes above
+	   already carry the hierarchy, so the borrowed rule comes off the spans. */
+	.editor :global(.cm-h1 span),
+	.editor :global(.cm-h2 span),
+	.editor :global(.cm-h3 span),
+	.editor :global(.cm-h4 span),
+	.editor :global(.cm-h5 span),
+	.editor :global(.cm-h6 span) { text-decoration: none; }
 
 	.editor :global(.cm-strong) { font-weight: 700; }
 	.editor :global(.cm-emphasis) { font-style: italic; }
