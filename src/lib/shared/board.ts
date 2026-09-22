@@ -38,23 +38,27 @@ export interface BoardColumn extends Column {
 	cards: Card[];
 }
 
-/** A checkbox line the board left out, with the note it came from. */
+/** The checkbox lines one note contributed that the board left out. */
 export interface Candidate {
 	path: string;
 	title: string;
+	/** How many open lines this note had left out, which is the figure shown. */
+	count: number;
+	/** The first few of them, so the review can offer to promote one. */
 	tasks: Task[];
 }
 
 export interface Board {
 	columns: BoardColumn[];
 	/**
-	 * How many checkbox lines the workspace claims by folder were not treated
-	 * as cards. Reported rather than hidden: in this vault a `- [ ]` inside a
-	 * syllabus is notation, and a board that silently dropped four hundred of
-	 * them would be lying about what it knows.
+	 * How many open checkbox lines the workspace claims by folder were not
+	 * treated as cards, which is the total of `candidates`' counts. Reported
+	 * rather than hidden: in this vault a `- [ ]` inside a syllabus is
+	 * notation, and a board that silently dropped four hundred of them would
+	 * be lying about what it knows.
 	 */
 	excluded: number;
-	/** A sample of those lines, so the empty state can offer to promote them. */
+	/** Those lines by note, so the page can name where they came from. */
 	candidates: Candidate[];
 	/** Note a new card is appended to. */
 	deck: string;
@@ -74,19 +78,35 @@ export interface MoveEdit {
 }
 
 /**
+ * What the card rule needs to know about a workspace. A server `Workspace`
+ * satisfies it structurally; nothing in `shared/` may import that type, and
+ * the rule has no use for the rest of it.
+ */
+export interface CardRule {
+	/** Tag that assigns a task to the workspace, without the `#`. */
+	tag: string;
+	/** Vault-relative path of the note the workspace's cards are written to. */
+	deck: string;
+}
+
+/**
  * Whether a task the workspace claims is a card on its board.
  *
- * A task carrying the workspace tag is always a card: the user typed the tag,
- * which is intent enough. A task claimed only because its file sits in a
- * workspace folder has to show intent some other way — a quadrant, a due
- * date, an id, or a dependency.
+ * Three ways in. A task carrying the workspace tag is always a card: the user
+ * typed the tag, which is intent enough. Every open checkbox in the deck note
+ * is a card too, with no metadata at all, because the deck is the board
+ * written down — a line put there is already the intent. A task claimed only
+ * because its file sits in a workspace folder has to show intent some other
+ * way: a quadrant, a due date, an id, or a dependency.
  *
- * The rule exists because this vault writes `- [ ]` in syllabus and test-plan
- * notes as plain checklist notation. An earlier version of the Today page
- * listed 463 of them. Never promotes a line by itself; it only reads one.
+ * The folder rule exists because this vault writes `- [ ]` in syllabus and
+ * test-plan notes as plain checklist notation; an earlier version of the Today
+ * page listed 463 of them. The deck rule exists because the same strictness
+ * applied everywhere left a real project with 414 checkboxes and an empty
+ * board. Never promotes a line by itself; it only reads one.
  */
-export function isCard(task: Task, workspaceTag: string): boolean {
-	return hasTag(task, workspaceTag) || showsIntent(task);
+export function isCard(task: Task, workspace: CardRule): boolean {
+	return hasTag(task, workspace.tag) || task.path === workspace.deck || showsIntent(task);
 }
 
 /** True when the line carries any of the marks this vault uses to mean work. */

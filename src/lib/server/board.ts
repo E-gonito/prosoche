@@ -60,8 +60,14 @@ const STATUS_BY_SLUG: Record<string, TaskStatus> = {
 /** How many cards one board will carry before it stops reading the index. */
 const CARD_LIMIT = 2000;
 
-/** How many left-out lines the empty state offers for review at once. */
+/** How many left-out lines the review offers at once, across every note. */
 const CANDIDATE_LIMIT = 60;
+
+/**
+ * How many of one note's left-out lines the review offers, so a single
+ * checklist of four hundred cannot take the whole budget.
+ */
+const CANDIDATE_LIMIT_PER_NOTE = 20;
 
 /**
  * The columns of a workspace's board.
@@ -106,22 +112,14 @@ export function columnsFor(workspace: Workspace): Column[] {
  * `Journal/` are kept, because a workspace is free to put its folder inside
  * the journal folder, and one real vault does.
  *
+ * Every other claimed line that `isCard` turns down is reported as excluded
+ * rather than dropped, grouped by the note it came from.
+ *
  * Cards are sorted for display. The files are never touched or reordered.
  */
 export function buildBoard(index: NoteIndex, workspace: Workspace, workspaces: Workspace[]): Board {
 	const columns = columnsFor(workspace);
-	const claimed = index
-		.findTasks({
-			tags: [workspace.tag],
-			under: workspace.folders,
-			excludePrefixes: [`${config.hubFolder}/`],
-			excludeDailyNotes: true,
-			limit: CARD_LIMIT
-		})
-		.filter((task) => ours(task, workspace, workspaces));
-
-	const cards = claimed.filter((task) => isCard(task, workspace.tag));
-	const left = claimed.filter((task) => !isCard(task, workspace.tag));
+	const { cards, left } = claim(index, workspace, workspaces);
 	const blockers = blockerIndex(index, cards);
 
 	const built: BoardColumn[] = columns.map((column) => ({ ...column, cards: [] }));
@@ -134,27 +132,85 @@ export function buildBoard(index: NoteIndex, workspace: Workspace, workspaces: W
 	}
 	for (const column of built) column.cards.sort(compareCards);
 
-	return { columns: built, excluded: left.length, candidates: groupByNote(index, left), deck: workspace.deck };
+	const candidates = groupByNote(index, left);
+	return {
+		columns: built,
+		excluded: candidates.reduce((total, note) => total + note.count, 0),
+		candidates,
+		deck: workspace.deck
+	};
+}
+
+/**
+ * The open cards of one workspace, in vault order.
+ *
+ * The same lines the board shows, minus the finished columns. Exported so the
+ * rail's count, Today's "From your workspaces" list and the board itself
+ * cannot disagree about what a workspace has open: there is one rule, and it
+ * is here. Reads the index and nothing else, and never writes.
+ */
+export function openCards(index: NoteIndex, workspace: Workspace, workspaces: Workspace[]): Task[] {
+	const open = new Set<TaskStatus>(OPEN_STATUSES);
+	return claim(index, workspace, workspaces).cards.filter((task) => open.has(task.status));
+}
+
+/**
+ * Every task this workspace owns, split into the cards and the lines left out.
+ *
+ * One index read and one ownership pass behind both halves, because the board
+ * needs the left-out lines to report them and `openCards` needs only the
+ * cards; running the filter twice would let the two drift apart.
+ *
+ * The deck note is asked for by name as well as by folder, so a workspace
+ * whose `deck:` points outside its own folders still has a board.
+ */
+function claim(
+	index: NoteIndex,
+	workspace: Workspace,
+	workspaces: Workspace[]
+): { cards: Task[]; left: Task[] } {
+	const cards: Task[] = [];
+	const left: Task[] = [];
+	const claimed = index.findTasks({
+		tags: [workspace.tag],
+		under: workspace.folders,
+		paths: [workspace.deck],
+		excludePrefixes: [`${config.hubFolder}/`],
+		excludeDailyNotes: true,
+		limit: CARD_LIMIT
+	});
+	for (const task of claimed) {
+		if (!ours(task, workspace, workspaces)) continue;
+		(isCard(task, workspace) ? cards : left).push(task);
+	}
+	return { cards, left };
 }
 
 /**
  * The lines this workspace claims but does not treat as cards, ready for the
- * "promote to card" review: open ones only, grouped by the note they live in,
- * capped so a folder of four hundred checklist lines does not become the page.
- * The count beside them, `excluded`, is the true total.
+ * "promote to card" review: open ones only, grouped by the note they live in.
+ * Every such note is listed with its true count, so the page can say that four
+ * hundred lines came from one test plan; only the lines themselves are capped,
+ * because nobody reviews four hundred of them in one sitting.
  */
 function groupByNote(index: NoteIndex, tasks: Task[]): Candidate[] {
 	const open = new Set<TaskStatus>(OPEN_STATUSES);
-	const groups: Candidate[] = [];
+	const groups = new Map<string, Candidate>();
 	let taken = 0;
 	for (const task of tasks) {
-		if (!open.has(task.status) || taken >= CANDIDATE_LIMIT) continue;
-		const group = groups.find((g) => g.path === task.path);
-		if (group) group.tasks.push(task);
-		else groups.push({ path: task.path, title: index.noteTitle(task.path) ?? basename(task.path), tasks: [task] });
-		taken++;
+		if (!open.has(task.status)) continue;
+		let group = groups.get(task.path);
+		if (!group) {
+			group = { path: task.path, title: index.noteTitle(task.path) ?? basename(task.path), count: 0, tasks: [] };
+			groups.set(task.path, group);
+		}
+		group.count++;
+		if (taken < CANDIDATE_LIMIT && group.tasks.length < CANDIDATE_LIMIT_PER_NOTE) {
+			group.tasks.push(task);
+			taken++;
+		}
 	}
-	return groups;
+	return [...groups.values()];
 }
 
 /** One lookup for every blocker on the board, rather than one per card. */

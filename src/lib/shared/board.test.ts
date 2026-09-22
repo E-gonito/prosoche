@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { columnFor, compareCards, isCard, moveEdit, showsIntent, type Card, type Column } from './board';
+import {
+	columnFor,
+	compareCards,
+	isCard,
+	moveEdit,
+	showsIntent,
+	type Card,
+	type CardRule,
+	type Column
+} from './board';
 import type { Task } from './task';
 
 function task(fields: Partial<Task> = {}): Task {
@@ -37,17 +46,34 @@ const MIXED: Column[] = [
 ];
 
 describe('isCard', () => {
+	const WORK: CardRule = { tag: 'ws/work', deck: 'Work/Deck.md' };
+	const STUDY: CardRule = { tag: 'ws/study', deck: 'Study/Deck.md' };
+
 	it('counts a tagged task even when it carries nothing else', () => {
-		expect(isCard(task({ tags: ['ws/work'] }), 'ws/work')).toBe(true);
+		expect(isCard(task({ tags: ['ws/work'] }), WORK)).toBe(true);
 	});
 
 	it('counts a task tagged under the workspace tag', () => {
-		expect(isCard(task({ tags: ['ws/work/api'] }), 'ws/work')).toBe(true);
+		expect(isCard(task({ tags: ['ws/work/api'] }), WORK)).toBe(true);
+	});
+
+	it('counts a line in the deck note, with no metadata at all', () => {
+		// The deck is the board written down: putting a line there is intent.
+		expect(isCard(task({ path: 'Work/Deck.md', text: 'weekly sync agenda' }), WORK)).toBe(true);
+	});
+
+	it('still asks a line outside the deck to show intent', () => {
+		expect(isCard(task({ path: 'Work/Test plan.md', text: 'weekly sync agenda' }), WORK)).toBe(false);
+	});
+
+	it('reads the deck as a whole path, not a folder', () => {
+		// `Work/Deck.md.bak` and `Work/Deck.md/notes.md` are other notes.
+		expect(isCard(task({ path: 'Work/Deck.md.bak' }), WORK)).toBe(false);
 	});
 
 	it('leaves a bare checklist line out', () => {
 		// The shape of this vault's syllabus and test-plan notes.
-		expect(isCard(task({ text: '**Indexing:** sharding' }), 'ws/study')).toBe(false);
+		expect(isCard(task({ text: '**Indexing:** sharding' }), STUDY)).toBe(false);
 	});
 
 	it.each([
@@ -56,12 +82,12 @@ describe('isCard', () => {
 		['an id', { id: 'a1b2c3' }],
 		['a dependency', { blockedBy: ['a1b2c3'] }]
 	])('counts a folder-claimed line that shows intent through %s', (_label, fields) => {
-		expect(isCard(task(fields), 'ws/study')).toBe(true);
+		expect(isCard(task(fields), STUDY)).toBe(true);
 		expect(showsIntent(task(fields))).toBe(true);
 	});
 
 	it('does not treat a time block or a status marker as intent', () => {
-		expect(isCard(task({ startMin: 600, endMin: 660, status: 'in-progress' }), 'ws/work')).toBe(false);
+		expect(isCard(task({ startMin: 600, endMin: 660, status: 'in-progress' }), WORK)).toBe(false);
 	});
 });
 
