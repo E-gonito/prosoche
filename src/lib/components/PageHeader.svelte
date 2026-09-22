@@ -17,6 +17,7 @@
 	 * what you reach for second.
 	 */
 	import type { Snippet } from 'svelte';
+	import Icon from './Icon.svelte';
 
 	let {
 		title,
@@ -27,7 +28,11 @@
 		actions
 	}: {
 		title: string;
-		/** A link out of here, drawn small and above the title. */
+		/**
+		 * A link out of here, drawn small and above the title, with a chevron
+		 * the caller never has to spell out. `label` is plain text: the page
+		 * being left, not a glyph glued onto it.
+		 */
 		back?: { href: string; label: string };
 		/** A colour, drawn as a dot before the title: a workspace's own. */
 		dot?: string;
@@ -42,7 +47,7 @@
 
 <header class="head">
 	{#if back}
-		<a class="back" href={back.href}>{back.label}</a>
+		<a class="back" href={back.href}><Icon name="chevron-left" size={14} />{back.label}</a>
 	{/if}
 	<div class="line">
 		{#if dot}<span class="dot" style="--dot: {dot}"></span>{/if}
@@ -57,7 +62,9 @@
 		margin: 0 0 16px;
 	}
 	.back {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
 		font-size: 12px;
 		color: var(--muted);
 		text-decoration: none;
