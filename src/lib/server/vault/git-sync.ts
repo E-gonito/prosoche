@@ -14,7 +14,7 @@
  */
 
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { config } from '../config';
 import { toAbsolute } from './paths';
@@ -30,6 +30,12 @@ const TRANSIENT = [`${config.hubFolder}/timer.json`, `${config.hubFolder}/.state
 export function isTransient(path: string): boolean {
 	return TRANSIENT.some((t) => path === t || path.startsWith(t));
 }
+
+/** The same paths as git wants them on a command line: no trailing slash. */
+const TRANSIENT_ROOTS = TRANSIENT.map((t) => t.replace(/\/$/, ''));
+
+/** Subject of the one commit this module makes on its own initiative. */
+export const UNTRACK_SUBJECT = 'hub: stop tracking transient state';
 
 export class GitSync implements SyncProvider {
 	private git: SimpleGit;
@@ -90,6 +96,7 @@ export class GitSync implements SyncProvider {
 	pull(): Promise<SyncStatus> {
 		return this.serialise(async () => {
 			await this.git.fetch();
+			await this.dropIncomingTransient();
 			// Naming the remote and branch explicitly: a vault whose branch has
 			// no upstream configured would otherwise fail with git's "no
 			// tracking information" error, which is not the user's problem.
@@ -98,6 +105,10 @@ export class GitSync implements SyncProvider {
 			this.state.conflicts = [];
 			this.state.error = null;
 			if (result.files.length) this.state.lastPull = new Date();
+			// Pushed here rather than left for the next commit, because the
+			// next commit comes only after the user changes something, and
+			// until then every other device keeps re-committing the state.
+			if (await this.untrackTransient()) await this.git.push(['-u', 'origin', config.git.branch]);
 			return this.status();
 		});
 	}
@@ -111,6 +122,7 @@ export class GitSync implements SyncProvider {
 			}
 			await this.pullInline();
 			if (this.state.conflicts.length) return this.status();
+			await this.untrackTransient();
 
 			// Stage only what this app wrote. `add -A` would sweep up changes the
 			// user made in their editor and commit them under a message that
@@ -270,6 +282,7 @@ export class GitSync implements SyncProvider {
 	private async pullInline(): Promise<void> {
 		try {
 			await this.git.fetch();
+			await this.dropIncomingTransient();
 			await this.git.pull('origin', config.git.branch, ['--rebase']);
 			this.state.lastPull = new Date();
 			this.state.conflicts = [];
@@ -281,6 +294,60 @@ export class GitSync implements SyncProvider {
 			}
 			this.state.error = message(e);
 		}
+	}
+
+	/**
+	 * Delete the local, untracked copies of transient files that the fetched
+	 * commits are about to bring in, so git does not refuse the pull for them.
+	 *
+	 * Another device's hub may have committed `_hub/.state/` before it learned
+	 * not to. The local copy is rebuildable state: a schedule stamp, a pending
+	 * proposal. Losing it costs at most one duplicate run, while a pull that
+	 * fails every five minutes costs the user every other change. Tracked files
+	 * and everything outside the transient paths are left alone; a repository
+	 * with no upstream yet has nothing incoming and nothing is deleted.
+	 */
+	private async dropIncomingTransient(): Promise<void> {
+		const incoming = await this.git
+			.raw(['diff', '--name-only', `HEAD..origin/${config.git.branch}`, '--', ...TRANSIENT_ROOTS])
+			.then((out) => out.split('\n').filter(Boolean), () => [] as string[]);
+		for (const path of incoming) {
+			const tracked = await this.git.raw(['ls-files', '--error-unmatch', '--', path]).then(
+				() => true,
+				() => false
+			);
+			if (!tracked) await rm(join(this.vaultPath, path), { force: true });
+		}
+	}
+
+	/**
+	 * Stop tracking transient state that some device committed, and ignore it
+	 * from now on. Returns true when this made a commit; the caller pushes.
+	 *
+	 * The one file this touches outside the hub folder is the vault's
+	 * `.gitignore`, where the transient paths are appended only when absent;
+	 * an existing file keeps every line it had. The state files themselves
+	 * stay on disk: `rm --cached` takes them out of the index, not off the
+	 * disk. Never runs when nothing transient is tracked, so a vault that was
+	 * always clean never gains a commit or a `.gitignore` it did not have.
+	 */
+	private async untrackTransient(): Promise<boolean> {
+		const tracked = await this.git
+			.raw(['ls-files', '--', ...TRANSIENT_ROOTS])
+			.then((out) => out.split('\n').filter(Boolean), () => [] as string[]);
+		if (!tracked.length) return false;
+
+		await this.git.raw(['rm', '--cached', '--quiet', '--', ...tracked]);
+		const ignore = join(this.vaultPath, '.gitignore');
+		const current = await readFile(ignore, 'utf8').catch(() => '');
+		const missing = TRANSIENT.filter((t) => !current.split('\n').includes(t));
+		if (missing.length) {
+			const head = current === '' || current.endsWith('\n') ? current : `${current}\n`;
+			await writeFile(ignore, `${head}${missing.join('\n')}\n`);
+		}
+		await this.git.add(['--', '.gitignore']);
+		await this.git.commit(UNTRACK_SUBJECT);
+		return true;
 	}
 
 	/** Run git operations one at a time; concurrent pull and push corrupt each other. */
