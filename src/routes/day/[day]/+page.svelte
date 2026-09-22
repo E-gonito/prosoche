@@ -121,6 +121,12 @@
 	<div class="card problem" role="status">{problem}</div>
 {/if}
 
+{#if data.conflicted}
+	<p class="problem" data-testid="conflict">
+		This note has git conflict markers. Resolve it in Obsidian or on the <a href="/sync">sync page</a>.
+	</p>
+{/if}
+
 {#if !data.exists}
 	<div class="card">
 		<EmptyState
@@ -263,7 +269,8 @@
 	}
 	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s4); align-items: start; }
 	.main, .side { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
-	.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: var(--s3); }
+	/* The card form only: the conflict line above is the shared `.problem`. */
+	.card.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: var(--s3); }
 	details summary { cursor: pointer; font-size: var(--t12); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 	details[open] summary { margin-bottom: var(--s3); }
 

@@ -174,6 +174,12 @@
 			</a>
 		</div>
 
+		{#if data.conflicted}
+			<p class="problem" data-testid="conflict">
+				This note has git conflict markers. Resolve it in Obsidian or on the <a href="/sync">sync page</a>.
+			</p>
+		{/if}
+
 		{#if data.editing}
 			{#key data.path}
 				<Editor

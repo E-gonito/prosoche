@@ -73,6 +73,17 @@ export interface TaskQuery {
  */
 const TASK_COLUMNS = `t.*, (SELECT group_concat(g.tag, ' ') FROM task_tags g WHERE g.path = t.path AND g.line = t.line) AS tags`;
 
+/**
+ * What a note carrying an unfinished merge is recorded as. Exported so a page
+ * can recognise the one problem it knows how to explain without matching on
+ * prose it does not own.
+ */
+export const CONFLICT_MARKERS = 'has git conflict markers';
+
+/** Git writes both, at the start of a line, around every conflicted region. */
+const CONFLICT_START = /^<<<<<<< /m;
+const CONFLICT_END = /^>>>>>>> /m;
+
 export class NoteIndex {
 	private db: Database.Database;
 
@@ -137,6 +148,15 @@ export class NoteIndex {
 			for (const h of note.headings) heading.run(path, h.level, h.text, h.line);
 
 			this.db.prepare('INSERT INTO notes_fts (path,title,body) VALUES (?,?,?)').run(path, note.title, note.body);
+
+			// Indexed like any other note — the markers are the user's to resolve,
+			// and half a note is still worth searching — but recorded, so the
+			// pages showing it can say the file is a merge that never finished.
+			if (CONFLICT_START.test(content) && CONFLICT_END.test(content)) {
+				this.db
+					.prepare('INSERT OR REPLACE INTO problems (path, message) VALUES (?, ?)')
+					.run(path, CONFLICT_MARKERS);
+			}
 		});
 		run();
 	}
@@ -180,6 +200,18 @@ export class NoteIndex {
 			// A query FTS5 cannot parse is a miss, not a server error.
 			return [];
 		}
+	}
+
+	/**
+	 * What is wrong with one note, or null when nothing is. `health()` answers
+	 * the same question for the whole vault; this is for a page that is already
+	 * showing a single note and needs to say so above it.
+	 */
+	problemFor(path: string): string | null {
+		const row = this.db.prepare('SELECT message FROM problems WHERE path = ?').get(path) as
+			| { message: string }
+			| undefined;
+		return row?.message ?? null;
 	}
 
 	/** Tasks in one note, in file order. */

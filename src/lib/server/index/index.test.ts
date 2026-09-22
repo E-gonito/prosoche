@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { NoteIndex, ftsQuery } from './index';
+import { NoteIndex, ftsQuery, CONFLICT_MARKERS } from './index';
 
 let index: NoteIndex;
 beforeEach(() => {
@@ -106,6 +106,47 @@ describe('health', () => {
 	});
 });
 
+describe('conflict markers', () => {
+	// What git leaves behind when two devices edited the same note: the hub's
+	// own timer append and an edit made in Obsidian elsewhere.
+	const MERGED = [
+		'# Tasks',
+		'- [ ] Walk the dog `Q1`',
+		'<<<<<<< HEAD',
+		'',
+		'=======',
+		'## Time log',
+		'- 09:28 - 09:29 Meditate (1m) `Q1`',
+		'>>>>>>> origin/master'
+	].join('\n');
+
+	it('records a problem, and still indexes the note', () => {
+		index.put('Journal/2026/09/22.md', MERGED);
+		expect(index.problemFor('Journal/2026/09/22.md')).toBe(CONFLICT_MARKERS);
+		expect(index.health().problems).toEqual([{ path: 'Journal/2026/09/22.md', message: CONFLICT_MARKERS }]);
+		expect(index.tasksIn('Journal/2026/09/22.md').map((t) => t.text)).toEqual(['Walk the dog']);
+	});
+
+	it('leaves a note without them alone', () => {
+		index.put('Journal/2026/09/21.md', DAILY);
+		expect(index.problemFor('Journal/2026/09/21.md')).toBe(null);
+		expect(index.problemFor('Nowhere.md')).toBe(null);
+	});
+
+	it('needs both markers, at the start of a line', () => {
+		index.put('a.md', 'Write `<<<<<<< HEAD` to see a conflict, then `>>>>>>> theirs`.');
+		index.put('b.md', '<<<<<<< HEAD\nonly half a merge\n');
+		expect(index.problemFor('a.md')).toBe(null);
+		expect(index.problemFor('b.md')).toBe(null);
+	});
+
+	it('forgets the problem once the merge is finished', () => {
+		index.put('c.md', MERGED);
+		index.put('c.md', '# Tasks\n- [ ] Walk the dog `Q1`\n');
+		expect(index.problemFor('c.md')).toBe(null);
+	});
+});
+
 describe('ftsQuery', () => {
 	it('ands prefix terms', () => {
 		expect(ftsQuery('floating point')).toBe('"floating"* AND "point"*');
@@ -137,7 +178,10 @@ describe.skipIf(!VAULT || !existsSync(VAULT))('rebuilding a real vault', () => {
 		const took = index.rebuild(notes);
 		const health = index.health();
 		expect(health.notes).toBe(notes.length);
-		expect(health.problems).toEqual([]);
+		// The author's vault has a note with an unfinished merge in it, which
+		// the index reports rather than swallows. Anything else is a parse
+		// failure and would be a real fault.
+		expect(health.problems.filter((p) => p.message !== CONFLICT_MARKERS)).toEqual([]);
 		expect(took).toBeLessThan(10_000);
 		console.log(`  indexed ${health.notes} notes, ${health.tasks} tasks, ${health.links} links in ${took} ms`);
 	});
