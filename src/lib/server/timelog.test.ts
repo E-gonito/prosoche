@@ -197,10 +197,9 @@ describe('plannedVsActual', () => {
 		expect(result.rows.map((r) => r.doneMinutes)).toEqual([440, 30]);
 	});
 
-	// One predicate for "closed", the same one the board and the briefing use.
-	// A crossed-out block is a closed one, and there is no second rule here.
-	it('treats a cancelled block like a ticked one', () => {
-		expect(plannedVsActual([task('Dropped it', 600, 630, null, 'cancelled')], []).doneMinutes).toBe(30);
+	// Crossed out is not ticked: a `[-]` block says the work did not happen.
+	it('gives a cancelled block no done minutes', () => {
+		expect(plannedVsActual([task('Dropped it', 600, 630, null, 'cancelled')], []).doneMinutes).toBe(0);
 	});
 
 	it('keeps a planned block with nothing logged against it', () => {

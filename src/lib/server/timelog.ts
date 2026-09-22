@@ -61,7 +61,7 @@ import { coveredMinutes } from './schedule';
 import { workspaceFor, type Workspace } from './workspaces';
 import type { NoteIndex } from './index/index';
 import type { Vault } from './vault/index';
-import { displayText, isDone, type Task } from '../shared/task';
+import { displayText, type Task } from '../shared/task';
 import {
 	MINUTES_IN_DAY,
 	formatDuration,
@@ -331,7 +331,9 @@ export function plannedVsActual(scheduled: Task[], entries: TimeEntry[]): Planne
 		else unmatched.push({ text: entry.text, minutes: entry.minutes });
 	}
 
-	const done = rows.filter((row) => isDone(row.task) && row.loggedMinutes === 0);
+	// Ticked, not merely closed: a crossed-out `[-]` block says the work did
+	// not happen, so it is the one closed state that earns no minutes.
+	const done = rows.filter((row) => row.task.status === 'done' && row.loggedMinutes === 0);
 	for (const row of done) row.doneMinutes = row.plannedMinutes;
 
 	return {
