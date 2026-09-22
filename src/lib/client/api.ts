@@ -35,6 +35,22 @@ export async function editTask(task: Task, edit: TaskEdit): Promise<Result<Task>
 	return post('/api/task', { path: task.path, line: task.line, expectedRaw: task.raw, ...edit }, (body) => body.task);
 }
 
+/**
+ * Plan a card from another note onto a day, as a block in the day's note that
+ * links back to it. The card's own line is not touched. Returns the new block.
+ */
+export async function planOnDay(
+	day: string,
+	task: Task,
+	time?: { startMin: number; endMin: number }
+): Promise<Result<Task>> {
+	return post(
+		`/api/day/${day}/plan`,
+		{ path: task.path, line: task.line, expectedRaw: task.raw, ...time },
+		(body) => body.task
+	);
+}
+
 /** Append a line to the capture inbox. */
 export async function captureText(text: string): Promise<Result<{ path: string }>> {
 	return post('/api/capture', { text }, (body) => ({ path: body.path }));

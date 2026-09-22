@@ -116,6 +116,27 @@ test.describe('the day', () => {
 		await expect(page.getByTestId('block').filter({ hasText: 'Walk the dog' })).toBeVisible();
 	});
 
+	test('dragging a workspace card onto the timeline plans it in the day', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE).split('\n');
+		const card = vaultFile('Study/Algorithms.md');
+		const grip = await centre(page, '[data-testid="task-row"]:has-text("Finish chapter 3") [data-testid="grip"]');
+		const view = await page.getByTestId('timeline-scroll').boundingBox();
+
+		await dragTo(page, grip, { x: view!.x + view!.width / 2, y: view!.y + view!.height / 3 });
+
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('Finish chapter 3'))).toBe(true);
+		// Exactly one line gained, under `# Tasks` and above the fenced backlog,
+		// with a link back to the card rather than a copy of it.
+		const after = vaultFile(TODAY_NOTE).split('\n');
+		const { index, text } = lineWith(TODAY_NOTE, 'Finish chapter 3');
+		expect(text).toMatch(/^- \[ \] \d\d:\d0 - \d\d:\d0 Finish chapter 3 \[\[Study\/Algorithms\]\] `Q2` #ws\/study$/);
+		expect(after.toSpliced(index, 1)).toEqual(before);
+
+		// The card's own note is untouched, and the block is on the timeline.
+		expect(vaultFile('Study/Algorithms.md')).toBe(card);
+		await expect(page.getByTestId('block').filter({ hasText: 'Finish chapter 3' })).toBeVisible();
+	});
+
 	test('dragging a block onto the unscheduled card takes its time off', async ({ page }) => {
 		const from = await centreBlock(page, 'Read a book');
 		const target = await page.getByTestId('unscheduled').boundingBox();

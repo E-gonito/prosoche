@@ -18,7 +18,7 @@
 	import { layoutBlocks, snap, timelineRange, timelineScrollTop } from '$lib/shared/layout';
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatMinutes } from '$lib/shared/time';
-	import { editTask } from '$lib/client/api';
+	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
 	import { timer } from '$lib/client/timer.svelte';
@@ -26,12 +26,25 @@
 	let {
 		tasks,
 		isToday = false,
+		day,
+		dayPath,
 		onchange,
+		onplanned,
 		onproblem
 	}: {
 		tasks: Task[];
 		isToday?: boolean;
+		/**
+		 * The day this timeline shows and the note that holds it. Given both, a
+		 * task dropped in from another note is planned as a block in that note
+		 * rather than having a time written onto its own line elsewhere, and
+		 * `onplanned` is called because the new block is not in `tasks` yet.
+		 * Without them every drop is a span edit, as it was.
+		 */
+		day?: string;
+		dayPath?: string;
 		onchange?: (task: Task) => void;
+		onplanned?: (task: Task) => void;
 		onproblem?: (message: string) => void;
 	} = $props();
 
@@ -193,11 +206,27 @@
 		});
 	});
 
-	/** Give a dragged-in task a time. Defaults to a 30 minute block. */
+	/**
+	 * Give a dragged-in task a time. Defaults to a 30 minute block.
+	 *
+	 * A task already in the day's note gets the time written onto its own line.
+	 * A card from anywhere else gets a block in the day's note instead: a
+	 * dateless range on a project note would say nothing about which day it
+	 * belonged to, and this timeline only ever reads the day's own note, so the
+	 * card would simply have vanished on the drop.
+	 */
 	async function schedule(task: Task, startMin: number) {
+		const endMin = Math.min(1440, startMin + 30);
 		dropping = true;
+		if (day && dayPath && task.path !== dayPath) {
+			const result = await planOnDay(day, task, { startMin, endMin });
+			dropping = false;
+			if (result.ok) onplanned?.(result.value);
+			else onproblem?.(result.message);
+			return;
+		}
 		const result = await editTask(task, {
-			time: { start: formatMinutes(startMin), end: formatMinutes(Math.min(1440, startMin + 30)) }
+			time: { start: formatMinutes(startMin), end: formatMinutes(endMin) }
 		});
 		dropping = false;
 		if (result.ok) onchange?.(result.value);

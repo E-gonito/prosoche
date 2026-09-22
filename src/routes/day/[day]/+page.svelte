@@ -40,6 +40,13 @@
 		patches = next;
 	}
 
+	// A card planned onto the day is a new line in a note this page loaded, so
+	// the patch layer has nothing to patch: reload rather than guess.
+	async function planned() {
+		problem = '';
+		await invalidateAll();
+	}
+
 	function failed(message: string) {
 		problem = message;
 		if (message.includes('changed')) invalidateAll();
@@ -155,7 +162,15 @@
 				     timeline, and a phone returning to this one wants it at the
 				     current hour again rather than where it was left. -->
 				{#key data.day + segment}
-					<Timeline tasks={scheduled} isToday={data.isToday} onchange={applied} onproblem={failed} />
+					<Timeline
+						tasks={scheduled}
+						isToday={data.isToday}
+						day={data.day}
+						dayPath={data.path}
+						onchange={applied}
+						onplanned={planned}
+						onproblem={failed}
+					/>
 				{/key}
 			</div>
 
