@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { resetVault } from './helpers';
 
-const NOTE = '/notes/Study/Algorithms.md';
+// The editor, explicitly: these tests resize the panes around it, and a note
+// opens to read unless the URL says otherwise.
+const NOTE = '/notes/Study/Algorithms.md?edit=1';
 
 test.describe('the notes panes', () => {
 	test.beforeEach(async ({ page, request }) => {

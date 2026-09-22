@@ -3,7 +3,9 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { VAULT, vaultFile, waitForFile, resetVault } from './helpers';
 
-const NOTE = '/notes/Study/Algorithms.md';
+// Notes open in reading view now, so every test about the editor asks for it
+// by name. That the plain URL reads instead is covered in 15-notes-reading.
+const NOTE = '/notes/Study/Algorithms.md?edit=1';
 
 test.describe('the editor', () => {
 	test.beforeEach(async ({ page, request }) => {
@@ -11,7 +13,7 @@ test.describe('the editor', () => {
 		await page.goto(NOTE);
 	});
 
-	test('opens in edit mode with the note loaded', async ({ page }) => {
+	test('opens with the note loaded when the URL asks to edit', async ({ page }) => {
 		await expect(page.locator('.cm-content')).toContainText('Algorithms');
 		await expect(page.getByText('Saved')).toBeVisible();
 	});
@@ -137,7 +139,7 @@ test.describe('the editor', () => {
 	});
 
 	test('the reading view renders markdown and marks an unresolved link', async ({ page }) => {
-		await page.getByRole('link', { name: 'Reading view' }).click();
+		await page.getByTestId('edit-toggle').click();
 		await expect(page.locator('.prose h1')).toContainText('Algorithms');
 		await expect(page.locator('.prose a', { hasText: 'Handbook' })).toBeVisible();
 		await expect(page.locator('.prose .wl-missing')).toContainText('Nowhere At All');
@@ -152,6 +154,7 @@ test.describe('the editor', () => {
 	test('the file tree navigates between notes', async ({ page }) => {
 		await page.locator('.tree').getByRole('link', { name: 'Syllabus' }).click();
 		await expect(page).toHaveURL(/Syllabus\.md$/);
-		await expect(page.locator('.cm-content')).toContainText('Checklist notation');
+		// The tree links to notes, not to the editor: the next one opens to read.
+		await expect(page.locator('.prose')).toContainText('Checklist notation');
 	});
 });

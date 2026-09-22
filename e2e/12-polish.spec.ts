@@ -147,19 +147,19 @@ test.describe('global shortcuts', () => {
 	});
 
 	test('a shortcut never fires while the user is typing in the editor', async ({ page }) => {
-		await page.goto('/notes/Study/Algorithms.md');
+		await page.goto('/notes/Study/Algorithms.md?edit=1');
 		await page.locator('.cm-content').click();
 		await page.keyboard.press('Control+End');
 		await page.keyboard.type(' typing t and n and c here');
 
 		// Still in the note, and the characters went into the text.
-		await expect(page).toHaveURL(/Algorithms\.md$/);
+		await expect(page).toHaveURL(/Algorithms\.md\?edit=1$/);
 		await expect(page.locator('.cm-content')).toContainText('typing t and n and c here');
 		await expect(page.getByTestId('palette')).toHaveCount(0);
 	});
 
 	test('the palette still opens from inside the editor, because it is a chord', async ({ page }) => {
-		await page.goto('/notes/Study/Algorithms.md');
+		await page.goto('/notes/Study/Algorithms.md?edit=1');
 		await page.locator('.cm-content').click();
 		await page.keyboard.press('Control+k');
 		await expect(page.getByTestId('palette')).toBeVisible();
