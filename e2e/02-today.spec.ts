@@ -176,6 +176,18 @@ test.describe('the day', () => {
 		// Today asks the board what it has open rather than asking for a `Q`.
 		await expect(panel).toContainText('Work');
 		await expect(panel).toContainText('Sign the new supplier contract');
+
+		// A due date is shown as a date, with no emoji carried over from the
+		// line it was written on.
+		const due = panel.getByTestId('task-row').filter({ hasText: 'Draft the anonymisation plan' }).getByTestId('task-due');
+		await expect(due).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+
+		// Open work carrying a quadrant that no workspace claims, in a group of
+		// its own rather than mixed in with the projects.
+		await expect(panel).toContainText('Elsewhere');
+		await expect(panel).toContainText('Send the anonymisation plan');
+		// And the template every day is copied from is not work to schedule.
+		await expect(panel).not.toContainText('Twenty push ups');
 	});
 
 	test('the timeline says which project the day\'s hours are for', async ({ page }) => {
