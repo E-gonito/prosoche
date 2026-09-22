@@ -43,6 +43,12 @@ export interface IndexedNote {
 	bytes: number;
 }
 
+/** Shared by `notes()` and `notesCount()`, so the two can never disagree on scope. */
+export interface NoteFilter {
+	under?: string[];
+	excludePrefixes?: string[];
+}
+
 export interface TaskQuery {
 	/** Membership by tag, including nested tags: `ws/work` matches `ws/work/api`. */
 	tags?: string[];
@@ -299,26 +305,26 @@ export class NoteIndex {
 	 * widget listing "the notes in this workspace" has no reason to open the
 	 * files. Omit `under` for the whole vault.
 	 */
-	notes(opts: { under?: string[]; excludePrefixes?: string[]; limit?: number } = {}): IndexedNote[] {
-		const where: string[] = [];
-		const params: unknown[] = [];
-		const folders = (opts.under ?? []).map((f) => f.replace(/\/$/, ''));
-		if (folders.length) {
-			where.push(`(${folders.map(() => "path LIKE ? ESCAPE '\\'").join(' OR ')})`);
-			params.push(...folders.map((f) => `${like(f)}/%`));
-		}
-		for (const prefix of opts.excludePrefixes ?? []) {
-			where.push("path NOT LIKE ? ESCAPE '\\'");
-			params.push(`${like(prefix)}%`);
-		}
-		params.push(opts.limit ?? 100);
+	notes(opts: NoteFilter & { limit?: number } = {}): IndexedNote[] {
+		const { where, params } = noteFilter(opts);
 		return this.db
 			.prepare(
 				`SELECT path, title, mtime_ms AS mtimeMs, bytes FROM notes
-				 ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+				 ${where}
 				 ORDER BY mtime_ms DESC LIMIT ?`
 			)
-			.all(...params) as IndexedNote[];
+			.all(...params, opts.limit ?? 100) as IndexedNote[];
+	}
+
+	/**
+	 * How many notes match `notes()`'s filters, without fetching any of them.
+	 *
+	 * A widget saying "12 of 117" needs the true count of everything in scope;
+	 * `notes()` only ever returns the page it was asked to show.
+	 */
+	notesCount(opts: NoteFilter = {}): number {
+		const { where, params } = noteFilter(opts);
+		return (this.db.prepare(`SELECT count(*) AS n FROM notes ${where}`).get(...params) as { n: number }).n;
 	}
 
 	/**
@@ -441,6 +447,22 @@ function toTask(row: any): IndexedTask {
 /** Escape the wildcards SQLite LIKE would otherwise interpret. */
 function like(value: string): string {
 	return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/** The WHERE clause and params `notes()` and `notesCount()` both filter by. */
+function noteFilter(opts: NoteFilter): { where: string; params: unknown[] } {
+	const where: string[] = [];
+	const params: unknown[] = [];
+	const folders = (opts.under ?? []).map((f) => f.replace(/\/$/, ''));
+	if (folders.length) {
+		where.push(`(${folders.map(() => "path LIKE ? ESCAPE '\\'").join(' OR ')})`);
+		params.push(...folders.map((f) => `${like(f)}/%`));
+	}
+	for (const prefix of opts.excludePrefixes ?? []) {
+		where.push("path NOT LIKE ? ESCAPE '\\'");
+		params.push(`${like(prefix)}%`);
+	}
+	return { where: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
 }
 
 function minutes(hhmm: string): number {

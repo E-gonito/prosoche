@@ -84,7 +84,14 @@ export const config = {
 		token: process.env.HUB_LINEAR_TOKEN ?? '',
 		api: process.env.HUB_LINEAR_API ?? 'https://api.linear.app/graphql',
 		cacheTtlMs: 2 * 60 * 1000
-	}
+	},
+
+	/**
+	 * Base URL of a T3 Code web client running on this machine, e.g. a
+	 * tailnet address. Empty means not set up: the nav and palette entry are
+	 * left out entirely rather than pointing somewhere that will not answer.
+	 */
+	t3Url: process.env.HUB_T3_URL ?? ''
 } as const;
 
 /** `a, b` to `['a','b']`, with an unset or empty variable meaning no filter. */

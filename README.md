@@ -84,6 +84,7 @@ HUB_VAULT=~/vault npm run dev      # http://localhost:5173
 | `HUB_TIMESHEET_FOLDER` | — | Folder holding `TIMESHEET <MONTH>` notes, if you keep one |
 | `HUB_GITHUB_TOKEN`, `HUB_GITHUB_REPOS` | — | Read access for the GitHub card. Absent means "not connected" |
 | `HUB_LINEAR_TOKEN` | — | Personal API key for the Linear card |
+| `HUB_T3_URL` | — | Base URL of a T3 Code web client on this machine. Absent means no "T3 Code" entry in the nav or palette |
 | `PORT`, `HOST` | `3000`, `0.0.0.0` | For the built server |
 
 No token is ever written into the vault or this repository; the cards render a
