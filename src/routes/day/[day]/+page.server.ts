@@ -6,7 +6,8 @@ import { parseNote } from '$server/parse/note';
 import { coveredMinutes, overlappingCount } from '$server/schedule';
 import { workspaceFor } from '$server/workspaces';
 import { CONFLICT_MARKERS } from '$server/index/index';
-import { openCards } from '$server/board';
+import { compareTasks, openCards } from '$server/board';
+import { dayByWorkspace, parseTimeLog } from '$server/timelog';
 import { config } from '$server/config';
 import { BRIEFING_MARKER } from '$server/ai/guardrails';
 import { readRegion } from '$server/ai/proposal';
@@ -39,7 +40,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	const defs = await workspaces();
 	const exclude = [`${config.hubFolder}/`];
 	const groups = defs
-		.map((w) => ({ slug: w.slug, name: w.name, color: w.color, tasks: openCards(index, w, defs) }))
+		.map((w) => ({
+			slug: w.slug,
+			name: w.name,
+			color: w.color,
+			// Sorted the way the board sorts a column, so a project's most
+			// urgent card is the one Today offers first.
+			tasks: openCards(index, w, defs).sort(compareTasks)
+		}))
 		.filter((g) => g.tasks.length > 0);
 
 	// Work no workspace claims. Here a quadrant is still what marks a line as
@@ -47,7 +55,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	// `- [ ]` in a syllabus is notation, and there are hundreds of them.
 	const unassigned = index
 		.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: exclude, excludeDailyNotes: true, requireQuadrant: true, limit: 300 })
-		.filter((task) => workspaceFor(defs, { path: task.path, tags: task.tags }) === null);
+		.filter((task) => workspaceFor(defs, { path: task.path, tags: task.tags }) === null)
+		.sort(compareTasks);
 
 	/**
 	 * Which workspace each of the day's own tasks belongs to, keyed
@@ -65,6 +74,22 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (owner) owners[`${task.path}:${task.line}`] = { slug: owner.slug, name: owner.name, color: owner.color };
 	}
 
+	/**
+	 * Which of the tasks on this page are past their due date, keyed the same
+	 * way as `owners`.
+	 *
+	 * Against the real today rather than the day being looked at: a card due
+	 * last Tuesday is late whether you are reading Monday's page or Friday's,
+	 * and a browser left open overnight would otherwise still be calling it
+	 * on time. Absent means not overdue, so a task with no due date needs no
+	 * entry.
+	 */
+	const now = today();
+	const overdue: Record<string, boolean> = {};
+	for (const task of [...scheduled, ...unscheduled, ...groups.flatMap((g) => g.tasks), ...unassigned]) {
+		if (task.due !== null && task.due < now) overdue[`${task.path}:${task.line}`] = true;
+	}
+
 	return {
 		day: params.day,
 		label: formatDay(params.day),
@@ -80,6 +105,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		unscheduled,
 		backlog,
 		owners,
+		overdue,
+		// What the day's hours are for, project by project. The day's own note
+		// is the only source: a block is time on something, and time on
+		// something is written down as a block.
+		dayByWorkspace: dayByWorkspace(scheduled, parseTimeLog(note.content, params.day), defs),
 		plannedMinutes: coveredMinutes(scheduled),
 		overlaps: overlappingCount(scheduled),
 		groups,

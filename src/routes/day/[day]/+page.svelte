@@ -8,8 +8,9 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { createDay } from '$lib/client/api';
+	import { createDay, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
+	import { formatDuration } from '$lib/shared/duration';
 	import { drag, registerDropZone } from '$lib/client/drag.svelte';
 	import { editTask } from '$lib/client/api';
 
@@ -31,6 +32,8 @@
 	const keyOf = (task: Task) => `${data.day}|${task.path}:${task.line}`;
 	/** The workspace the server attributed a task to, for its coloured dot. */
 	const ownerOf = (task: Task) => data.owners[`${task.path}:${task.line}`] ?? null;
+	/** Whether the server judged this task late, for the colour of its due chip. */
+	const isOverdue = (task: Task) => data.overdue[`${task.path}:${task.line}`] ?? false;
 	const merge = (list: Task[]) => list.map((task) => patches.get(keyOf(task)) ?? task);
 
 	const all = $derived([...merge(data.scheduled), ...merge(data.unscheduled)]);
@@ -95,6 +98,29 @@
 		else failed(result.message);
 	}
 
+	/**
+	 * Add a workspace card to this day with no time on it, so it lands in
+	 * Unscheduled and can be dragged onto the timeline from there. The same
+	 * endpoint a drop onto the grid uses, minus the time: a phone has no drag.
+	 */
+	async function addToDay(task: Task) {
+		problem = '';
+		const result = await planOnDay(data.day, task);
+		if (result.ok) await invalidateAll();
+		else failed(result.message);
+	}
+
+	/**
+	 * What one workspace did with the day, in as few words as it takes. The
+	 * planned figure is dropped once it has all been done, because "7h done of
+	 * 7h" is the same sentence twice.
+	 */
+	function split(w: { plannedMinutes: number; doneMinutes: number }): string {
+		if (w.doneMinutes === 0) return `${formatDuration(w.plannedMinutes, ' ')} planned`;
+		const done = `${formatDuration(w.doneMinutes, ' ')} done`;
+		return w.doneMinutes >= w.plannedMinutes ? done : `${done} of ${formatDuration(w.plannedMinutes, ' ')}`;
+	}
+
 	async function makeDay() {
 		creating = true;
 		const result = await createDay(data.day);
@@ -103,11 +129,11 @@
 		else problem = result.message;
 	}
 
-	const hours = $derived(Math.floor(data.plannedMinutes / 60));
-	const mins = $derived(data.plannedMinutes % 60);
 	const total = $derived(scheduled.length + unscheduled.length);
 	const doneCount = $derived([...scheduled, ...unscheduled].filter(isDone).length);
 	const visibleGroups = $derived(filter ? data.groups.filter((g) => g.slug === filter) : data.groups);
+	// Nothing claims these, so no workspace filter can select them either.
+	const showElsewhere = $derived(filter === null && data.unassigned.length > 0);
 </script>
 
 <svelte:head><title>{data.label} · prosoche</title></svelte:head>
@@ -165,11 +191,22 @@
 				<h3>
 					Timeline
 					<span class="chips right">
-						<span class="chip quiet num">{hours}h {mins}m</span>
+						<span class="chip quiet num">{formatDuration(data.plannedMinutes, ' ')}</span>
 						<span class="chip quiet num">{doneCount} of {total} done</span>
 						{#if data.overlaps}<span class="chip quiet over num">{data.overlaps} overlapping</span>{/if}
 					</span>
 				</h3>
+				<!-- What the hours are for. One chip per project with a block
+				     today; blocks no workspace claims are simply not in it. -->
+				{#if data.dayByWorkspace.length}
+					<div class="chips by-workspace" data-testid="day-workspaces">
+						{#each data.dayByWorkspace as w (w.slug)}
+							<span class="chip quiet num" data-testid="day-workspace" data-slug={w.slug}>
+								<i style="background: {w.color}"></i>{w.name} {split(w)}
+							</span>
+						{/each}
+					</div>
+				{/if}
 				<!-- Keyed on the date and the segment: another day is another
 				     timeline, and a phone returning to this one wants it at the
 				     current hour again rather than where it was left. -->
@@ -245,17 +282,48 @@
 				{#each visibleGroups as group (group.slug)}
 					<h4><i style="background: {group.color}"></i>{group.name}</h4>
 					{#each group.tasks.slice(0, 12) as task (task.path + ':' + task.line)}
-						<TaskRow {task} showPath draggable onchange={applied} onproblem={failed} />
+						<TaskRow
+							{task}
+							showPath
+							draggable
+							overdue={isOverdue(task)}
+							onchange={applied}
+							onproblem={failed}
+							onopen={(t) => (opened = t)}
+							onadd={addToDay}
+						/>
 					{/each}
 					{#if group.tasks.length > 12}
 						<p class="hint">and {group.tasks.length - 12} more</p>
 					{/if}
-				{:else}
-					<p class="hint">
-						Only tasks carrying a quadrant appear here, and none outside a daily note has one yet. Add a
-						<code>`Q1`</code> to a line to see it.
-					</p>
 				{/each}
+				<!-- Open work carrying a quadrant that no workspace claims. A
+				     group of its own, and only when there is some, so the card
+				     does not grow a permanently empty heading. -->
+				{#if showElsewhere}
+					<h4>Elsewhere</h4>
+					{#each data.unassigned.slice(0, 12) as task (task.path + ':' + task.line)}
+						<TaskRow
+							{task}
+							showPath
+							draggable
+							overdue={isOverdue(task)}
+							onchange={applied}
+							onproblem={failed}
+							onopen={(t) => (opened = t)}
+							onadd={addToDay}
+						/>
+					{/each}
+					{#if data.unassigned.length > 12}
+						<p class="hint">and {data.unassigned.length - 12} more</p>
+					{/if}
+				{/if}
+				{#if !visibleGroups.length && !showElsewhere}
+					<p class="hint">
+						Nothing open in your workspaces. Add a card on a board and it appears here.
+						<a href="/w">Your workspaces</a>
+					</p>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -312,6 +380,9 @@
 
 	/* `.chip` and `.chips` are in app.css; only the spacing is this page's. */
 	.chips { margin-bottom: 10px; }
+	/* Under the heading rather than beside it: a chip per project is a row of
+	   its own length, and crowding it in with the totals wraps the heading. */
+	.by-workspace { flex: none; margin: -2px 0 10px; }
 	i { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; }
 
 	/* The three numbers a day is judged by, as pills rather than a sentence. */

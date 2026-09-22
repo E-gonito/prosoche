@@ -11,7 +11,9 @@
 		onchange,
 		onproblem,
 		onopen,
+		onadd,
 		workspace = null,
+		overdue = false,
 		showPath = false,
 		draggable = false
 	}: {
@@ -20,18 +22,38 @@
 		onproblem?: (message: string) => void;
 		/** Given, the row's text opens the card. Absent, the text is text. */
 		onopen?: (task: Task) => void;
+		/**
+		 * Given, the row offers to put this task on the day. Absent, no button:
+		 * a row that is already on the day has nothing to add it to.
+		 */
+		onadd?: (task: Task) => void | Promise<void>;
 		/** The workspace this task belongs to, worked out by the server. */
 		workspace?: { slug: string; name: string; color: string } | null;
+		/** Whether the due date has passed, decided by the server's today. */
+		overdue?: boolean;
 		showPath?: boolean;
 		draggable?: boolean;
 	} = $props();
 
 	let saving = $state(false);
+	let adding = $state(false);
 	const done = $derived(isDone(task));
 	const dragging = $derived(drag.task?.path === task.path && drag.task?.line === task.line);
 	// Starting a timer stops whatever was running, so the button on the row
 	// that is already being timed is a stop button rather than a no-op.
 	const timing = $derived(timer.task?.path === task.path && timer.task?.line === task.line);
+
+	async function add() {
+		if (adding) return;
+		adding = true;
+		// The caller reloads, which unmounts this row; the flag is reset anyway
+		// so a caller that only reports a problem leaves a usable button.
+		try {
+			await onadd?.(task);
+		} finally {
+			adding = false;
+		}
+	}
 
 	async function toggle() {
 		if (saving) return;
@@ -78,6 +100,16 @@
 	{:else}
 		<span class="text">{displayText(task.text)}</span>
 	{/if}
+	{#if onadd}
+		<button
+			class="add"
+			data-testid="add-to-today"
+			onclick={add}
+			disabled={adding}
+			aria-label="Add &quot;{displayText(task.text)}&quot; to today"
+			title="Add to today, with no time yet"
+		><Icon name="plus" size={12} /></button>
+	{/if}
 	{#if !done}
 		<button
 			class="run"
@@ -90,6 +122,7 @@
 			title={timing ? 'Stop and log the time' : 'Start timing this'}
 		><Icon name={timing ? 'square' : 'play'} size={11} /></button>
 	{/if}
+	{#if task.due}<span class="due num" class:overdue data-testid="task-due">{task.due}</span>{/if}
 	{#if task.quadrant}<span class="q q{task.quadrant}">Q{task.quadrant}</span>{/if}
 	{#if showPath}<span class="path">{task.path.split('/').pop()?.replace(/\.md$/, '')}</span>{/if}
 </div>
@@ -140,7 +173,7 @@
 	 * rows are read rather than timed, and always visible once a timer is
 	 * running on this one so it can be stopped from where it was started.
 	 */
-	.run {
+	.run, .add {
 		flex: none;
 		align-self: center;
 		display: grid;
@@ -153,17 +186,17 @@
 		cursor: pointer;
 		opacity: 0;
 	}
-	.task:hover .run, .run:focus-visible, .run.timing { opacity: 1; }
+	.task:hover .run, .task:hover .add, .run:focus-visible, .add:focus-visible, .run.timing { opacity: 1; }
 	/*
 	 * There is no hover on a phone, so "appears when you point at it" means
 	 * "does not exist". Shown faintly instead: present enough to find, quiet
 	 * enough that a list of tasks still reads as a list of tasks.
 	 */
 	@media (hover: none) {
-		.run { opacity: 0.55; }
+		.run, .add { opacity: 0.55; }
 		.run.timing { opacity: 1; }
 	}
-	.run:hover { color: var(--accent); }
+	.run:hover, .add:hover { color: var(--accent); }
 	.run.timing { color: var(--q1); }
 	.text { flex: 1; min-width: 0; }
 	/*
@@ -191,5 +224,9 @@
 		border-radius: 50%;
 		background: var(--dot);
 	}
+	/* A date is a fact about the line, so it reads like the time does, and
+	   turns the warning colour only once it has gone by. */
+	.due { font-size: var(--t11); color: var(--muted); flex: none; }
+	.due.overdue { color: var(--warn); font-weight: 600; }
 	.path { font-size: var(--t11); color: var(--muted); flex: none; }
 </style>
