@@ -8,6 +8,7 @@
 	import { displayText, type Task } from '$lib/shared/task';
 	import { editTask } from '$lib/client/api';
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	/** Produced by `src/lib/server/widgets/pinned.ts`. */
@@ -46,7 +47,11 @@
 {#if widget.problem || !widget.data}
 	<Unavailable {widget} />
 {:else if items.length === 0}
-	<p class="empty">Nothing pinned{data.scope ? ` in ${data.scope}` : ''}. Add <code>#{data.tag}</code> to a task to keep it here.</p>
+	<EmptyState
+		icon="square"
+		title="Nothing pinned{data.scope ? ` in ${data.scope}` : ''}."
+		hint="Add #{data.tag} to a task to keep it here."
+	/>
 {:else}
 	<ul data-testid="pinned-widget">
 		{#each items as item (key(item.task))}
@@ -78,6 +83,4 @@
 	.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
 	.btn { flex: none; font-size: 12px; padding: 2px 6px; }
 	.problem { margin: 0 0 6px; font-size: 12px; color: var(--bad); }
-	.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 4px; }
 </style>

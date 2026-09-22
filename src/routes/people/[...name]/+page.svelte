@@ -77,10 +77,7 @@
 				<p class="problem" data-testid="log-problem">{problem}</p>
 			{/if}
 			{#if !data.exists}
-				<p class="hint">
-					Nobody has written a note about {data.name} yet. Logging a contact creates one at
-					<code>{data.path}</code>.
-				</p>
+				<p class="hint">No note yet for {data.name}; logging a contact creates one at <code>{data.path}</code>.</p>
 			{/if}
 
 			{#if data.log.length}
@@ -101,9 +98,7 @@
 					onchange={(next) => (patched = { ...patched, [`${next.path}:${next.line}`]: next })}
 				/>
 			{:else}
-				<p class="hint">
-					Nothing open. A task mentioning <code>[[{data.name}]]</code>, anywhere in the vault, shows up here.
-				</p>
+				<p class="hint">Nothing open; a task mentioning <code>[[{data.name}]]</code> shows up here.</p>
 			{/each}
 		</section>
 	</div>

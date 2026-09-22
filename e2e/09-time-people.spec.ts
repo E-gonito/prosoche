@@ -129,7 +129,7 @@ test.describe('a person', () => {
 	test('with no note reads as a person with an empty note, and logging creates it', async ({ page }) => {
 		await page.goto(`/people/${encodeURIComponent('Grace Hopper')}`);
 		await expect(page.getByTestId('person-name')).toHaveText('Grace Hopper');
-		await expect(page.getByText('Nobody has written a note about Grace Hopper yet')).toBeVisible();
+		await expect(page.getByText('No note yet for Grace Hopper')).toBeVisible();
 		// She is only a wiki-link on a sub-bullet, which is enough to connect her.
 		await expect(page.getByTestId('person-backlink')).toHaveText('Kickoff');
 		await expect(page.getByTestId('task-row').filter({ hasText: 'Draft the brief' })).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('a person', () => {
 		const note = vaultFile('People/Grace Hopper.md');
 		expect(note).toContain('type: person');
 		expect(note).toContain(`## Log\n- ${TODAY} Met at the conference`);
-		await expect(page.getByText('Nobody has written a note about')).toHaveCount(0);
+		await expect(page.getByText('No note yet for')).toHaveCount(0);
 	});
 
 	test('refuses an empty contact instead of writing a stray line', async ({ page }) => {

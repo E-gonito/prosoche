@@ -6,6 +6,7 @@
 	import Briefing from '$lib/components/Briefing.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { createDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag, registerDropZone } from '$lib/client/drag.svelte';
@@ -114,12 +115,18 @@
 {/if}
 
 {#if !data.exists}
-	<div class="card empty">
-		<p>No note for this day yet.</p>
-		<button class="btn primary" onclick={makeDay} disabled={creating}>
-			{creating ? 'Creating…' : 'Create it from your template'}
-		</button>
-		<p class="hint">Copies Journal/Journal Template.md exactly as it is.</p>
+	<div class="card">
+		<EmptyState
+			icon="file-text"
+			title="No note for this day yet."
+			hint="Copies Journal/Journal Template.md exactly as it is."
+		>
+			{#snippet action()}
+				<button class="btn primary" onclick={makeDay} disabled={creating}>
+					{creating ? 'Creating…' : 'Create it from your template'}
+				</button>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="segmented" data-testid="day-segment" role="tablist" aria-label="What to show">
@@ -242,8 +249,6 @@
 	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
 	.main, .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 	.problem { border-color: #fca5a5; background: #fff7f7; margin-bottom: 12px; }
-	.empty { text-align: center; }
-	.empty p { margin: 0 0 10px; }
 	details summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 	details[open] summary { margin-bottom: 12px; }
 

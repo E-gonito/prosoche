@@ -9,6 +9,7 @@
 	 * particular question are visible at the moment it is asked.
 	 */
 	import RunSettings from '$lib/components/RunSettings.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { askQuestion } from '$lib/client/ai';
 	import { scopeLabel, type Answer, type Refusal, type RunSettings as Run, type Scope } from '$lib/shared/ai';
 	import type { LoadedWidget } from '$lib/shared/widgets';
@@ -60,11 +61,13 @@
 </script>
 
 {#if !data}
-	<p class="muted">Insights could not load.</p>
+	<EmptyState icon="alert-triangle" title="Insights could not load." />
 {:else if !data.enabled}
-	<p class="muted" data-testid="insights-off">
-		AI is switched off. Turn it back on in <a href="/settings/ai">Settings → AI</a>.
-	</p>
+	<EmptyState testid="insights-off" icon="sparkles" title="AI is switched off.">
+		{#snippet action()}
+			<a class="btn ghost" href="/settings/ai">Turn it back on in Settings → AI</a>
+		{/snippet}
+	</EmptyState>
 {:else}
 	<div class="insights" data-testid="insights-widget">
 		{#if run}<RunSettings bind:settings={run} lockPermission compact />{/if}

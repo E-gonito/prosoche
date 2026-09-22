@@ -8,22 +8,20 @@
 	 * by hand. Neither takes the rest of the tab down with it.
 	 */
 	import { WIDGETS, type LoadedWidget } from '$lib/shared/widgets';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 
 	let { widget }: { widget: LoadedWidget } = $props();
 	const known = $derived(widget.name in WIDGETS);
 </script>
 
-<p class="unavailable">
-	{#if widget.problem}
-		This widget could not load: {widget.problem}
-	{:else if !known}
-		No widget is called “{widget.name}”. Check the <code>widgets:</code> list in this workspace’s file.
-	{:else}
-		Nothing to show.
-	{/if}
-</p>
-
-<style>
-	.unavailable { margin: 0; color: var(--muted); font-size: 13px; }
-	code { font: 12px var(--mono); }
-</style>
+{#if widget.problem}
+	<EmptyState icon="alert-triangle" title="This widget could not load." hint={widget.problem} />
+{:else if !known}
+	<EmptyState
+		icon="alert-triangle"
+		title="No widget is called “{widget.name}”."
+		hint="Check the widgets: list in this workspace's file."
+	/>
+{:else}
+	<EmptyState icon="square" title="Nothing to show." />
+{/if}

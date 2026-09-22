@@ -8,6 +8,7 @@
 	 * are the note's own, not a re-count, because they are what gets quoted.
 	 */
 	import Draft from '$lib/components/Draft.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { displayText } from '$lib/shared/task';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
@@ -99,16 +100,19 @@
 			<p class="blockers"><b>Blockers</b> {data.day.blockers || 'none written'}</p>
 		{/if}
 	{:else if data.notes.length}
-		<p class="empty" data-testid="timesheet-empty">
-			Nothing written for {data.date} yet.
-			{#if data.previous}
-				The last entry is {data.previous.heading}.
-			{/if}
-		</p>
+		<EmptyState
+			testid="timesheet-empty"
+			icon="file-text"
+			title="Nothing written for {data.date} yet."
+			hint={data.previous ? `The last entry is ${data.previous.heading}.` : undefined}
+		/>
 	{:else}
-		<p class="empty" data-testid="timesheet-empty">
-			No timesheet note under {data.folder}. prosoche looks for notes named TIMESHEET…, and reads them; it never writes one.
-		</p>
+		<EmptyState
+			testid="timesheet-empty"
+			icon="file-text"
+			title="No timesheet note under {data.folder}."
+			hint="prosoche reads notes named TIMESHEET…, but never writes one."
+		/>
 	{/if}
 </div>
 
@@ -145,7 +149,6 @@
 	pre.prose { background: transparent; padding: 0; font: 13px/1.5 inherit; color: var(--muted); }
 	.blockers { margin: 10px 0 0; font-size: 13px; }
 	.blockers b { color: var(--warn); margin-right: 6px; }
-	.empty { color: var(--muted); font-size: 13px; margin: 0; }
 
 	@media (max-width: 720px) {
 		.clock { gap: 4px; }

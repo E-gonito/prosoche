@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 
 	let { data } = $props();
 	let box: HTMLInputElement | undefined = $state();
@@ -39,10 +40,14 @@
 			</span>
 		</a>
 	{:else}
-		<div class="card empty">Nothing matched. Search covers note titles and bodies.</div>
+		<div class="card">
+			<EmptyState icon="search" title="Nothing matched." hint="Search covers note titles and bodies." />
+		</div>
 	{/each}
 {:else}
-	<div class="card empty">Type something to search your vault.</div>
+	<div class="card">
+		<EmptyState icon="search" title="Type something to search your vault." />
+	</div>
 {/if}
 
 <style>

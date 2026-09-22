@@ -50,10 +50,7 @@
 <svelte:head><title>New workspace · prosoche</title></svelte:head>
 
 <PageHeader title="New workspace" />
-<p class="lead">
-	A workspace is one markdown file in your vault. It says which folders and tag belong to it, and which
-	widgets each of its tabs shows.
-</p>
+<p class="lead">A workspace is one markdown file that says which folders, tag and widgets belong to it.</p>
 
 <form onsubmit={submit} class="card">
 	<label class="field">
@@ -100,10 +97,7 @@
 			autocomplete="off"
 		/>
 	</label>
-	<p class="hint">
-		Comma separated, vault-relative. Notes and tasks inside them belong to this workspace; so does anything
-		tagged <code>#ws/{slug || 'slug'}</code> wherever it lives. You can leave this empty and add folders later.
-	</p>
+	<p class="hint">Comma separated, vault-relative; anything tagged <code>#ws/{slug || 'slug'}</code> belongs here too.</p>
 
 	<div class="field">
 		<span>Template</span>

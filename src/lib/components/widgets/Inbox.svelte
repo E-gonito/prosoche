@@ -8,6 +8,7 @@
 	 * is a rename and that belongs in the file tree, not behind a model.
 	 */
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Draft from '$lib/components/Draft.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
@@ -31,7 +32,7 @@
 {#if widget.problem || !widget.data}
 	<Unavailable {widget} />
 {:else if empty}
-	<p class="empty">Nothing waiting in {data.folder}/.</p>
+	<EmptyState icon="check" title="Nothing waiting in {data.folder}/." />
 {:else}
 	<ul data-testid="inbox-widget">
 		{#each data.lines as line (line.line)}
@@ -70,5 +71,4 @@
 	a:hover { text-decoration: underline; }
 	.preview { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-	.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 </style>

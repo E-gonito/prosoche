@@ -10,6 +10,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Widget from '$lib/components/widgets/Widget.svelte';
 
 	let { data } = $props();
@@ -24,7 +25,12 @@
 		<code class="tag">#{data.workspace.tag}</code>
 	{/snippet}
 	{#snippet actions()}
-		<a class="btn" data-testid="edit-definition" href={data.definition}>Edit definition</a>
+		<a
+			class="btn"
+			data-testid="edit-definition"
+			href={data.definition}
+			title="Tabs and widgets live in this markdown file; editing it here or in Obsidian is the same edit."
+		>Edit definition</a>
 	{/snippet}
 </PageHeader>
 
@@ -40,9 +46,13 @@
 </nav>
 
 {#if data.widgets.length === 0}
-	<p class="empty">
-		This tab lists no widgets prosoche knows. Edit the workspace file to name some from the catalogue.
-	</p>
+	<div class="card">
+		<EmptyState
+			icon="layers"
+			title="This tab lists no widgets prosoche knows."
+			hint="Edit the workspace file to name some from the catalogue."
+		/>
+	</div>
 {:else}
 	<div class="widget-grid">
 		{#each data.widgets as widget (widget.name)}
@@ -50,12 +60,6 @@
 		{/each}
 	</div>
 {/if}
-
-<p class="hint">
-	Tabs and widgets live in the workspace's markdown file, not in a settings screen:
-	<a href={data.definition}>{data.workspace.slug}.md</a> is the source of truth, and editing it here or in
-	Obsidian is the same edit.
-</p>
 
 <style>
 	.tag { font: 12px var(--mono); color: var(--muted); }
@@ -73,7 +77,4 @@
 	}
 	.tabs a:hover { background: var(--soft); color: var(--text); }
 	.tabs a.active { background: var(--panel); border-color: var(--line); color: var(--text); font-weight: 600; }
-
-	.hint { margin-top: 14px; font-size: 12px; color: var(--muted); }
-	.empty { color: var(--muted); padding: 24px; text-align: center; }
 </style>

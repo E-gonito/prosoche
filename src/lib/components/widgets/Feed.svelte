@@ -10,6 +10,7 @@
 	 */
 	import { issueCardLine, issueCardText, type IntegrationItem, type IntegrationWidget } from '$lib/shared/integrations';
 	import { createCard } from '$lib/client/cards';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	let { widget }: { widget: LoadedWidget; refresh?: () => void } = $props();
@@ -71,20 +72,24 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="quiet">Nothing open and assigned to you in {feed.scope}.</p>
+		<EmptyState icon="check" title="Nothing open and assigned to you in {feed.scope}." />
 	{/if}
 {:else}
-	<div class="off" data-testid="{feed.provider}-not-connected">
-		<p class="why" data-state={feed.status.state}>{feed.status.message}</p>
-		<p class="how">Set {feed.env.length === 1 ? 'this' : 'these'} in prosoche's environment and restart it:</p>
-		<dl>
-			{#each feed.env as setting (setting.name)}
-				<dt>{setting.name}{#if !setting.required}<span class="opt">optional</span>{/if}</dt>
-				<dd>{setting.note}</dd>
-			{/each}
-		</dl>
-		<p class="how">No token is stored in the vault or the repository. Without one prosoche simply does not call {feed.label}.</p>
-	</div>
+	<EmptyState
+		testid="{feed.provider}-not-connected"
+		icon="external-link"
+		title={feed.status.message}
+		hint="Set {feed.env.length === 1 ? 'this' : 'these'} in prosoche's environment and restart it."
+	>
+		{#snippet children()}
+			<dl>
+				{#each feed.env as setting (setting.name)}
+					<dt>{setting.name}{#if !setting.required}<span class="opt">optional</span>{/if}</dt>
+					<dd>{setting.note}</dd>
+				{/each}
+			</dl>
+		{/snippet}
+	</EmptyState>
 {/if}
 
 <style>
@@ -107,11 +112,7 @@
 	.flag.review { background: #fef3c7; color: var(--warn); }
 	.card { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 12px; padding: 4px 8px; }
 	.said { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
-	.quiet { margin: 0; color: var(--muted); font-size: 13px; }
-	.off { font-size: 13px; }
-	.why { margin: 0 0 8px; }
-	.how { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
-	dl { margin: 0; }
+	dl { margin: 6px 0 0; text-align: left; }
 	dt { font: 12px var(--mono); margin-top: 8px; }
 	dd { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 	.opt { margin-left: 6px; font-family: inherit; font-size: 11px; color: var(--muted); }

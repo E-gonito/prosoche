@@ -182,7 +182,7 @@
 	<button
 		class="btn"
 		aria-label="Make card"
-		title="Turn the selection into a Question::Answer card. The note needs a #flashcards tag for Spaced Repetition to collect it."
+		title="Turn the selection into a Question::Answer card (needs a #flashcards tag)."
 		onclick={() => applyEdit(asCard)}><Icon name="sparkles" size={14} /> Make card</button>
 	<button
 		class="btn"
@@ -196,7 +196,7 @@
 {#if conflict}
 	<div class="card conflict">
 		<b>This note changed on another device while you were editing.</b>
-		<p class="hint">Nothing has been overwritten. Choose which version to keep, or copy what you need out first.</p>
+		<p class="hint">Nothing has been overwritten; choose which version to keep, or copy what you need first.</p>
 		<div class="row">
 			<button class="btn primary" onclick={keepMine}>Keep mine</button>
 			<button class="btn" onclick={takeTheirs}>Take theirs</button>
