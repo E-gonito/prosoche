@@ -40,9 +40,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: exclude, excludeDailyNotes: true, requireQuadrant: true, limit: 300 })
 		.map((task) => ({ task, workspace: workspaceFor(defs, { path: task.path }) }));
 
-	// How many checklist lines were left out, so the empty state can say why.
-	const checklistCount = index.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: exclude, excludeDailyNotes: true, limit: 5000 }).length - elsewhere.length;
-
 	const groups = defs
 		.map((w) => ({
 			slug: w.slug,
@@ -68,7 +65,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		overlaps: overlappingCount(scheduled),
 		groups,
 		unassigned: unassigned.slice(0, 40),
-		checklistCount,
 		// The region as it stands in the note. Read like any other text, so a
 		// briefing written by the timer, regenerated here, or typed by hand in
 		// Obsidian all arrive the same way.

@@ -6,8 +6,17 @@
 	 * nothing else. It never reorders the file, so a block dragged past another
 	 * stays where it was written. Dragging snaps to ten minutes, matching the
 	 * vault's Day Planner setting.
+	 *
+	 * The grid sits in a window that scrolls, because at two pixels a minute a
+	 * real day is taller than any screen. The window is as tall as its parent
+	 * lets it be, so where it opens matters: see `timelineScrollTop`. Every
+	 * pointer-to-minute reading is taken from the grid's own bounding rect,
+	 * which moves with the scroll, so nothing here has to know the scroll
+	 * offset — and a block keeps following the pointer while the window
+	 * scrolls out from under it.
 	 */
-	import { layoutBlocks, snap, timelineRange } from '$lib/shared/layout';
+	import { layoutBlocks, snap, timelineRange, timelineScrollTop } from '$lib/shared/layout';
+	import Icon from '$lib/components/Icon.svelte';
 	import { formatMinutes } from '$lib/shared/time';
 	import { editTask } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
@@ -61,11 +70,21 @@
 	 * same time and the same label, side by side.
 	 */
 	const COMPACT_BELOW_PX = 44;
+	/**
+	 * The edge band that scrolls the window during a drag, how fast it scrolls
+	 * per frame, and how far past the edge the pointer may stray and still be
+	 * scrolling. The reach exists so a hand that overshoots the card keeps
+	 * going instead of stopping dead at the border.
+	 */
+	const EDGE_PX = 36;
+	const EDGE_SPEED_PX = 10;
+	const EDGE_REACH_PX = 120;
 
 	type Drag = {
 		task: Task;
 		mode: 'move' | 'resize';
-		fromY: number;
+		/** Where the gesture began, in grid pixels rather than screen ones. */
+		fromPx: number;
 		origStart: number;
 		origEnd: number;
 		startMin: number;
@@ -98,21 +117,79 @@
 	const heightPx = $derived((range.toMin - range.fromMin) * PX_PER_MIN);
 
 	let grid: HTMLDivElement | undefined = $state();
+	let scroller: HTMLDivElement | undefined = $state();
 	let dropping = $state(false);
+
+	/**
+	 * The minute at a screen position. Read from the grid, whose rect slides up
+	 * as the window scrolls, so this needs no scroll offset of its own.
+	 */
+	function minuteAt(clientY: number): number {
+		const rect = grid!.getBoundingClientRect();
+		const minute = range.fromMin + (clientY - rect.top) / PX_PER_MIN;
+		return Math.max(range.fromMin, Math.min(range.toMin - MIN_DURATION, snap(minute, SNAP)));
+	}
+
+	/**
+	 * Scroll the window when a drag reaches its edge, and say whether it moved.
+	 *
+	 * Without this the only times reachable by dragging are the ones already on
+	 * screen, which a fixed-height card makes a small fraction of the day. The
+	 * pointer has to be over the window horizontally, so dragging a block out
+	 * sideways onto a list does not set the grid moving on the way.
+	 */
+	function edgeScroll(clientX: number, clientY: number): boolean {
+		const el = scroller;
+		if (!el) return false;
+		const rect = el.getBoundingClientRect();
+		if (clientX < rect.left || clientX > rect.right) return false;
+		if (clientY < rect.top - EDGE_REACH_PX || clientY > rect.bottom + EDGE_REACH_PX) return false;
+		const delta =
+			clientY < rect.top + EDGE_PX ? -EDGE_SPEED_PX : clientY > rect.bottom - EDGE_PX ? EDGE_SPEED_PX : 0;
+		if (!delta) return false;
+		const before = el.scrollTop;
+		el.scrollTop = before + delta;
+		return el.scrollTop !== before;
+	}
 
 	/** Register as the drop target for tasks dragged in from a list. */
 	$effect(() => {
-		if (!grid) return;
-		const element = grid;
+		if (!grid || !scroller) return;
+		// The window rather than the grid, so the zone is the part of the
+		// timeline a pointer can actually be over. The grid is taller than the
+		// card and would otherwise claim the space below it.
 		return registerDropZone({
 			id: 'timeline',
-			element,
-			minuteAt: (clientY) => {
-				const rect = element.getBoundingClientRect();
-				const minute = range.fromMin + (clientY - rect.top) / PX_PER_MIN;
-				return Math.max(range.fromMin, Math.min(range.toMin - MIN_DURATION, snap(minute, SNAP)));
-			},
+			element: scroller,
+			minuteAt,
+			edgeScroll,
 			drop: (task, startMin) => void schedule(task, startMin ?? range.fromMin)
+		});
+	});
+
+	/**
+	 * Put the window where the day starts being interesting, once, on arrival.
+	 *
+	 * Deliberately not reactive to anything but the element: re-running it
+	 * would yank the grid back under someone who had scrolled it. The day page
+	 * keys this component on the date, so navigating to another day mounts a
+	 * fresh one and the rule applies again.
+	 */
+	let opened = false;
+	$effect(() => {
+		const el = scroller;
+		if (!el || opened) return;
+		// A window with no height is a column the phone is not showing. Leave
+		// it unopened, so it lands in the right place when it is.
+		if (el.clientHeight === 0) return;
+		opened = true;
+		el.scrollTop = timelineScrollTop({
+			fromMin: range.fromMin,
+			contentPx: heightPx,
+			viewportPx: el.clientHeight,
+			pxPerMin: PX_PER_MIN,
+			nowMin: isToday ? nowMin : null,
+			firstBlockMin: scheduled.length ? Math.min(...scheduled.map((t) => t.startMin!)) : null
 		});
 	});
 
@@ -160,10 +237,11 @@
 		if (event.button !== 0) return;
 		event.preventDefault();
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		pointer = { x: event.clientX, y: event.clientY };
 		drag = {
 			task,
 			mode,
-			fromY: event.clientY,
+			fromPx: gridY(event.clientY),
 			origStart: task.startMin!,
 			origEnd: task.endMin!,
 			startMin: task.startMin!,
@@ -172,18 +250,35 @@
 		};
 	}
 
+	/** A screen position in grid pixels. The rect moves with the scroll. */
+	function gridY(clientY: number): number {
+		return clientY - grid!.getBoundingClientRect().top;
+	}
+
+	/**
+	 * Where the pointer last was, kept outside the reactive state because the
+	 * scrolling loop needs it on frames when nothing has moved.
+	 */
+	let pointer = { x: 0, y: 0 };
+
 	function move(event: PointerEvent) {
+		pointer = { x: event.clientX, y: event.clientY };
+		reposition();
+	}
+
+	/** Recompute the preview from the last pointer position. */
+	function reposition() {
 		if (!drag) return;
 
 		// Dragging a block onto one of the lists means "take the time off it".
 		if (drag.mode === 'move') {
-			const zone = zoneAt(event.clientX, event.clientY);
+			const zone = zoneAt(pointer.x, pointer.y);
 			const leaving = zone && zone.id !== 'timeline' && !zone.minuteAt ? zone.id : null;
 			if (leaving !== drag.leaving) drag = { ...drag, leaving };
 			if (leaving) return;
 		}
 
-		const deltaMin = (event.clientY - drag.fromY) / PX_PER_MIN;
+		const deltaMin = (gridY(pointer.y) - drag.fromPx) / PX_PER_MIN;
 		if (drag.mode === 'move') {
 			const duration = drag.origEnd - drag.origStart;
 			const startMin = clamp(snap(drag.origStart + deltaMin, SNAP), 0, 1440 - duration);
@@ -193,6 +288,38 @@
 			drag = { ...drag, startMin: drag.origStart, endMin };
 		}
 	}
+
+	/**
+	 * The rest of the gesture, for as long as there is one.
+	 *
+	 * On the window rather than on the block, because the pointer does not
+	 * stay over the block: a drag against the edge of the window scrolls it,
+	 * and the block stops once the grid has no more to give while the pointer
+	 * keeps going. Handlers on the block itself missed both the last moves and
+	 * the release, and the drag was simply abandoned — the note never heard
+	 * about it. Pointer capture is asked for as well, but it is not something
+	 * to rely on.
+	 *
+	 * The frame timer is the other half: a pointer held still at the edge is
+	 * not moving, and it still means "keep going".
+	 */
+	$effect(() => {
+		if (!drag) return;
+		const up = () => void finish();
+		window.addEventListener('pointermove', move);
+		window.addEventListener('pointerup', up);
+		window.addEventListener('pointercancel', up);
+		let frame = requestAnimationFrame(function tick() {
+			frame = requestAnimationFrame(tick);
+			if (edgeScroll(pointer.x, pointer.y)) reposition();
+		});
+		return () => {
+			window.removeEventListener('pointermove', move);
+			window.removeEventListener('pointerup', up);
+			window.removeEventListener('pointercancel', up);
+			cancelAnimationFrame(frame);
+		};
+	});
 
 	async function finish() {
 		const current = drag;
@@ -270,126 +397,145 @@
 </script>
 
 <div class="wrap">
+	<!--
+		The window onto the grid. Height comes from whatever this is dropped
+		into: the day page caps it at the window's own height, a page that does
+		not cap it gets the whole day as before.
+	-->
 	<div
-		class="timeline"
-		data-testid="timeline"
-		class:dragging
+		class="scroll"
+		data-testid="timeline-scroll"
 		class:receiving={listDrag.task !== null}
 		class:dropping
-		bind:this={grid}
-		style="height: {heightPx}px"
+		bind:this={scroller}
 	>
-		{#each hours as hour (hour)}
-			<div class="hour" style="top: {top(hour)}px"><span>{formatMinutes(hour)}</span></div>
-		{/each}
+		<div
+			class="timeline"
+			data-testid="timeline"
+			class:dragging
+			bind:this={grid}
+			style="height: {heightPx}px"
+		>
+			{#each hours as hour (hour)}
+				<div class="hour" style="top: {top(hour)}px"><span>{formatMinutes(hour)}</span></div>
+			{/each}
 
-		{#if listDrag.task && listDrag.over !== null}
-			<div class="drop" style="top: {top(listDrag.over)}px; height: {30 * PX_PER_MIN}px">
-				{formatMinutes(listDrag.over)} · {displayText(listDrag.task.text)}
-			</div>
-		{/if}
+			{#if listDrag.task && listDrag.over !== null}
+				<div class="drop" style="top: {top(listDrag.over)}px; height: {30 * PX_PER_MIN}px">
+					{formatMinutes(listDrag.over)} · {displayText(listDrag.task.text)}
+				</div>
+			{/if}
 
-		{#if scheduled.length === 0}
-			<p class="vacant">
-				{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}
-			</p>
-		{/if}
+			{#if scheduled.length === 0}
+				<p class="vacant">
+					{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}
+				</p>
+			{/if}
 
-		{#if isToday && nowMin >= range.fromMin && nowMin <= range.toMin}
-			<div class="now" style="top: {top(nowMin)}px"></div>
-		{/if}
+			{#if isToday && nowMin >= range.fromMin && nowMin <= range.toMin}
+				<div class="now" data-testid="now-line" style="top: {top(nowMin)}px"></div>
+			{/if}
 
-		{#each placed as p (p.item.path + ':' + p.item.line)}
-			{@const task = p.item}
-			{@const done = isDone(task)}
-			{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
-			<div
-				class="block q{task.quadrant ?? 0}"
-				data-testid="block"
-				data-line={task.line}
-				data-start={p.startMin}
-				data-end={p.endMin}
-				class:done
-				class:busy={busy.has(task.line)}
-				class:active={drag?.task.line === task.line}
-				class:compact={(p.endMin - p.startMin) * PX_PER_MIN < COMPACT_BELOW_PX}
-				class:leaving={drag?.task.line === task.line && drag?.leaving !== null}
-				style="top: {top(p.startMin)}px; height: {(p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP}px;
-				       --label-lines: {labelLines((p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP)};
-				       left: calc(54px + {(p.column / p.columns) * 100}% - {(p.column / p.columns) * 58}px);
-				       width: calc({100 / p.columns}% - {58 / p.columns}px - 4px)"
-				role="button"
-				tabindex="0"
-				aria-label="{task.text}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}"
-				onpointerdown={(e) => start(e, task, 'move')}
-				onpointermove={move}
-				onpointerup={finish}
-				onpointercancel={finish}
-				onkeydown={(e) => {
-					if (e.key === 'ArrowUp') { e.preventDefault(); nudge(task, -SNAP); }
-					if (e.key === 'ArrowDown') { e.preventDefault(); nudge(task, SNAP); }
-					if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); void unschedule(task); }
-				}}
-			>
-				<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
-				<div class="label">{displayText(task.text)}</div>
-				{#if task.quadrant}<span class="q q{task.quadrant} badge">Q{task.quadrant}</span>{/if}
-				{#if !done}
-					<button
-						class="run"
-						class:timing
-						data-testid="block-timer"
-						title={timing ? 'Stop and log the time' : 'Start timing this block'}
-						aria-pressed={timing}
-						aria-label={timing
-							? `Stop timing "${displayText(task.text)}"`
-							: `Start timing "${displayText(task.text)}"`}
-						onpointerdown={(e) => e.stopPropagation()}
-						onclick={(e) => {
-							e.stopPropagation();
-							void (timing ? timer.stop() : timer.start(task.path, task.line));
-						}}
-					>{timing ? '\u25A0' : '\u25B6'}</button>
-				{/if}
-				<button
-					class="clear"
-					data-testid="clear-time"
-					title="Remove the time, leaving it as an unscheduled task"
-					aria-label="Unschedule {displayText(task.text)}"
-					onpointerdown={(e) => e.stopPropagation()}
-					onclick={(e) => { e.stopPropagation(); void unschedule(task); }}
-				>✕</button>
+			{#each placed as p (p.item.path + ':' + p.item.line)}
+				{@const task = p.item}
+				{@const done = isDone(task)}
+				{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
 				<div
-					class="handle"
-					data-testid="resize"
+					class="block q{task.quadrant ?? 0}"
+					data-testid="block"
+					data-line={task.line}
+					data-start={p.startMin}
+					data-end={p.endMin}
+					class:done
+					class:busy={busy.has(task.line)}
+					class:active={drag?.task.line === task.line}
+					class:compact={(p.endMin - p.startMin) * PX_PER_MIN < COMPACT_BELOW_PX}
+					class:leaving={drag?.task.line === task.line && drag?.leaving !== null}
+					style="top: {top(p.startMin)}px; height: {(p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP}px;
+					       --label-lines: {labelLines((p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP)};
+					       left: calc(54px + {(p.column / p.columns) * 100}% - {(p.column / p.columns) * 58}px);
+					       width: calc({100 / p.columns}% - {58 / p.columns}px - 4px)"
 					role="button"
-					tabindex="-1"
-					aria-label="Resize {task.text}"
-					onpointerdown={(e) => { e.stopPropagation(); start(e, task, 'resize'); }}
-					onpointermove={move}
-					onpointerup={finish}
-				></div>
-			</div>
-		{/each}
+					tabindex="0"
+					aria-label="{task.text}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}"
+					onpointerdown={(e) => start(e, task, 'move')}
+					onkeydown={(e) => {
+						if (e.key === 'ArrowUp') { e.preventDefault(); nudge(task, -SNAP); }
+						if (e.key === 'ArrowDown') { e.preventDefault(); nudge(task, SNAP); }
+						if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); void unschedule(task); }
+					}}
+				>
+					<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
+					<div class="label">{displayText(task.text)}</div>
+					{#if task.quadrant}<span class="q q{task.quadrant} badge">Q{task.quadrant}</span>{/if}
+					{#if !done}
+						<button
+							class="run"
+							class:timing
+							data-testid="block-timer"
+							title={timing ? 'Stop and log the time' : 'Start timing this block'}
+							aria-pressed={timing}
+							aria-label={timing
+								? `Stop timing "${displayText(task.text)}"`
+								: `Start timing "${displayText(task.text)}"`}
+							onpointerdown={(e) => e.stopPropagation()}
+							onclick={(e) => {
+								e.stopPropagation();
+								void (timing ? timer.stop() : timer.start(task.path, task.line));
+							}}
+						><Icon name={timing ? 'square' : 'play'} size={11} /></button>
+					{/if}
+					<button
+						class="clear"
+						data-testid="clear-time"
+						title="Remove the time, leaving it as an unscheduled task"
+						aria-label="Unschedule {displayText(task.text)}"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => { e.stopPropagation(); void unschedule(task); }}
+					><Icon name="x" size={12} /></button>
+					<div
+						class="handle"
+						data-testid="resize"
+						role="button"
+						tabindex="-1"
+						aria-label="Resize {task.text}"
+						onpointerdown={(e) => { e.stopPropagation(); start(e, task, 'resize'); }}
+					></div>
+				</div>
+			{/each}
+		</div>
 	</div>
-	<p class="hint">
-		Drag a block to move it, its bottom edge to resize, or focus one and use the arrow keys. Drag the ⠿ grip beside
-		an unscheduled task to give it a time, and drag a block out onto the Unscheduled list, press its ✕, or press
-		Backspace on it, to take the time off again. Snaps to {SNAP} minutes. Only the time on that line changes; the
-		note keeps its own order.
-	</p>
+	<p class="hint">Drag to move, the bottom edge to resize, arrow keys to nudge. Snaps to {SNAP} minutes.</p>
 </div>
 
 <style>
-	.timeline {
-		position: relative;
-		background: var(--panel);
+	/*
+	 * A column, so the grid takes the height that is left and the hint sits
+	 * under it. The flex properties matter only when a parent is itself a flex
+	 * column — the day page's card — and are inert anywhere else.
+	 */
+	.wrap { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+	/*
+	 * `overscroll-behavior` keeps a flick at the end of the day from carrying
+	 * on into the page behind it, and `pan-y` leaves a finger able to scroll
+	 * here while the blocks themselves still take the pointer for a drag.
+	 */
+	.scroll {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		touch-action: pan-y;
 		border: 1px solid var(--line);
 		border-radius: var(--r);
+		background: var(--panel);
+	}
+	.timeline {
+		position: relative;
 		overflow: hidden;
-		touch-action: none;
 	}
 	.dragging { cursor: grabbing; user-select: none; }
+	.block, .handle { touch-action: none; }
 	.receiving { outline: 2px dashed var(--accent); outline-offset: -2px; }
 	.dropping { opacity: 0.7; }
 
@@ -531,10 +677,11 @@
 		border-radius: 4px;
 		background: transparent;
 		color: var(--muted);
-		font-size: 11px;
 		line-height: 1;
 		cursor: pointer;
 		opacity: 0;
+		display: grid;
+		place-items: center;
 	}
 	.block:hover .clear,
 	.block:focus-within .clear { opacity: 1; }
@@ -553,10 +700,11 @@
 		border-radius: 4px;
 		background: transparent;
 		color: var(--muted);
-		font-size: 10px;
 		line-height: 1;
 		cursor: pointer;
 		opacity: 0;
+		display: grid;
+		place-items: center;
 	}
 	.block:hover .run,
 	.block:focus-within .run,

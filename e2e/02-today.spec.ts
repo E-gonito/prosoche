@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { TODAY_NOTE, vaultFile, lineWith, dragTo, centre, minutes, waitForFile, resetVault } from './helpers';
+import {
+	TODAY_NOTE,
+	vaultFile,
+	lineWith,
+	dragTo,
+	centre,
+	centreBlock,
+	minutes,
+	waitForFile,
+	resetVault
+} from './helpers';
 
 test.describe('the day', () => {
 	// Every test starts from the committed fixture, so none depends on another.
@@ -45,7 +55,7 @@ test.describe('the day', () => {
 	test('dragging a block down moves it in the note, and nothing else', async ({ page }) => {
 		const before = vaultFile(TODAY_NOTE).split('\n');
 		const block = page.getByTestId('block').filter({ hasText: 'Read a book' });
-		const from = await centre(page, '[data-testid="block"]:has-text("Read a book")');
+		const from = await centreBlock(page, 'Read a book');
 		await dragTo(page, from, { x: from.x, y: from.y + minutes(60) });
 
 		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('15:00 - 15:30 Read a book'))).toBe(true);
@@ -58,6 +68,7 @@ test.describe('the day', () => {
 	});
 
 	test('resizing a block changes only its end time', async ({ page }) => {
+		await centreBlock(page, 'Read a book');
 		const box = await page.getByTestId('block').filter({ hasText: 'Read a book' }).boundingBox();
 		await dragTo(
 			page,
@@ -92,10 +103,12 @@ test.describe('the day', () => {
 		const row = page.getByTestId('task-row').filter({ hasText: 'Walk the dog' });
 		await expect(row).toBeVisible();
 		const grip = await centre(page, '[data-testid="task-row"]:has-text("Walk the dog") [data-testid="grip"]');
-		const timeline = await page.getByTestId('timeline').boundingBox();
+		// The window onto the grid, not the grid: the grid is taller than the
+		// card it scrolls in, so most of it is not somewhere a pointer can be.
+		const view = await page.getByTestId('timeline-scroll').boundingBox();
 
-		// Drop roughly a third of the way down the grid.
-		await dragTo(page, grip, { x: timeline!.x + timeline!.width / 2, y: timeline!.y + timeline!.height / 3 });
+		// Drop roughly a third of the way down what is on screen.
+		await dragTo(page, grip, { x: view!.x + view!.width / 2, y: view!.y + view!.height / 3 });
 
 		expect(await waitForFile(TODAY_NOTE, (c) => /- \[ \] \d\d:\d0 - \d\d:\d0 Walk the dog/.test(c))).toBe(true);
 		const { text } = lineWith(TODAY_NOTE, 'Walk the dog');
@@ -104,7 +117,7 @@ test.describe('the day', () => {
 	});
 
 	test('dragging a block onto the unscheduled card takes its time off', async ({ page }) => {
-		const from = await centre(page, '[data-testid="block"]:has-text("Read a book")');
+		const from = await centreBlock(page, 'Read a book');
 		const target = await page.getByTestId('unscheduled').boundingBox();
 		await dragTo(page, from, { x: target!.x + target!.width / 2, y: target!.y + 30 });
 
@@ -113,6 +126,7 @@ test.describe('the day', () => {
 	});
 
 	test('the clear button on a block also unschedules it', async ({ page }) => {
+		await centreBlock(page, 'Read a book');
 		const block = page.getByTestId('block').filter({ hasText: 'Read a book' });
 		await block.hover();
 		await block.getByTestId('clear-time').click();
@@ -121,7 +135,11 @@ test.describe('the day', () => {
 	});
 
 	test('the fenced backlog is shown but not editable', async ({ page }) => {
-		const backlog = page.locator('.card', { has: page.getByText('Backlog', { exact: false }) }).last();
+		// It is part of the note rather than part of the day, so it sits inside
+		// the note's own disclosure rather than taking a card on the page.
+		await page.getByText('The whole note').click();
+		const backlog = page.locator('.backlog');
+		await expect(backlog).toBeVisible();
 		await expect(backlog).toContainText('Driving licence');
 		// No checkbox to click, because Obsidian treats these as text.
 		await expect(backlog.getByTestId('checkbox')).toHaveCount(0);
@@ -136,7 +154,7 @@ test.describe('the day', () => {
 	});
 
 	test('quick capture appends to the inbox', async ({ page }) => {
-		await page.getByLabel('Quick capture').fill('remember the milk');
+		await page.getByTestId('unscheduled').getByLabel('Quick capture').fill('remember the milk');
 		await page.getByRole('button', { name: 'Add' }).click();
 		expect(await waitForFile('Inbox/Capture.md', (c) => c.includes('remember the milk'))).toBe(true);
 		expect(vaultFile('Inbox/Capture.md')).toMatch(/## \d{4}-\d{2}-\d{2}\n- \d\d:\d\d remember the milk/);

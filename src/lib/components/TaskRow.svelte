@@ -4,6 +4,7 @@
 	import { editTask } from '$lib/client/api';
 	import { startDrag, drag } from '$lib/client/drag.svelte';
 	import { timer } from '$lib/client/timer.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 
 	let {
 		task,
@@ -72,7 +73,7 @@
 			aria-pressed={timing}
 			aria-label={timing ? `Stop timing "${displayText(task.text)}"` : `Start timing "${displayText(task.text)}"`}
 			title={timing ? 'Stop and log the time' : 'Start timing this'}
-		>{timing ? '■' : '▶'}</button>
+		><Icon name={timing ? 'square' : 'play'} size={11} /></button>
 	{/if}
 	{#if task.quadrant}<span class="q q{task.quadrant}">Q{task.quadrant}</span>{/if}
 	{#if showPath}<span class="path">{task.path.split('/').pop()?.replace(/\.md$/, '')}</span>{/if}
@@ -126,16 +127,26 @@
 	.run {
 		flex: none;
 		align-self: center;
+		display: grid;
+		place-items: center;
 		border: 0;
 		background: none;
 		padding: 0 2px;
-		font-size: 10px;
 		line-height: 1;
 		color: var(--muted);
 		cursor: pointer;
 		opacity: 0;
 	}
 	.task:hover .run, .run:focus-visible, .run.timing { opacity: 1; }
+	/*
+	 * There is no hover on a phone, so "appears when you point at it" means
+	 * "does not exist". Shown faintly instead: present enough to find, quiet
+	 * enough that a list of tasks still reads as a list of tasks.
+	 */
+	@media (hover: none) {
+		.run { opacity: 0.55; }
+		.run.timing { opacity: 1; }
+	}
 	.run:hover { color: var(--accent); }
 	.run.timing { color: var(--q1); }
 	.text { flex: 1; min-width: 0; }
