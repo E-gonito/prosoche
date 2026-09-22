@@ -83,6 +83,5 @@
 	.bar { display: block; width: 100%; height: 5px; border-radius: 3px; background: var(--soft); overflow: hidden; margin-top: 6px; }
 	.bar i { display: block; height: 100%; background: var(--accent); }
 	.done { flex: none; padding: 3px 6px; }
-	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
-	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
+	/* `.none` and `.problem` are shared, in app.css. */
 </style>

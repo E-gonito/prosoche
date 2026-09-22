@@ -647,8 +647,10 @@
 	.qbtn.q3:hover:not(:disabled) { background: var(--q3); border-color: var(--q3); }
 	.qbtn.q4:hover:not(:disabled) { background: var(--q4); border-color: var(--q4); }
 
-	.problem { margin: 0 0 var(--s2); font-size: var(--t12); color: var(--bad); }
-	.hint { font-size: var(--t12); color: var(--muted); }
+	/* `.problem` is shared, in app.css; this one leads the block below it
+	   rather than following one, so it needs the margin on the other side. */
+	.problem { margin: 0 0 var(--s2); }
+	/* `.hint` is shared, in app.css. */
 
 	/*
 	 * A pointer device can reveal things by hovering, so the select moves into

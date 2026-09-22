@@ -83,5 +83,7 @@
 	.who { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t11); color: var(--muted); flex: none; }
 	.dot { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--dot); }
 	.btn { flex: none; font-size: var(--t12); padding: 2px 6px; }
-	.problem { margin: 0 0 6px; font-size: var(--t12); color: var(--bad); }
+	/* `.problem` is shared, in app.css; this one leads the list rather than
+	   following it, so it needs the margin on the other side. */
+	.problem { margin: 0 0 var(--s2); }
 </style>

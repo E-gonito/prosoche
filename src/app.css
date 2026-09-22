@@ -220,6 +220,12 @@ a { color: var(--accent); }
 .muted { color: var(--muted); }
 .hint { font-size: var(--t12); color: var(--muted); margin-top: var(--s2); }
 .empty { color: var(--muted); padding: var(--s5); text-align: center; }
+/* An inline error under a widget's own controls: a failed edit, a refused
+   request. A caller with different spacing needs sets only `margin`. */
+.problem { color: var(--bad); font-size: var(--t12); margin: var(--s2) 0 0; }
+/* "Nothing here yet" inside a widget that still drew its frame — smaller and
+   quieter than `EmptyState`, which owns the full-widget case instead. */
+.none { color: var(--muted); font-size: var(--t13); margin: 0; }
 
 .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t13); }
 .kv b { color: var(--muted); font-weight: 500; }

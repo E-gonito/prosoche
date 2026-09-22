@@ -149,7 +149,10 @@
 	.cites { margin: 0; font-size: var(--t12); display: flex; gap: var(--s2); flex-wrap: wrap; }
 	/* A run's numbers, so body text with the figures lined up. */
 	.stamp { margin: 0; font-size: var(--t11); font-variant-numeric: tabular-nums; }
-	.problem { margin: 0; color: var(--bad); font-size: var(--t13); }
+	/* `.problem` is shared, in app.css; this one sits in a `gap`-spaced flex
+	   column that already spaces it, and reads beside `.muted` text a size up
+	   from the rest, so both `margin` and `font-size` are overridden here. */
+	.problem { margin: 0; font-size: var(--t13); }
 	.refusal { margin: 0; font-size: var(--t12); color: var(--muted); }
 	.muted { color: var(--muted); font-size: var(--t13); }
 </style>

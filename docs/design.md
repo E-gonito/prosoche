@@ -85,6 +85,11 @@ width; three do. Nothing else invents one.
   is what a refused guardrail wears.
 - **`.num`** — `font-variant-numeric: tabular-nums`, so a column of figures
   lines up.
+- **`.hint` / `.problem` / `.none`** — a widget's own small print: a quiet
+  aside, an inline error under its controls, its own "nothing here yet"
+  smaller than `EmptyState`. A caller overrides `margin` alone where its
+  layout needs a different side or amount; it never repeats the colour or
+  size.
 - **`.widget-grid`** — the twelve-column dense grid every dashboard uses. A
   widget states its own span against it.
 - **`.prose`** — rendered note content, kept close to Obsidian's reading view.
