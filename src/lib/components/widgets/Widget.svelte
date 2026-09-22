@@ -24,6 +24,7 @@
 	import Linear from './Linear.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
+	import { offerHeaderSlot } from './header-slot.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -36,12 +37,23 @@
 		/** A count or a single action, right of the title. Never prose. */
 		right?: Snippet;
 	} = $props();
+
+	/*
+	 * The same place, offered to the widget itself for one control of its own.
+	 * Whatever the page passed as `right` wins, because the page is the outer
+	 * authority; see `header-slot.svelte.ts` for why the seam exists.
+	 */
+	const slot = offerHeaderSlot();
 </script>
 
 <section class="widget" class:wide={widget.span === 2} data-widget={widget.name}>
 	<h3>
 		<span class="title">{widget.title}</span>
-		{#if right}<span class="right">{@render right()}</span>{/if}
+		{#if right}
+			<span class="right">{@render right()}</span>
+		{:else if slot.control}
+			<span class="right">{@render slot.control()}</span>
+		{/if}
 	</h3>
 	<div class="body">
 		{#if widget.problem}
@@ -90,23 +102,14 @@
 		grid-column: span 6;
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: 12px;
-		padding: 12px 14px 14px;
+		border-radius: var(--r-lg);
+		padding: var(--s3) 14px 14px;
 		min-width: 0;
 	}
 	.wide { grid-column: span 12; }
-	h3 {
-		margin: 0 0 10px;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 12px;
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-	}
+	/* The heading itself is `.widget > h3` in app.css, shared with `.card h3`.
+	   Only which of its two halves stretches is this component's business. */
 	.title { flex: 1; min-width: 0; }
-	.right { flex: none; font-weight: 400; text-transform: none; letter-spacing: 0; }
 	.body { min-width: 0; }
 
 	/* Too narrow for two cards side by side: every widget takes the row. */

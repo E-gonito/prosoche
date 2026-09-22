@@ -35,6 +35,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import CardDrawer from '../CardDrawer.svelte';
 	import Unavailable from './Unavailable.svelte';
+	import { claimHeaderSlot } from './header-slot.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	/** What a board with nothing behind it looks like, so a failed load renders. */
@@ -74,6 +75,8 @@
 	let active = $state('');
 	let scroller: HTMLDivElement | undefined = $state();
 	let more = $state(false);
+
+	claimHeaderSlot(() => headerToggle);
 
 	const cards = $derived.by(() => {
 		const fromServer = board.columns.flatMap((column) => column.cards);
@@ -267,32 +270,24 @@
 {:else}
 	{#if problem}<p class="problem" data-testid="board-problem" role="alert">{problem}</p>{/if}
 
-	<div class="bar">
-		<div class="pills" role="group" data-testid="column-pills" aria-label="Jump to a column">
-			{#each shown as group (group.column.key)}
-				<button
-					class="pill"
-					class:on={active === group.column.key}
-					data-testid="column-pill"
-					data-pill={group.column.key}
-					aria-current={active === group.column.key ? 'true' : undefined}
-					onclick={() => jumpTo(group.column.key)}
-				>
-					{group.column.title}<span class="n">{group.cards.length}</span>
-				</button>
-			{/each}
-		</div>
-
-		{#if parked > 0}
+	<!--
+		The toggle sits in the widget's own heading, beside the title; see
+		`headerToggle` below. Only the pills are left here, and they are the
+		phone's, so on a desktop this row collapses to nothing.
+	-->
+	<div class="chips pills" role="group" data-testid="column-pills" aria-label="Jump to a column">
+		{#each shown as group (group.column.key)}
 			<button
-				class="btn ghost finished"
-				data-testid="show-finished"
-				aria-pressed={showFinished}
-				onclick={toggleFinished}
+				class="chip"
+				class:on={active === group.column.key}
+				data-testid="column-pill"
+				data-pill={group.column.key}
+				aria-current={active === group.column.key ? 'true' : undefined}
+				onclick={() => jumpTo(group.column.key)}
 			>
-				{showFinished ? 'Hide finished' : `Show finished (${parked})`}
+				{group.column.title}<span class="n num">{group.cards.length}</span>
 			</button>
-		{/if}
+		{/each}
 	</div>
 
 	<div class="deck" class:more data-testid="board-deck" data-more={more}>
@@ -348,7 +343,7 @@
 
 								<div class="actions">
 									<button
-										class="icon"
+										class="icon-btn"
 										data-testid="card-more"
 										aria-expanded={revealed === cardKey(card.task)}
 										aria-label="Column picker for {displayText(card.task.text)}"
@@ -393,7 +388,7 @@
 							</button>
 							<button
 								type="button"
-								class="icon"
+								class="icon-btn"
 								data-testid="add-card-cancel"
 								aria-label="Cancel"
 								onclick={() => (adding = '')}
@@ -478,36 +473,31 @@
 	{/if}
 {/if}
 
-<style>
-	/* The row above the board: the phone's column pills, and the toggle that
-	   parks finished columns. Empty on a desktop board with nothing finished,
-	   which is why it collapses to nothing rather than reserving height. */
-	/* The gap under the row hangs off its children, so a desktop board with
-	   nothing parked leaves no band of empty space where the row would be. */
-	.bar { display: flex; align-items: center; gap: 8px; }
-	.bar > * { margin-bottom: 8px; }
-	.finished { margin-left: auto; flex: none; font-size: 12px; padding: 4px 8px; }
+<!--
+	Rendered by `Widget.svelte` in this widget's heading, not here. It draws
+	nothing when no finished column is parked, which is the common case and
+	which is why the claim never has to be withdrawn.
+-->
+{#snippet headerToggle()}
+	{#if parked > 0}
+		<button
+			class="btn ghost small finished"
+			data-testid="show-finished"
+			aria-pressed={showFinished}
+			onclick={toggleFinished}
+		>
+			{showFinished ? 'Hide finished' : `Show finished (${parked})`}
+		</button>
+	{/if}
+{/snippet}
 
-	/* Pills are the phone's way to change column; a desktop just looks across. */
+<style>
+	.finished { white-space: nowrap; }
+	.chip .n { font-size: var(--t11); }
+
+	/* Pills are the phone's way to change column; a desktop just looks across,
+	   so on a desktop this row is not drawn at all and costs no height. */
 	.pills { display: none; }
-	.pill {
-		flex: none;
-		min-height: 40px;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		border: 1px solid var(--line);
-		background: var(--panel);
-		border-radius: 999px;
-		padding: 0 12px;
-		font: inherit;
-		font-size: 13px;
-		color: var(--muted);
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-	.pill .n { font: 11px var(--mono); }
 
 	/* The shadow lives on the wrapper, because a pseudo element on the
 	   scroller itself would scroll away with the columns. */
@@ -535,18 +525,19 @@
 	}
 	.col {
 		/* Share the row rather than each taking a fixed slice, so four columns
-		   fill the widget and six scroll instead of clipping the last. */
+		   fill the widget and six scroll instead of clipping the last. 220px is
+		   what a card needs to be readable, not a step on the spacing scale. */
 		flex: 1 1 220px;
 		min-width: 220px;
 		background: var(--soft);
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--r);
 		padding: 7px;
 	}
 	.col.over { border-color: var(--accent); background: var(--accent-soft); }
 	.col header { display: flex; align-items: center; gap: 6px; margin: 2px 2px 7px; }
-	h4 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-	.col header .n { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
+	h4 { margin: 0; font-size: var(--t12); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+	.col header .n { margin-left: auto; font-size: var(--t11); color: var(--muted); }
 
 	.stack { display: flex; flex-direction: column; gap: 5px; }
 	.card {
@@ -559,7 +550,7 @@
 	.card.dragging { opacity: 0.4; }
 	.card.saving { opacity: 0.6; }
 	.top { display: flex; align-items: baseline; gap: 6px; }
-	.grip { color: var(--muted); cursor: grab; touch-action: none; user-select: none; font-size: 12px; line-height: 1; }
+	.grip { color: var(--muted); cursor: grab; touch-action: none; user-select: none; font-size: var(--t12); line-height: 1; }
 	.open {
 		flex: 1;
 		min-width: 0;
@@ -567,44 +558,31 @@
 		background: none;
 		padding: 0;
 		font: inherit;
-		font-size: 13px;
+		font-size: var(--t13);
 		color: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.open:hover { color: var(--accent); }
-	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 11px; color: var(--muted); }
-	.due { font-family: var(--mono); }
+	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: var(--t11); color: var(--muted); }
+	/* A date, so body text with the figures lined up rather than monospace. */
+	.due { font-variant-numeric: tabular-nums; }
 	.blocked { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
 	.src { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
 
-	.icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		border: 0;
-		background: none;
-		padding: 2px;
-		border-radius: 5px;
-		color: var(--muted);
-		cursor: pointer;
-		line-height: 0;
-	}
-	.icon:hover { background: var(--soft); color: var(--text); }
-
 	/* Touch and narrow screens get the select in the flow, under the card:
 	   there is no hover to reveal it with and no pleasant drag either. */
-	.actions { display: flex; align-items: center; gap: 4px; margin-top: 5px; }
-	.actions .icon { display: none; }
+	.actions { display: flex; align-items: center; gap: var(--s1); margin-top: 5px; }
+	.actions .icon-btn { display: none; }
 	.move {
 		flex: 1;
 		min-width: 0;
-		font: 11px inherit;
+		font: var(--t11) inherit;
 		color: var(--muted);
 		border: 1px solid var(--line);
-		border-radius: 6px;
-		background: #fff;
-		padding: 2px 4px;
+		border-radius: var(--r-sm);
+		background: var(--field);
+		padding: 2px var(--s1);
 	}
 
 	.addopen {
@@ -613,53 +591,53 @@
 		justify-content: center;
 		gap: 5px;
 		width: 100%;
-		min-height: 32px;
+		min-height: var(--s6);
 		margin-top: 7px;
 		border: 1px dashed var(--line);
 		border-radius: 8px;
 		background: none;
 		color: var(--muted);
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--t12);
 		cursor: pointer;
 	}
 	.addopen:hover { background: var(--panel); color: var(--accent); border-color: var(--accent); }
 
-	.new { display: flex; gap: 4px; margin-top: 7px; }
+	.new { display: flex; gap: var(--s1); margin-top: 7px; }
 	.new input {
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
-		border-radius: 6px;
+		border-radius: var(--r-sm);
 		padding: 5px 7px;
 		font: inherit;
-		font-size: 12px;
-		background: #fff;
+		font-size: var(--t12);
+		background: var(--field);
 	}
-	.new .btn { padding: 4px 8px; font-size: 12px; flex: none; }
-	.new .icon { flex: none; }
+	.new .btn { padding: var(--s1) var(--s2); font-size: var(--t12); flex: none; }
+	.new .icon-btn { flex: none; }
 
-	.nothing { margin-top: 14px; text-align: center; padding: 18px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+	.nothing { margin-top: 14px; text-align: center; padding: 18px var(--s3); border: 1px dashed var(--line); border-radius: var(--r); }
 	.lead { margin: 0 0 10px; color: var(--muted); }
 	.first { display: flex; gap: 6px; justify-content: center; }
-	.first input { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 240px; }
+	.first input { border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) 10px; font: inherit; background: var(--field); min-width: 240px; }
 
-	.excluded { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+	.excluded { margin: var(--s3) 0 0; font-size: var(--t12); color: var(--muted); }
 	.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
 
-	.review { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-	h5 { margin: 0 0 4px; font-size: 13px; }
+	.review { margin-top: var(--s3); border-top: 1px solid var(--line); padding-top: 10px; }
+	h5 { margin: 0 0 var(--s1); font-size: var(--t13); }
 	.note { margin-top: 10px; }
 	.note .src { display: block; font-size: 12px; margin: 0 0 2px; max-width: none; }
-	.line { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 13px; }
+	.line { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t13); }
 	.line .text { flex: 1; min-width: 0; }
 	.qs { display: flex; gap: 3px; flex: none; }
 	.qbtn {
 		border: 1px solid var(--line);
-		background: #fff;
+		background: var(--field);
 		border-radius: 4px;
-		font: 11px/1 var(--mono);
-		padding: 3px 4px;
+		font: var(--t11)/1 var(--mono);
+		padding: 3px var(--s1);
 		cursor: pointer;
 		color: var(--muted);
 	}
@@ -669,8 +647,8 @@
 	.qbtn.q3:hover:not(:disabled) { background: var(--q3); border-color: var(--q3); }
 	.qbtn.q4:hover:not(:disabled) { background: var(--q4); border-color: var(--q4); }
 
-	.problem { margin: 0 0 8px; font-size: 12px; color: var(--bad); }
-	.hint { font-size: 12px; color: var(--muted); }
+	.problem { margin: 0 0 var(--s2); font-size: var(--t12); color: var(--bad); }
+	.hint { font-size: var(--t12); color: var(--muted); }
 
 	/*
 	 * A pointer device can reveal things by hovering, so the select moves into
@@ -685,10 +663,10 @@
 		   it beside the button instead would either cover the title or squeeze
 		   it to nothing in a 220px column. */
 		.top { padding-right: 22px; }
-		.actions { position: absolute; top: 3px; right: 4px; display: block; margin-top: 0; }
-		.actions .icon { display: inline-flex; opacity: 0.4; }
-		.card:hover .actions .icon,
-		.card:focus-within .actions .icon { opacity: 1; }
+		.actions { position: absolute; top: 3px; right: var(--s1); display: block; margin-top: 0; }
+		.actions .icon-btn { display: inline-flex; opacity: 0.4; }
+		.card:hover .actions .icon-btn,
+		.card:focus-within .actions .icon-btn { opacity: 1; }
 		.move {
 			position: absolute;
 			top: 21px;
@@ -710,12 +688,13 @@
 		.col { flex: 0 0 82vw; scroll-snap-align: start; }
 		.columns { scroll-snap-type: x mandatory; }
 		.first input { min-width: 0; flex: 1; }
-		.pills { display: flex; flex: 1 1 0; gap: 6px; overflow-x: auto; min-width: 0; padding-bottom: 2px; }
-		.finished { margin-left: 0; }
+		/* A pill is a tap target here, so it is as tall as a thumb needs. */
+		.pills { display: flex; flex-wrap: nowrap; overflow-x: auto; min-width: 0; margin-bottom: var(--s2); padding-bottom: 2px; }
+		.pills .chip { min-height: 40px; }
 		/* Back into the flow, always visible: there is no hover here to ask with. */
 		.top { padding-right: 0; }
 		.actions { position: static; display: flex; margin-top: 5px; }
-		.actions .icon { display: none; }
+		.actions .icon-btn { display: none; }
 		.move { position: static; flex: 1; width: auto; max-width: none; visibility: visible; box-shadow: none; }
 	}
 </style>
