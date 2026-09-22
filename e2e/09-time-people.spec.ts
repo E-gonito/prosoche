@@ -57,7 +57,10 @@ test.describe('the timer', () => {
 		const heading = after.indexOf('## Time log');
 		const logged = after.slice(heading + 1).filter((l) => l.trim() !== '');
 		expect(logged).toHaveLength(1);
-		expect(logged[0]).toMatch(/^- \d\d:\d\d - \d\d:\d\d Client project \(\d+[hm]\S*\)$/);
+		// With the workspace tag the alias resolved: the block carries no tag,
+		// but the Client workspace names "Client project" in its `aliases:`, so
+		// the record of the work says whose work it was.
+		expect(logged[0]).toMatch(/^- \d\d:\d\d - \d\d:\d\d Client project \(\d+[hm]\S*\) #ws\/client$/);
 
 		// The header goes back to showing nothing, after saying what it logged.
 		await expect(page.getByTestId('timer-logged')).toBeVisible();
