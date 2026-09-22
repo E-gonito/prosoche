@@ -400,6 +400,38 @@ describe('against a vault', () => {
 			expect(summary.scoped).toBe(true);
 		});
 
+		// The shape of the author's own notes: a project named in the words of a
+		// daily block, with no tag anywhere on the line.
+		const KAYA: Workspace = {
+			...WORK,
+			slug: 'kaya',
+			name: 'Kaya',
+			tag: 'ws/kaya',
+			aliases: ['Kaya'],
+			folders: ['Kaya Thai'],
+			path: '_hub/workspaces/kaya.md'
+		};
+
+		it('counts a planned block that only names the workspace in its words', async () => {
+			const tuesday = [
+				'# Tasks',
+				'- [ ] 10:30 - 12:00 Work on Kaya `Q1`',
+				'- [ ] 13:00 - 13:30 Walk the dog `Q2`'
+			].join('\n');
+			await vault.write('Journal/2026/09/22.md', tuesday);
+			index.put('Journal/2026/09/22.md', tuesday);
+
+			const summary = await weekSummary(vault, index, {
+				days: weekOf('2026-09-21'),
+				workspaces: [WORK, KAYA],
+				workspace: KAYA
+			});
+			expect(summary.days[1]).toEqual({ day: '2026-09-22', plannedMinutes: 90, loggedMinutes: 0 });
+			// Monday's blocks belong to Work or to nobody, so they are not Kaya's.
+			expect(summary.days[0]).toEqual({ day: '2026-09-21', plannedMinutes: 0, loggedMinutes: 0 });
+			expect(summary).toMatchObject({ plannedMinutes: 90, loggedMinutes: 0, scoped: true });
+		});
+
 		it('is all zeroes for a week nobody logged anything in', async () => {
 			const summary = await weekSummary(vault, index, {
 				days: weekOf('2026-10-05'),
@@ -511,6 +543,27 @@ describe('against a vault', () => {
 			const stopped = await stopTimer(vault, new Date('2026-09-21T11:12:00'));
 			expect(stopped!.raw).toBe('- 10:42 - 11:12 Fix the build (30m) `Q1` #ws/work');
 			expect(stopped!.entry.workspace).toBe('ws/work');
+		});
+
+		it('takes the workspace from the words when the line carries no tag', async () => {
+			const kaya: Workspace = {
+				slug: 'kaya',
+				name: 'Kaya',
+				color: '#000',
+				tag: 'ws/kaya',
+				aliases: ['Kaya'],
+				folders: ['Kaya Thai'],
+				template: 'project',
+				tabs: [],
+				deck: '',
+				kanbanColumns: [],
+				path: '_hub/workspaces/kaya.md'
+			};
+			await vault.write(PATH, '# Tasks\n- [ ] 10:30 - 18:00 Work on Kaya `Q1`\n');
+			await startTimer(vault, [kaya], { path: PATH, line: 1 }, start);
+			const stopped = await stopTimer(vault, new Date('2026-09-21T11:12:00'));
+			expect(stopped!.raw).toBe('- 10:42 - 11:12 Work on Kaya (30m) `Q1` #ws/kaya');
+			expect(stopped!.entry.workspace).toBe('ws/kaya');
 		});
 
 		it('logs against the day it started on, not the day it stopped', async () => {
