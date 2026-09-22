@@ -119,10 +119,12 @@
 	const showReview = $derived(reviewing || cards.length === 0);
 
 	/**
-	 * What the board left out, said per note: "414 checklist lines in Data
-	 * Portal/manual_test (1) are not cards". Naming the note is the useful
-	 * half — a bare total says nothing about where to look, and in this vault
-	 * nearly all of them come from one test plan.
+	 * What the board left out, said per note: "414 checklist lines in Manual
+	 * Test Plan are not cards". Naming the note is the useful half — a bare
+	 * total says nothing about where to look, and in this vault every one of
+	 * those lines comes from a single test plan. The note's title rather than
+	 * its path, because that is what the review below lists; the path is the
+	 * link inside it.
 	 */
 	const excludedSays = $derived.by(() => {
 		const notes = board.candidates;
@@ -135,7 +137,7 @@
 		}
 		const named = notes.slice(0, 3).map((note) => `${note.count} in ${note.title}`);
 		const rest = notes.length - named.length;
-		if (rest > 0) named.push(`${rest} more ${rest === 1 ? 'note' : 'notes'}`);
+		if (rest > 0) named.push(`and ${rest} more ${rest === 1 ? 'note' : 'notes'}`);
 		return `${board.excluded} checklist lines are not cards: ${named.join(', ')}.`;
 	});
 
