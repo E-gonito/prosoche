@@ -37,5 +37,5 @@ export async function dayExists(vault: Vault, day: DayKey): Promise<boolean> {
 
 /** Fallback when the vault has no template, so a day is never unusable. */
 function emptyDay(): string {
-	return '# Tasks\n\n';
+	return `${config.dailyNote.tasksHeading}\n\n`;
 }
