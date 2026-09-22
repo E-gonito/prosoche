@@ -61,7 +61,6 @@
 	.name:hover { color: var(--accent); }
 	.src { flex: none; display: inline-flex; color: var(--muted); text-decoration: none; }
 	.src:hover { color: var(--accent); }
-	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
-	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
+	/* `.none` and `.problem` are shared, in app.css. */
 	button { flex: none; padding: 2px var(--s2); font-size: var(--t12); }
 </style>

@@ -544,7 +544,7 @@
 		position: relative;
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 5px 7px 6px;
 	}
 	.card.dragging { opacity: 0.4; }
@@ -594,7 +594,7 @@
 		min-height: var(--s6);
 		margin-top: 7px;
 		border: 1px dashed var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		background: none;
 		color: var(--muted);
 		font: inherit;
@@ -620,7 +620,7 @@
 	.nothing { margin-top: 14px; text-align: center; padding: 18px var(--s3); border: 1px dashed var(--line); border-radius: var(--r); }
 	.lead { margin: 0 0 10px; color: var(--muted); }
 	.first { display: flex; gap: 6px; justify-content: center; }
-	.first input { border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) 10px; font: inherit; background: var(--field); min-width: 240px; }
+	.first input { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s2) 10px; font: inherit; background: var(--field); min-width: 240px; }
 
 	.excluded { margin: var(--s3) 0 0; font-size: var(--t12); color: var(--muted); }
 	.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
@@ -647,8 +647,10 @@
 	.qbtn.q3:hover:not(:disabled) { background: var(--q3); border-color: var(--q3); }
 	.qbtn.q4:hover:not(:disabled) { background: var(--q4); border-color: var(--q4); }
 
-	.problem { margin: 0 0 var(--s2); font-size: var(--t12); color: var(--bad); }
-	.hint { font-size: var(--t12); color: var(--muted); }
+	/* `.problem` is shared, in app.css; this one leads the block below it
+	   rather than following one, so it needs the margin on the other side. */
+	.problem { margin: 0 0 var(--s2); }
+	/* `.hint` is shared, in app.css. */
 
 	/*
 	 * A pointer device can reveal things by hovering, so the select moves into

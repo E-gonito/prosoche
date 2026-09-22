@@ -65,7 +65,10 @@
 	/* A date, so body text with the figures lined up rather than monospace. */
 	.when { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); flex: none; }
 	.where { font-size: var(--t11); color: var(--muted); margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.hint { font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 0; }
+	/* `.hint` is shared, in app.css, but leaves the browser's own bottom
+	   margin on the `<p>` in place; this is the last thing in the card, so
+	   that margin is zeroed here instead. */
+	.hint { margin-bottom: 0; }
 
 	@media (max-width: 720px) {
 		.where { display: none; }

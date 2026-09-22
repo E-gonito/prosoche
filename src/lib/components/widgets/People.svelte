@@ -143,7 +143,7 @@
 	.log {
 		border: 1px solid var(--line);
 		background: var(--field);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font: inherit;
 		font-size: var(--t12);
 		padding: 2px 9px;
@@ -159,10 +159,10 @@
 		font-size: var(--t13);
 		padding: 5px 9px;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		background: var(--field);
 	}
-	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
+	/* `.problem` is shared, in app.css. */
 
 	@media (max-width: 720px) {
 		.who { display: none; }

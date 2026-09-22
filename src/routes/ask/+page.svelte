@@ -158,7 +158,7 @@
 	select,
 	input {
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: var(--s2) 10px;
 		font: inherit;
 		background: var(--field);

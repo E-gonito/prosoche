@@ -24,7 +24,7 @@ Type, named by the size it is. Body text is `--t14`.
 Radii, elevation, fields and focus:
 
 ```css
---r-sm: 6px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
+--r-sm: 6px; --r-md: 8px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
 --shadow: 0 6px 18px rgba(31, 35, 40, 0.18);      /* lifted off the page */
 --shadow-lg: 0 18px 48px rgba(31, 35, 40, 0.18);  /* floating over it */
 --field: #fff;                /* anything you type or choose into */
@@ -65,7 +65,18 @@ literally everywhere they appear:
 - **960px** — too narrow for two widgets side by side, so each takes the row.
 
 A page whose own two columns stop fitting at some other width may name that
-width; three do. Nothing else invents one.
+width; two do, both narrower than 960px because they run out of room before a
+generic two-widget row would:
+
+- **860px** — a person's page (`routes/people/[...name]`). The 1.2fr log
+  column still holds an input and a row of task text, and both crowd before
+  960px would collapse them.
+- **860px** — a note (`routes/notes/[...path]`). Three panes (tree, note,
+  rail), not two, are fighting for the row, so it gives up sooner than a
+  two-column page would.
+
+Nothing else invents one; the sync page's two-up diff stops fitting at the
+usual 960px and uses that.
 
 ## Shared classes
 
@@ -85,6 +96,11 @@ width; three do. Nothing else invents one.
   is what a refused guardrail wears.
 - **`.num`** — `font-variant-numeric: tabular-nums`, so a column of figures
   lines up.
+- **`.hint` / `.problem` / `.none`** — a widget's own small print: a quiet
+  aside, an inline error under its controls, its own "nothing here yet"
+  smaller than `EmptyState`. A caller overrides `margin` alone where its
+  layout needs a different side or amount; it never repeats the colour or
+  size.
 - **`.widget-grid`** — the twelve-column dense grid every dashboard uses. A
   widget states its own span against it.
 - **`.prose`** — rendered note content, kept close to Obsidian's reading view.

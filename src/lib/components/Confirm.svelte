@@ -77,7 +77,7 @@
 		margin: 0 0 14px;
 		padding: 10px var(--s3) 10px 28px;
 		background: var(--soft);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font: var(--t12) var(--mono);
 		max-height: 220px;
 		overflow: auto;

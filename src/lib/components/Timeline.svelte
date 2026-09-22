@@ -543,7 +543,7 @@
 		position: absolute;
 		left: 54px;
 		right: 8px;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		border: 2px dashed var(--accent);
 		background: var(--accent-soft);
 		color: var(--accent);
@@ -591,7 +591,7 @@
 
 	.block {
 		position: absolute;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 5px 9px;
 		background: #fff;
 		border: 1px solid var(--line);

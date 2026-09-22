@@ -178,7 +178,7 @@
 		align-items: center;
 		gap: var(--s2);
 		padding: 7px 10px;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		color: var(--text);
 		text-decoration: none;
 	}

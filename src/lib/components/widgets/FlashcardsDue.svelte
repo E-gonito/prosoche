@@ -58,7 +58,9 @@
 	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
 	.of { font-size: var(--t12); color: var(--muted); flex: 1; }
 	.decks { margin: 10px 0 0; }
-	.none { margin: 10px 0 0; color: var(--muted); font-size: var(--t13); }
+	/* `.none` is shared, in app.css; only this widget needs the top margin,
+	   because it always follows the `.top` row rather than starting the card. */
+	.none { margin-top: 10px; }
 	/*
 	 * One sentence naming a note and the tag it is missing. On a 390px phone
 	 * it does not fit on a line, and clipping it hid the tag — which is the

@@ -68,7 +68,7 @@
 	.tabs { display: flex; gap: var(--s1); flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 	.tabs a {
 		padding: 7px var(--s3);
-		border-radius: 8px 8px 0 0;
+		border-radius: var(--r-md) var(--r-md) 0 0;
 		color: var(--muted);
 		text-decoration: none;
 		font-size: var(--t13);

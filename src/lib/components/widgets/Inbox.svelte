@@ -71,5 +71,8 @@
 	a { text-decoration: none; }
 	a:hover { text-decoration: underline; }
 	.preview { display: block; font-size: var(--t12); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.hint { font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 0; }
+	/* `.hint` is shared, in app.css, but leaves the browser's own bottom
+	   margin on the `<p>` in place; this is the last thing in the card, so
+	   that margin is zeroed here instead. */
+	.hint { margin-bottom: 0; }
 </style>

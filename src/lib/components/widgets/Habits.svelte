@@ -110,8 +110,7 @@
 		color: var(--muted);
 	}
 	.more { margin-top: 6px; font-size: var(--t12); padding: 2px var(--s2); }
-	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
-	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
+	/* `.none` and `.problem` are shared, in app.css. */
 	@media (max-width: 720px) {
 		.strip { display: none; }
 	}

@@ -73,5 +73,5 @@
 	a.name:hover { color: var(--accent); }
 	/* `.num` is shared, in app.css: a count, with its figures lined up. */
 	.num { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: var(--t11); color: var(--muted); }
-	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
+	/* `.none` is shared, in app.css. */
 </style>

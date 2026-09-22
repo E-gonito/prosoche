@@ -449,7 +449,9 @@
 		.sheet { animation: none; }
 	}
 
-	/* Too narrow for a tree beside the note: it moves into the sheet instead. */
+	/* Too narrow for a tree beside the note: it moves into the sheet instead.
+	   Wider than the usual 720px phone cutoff because this page has three
+	   panes fighting for room, not two; see docs/design.md. */
 	@media (max-width: 860px) {
 		.layout,
 		.layout.tree-collapsed,
