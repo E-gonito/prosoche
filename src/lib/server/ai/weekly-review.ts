@@ -2,9 +2,9 @@
  * The weekly review: what the week actually contained, written to its own note.
  *
  * Same division of labour as the briefing, for the same reason. The figures —
- * hours logged against hours planned, where they went by workspace and by
- * quadrant, what got done, what has been open longest — are queries over the
- * markdown and the index. A model is asked only for a few sentences of
+ * hours ticked and hours timed against hours planned, where they went by
+ * workspace and by quadrant, what got done, what has been open longest — are
+ * queries over the markdown and the index. A model is asked only for a few sentences of
  * commentary on top, and when it is unavailable the note is still written
  * with the numbers.
  *
@@ -105,11 +105,13 @@ export function render(facts: WeekFacts, commentary = ''): string {
 	if (commentary.trim()) lines.push(commentary.trim(), '');
 
 	lines.push('## Time', '');
-	if (summary.loggedMinutes === 0 && summary.plannedMinutes === 0) {
+	if (summary.doneMinutes === 0 && summary.loggedMinutes === 0 && summary.plannedMinutes === 0) {
 		lines.push('Nothing planned and nothing logged this week.', '');
 	} else {
+		// Ticked and timed are named apart, because they are two different
+		// claims: one says the block happened, the other measured it.
 		lines.push(
-			`- Logged ${formatDuration(summary.loggedMinutes)} against ${formatDuration(summary.plannedMinutes)} planned.`
+			`- ${formatDuration(summary.doneMinutes)} done and ${formatDuration(summary.loggedMinutes)} timed against ${formatDuration(summary.plannedMinutes)} planned.`
 		);
 		for (const w of summary.byWorkspace.filter((w) => w.minutes > 0)) {
 			lines.push(`- ${w.name}: ${formatDuration(w.minutes)}`);
@@ -161,7 +163,7 @@ export function propose(facts: WeekFacts, commentary: string, stamp: RunStamp): 
 		id: newId('weekly'),
 		feature: 'weekly-review',
 		stamp,
-		summary: `Weekly review for ${weekLabel(facts.week)}: ${formatDuration(facts.summary.loggedMinutes)} logged, ${facts.finished.length} finished, ${facts.carrying.length} still open.`,
+		summary: `Weekly review for ${weekLabel(facts.week)}: ${formatDuration(facts.summary.doneMinutes + facts.summary.loggedMinutes)} tracked, ${facts.finished.length} finished, ${facts.carrying.length} still open.`,
 		edits: [
 			{
 				id: newId('edit'),
@@ -261,7 +263,7 @@ function commentaryPrompt(facts: WeekFacts): string {
 	const { summary } = facts;
 	return [
 		`Week of ${facts.week[0]} to ${facts.week[6]}.`,
-		`Planned ${formatDuration(summary.plannedMinutes)}, logged ${formatDuration(summary.loggedMinutes)}.`,
+		`Planned ${formatDuration(summary.plannedMinutes)}, ${formatDuration(summary.doneMinutes)} ticked as done, ${formatDuration(summary.loggedMinutes)} timed.`,
 		'',
 		'By workspace:',
 		...summary.byWorkspace.filter((w) => w.minutes > 0).map((w) => `- ${w.name}: ${formatDuration(w.minutes)}`),

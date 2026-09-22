@@ -20,6 +20,15 @@
  *    a human reading the note in Obsidian; the minutes are always computed from
  *    the two times, so a hand-edited range cannot disagree with its own total.
  *
+ * ## Two records that the work happened
+ *
+ * A time log line is one. A ticked timed block in the day's plan is the other,
+ * and it is the one this vault actually uses: nine ticked blocks in a week and
+ * no timer at all is a normal week here. So the week's figures count a ticked
+ * block as done for as long as it was planned, and never again if a log line
+ * already measured the same work. Nothing is written for a tick; it is read
+ * back out of the plan the user had already written.
+ *
  * ## Why the running timer is the one thing outside the markdown
  *
  * A timer that has not stopped has no end time, and there is no honest way to
@@ -52,7 +61,7 @@ import { coveredMinutes } from './schedule';
 import { workspaceFor, type Workspace } from './workspaces';
 import type { NoteIndex } from './index/index';
 import type { Vault } from './vault/index';
-import { displayText, type Task } from '../shared/task';
+import { displayText, isDone, type Task } from '../shared/task';
 import {
 	MINUTES_IN_DAY,
 	formatDuration,
@@ -245,7 +254,7 @@ export async function appendEntry(vault: Vault, day: DayKey, entry: NewEntry): P
 	return { path, line: next.line, raw, entry: parseEntryLine(raw, next.line, day)! };
 }
 
-/** Planned against logged for one day, matched by the words of the task. */
+/** Planned against what happened for one day, matched by the words of the task. */
 export interface PlannedVsActual {
 	/**
 	 * Minutes of the day covered by at least one planned block. Overlaps count
@@ -254,7 +263,12 @@ export interface PlannedVsActual {
 	 * day has.
 	 */
 	plannedMinutes: number;
-	/** Minutes logged. Summed, since a timer cannot produce two at once. */
+	/**
+	 * Minutes of ticked blocks nobody timed, overlaps counted once like the
+	 * planned total. A tick is the user's own statement that the work happened.
+	 */
+	doneMinutes: number;
+	/** Minutes logged by the timer. Summed, since a timer cannot produce two at once. */
 	loggedMinutes: number;
 	rows: Array<{
 		path: string;
@@ -262,22 +276,36 @@ export interface PlannedVsActual {
 		text: string;
 		quadrant: number | null;
 		plannedMinutes: number;
+		/** The block's own duration when it is ticked and untimed, else zero. */
+		doneMinutes: number;
 		loggedMinutes: number;
 	}>;
+	/**
+	 * The blocks whose planned time counts as done, as they were passed in, so
+	 * a caller can attribute them without repeating the matching rule.
+	 */
+	done: Task[];
 	/** Logged time that matched nothing planned: work that was not on the plan. */
 	unmatched: Array<{ text: string; minutes: number }>;
 }
 
 /**
- * Compare a day's plan with what was logged against it.
+ * Compare a day's plan with what actually happened against it.
  *
  * Pure. Matching is by the words of the task, because a log line records what
  * was done rather than which line it came from: an exact match first, then one
  * name containing the other, longest plan first so "Work on atlas" wins over
  * "Work". Anything left over is reported as unmatched rather than guessed at.
  *
- * A planned block with nothing logged appears with zero logged minutes, which
- * is the interesting case and so is never dropped.
+ * Two things count as time spent, and never the same stretch twice. A timer
+ * entry is one. A ticked block with nothing logged against it is the other:
+ * the user planned an hour, ticked it, and never touched the timer, which is
+ * how most of this vault's days are written. A ticked block a timer entry
+ * matched contributes no done minutes, because the timer line is the finer
+ * record of the same work.
+ *
+ * A planned block with nothing against it appears with zeroes, which is the
+ * interesting case and so is never dropped.
  */
 export function plannedVsActual(scheduled: Task[], entries: TimeEntry[]): PlannedVsActual {
 	const blocks = scheduled.filter((t) => t.startMin !== null && t.endMin !== null);
@@ -287,8 +315,10 @@ export function plannedVsActual(scheduled: Task[], entries: TimeEntry[]): Planne
 		text: displayText(task.text),
 		quadrant: task.quadrant,
 		plannedMinutes: spanMinutes(task.startMin!, task.endMin!),
+		doneMinutes: 0,
 		loggedMinutes: 0,
-		key: matchKey(task.text)
+		key: matchKey(task.text),
+		task
 	}));
 	// Longest name first, so the most specific plan claims an entry.
 	const order = [...rows].sort((a, b) => b.key.length - a.key.length);
@@ -301,21 +331,56 @@ export function plannedVsActual(scheduled: Task[], entries: TimeEntry[]): Planne
 		else unmatched.push({ text: entry.text, minutes: entry.minutes });
 	}
 
+	const done = rows.filter((row) => isDone(row.task) && row.loggedMinutes === 0);
+	for (const row of done) row.doneMinutes = row.plannedMinutes;
+
 	return {
 		plannedMinutes: coveredMinutes(blocks),
+		doneMinutes: coveredMinutes(done.map((row) => row.task)),
 		loggedMinutes: entries.reduce((sum, e) => sum + e.minutes, 0),
-		rows: rows.map(({ key: _key, ...row }) => row),
+		rows: rows.map(({ key: _key, task: _task, ...row }) => row),
+		done: done.map((row) => row.task),
 		unmatched
 	};
 }
 
+/**
+ * A stretch of time that happened, and whatever it can be attributed to.
+ *
+ * The two sources are equal citizens of a week's totals and are told apart
+ * only where the arithmetic differs: timer minutes add up, because two timers
+ * cannot run at once, while blocks nest and so are merged before they are
+ * counted. `startMin`/`endMin` are what makes that merge possible.
+ */
+export interface Attributed {
+	day: DayKey;
+	/** The span's own length. For a block, its planned duration. */
+	minutes: number;
+	/** The `ws/…` tag it belongs to, or null for time nobody claimed. */
+	workspaceTag: string | null;
+	quadrant: number | null;
+	source: 'timer' | 'block';
+	startMin: number;
+	endMin: number;
+}
+
 /** Totals over a set of days, by workspace and by quadrant. */
 export interface WeeklyTotals {
+	/** Done plus timed, over the days in range. */
 	minutes: number;
+	/** Ticked blocks only, nested ones counted once per day. */
+	doneMinutes: number;
+	/** Timer minutes only, which is what the timer wrote under `## Time log`. */
+	loggedMinutes: number;
 	/** One row per day, in the order asked for, zeroes included. */
-	byDay: Array<{ day: DayKey; minutes: number }>;
-	byWorkspace: Array<{ slug: string; name: string; color: string; minutes: number }>;
-	/** Quadrant 1..4, or null for time logged against an unclassified task. */
+	byDay: Array<{ day: DayKey; minutes: number; doneMinutes: number; loggedMinutes: number }>;
+	/**
+	 * Done plus timed per workspace, with the timed part called out so a caller
+	 * can show the split. Named `timedMinutes` rather than `loggedMinutes`
+	 * because here it is a part of `minutes` rather than the whole of it.
+	 */
+	byWorkspace: Array<{ slug: string; name: string; color: string; minutes: number; timedMinutes: number }>;
+	/** Quadrant 1..4, or null for time against an unclassified task. */
 	byQuadrant: Array<{ quadrant: number | null; minutes: number }>;
 }
 
@@ -323,44 +388,120 @@ export interface WeeklyTotals {
 const UNASSIGNED = { slug: '', name: 'Unassigned', color: '#9aa0a6' };
 
 /**
- * Sum entries by workspace, by quadrant and by day.
+ * Total attributed spans by workspace, by quadrant and by day.
  *
  * Pure. `days` fixes the range: when given, `byDay` has exactly those days in
- * that order including the ones with nothing logged, so a chart has a bar per
- * day without the caller filling the gaps. Without it the range is whichever
- * days the entries mention, sorted.
+ * that order including the empty ones, so a chart has a bar per day without
+ * the caller filling the gaps. Without it the range is whichever days the
+ * spans mention, sorted. The by-workspace and by-quadrant rows cover every
+ * span passed in, in range or not, so narrowing the range is the caller's job
+ * and not two different answers to the same question.
+ *
+ * Each split is merged in its own right, which is why one figure cannot be
+ * derived from another: an hour of Kaya inside an afternoon of eye2gene is
+ * one hour for Kaya, one afternoon for eye2gene, and one afternoon for the
+ * day. Per-workspace minutes can therefore add up to more than the day's.
  *
  * A workspace tag naming no known workspace is counted as unassigned rather
- * than dropped, so the totals always add up to the time logged.
+ * than dropped, so the totals always add up to the time that happened.
  */
-export function weekly(entries: TimeEntry[], workspaces: Workspace[], days?: DayKey[]): WeeklyTotals {
-	const range = days ?? [...new Set(entries.map((e) => e.day))].sort();
-	const perDay = new Map(range.map((day) => [day, 0]));
-	const perWorkspace = new Map<string, number>();
-	const perQuadrant = new Map<number | null, number>();
+export function weekly(spans: Attributed[], workspaces: Workspace[], days?: DayKey[]): WeeklyTotals {
+	const range = days ?? [...new Set(spans.map((s) => s.day))].sort();
+	const perDay = new Map<DayKey, Attributed[]>(range.map((day) => [day, []]));
+	const perWorkspace = new Map<string, Attributed[]>();
+	const perQuadrant = new Map<number | null, Attributed[]>();
 
-	for (const entry of entries) {
-		if (perDay.has(entry.day)) perDay.set(entry.day, perDay.get(entry.day)! + entry.minutes);
-		const slug = workspaces.find((w) => w.tag === entry.workspace)?.slug ?? UNASSIGNED.slug;
-		perWorkspace.set(slug, (perWorkspace.get(slug) ?? 0) + entry.minutes);
-		perQuadrant.set(entry.quadrant, (perQuadrant.get(entry.quadrant) ?? 0) + entry.minutes);
+	for (const span of spans) {
+		perDay.get(span.day)?.push(span);
+		const slug = workspaces.find((w) => w.tag === span.workspaceTag)?.slug ?? UNASSIGNED.slug;
+		collect(perWorkspace, slug, span);
+		collect(perQuadrant, span.quadrant, span);
 	}
 
-	const byWorkspace = [...perWorkspace]
-		.map(([slug, minutes]) => {
-			const w = workspaces.find((ws) => ws.slug === slug) ?? UNASSIGNED;
-			return { slug, name: w.name, color: w.color, minutes };
-		})
-		.sort((a, b) => b.minutes - a.minutes);
+	const byDay = range.map((day) => {
+		const total = totalOf(perDay.get(day)!);
+		return { day, minutes: total.minutes, doneMinutes: total.doneMinutes, loggedMinutes: total.timedMinutes };
+	});
 
 	return {
-		minutes: [...perDay.values()].reduce((a, b) => a + b, 0),
-		byDay: range.map((day) => ({ day, minutes: perDay.get(day) ?? 0 })),
-		byWorkspace,
+		minutes: byDay.reduce((sum, d) => sum + d.minutes, 0),
+		doneMinutes: byDay.reduce((sum, d) => sum + d.doneMinutes, 0),
+		loggedMinutes: byDay.reduce((sum, d) => sum + d.loggedMinutes, 0),
+		byDay,
+		byWorkspace: [...perWorkspace]
+			.map(([slug, group]) => {
+				const w = workspaces.find((ws) => ws.slug === slug) ?? UNASSIGNED;
+				const total = totalOf(group);
+				return { slug, name: w.name, color: w.color, minutes: total.minutes, timedMinutes: total.timedMinutes };
+			})
+			.sort((a, b) => b.minutes - a.minutes),
 		byQuadrant: [...perQuadrant]
-			.map(([quadrant, minutes]) => ({ quadrant, minutes }))
+			.map(([quadrant, group]) => ({ quadrant, minutes: totalOf(group).minutes }))
 			.sort((a, b) => (a.quadrant ?? 9) - (b.quadrant ?? 9))
 	};
+}
+
+/**
+ * What one group of spans amounts to: timer minutes added, block minutes
+ * merged. Blocks of different days never merge, because a clock range is a
+ * time of day rather than an instant.
+ */
+function totalOf(spans: Attributed[]): { minutes: number; doneMinutes: number; timedMinutes: number } {
+	const blocksByDay = new Map<DayKey, Attributed[]>();
+	let timedMinutes = 0;
+	for (const span of spans) {
+		if (span.source === 'timer') timedMinutes += span.minutes;
+		else collect(blocksByDay, span.day, span);
+	}
+	let doneMinutes = 0;
+	for (const blocks of blocksByDay.values()) doneMinutes += coveredMinutes(blocks);
+	return { minutes: doneMinutes + timedMinutes, doneMinutes, timedMinutes };
+}
+
+/** Push onto the list at `key`, starting one when there is none. */
+function collect<K>(groups: Map<K, Attributed[]>, key: K, span: Attributed): void {
+	const group = groups.get(key);
+	if (group) group.push(span);
+	else groups.set(key, [span]);
+}
+
+/**
+ * Timer lines as attributed spans. The `#ws/` tag written on the line is the
+ * attribution, because `startTimer` resolved it when the work was happening
+ * and the line is the record of that.
+ */
+export function timedSpans(entries: TimeEntry[]): Attributed[] {
+	return entries.map((entry) => ({
+		day: entry.day,
+		minutes: entry.minutes,
+		workspaceTag: entry.workspace,
+		quadrant: entry.quadrant,
+		source: 'timer' as const,
+		startMin: entry.startMin,
+		endMin: entry.endMin
+	}));
+}
+
+/**
+ * Ticked blocks as attributed spans, for one day.
+ *
+ * Attribution is the same rule as everywhere else — tag, then folder, then
+ * frontmatter, then an alias in the words — which is what lets "10:30 - 18:00
+ * Work on eye2gene" in a daily note count towards eye2gene with nothing
+ * written on the line. A block with no clock is not a span and is skipped.
+ */
+export function doneSpans(day: DayKey, blocks: Task[], workspaces: Workspace[]): Attributed[] {
+	return blocks
+		.filter((task) => task.startMin !== null && task.endMin !== null)
+		.map((task) => ({
+			day,
+			minutes: spanMinutes(task.startMin!, task.endMin!),
+			workspaceTag: workspaceFor(workspaces, { path: task.path, tags: task.tags, text: task.text })?.tag ?? null,
+			quadrant: task.quadrant,
+			source: 'block' as const,
+			startMin: task.startMin!,
+			endMin: task.endMin!
+		}));
 }
 
 /** The seven days, Monday first, of the week containing `day`. */
@@ -386,8 +527,11 @@ export async function loadEntries(vault: Vault, days: DayKey[]): Promise<TimeEnt
 
 /** Everything the Time widget renders, for one week and one scope. */
 export interface WeekSummary {
-	days: Array<{ day: DayKey; plannedMinutes: number; loggedMinutes: number }>;
+	days: Array<{ day: DayKey; plannedMinutes: number; doneMinutes: number; loggedMinutes: number }>;
 	plannedMinutes: number;
+	/** Ticked blocks nobody timed, nested ones counted once per day. */
+	doneMinutes: number;
+	/** Timer minutes only, so this figure still means what it always meant. */
 	loggedMinutes: number;
 	byWorkspace: WeeklyTotals['byWorkspace'];
 	byQuadrant: WeeklyTotals['byQuadrant'];
@@ -398,11 +542,17 @@ export interface WeekSummary {
 }
 
 /**
- * A week of planned-against-logged, optionally narrowed to one workspace.
+ * A week of planned against what happened, optionally narrowed to one
+ * workspace.
  *
  * Reads the days' notes and asks the index for their scheduled tasks; the
  * arithmetic is all in the pure functions above. One call, so the widget holds
  * no domain logic.
+ *
+ * Time that happened is a tick or a timer. `loggedMinutes` stays the timer's
+ * minutes alone and `doneMinutes` is the ticked blocks nothing was timed
+ * against, so no stretch of work is counted twice and a reader of either
+ * figure gets the one they asked for.
  *
  * Scoping uses the same rule as everything else: a log line belongs to the
  * workspace whose tag it carries, a planned block to whichever workspace its
@@ -418,7 +568,6 @@ export async function weekSummary(
 	const { days, workspaces, workspace } = opts;
 	const all = await loadEntries(vault, days);
 	const entries = workspace ? all.filter((e) => e.workspace === workspace.tag) : all;
-	const week = weekly(entries, workspaces, days);
 
 	const planned = days.map((day) => {
 		const blocks = index
@@ -432,14 +581,22 @@ export async function weekSummary(
 		return plannedVsActual(blocks, entries.filter((e) => e.day === day));
 	});
 
+	const week = weekly(
+		[...timedSpans(entries), ...days.flatMap((day, i) => doneSpans(day, planned[i].done, workspaces))],
+		workspaces,
+		days
+	);
+
 	return {
 		days: week.byDay.map((d, i) => ({
 			day: d.day,
-			loggedMinutes: d.minutes,
-			plannedMinutes: planned[i].plannedMinutes
+			plannedMinutes: planned[i].plannedMinutes,
+			doneMinutes: d.doneMinutes,
+			loggedMinutes: d.loggedMinutes
 		})),
 		plannedMinutes: planned.reduce((sum, p) => sum + p.plannedMinutes, 0),
-		loggedMinutes: week.minutes,
+		doneMinutes: week.doneMinutes,
+		loggedMinutes: week.loggedMinutes,
 		byWorkspace: week.byWorkspace,
 		byQuadrant: week.byQuadrant,
 		unmatched: planned

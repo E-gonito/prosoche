@@ -215,11 +215,17 @@ mirrors this: visiting someone with no note yet still shows the same
 layout, minus the note itself, and logging a contact there is what brings the
 note into existence.
 
-**Time** compares this week's planned time against what was actually logged,
-scaled to the busiest day rather than to a fixed number of hours. Nothing
-logged is exactly that — a timer was never started and stopped against a
-task this week, and it prompts starting one rather than showing an empty
-chart.
+**Time** compares this week's planned time against what actually happened,
+scaled to the busiest day rather than to a fixed number of hours. Two things
+say work happened. Ticking a timed block counts its planned length as done,
+because the tick is the user's own statement that the block went as planned;
+a timer counts what it measured. A ticked block a timer entry matched counts
+once, as timed, since the timer line is the finer record of the same work.
+Blocks nest, so a short block inside a long one counts once in the day but
+once for each project the two belong to, which is why the per-project split
+can add up to more than the week and says so when it does. Nothing ticked
+and nothing timed is exactly that, and it names both ways of counting rather
+than showing an empty chart.
 
 **Insights** is Ask, scoped to whatever workspace or note it sits on, with
 the same guarantee: it is read-only, and switching the AI layer off in

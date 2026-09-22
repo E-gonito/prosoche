@@ -49,8 +49,9 @@ describe('render', () => {
 	const bare: WeekFacts = {
 		week: WEEK,
 		summary: {
-			days: WEEK.map((day) => ({ day, plannedMinutes: 0, loggedMinutes: 0 })),
+			days: WEEK.map((day) => ({ day, plannedMinutes: 0, doneMinutes: 0, loggedMinutes: 0 })),
 			plannedMinutes: 0,
+			doneMinutes: 0,
 			loggedMinutes: 0,
 			byWorkspace: [],
 			byQuadrant: [],
@@ -81,13 +82,32 @@ describe('render', () => {
 				...bare.summary,
 				plannedMinutes: 300,
 				loggedMinutes: 245,
-				byWorkspace: [{ slug: 'atlas', name: 'Atlas', color: '#000', minutes: 245 }],
+				byWorkspace: [{ slug: 'atlas', name: 'Atlas', color: '#000', minutes: 245, timedMinutes: 245 }],
 				byQuadrant: [{ quadrant: 1, minutes: 245 }]
 			}
 		});
-		expect(out).toContain('Logged 4h5m against 5h planned.');
+		expect(out).toContain('- 0m done and 4h5m timed against 5h planned.');
 		expect(out).toContain('- Atlas: 4h5m');
 		expect(out).toContain('- Q1: 4h5m');
+	});
+
+	// The author's own week: everything ticked, the timer never started. The
+	// per-workspace lines are the combined figure, so they still add up.
+	it('reports a week that was ticked rather than timed', () => {
+		const out = render({
+			...bare,
+			summary: {
+				...bare.summary,
+				plannedMinutes: 480,
+				doneMinutes: 450,
+				loggedMinutes: 0,
+				byWorkspace: [{ slug: 'kaya', name: 'Kaya', color: '#000', minutes: 450, timedMinutes: 0 }],
+				byQuadrant: [{ quadrant: 1, minutes: 450 }]
+			}
+		});
+		expect(out).toContain('- 7h30m done and 0m timed against 8h planned.');
+		expect(out).toContain('- Kaya: 7h30m');
+		expect(out).not.toContain('Nothing planned');
 	});
 
 	it('ends with exactly one newline, like every note this app writes', () => {
@@ -103,6 +123,7 @@ describe('propose', () => {
 			summary: {
 				days: [],
 				plannedMinutes: 0,
+				doneMinutes: 0,
 				loggedMinutes: 0,
 				byWorkspace: [],
 				byQuadrant: [],

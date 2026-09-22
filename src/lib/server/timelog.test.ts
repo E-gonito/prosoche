@@ -9,6 +9,7 @@ import {
 	TIME_LOG_HEADING,
 	appendEntry,
 	currentTimer,
+	doneSpans,
 	formatEntry,
 	loadEntries,
 	parseEntryLine,
@@ -17,9 +18,11 @@ import {
 	readTimer,
 	startTimer,
 	stopTimer,
+	timedSpans,
 	weekOf,
 	weekSummary,
 	weekly,
+	type Attributed,
 	type TimeEntry
 } from './timelog';
 import type { Workspace } from './workspaces';
@@ -125,11 +128,17 @@ describe('formatEntry', () => {
 });
 
 describe('plannedVsActual', () => {
-	const task = (text: string, startMin: number, endMin: number, quadrant: number | null = null): Task => ({
+	const task = (
+		text: string,
+		startMin: number,
+		endMin: number,
+		quadrant: number | null = null,
+		status: Task['status'] = 'todo'
+	): Task => ({
 		path: 'Journal/2026/09/21.md',
 		line: 0,
 		blockEnd: 0,
-		status: 'todo',
+		status,
 		startMin,
 		endMin,
 		text,
@@ -143,12 +152,55 @@ describe('plannedVsActual', () => {
 	});
 	const entry = (text: string, startMin: number, endMin: number): TimeEntry => parseEntryLine(formatEntry({ text, startMin, endMin }), 0, '2026-09-21')!;
 
+	const done = (text: string, startMin: number, endMin: number, quadrant: number | null = null): Task =>
+		task(text, startMin, endMin, quadrant, 'done');
+
 	it('matches a log line to the block of the same name', () => {
 		const result = plannedVsActual([task('Work on atlas', 640, 1080, 1)], [entry('Work on atlas', 642, 725)]);
 		expect(result.rows).toEqual([
-			{ path: 'Journal/2026/09/21.md', line: 0, text: 'Work on atlas', quadrant: 1, plannedMinutes: 440, loggedMinutes: 83 }
+			{
+				path: 'Journal/2026/09/21.md',
+				line: 0,
+				text: 'Work on atlas',
+				quadrant: 1,
+				plannedMinutes: 440,
+				doneMinutes: 0,
+				loggedMinutes: 83
+			}
 		]);
 		expect(result.unmatched).toEqual([]);
+	});
+
+	it('counts a ticked block nobody timed as done for its planned length', () => {
+		const result = plannedVsActual([done('Morning stretch', 570, 600)], []);
+		expect(result.rows[0]).toMatchObject({ plannedMinutes: 30, doneMinutes: 30, loggedMinutes: 0 });
+		expect(result).toMatchObject({ plannedMinutes: 30, doneMinutes: 30, loggedMinutes: 0 });
+		expect(result.done.map((t) => t.text)).toEqual(['Morning stretch']);
+	});
+
+	it('counts a timer entry over a ticked block once, as timed', () => {
+		const result = plannedVsActual([done('Morning stretch', 570, 600)], [entry('Morning stretch', 570, 595)]);
+		expect(result.rows[0]).toMatchObject({ plannedMinutes: 30, doneMinutes: 0, loggedMinutes: 25 });
+		expect(result).toMatchObject({ doneMinutes: 0, loggedMinutes: 25 });
+		expect(result.done).toEqual([]);
+	});
+
+	it('counts an open timed block as planned and nothing else', () => {
+		const result = plannedVsActual([task('Client project', 640, 1080)], []);
+		expect(result.rows[0]).toMatchObject({ plannedMinutes: 440, doneMinutes: 0, loggedMinutes: 0 });
+		expect(result).toMatchObject({ plannedMinutes: 440, doneMinutes: 0, loggedMinutes: 0 });
+	});
+
+	it('counts a done block inside another done block once in the done total', () => {
+		const result = plannedVsActual([done('Work on eye2gene', 640, 1080), done('Read a book', 840, 870)], []);
+		expect(result.doneMinutes).toBe(440);
+		expect(result.rows.map((r) => r.doneMinutes)).toEqual([440, 30]);
+	});
+
+	// One predicate for "closed", the same one the board and the briefing use.
+	// A crossed-out block is a closed one, and there is no second rule here.
+	it('treats a cancelled block like a ticked one', () => {
+		expect(plannedVsActual([task('Dropped it', 600, 630, null, 'cancelled')], []).doneMinutes).toBe(30);
 	});
 
 	it('keeps a planned block with nothing logged against it', () => {
@@ -208,24 +260,41 @@ describe('weekly', () => {
 	const entry = (day: string, minutes: number, tag: string | null, quadrant: number | null): TimeEntry =>
 		parseEntryLine(formatEntry({ startMin: 540, endMin: 540 + minutes, text: 'x', workspace: tag, quadrant }), 0, day)!;
 
-	const entries = [
+	const spans = timedSpans([
 		entry('2026-09-21', 60, 'ws/work', 1),
 		entry('2026-09-21', 30, 'ws/personal', 2),
 		entry('2026-09-22', 90, 'ws/work', 1),
 		entry('2026-09-22', 15, null, null)
-	];
+	]);
+
+	/** A ticked block, already attributed, which is what `doneSpans` produces. */
+	const block = (
+		day: string,
+		startMin: number,
+		endMin: number,
+		tag: string | null,
+		quadrant: number | null = null
+	): Attributed => ({
+		day,
+		minutes: endMin - startMin,
+		workspaceTag: tag,
+		quadrant,
+		source: 'block',
+		startMin,
+		endMin
+	});
 
 	it('totals by workspace, biggest first', () => {
-		const result = weekly(entries, workspaces);
+		const result = weekly(spans, workspaces);
 		expect(result.byWorkspace).toEqual([
-			{ slug: 'work', name: 'work', color: '#2f6fed', minutes: 150 },
-			{ slug: 'personal', name: 'personal', color: '#16a34a', minutes: 30 },
-			{ slug: '', name: 'Unassigned', color: '#9aa0a6', minutes: 15 }
+			{ slug: 'work', name: 'work', color: '#2f6fed', minutes: 150, timedMinutes: 150 },
+			{ slug: 'personal', name: 'personal', color: '#16a34a', minutes: 30, timedMinutes: 30 },
+			{ slug: '', name: 'Unassigned', color: '#9aa0a6', minutes: 15, timedMinutes: 15 }
 		]);
 	});
 
 	it('totals by quadrant, with unclassified time last', () => {
-		expect(weekly(entries, workspaces).byQuadrant).toEqual([
+		expect(weekly(spans, workspaces).byQuadrant).toEqual([
 			{ quadrant: 1, minutes: 150 },
 			{ quadrant: 2, minutes: 30 },
 			{ quadrant: null, minutes: 15 }
@@ -233,26 +302,135 @@ describe('weekly', () => {
 	});
 
 	it('gives a row for every day asked for, including the empty ones', () => {
-		const result = weekly(entries, workspaces, weekOf('2026-09-21'));
+		const result = weekly(spans, workspaces, weekOf('2026-09-21'));
 		expect(result.byDay).toHaveLength(7);
-		expect(result.byDay[0]).toEqual({ day: '2026-09-21', minutes: 90 });
-		expect(result.byDay[1]).toEqual({ day: '2026-09-22', minutes: 105 });
-		expect(result.byDay[6]).toEqual({ day: '2026-09-27', minutes: 0 });
-		expect(result.minutes).toBe(195);
+		expect(result.byDay[0]).toEqual({ day: '2026-09-21', minutes: 90, doneMinutes: 0, loggedMinutes: 90 });
+		expect(result.byDay[1]).toEqual({ day: '2026-09-22', minutes: 105, doneMinutes: 0, loggedMinutes: 105 });
+		expect(result.byDay[6]).toEqual({ day: '2026-09-27', minutes: 0, doneMinutes: 0, loggedMinutes: 0 });
+		expect(result).toMatchObject({ minutes: 195, doneMinutes: 0, loggedMinutes: 195 });
 	});
 
 	it('leaves out days outside the range it was given', () => {
-		const result = weekly(entries, workspaces, ['2026-09-22']);
+		const result = weekly(spans, workspaces, ['2026-09-22']);
 		expect(result.minutes).toBe(105);
 		// The by-workspace totals still cover everything passed in, so the
-		// caller filters entries, not the range.
+		// caller filters spans, not the range.
 		expect(result.byWorkspace.reduce((sum, w) => sum + w.minutes, 0)).toBe(195);
 	});
 
 	it('counts a tag naming no known workspace as unassigned', () => {
-		expect(weekly([entry('2026-09-21', 10, 'ws/deleted', null)], workspaces).byWorkspace).toEqual([
-			{ slug: '', name: 'Unassigned', color: '#9aa0a6', minutes: 10 }
+		expect(weekly(timedSpans([entry('2026-09-21', 10, 'ws/deleted', null)]), workspaces).byWorkspace).toEqual([
+			{ slug: '', name: 'Unassigned', color: '#9aa0a6', minutes: 10, timedMinutes: 10 }
 		]);
+	});
+
+	it('counts a week of ticked blocks and never a timer that was not run', () => {
+		const result = weekly(
+			[block('2026-09-21', 600, 660, 'ws/work', 1), block('2026-09-22', 600, 690, 'ws/work', 1)],
+			workspaces,
+			weekOf('2026-09-21')
+		);
+		expect(result).toMatchObject({ minutes: 150, doneMinutes: 150, loggedMinutes: 0 });
+		expect(result.byDay[0]).toEqual({ day: '2026-09-21', minutes: 60, doneMinutes: 60, loggedMinutes: 0 });
+		expect(result.byWorkspace).toEqual([
+			{ slug: 'work', name: 'work', color: '#2f6fed', minutes: 150, timedMinutes: 0 }
+		]);
+	});
+
+	it('merges blocks inside blocks but adds timer minutes up', () => {
+		const result = weekly(
+			[
+				block('2026-09-21', 600, 1080, 'ws/work', 1),
+				block('2026-09-21', 840, 870, 'ws/work', 1),
+				...timedSpans([entry('2026-09-21', 20, 'ws/work', 1)])
+			],
+			workspaces,
+			['2026-09-21']
+		);
+		expect(result).toMatchObject({ doneMinutes: 480, loggedMinutes: 20, minutes: 500 });
+	});
+
+	it('gives the same block to two days rather than merging across them', () => {
+		const result = weekly(
+			[block('2026-09-21', 600, 660, 'ws/work', 1), block('2026-09-22', 600, 660, 'ws/work', 1)],
+			workspaces,
+			weekOf('2026-09-21')
+		);
+		expect(result.doneMinutes).toBe(120);
+	});
+
+	// A long block of one workspace containing a short one of another: each
+	// workspace is asked its own question, so the answers can add up to more
+	// than the day. The widget says so in a line.
+	it('lets per-workspace totals exceed the day they happened in', () => {
+		const result = weekly(
+			[block('2026-09-21', 600, 1080, 'ws/work', 1), block('2026-09-21', 840, 870, 'ws/personal', 3)],
+			workspaces,
+			['2026-09-21']
+		);
+		expect(result.byDay[0].doneMinutes).toBe(480);
+		expect(result.byWorkspace).toEqual([
+			{ slug: 'work', name: 'work', color: '#2f6fed', minutes: 480, timedMinutes: 0 },
+			{ slug: 'personal', name: 'personal', color: '#16a34a', minutes: 30, timedMinutes: 0 }
+		]);
+		expect(result.byWorkspace.reduce((sum, w) => sum + w.minutes, 0)).toBeGreaterThan(result.byDay[0].minutes);
+	});
+});
+
+describe('doneSpans', () => {
+	const ws = (slug: string, tag: string, aliases: string[], folders: string[]): Workspace => ({
+		slug,
+		name: slug,
+		color: '#000',
+		tag,
+		aliases,
+		folders,
+		template: 'project',
+		tabs: [],
+		deck: '',
+		kanbanColumns: [],
+		path: `_hub/workspaces/${slug}.md`
+	});
+	const workspaces = [ws('work', 'ws/work', [], ['Work']), ws('kaya', 'ws/kaya', ['Kaya'], ['Kaya Thai'])];
+	const block = (text: string, tags: string[] = []): Task => ({
+		path: 'Journal/2026/09/21.md',
+		line: 1,
+		blockEnd: 1,
+		status: 'done',
+		startMin: 630,
+		endMin: 720,
+		text,
+		quadrant: 1,
+		fenced: false,
+		raw: '',
+		tags,
+		id: null,
+		blockedBy: [],
+		due: null
+	});
+
+	it('attributes a block by the tag it carries', () => {
+		expect(doneSpans('2026-09-21', [block('Write the brief', ['ws/work'])], workspaces)[0]).toEqual({
+			day: '2026-09-21',
+			minutes: 90,
+			workspaceTag: 'ws/work',
+			quadrant: 1,
+			source: 'block',
+			startMin: 630,
+			endMin: 720
+		});
+	});
+
+	it('attributes a block by an alias in its words, with nothing on the line', () => {
+		expect(doneSpans('2026-09-21', [block('Work on Kaya')], workspaces)[0].workspaceTag).toBe('ws/kaya');
+	});
+
+	it('attributes a block nobody claims to nobody', () => {
+		expect(doneSpans('2026-09-21', [block('Morning stretch')], workspaces)[0].workspaceTag).toBeNull();
+	});
+
+	it('skips a block with no clock, which is not a span at all', () => {
+		expect(doneSpans('2026-09-21', [{ ...block('Someday'), startMin: null, endMin: null }], workspaces)).toEqual([]);
 	});
 });
 
@@ -382,9 +560,9 @@ describe('against a vault', () => {
 				workspace: null
 			});
 			expect(summary.days).toHaveLength(7);
-			expect(summary.days[0]).toEqual({ day: '2026-09-21', plannedMinutes: 90, loggedMinutes: 115 });
-			expect(summary.days[1]).toEqual({ day: '2026-09-22', plannedMinutes: 0, loggedMinutes: 0 });
-			expect(summary).toMatchObject({ plannedMinutes: 90, loggedMinutes: 115, scoped: false });
+			expect(summary.days[0]).toEqual({ day: '2026-09-21', plannedMinutes: 90, doneMinutes: 0, loggedMinutes: 115 });
+			expect(summary.days[1]).toEqual({ day: '2026-09-22', plannedMinutes: 0, doneMinutes: 0, loggedMinutes: 0 });
+			expect(summary).toMatchObject({ plannedMinutes: 90, doneMinutes: 0, loggedMinutes: 115, scoped: false });
 			expect(summary.unmatched).toEqual([{ text: 'Unblock the build', minutes: 20 }]);
 		});
 
@@ -395,7 +573,9 @@ describe('against a vault', () => {
 				workspace: WORK
 			});
 			expect(summary.loggedMinutes).toBe(85);
-			expect(summary.byWorkspace).toEqual([{ slug: 'work', name: 'Work', color: '#2f6fed', minutes: 85 }]);
+			expect(summary.byWorkspace).toEqual([
+				{ slug: 'work', name: 'Work', color: '#2f6fed', minutes: 85, timedMinutes: 85 }
+			]);
 			expect(summary.byQuadrant).toEqual([{ quadrant: 1, minutes: 85 }]);
 			expect(summary.scoped).toBe(true);
 		});
@@ -426,10 +606,61 @@ describe('against a vault', () => {
 				workspaces: [WORK, KAYA],
 				workspace: KAYA
 			});
-			expect(summary.days[1]).toEqual({ day: '2026-09-22', plannedMinutes: 90, loggedMinutes: 0 });
+			expect(summary.days[1]).toEqual({ day: '2026-09-22', plannedMinutes: 90, doneMinutes: 0, loggedMinutes: 0 });
 			// Monday's blocks belong to Work or to nobody, so they are not Kaya's.
-			expect(summary.days[0]).toEqual({ day: '2026-09-21', plannedMinutes: 0, loggedMinutes: 0 });
-			expect(summary).toMatchObject({ plannedMinutes: 90, loggedMinutes: 0, scoped: true });
+			expect(summary.days[0]).toEqual({ day: '2026-09-21', plannedMinutes: 0, doneMinutes: 0, loggedMinutes: 0 });
+			expect(summary).toMatchObject({ plannedMinutes: 90, doneMinutes: 0, loggedMinutes: 0, scoped: true });
+		});
+
+		// The author's own week: every block ticked, the timer never touched.
+		it('counts a week that was ticked rather than timed', async () => {
+			const wednesday = [
+				'# Tasks',
+				'- [x] 10:30 - 18:00 Work on Kaya `Q1`',
+				'- [x] 14:00 - 14:30 Read a book `Q3`',
+				'- [ ] 19:00 - 20:00 Never got to this `Q2`'
+			].join('\n');
+			await vault.write('Journal/2026/09/23.md', wednesday);
+			index.put('Journal/2026/09/23.md', wednesday);
+
+			const summary = await weekSummary(vault, index, {
+				days: weekOf('2026-09-21'),
+				workspaces: [WORK, KAYA],
+				workspace: null
+			});
+			// The book sits inside the Kaya block, so the day counts it once.
+			expect(summary.days[2]).toEqual({
+				day: '2026-09-23',
+				plannedMinutes: 510,
+				doneMinutes: 450,
+				loggedMinutes: 0
+			});
+			expect(summary.doneMinutes).toBe(450);
+			// Monday's timer lines are still the timer's, and nothing else moved.
+			expect(summary.loggedMinutes).toBe(115);
+			expect(summary.byWorkspace).toEqual([
+				{ slug: 'kaya', name: 'Kaya', color: '#2f6fed', minutes: 450, timedMinutes: 0 },
+				{ slug: 'work', name: 'Work', color: '#2f6fed', minutes: 85, timedMinutes: 85 },
+				{ slug: '', name: 'Unassigned', color: '#9aa0a6', minutes: 60, timedMinutes: 30 }
+			]);
+		});
+
+		it('never counts a ticked block a timer already recorded', async () => {
+			const thursday = ['# Tasks', '- [x] 09:00 - 10:00 Write the brief `Q1` #ws/work', '', '## Time log', '- 09:05 - 09:35 Write the brief (30m) `Q1` #ws/work'].join('\n');
+			await vault.write('Journal/2026/09/24.md', thursday);
+			index.put('Journal/2026/09/24.md', thursday);
+
+			const summary = await weekSummary(vault, index, {
+				days: weekOf('2026-09-21'),
+				workspaces: [WORK],
+				workspace: WORK
+			});
+			expect(summary.days[3]).toEqual({
+				day: '2026-09-24',
+				plannedMinutes: 60,
+				doneMinutes: 0,
+				loggedMinutes: 30
+			});
 		});
 
 		it('is all zeroes for a week nobody logged anything in', async () => {
@@ -439,6 +670,7 @@ describe('against a vault', () => {
 				workspace: null
 			});
 			expect(summary.loggedMinutes).toBe(0);
+			expect(summary.doneMinutes).toBe(0);
 			expect(summary.days.every((d) => d.loggedMinutes === 0 && d.plannedMinutes === 0)).toBe(true);
 		});
 	});
