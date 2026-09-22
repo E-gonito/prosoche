@@ -253,6 +253,12 @@ describe('tags, dependencies and membership', () => {
 		expect(found.map((t) => t.text)).not.toContain('From a daily note');
 	});
 
+	it('leaves out the template the daily notes are copies of', () => {
+		index.put('Journal/Journal Template.md', '- [ ] Morning stretch `Q1`');
+		const found = index.findTasks({ excludeDailyNotes: true, requireQuadrant: true });
+		expect(found.map((t) => t.text)).not.toContain('Morning stretch');
+	});
+
 	it('finds what is due on or before a date', () => {
 		index.put('Work/dates.md', '- [ ] Soon `Q1` 📅 2026-09-21\n- [ ] Later `Q1` 📅 2026-12-01');
 		expect(index.findTasks({ dueOnOrBefore: '2026-09-30' }).map((t) => t.text)).toEqual(['Soon']);

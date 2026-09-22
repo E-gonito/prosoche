@@ -61,7 +61,7 @@ import { coveredMinutes } from './schedule';
 import { workspaceFor, type Workspace } from './workspaces';
 import type { NoteIndex } from './index/index';
 import type { Vault } from './vault/index';
-import { displayText, type Task } from '../shared/task';
+import { displayText, matchKey, type Task } from '../shared/task';
 import {
 	MINUTES_IN_DAY,
 	formatDuration,
@@ -506,6 +506,66 @@ export function doneSpans(day: DayKey, blocks: Task[], workspaces: Workspace[]):
 		}));
 }
 
+/** One workspace's share of a single day: what it planned and what it did. */
+export interface WorkspaceDay {
+	slug: string;
+	name: string;
+	color: string;
+	/** Minutes of the day this workspace's blocks cover, overlaps counted once. */
+	plannedMinutes: number;
+	/** Of those, the minutes that are ticked and nothing timed against them. */
+	doneMinutes: number;
+}
+
+/**
+ * A day's planned blocks split between the workspaces that own them.
+ *
+ * Pure, and the day-sized version of `weekSummary`'s `byWorkspace`: the same
+ * attribution rule — tag, folder, frontmatter, then an alias in the words —
+ * and the same arithmetic, so "7h 20m planned" on Today and on the Time tab
+ * cannot disagree.
+ *
+ * `entries` are the day's `## Time log` lines, and they are here only to stop
+ * a block being counted twice: `plannedVsActual` decides which ticks the
+ * timer already measured, so the rule for that lives in one function rather
+ * than two. Done minutes are merged per workspace like planned minutes, so a
+ * ticked hour inside a ticked afternoon counts once.
+ *
+ * Blocks no workspace claims are left out rather than gathered into an
+ * "Unassigned" row: on a day of four blocks that row would say only that the
+ * user has not tagged them, which the page says better by not being there.
+ * Busiest first, so the row reads as the shape of the day.
+ */
+export function dayByWorkspace(scheduled: Task[], entries: TimeEntry[], workspaces: Workspace[]): WorkspaceDay[] {
+	const ticked = new Set(plannedVsActual(scheduled, entries).done.map(keyOf));
+	const groups = new Map<string, { workspace: Workspace; blocks: Task[]; done: Task[] }>();
+
+	for (const task of scheduled) {
+		if (task.startMin === null || task.endMin === null) continue;
+		const workspace = workspaceFor(workspaces, { path: task.path, tags: task.tags, text: task.text });
+		if (!workspace) continue;
+		let group = groups.get(workspace.slug);
+		if (!group) groups.set(workspace.slug, (group = { workspace, blocks: [], done: [] }));
+		group.blocks.push(task);
+		if (ticked.has(keyOf(task))) group.done.push(task);
+	}
+
+	return [...groups.values()]
+		.map(({ workspace, blocks, done }) => ({
+			slug: workspace.slug,
+			name: workspace.name,
+			color: workspace.color,
+			plannedMinutes: coveredMinutes(blocks),
+			doneMinutes: coveredMinutes(done)
+		}))
+		.sort((a, b) => b.plannedMinutes - a.plannedMinutes || a.name.localeCompare(b.name));
+}
+
+/** Where a task's line is, which is the only identity a task line has. */
+function keyOf(task: Task): string {
+	return `${task.path}:${task.line}`;
+}
+
 /** The seven days, Monday first, of the week containing `day`. */
 export function weekOf(day: DayKey): DayKey[] {
 	const [y, m, d] = day.split('-').map(Number);
@@ -730,9 +790,4 @@ export async function stopTimer(vault: Vault, now = new Date()): Promise<Appende
 function dayOf(iso: string): DayKey {
 	const at = new Date(Date.parse(iso));
 	return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
-}
-
-/** Task text reduced to something two spellings of the same work agree on. */
-function matchKey(text: string): string {
-	return displayText(text).toLowerCase().replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
 }

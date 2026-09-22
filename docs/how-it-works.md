@@ -22,6 +22,16 @@ again. Everything snaps to ten minutes, and only the time on that line
 changes — the note keeps its own order regardless of where the UI displays a
 task.
 
+Under the Timeline heading is a chip for every project with a block today,
+saying what it planned and what of that is done — "7h 20m planned", "30m
+done", "1h 20m done of 7h 30m". A block counts towards a project when it
+carries the project's tag, sits in one of its folders, or simply names it, so
+a line reading "10:40 - 18:00 Client project" is counted without being tagged.
+Ticked blocks are what "done" means here, minus anything a timer already
+measured, and a short block inside a longer one of the same project counts
+once. Blocks no project claims are left out rather than gathered into a row
+that would only say you have not tagged them.
+
 Capture appends to `Inbox/Capture.md` under today's date. A line written as a
 task stays a task, so a captured to-do is immediately schedulable rather than
 needing to be retyped later.
@@ -30,16 +40,24 @@ The unscheduled list is exactly what it says: everything in it has no time
 yet. Once a task gets a time, from the grip or the timeline, it moves to the
 timeline and leaves this list.
 
-Open work from the rest of the vault gets its own list, grouped by workspace.
-Each workspace contributes exactly the open cards its board shows, so a line
-in a project's deck note appears here with nothing else on it, while a line
-elsewhere in that project's notes still needs a quadrant, a due date, an id or
-the workspace's tag. Work no workspace claims has to carry a `Q1` through `Q4`,
+Open work from the rest of the vault gets its own list, grouped by workspace
+and ordered the way a board column is: most urgent quadrant first, then the
+soonest due date, then where the line lives. Each workspace contributes exactly
+the open cards its board shows, so a line in a project's deck note appears here
+with nothing else on it, while a line elsewhere in that project's notes still
+needs a quadrant, a due date, an id or the workspace's tag. Work no workspace
+claims is listed last under "Elsewhere", and has to carry a `Q1` through `Q4`,
 because a quadrant is the only mark of intent such a line has. Daily notes are
 excluded either way: each one is a copy of your template, so they would repeat
 the same unfinished checklist every day. What is left out after that is
 checklist notation inside reference notes, such as a syllabus or a manual test
 plan, rather than work to schedule.
+
+Each of those rows shows its due date, in red once it has gone by, and clicking
+its text opens the same card drawer the day's own tasks use. The `+` button
+puts the card on today with no time on it, so it lands in the unscheduled list
+ready to be dragged onto the timeline — which is how you plan from a phone,
+where there is no drag onto a grid.
 
 Dragging one of those workspace tasks onto the timeline does something
 different from dragging an unscheduled task: it adds a block to the day's own

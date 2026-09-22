@@ -176,11 +176,72 @@ test.describe('the day', () => {
 		// Today asks the board what it has open rather than asking for a `Q`.
 		await expect(panel).toContainText('Work');
 		await expect(panel).toContainText('Sign the new supplier contract');
+
+		// A due date is shown as a date, with no emoji carried over from the
+		// line it was written on.
+		const due = panel.getByTestId('task-row').filter({ hasText: 'Draft the anonymisation plan' }).getByTestId('task-due');
+		await expect(due).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+
+		// Open work carrying a quadrant that no workspace claims, in a group of
+		// its own rather than mixed in with the projects.
+		await expect(panel).toContainText('Elsewhere');
+		await expect(panel).toContainText('Send the anonymisation plan');
+		// And the template every day is copied from is not work to schedule.
+		await expect(panel).not.toContainText('Twenty push ups');
+	});
+
+	test('the timeline says which project the day\'s hours are for', async ({ page }) => {
+		const chips = page.getByTestId('day-workspaces');
+		// 10:40 - 18:00 "Client project", claimed by the Client workspace's
+		// alias with nothing written on the line, and not yet ticked.
+		await expect(chips.getByTestId('day-workspace').filter({ hasText: 'Client' })).toContainText('7h 20m');
+		// 09:30 - 10:00 "Morning stretch", ticked and never timed, so all of
+		// what it planned is done and the plan is not repeated back.
+		const wellbeing = chips.getByTestId('day-workspace').filter({ hasText: 'Wellbeing' });
+		await expect(wellbeing).toContainText('30m done');
+		await expect(wellbeing).not.toContainText('of 30m');
+		// "Read a book" and "Write the daily log" belong to nobody, and no
+		// chip claims them.
+		await expect(chips.getByTestId('day-workspace')).toHaveCount(2);
+	});
+
+	test('a workspace card can be added to today without a drag', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE).split('\n');
+		const card = vaultFile('Study/Algorithms.md');
+		const panel = page.locator('.card', { hasText: 'From your workspaces' });
+
+		await panel.getByTestId('task-row').filter({ hasText: 'Finish chapter 3' }).getByTestId('add-to-today').click();
+
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('Finish chapter 3'))).toBe(true);
+		// Exactly one line gained, with a link back to the card and no time on
+		// it, so the block is waiting to be given one.
+		const after = vaultFile(TODAY_NOTE).split('\n');
+		const { index, text } = lineWith(TODAY_NOTE, 'Finish chapter 3');
+		expect(text).toBe('- [ ] Finish chapter 3 [[Study/Algorithms]] `Q2` #ws/study');
+		expect(after.toSpliced(index, 1)).toEqual(before);
+		expect(vaultFile('Study/Algorithms.md')).toBe(card);
+
+		// And it is where a block with no time belongs.
+		await expect(
+			page.getByTestId('unscheduled').getByTestId('task-row').filter({ hasText: 'Finish chapter 3' })
+		).toBeVisible();
+	});
+
+	test('a workspace card opens the drawer, like the day\'s own rows', async ({ page }) => {
+		const panel = page.locator('.card', { hasText: 'From your workspaces' });
+		await panel.getByTestId('task-row').filter({ hasText: 'Finish chapter 3' }).getByTestId('open-task').click();
+
+		const drawer = page.getByTestId('card-drawer');
+		await expect(drawer).toBeVisible();
+		await expect(drawer.getByTestId('drawer-text')).toHaveValue(/Finish chapter 3/);
 	});
 
 	test('quick capture appends to the inbox', async ({ page }) => {
-		await page.getByTestId('unscheduled').getByLabel('Quick capture').fill('remember the milk');
-		await page.getByRole('button', { name: 'Add' }).click();
+		// Scoped to the capture row: every workspace card offers an "Add … to
+		// today" button of its own now, so a bare "Add" is ambiguous.
+		const capture = page.getByTestId('unscheduled').getByTestId('capture-row');
+		await capture.getByLabel('Quick capture').fill('remember the milk');
+		await capture.getByRole('button', { name: 'Add' }).click();
 		expect(await waitForFile('Inbox/Capture.md', (c) => c.includes('remember the milk'))).toBe(true);
 		expect(vaultFile('Inbox/Capture.md')).toMatch(/## \d{4}-\d{2}-\d{2}\n- \d\d:\d\d remember the milk/);
 	});

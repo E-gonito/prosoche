@@ -147,18 +147,28 @@ export function moveEdit(task: Task, column: Column): MoveEdit {
 }
 
 /**
- * Order of cards inside a column: most urgent quadrant first, then the
- * soonest due date, then where the line lives, so the order is stable between
- * loads. Cards without a quadrant or a due date sort last within their group.
+ * Order of work on a screen: most urgent quadrant first, then the soonest due
+ * date, then where the line lives, so the order is stable between loads.
+ * Tasks without a quadrant or a due date sort last within their group.
  *
  * This is display order only. Nothing here reorders a file.
+ *
+ * The rule lives here rather than beside the board because Today's list of
+ * open cards is the same question asked somewhere else, and two answers to it
+ * would show a project's work in one order on its board and another on the
+ * day.
  */
-export function compareCards(a: Card, b: Card): number {
-	const byQuadrant = rank(a.task.quadrant) - rank(b.task.quadrant);
+export function compareTasks(a: Task, b: Task): number {
+	const byQuadrant = rank(a.quadrant) - rank(b.quadrant);
 	if (byQuadrant !== 0) return byQuadrant;
-	const byDue = (a.task.due ?? '￿').localeCompare(b.task.due ?? '￿');
+	const byDue = (a.due ?? '￿').localeCompare(b.due ?? '￿');
 	if (byDue !== 0) return byDue;
-	return a.task.path === b.task.path ? a.task.line - b.task.line : a.task.path.localeCompare(b.task.path);
+	return a.path === b.path ? a.line - b.line : a.path.localeCompare(b.path);
+}
+
+/** `compareTasks` for a column of cards, which is what a board sorts. */
+export function compareCards(a: Card, b: Card): number {
+	return compareTasks(a.task, b.task);
 }
 
 /** Identity of a card for keying a list or a patch map. */

@@ -29,7 +29,7 @@ import { config } from './config';
 import { workspaceFor, type Workspace } from './workspaces';
 import { slugify } from '$lib/shared/slug';
 
-export { columnFor, compareCards, isCard, moveEdit } from '../shared/board';
+export { columnFor, compareCards, compareTasks, isCard, moveEdit } from '../shared/board';
 export type { Board, BoardColumn, Candidate, Card, Column, MoveEdit } from '../shared/board';
 
 /** The default board: one column per task status, in the order work moves. */

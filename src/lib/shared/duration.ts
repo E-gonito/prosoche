@@ -45,13 +45,19 @@ export function spanMinutes(startMin: number, endMin: number): number {
  * A duration as the time log writes it: `1h23m`, `2h`, `45m`, `0m`. Never
  * negative, so a nonsensical input reads as no time rather than as a minus
  * sign in the middle of a note.
+ *
+ * `gap` is what separates the hours from the minutes, and is empty by default
+ * so that what goes into a note stays compact and `parseDuration` round-trips
+ * it. A screen passes `' '`, because `7h 20m` is how a figure being read is
+ * written. One function rather than two, so there is one answer to "how long
+ * was it" and only the spacing is the caller's choice.
  */
-export function formatDuration(minutes: number): string {
+export function formatDuration(minutes: number, gap = ''): string {
 	const total = Math.max(0, Math.round(minutes));
 	const hours = Math.floor(total / 60);
 	const rest = total % 60;
 	if (!hours) return `${rest}m`;
-	return rest ? `${hours}h${rest}m` : `${hours}h`;
+	return rest ? `${hours}h${gap}${rest}m` : `${hours}h`;
 }
 
 /**

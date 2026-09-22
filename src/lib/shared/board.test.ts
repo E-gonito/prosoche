@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	columnFor,
 	compareCards,
+	compareTasks,
 	isCard,
 	moveEdit,
 	showsIntent,
@@ -157,5 +158,12 @@ describe('compareCards', () => {
 		const cards = [card({ line: 3 }), card({ line: 1 }), card({ line: 2 })];
 		const once = [...cards].sort(compareCards).map((c) => c.task.line);
 		expect([...cards].sort(compareCards).map((c) => c.task.line)).toEqual(once);
+	});
+
+	it('is the same order Today puts a bare task list in', () => {
+		const cards = [card({ quadrant: 2 }), card({ quadrant: 1 }), card({ due: '2026-09-01' })];
+		expect([...cards].sort(compareCards).map((c) => c.task)).toEqual(
+			cards.map((c) => c.task).sort(compareTasks)
+		);
 	});
 });

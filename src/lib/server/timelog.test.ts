@@ -9,6 +9,7 @@ import {
 	TIME_LOG_HEADING,
 	appendEntry,
 	currentTimer,
+	dayByWorkspace,
 	doneSpans,
 	formatEntry,
 	loadEntries,
@@ -430,6 +431,102 @@ describe('doneSpans', () => {
 
 	it('skips a block with no clock, which is not a span at all', () => {
 		expect(doneSpans('2026-09-21', [{ ...block('Someday'), startMin: null, endMin: null }], workspaces)).toEqual([]);
+	});
+});
+
+describe('dayByWorkspace', () => {
+	const ws = (slug: string, aliases: string[]): Workspace => ({
+		slug,
+		name: slug,
+		color: '#000',
+		tag: `ws/${slug}`,
+		aliases,
+		folders: [],
+		template: 'project',
+		tabs: [],
+		deck: '',
+		kanbanColumns: [],
+		path: `_hub/workspaces/${slug}.md`
+	});
+	const workspaces = [ws('client', ['Client project']), ws('wellbeing', ['Morning stretch'])];
+
+	let nextLine = 0;
+	const block = (text: string, startMin: number, endMin: number, status: Task['status'] = 'todo'): Task => ({
+		path: 'Journal/2026/09/21.md',
+		line: nextLine++,
+		blockEnd: nextLine,
+		status,
+		startMin,
+		endMin,
+		text,
+		quadrant: null,
+		fenced: false,
+		raw: '',
+		tags: [],
+		id: null,
+		blockedBy: [],
+		due: null
+	});
+	const entry = (text: string, startMin: number, endMin: number): TimeEntry =>
+		parseEntryLine(formatEntry({ text, startMin, endMin }), 99, '2026-09-21')!;
+
+	beforeEach(() => {
+		nextLine = 0;
+	});
+
+	it('splits the day between the workspaces its blocks name', () => {
+		const split = dayByWorkspace(
+			[block('Client project', 640, 1080), block('Morning stretch', 570, 600, 'done')],
+			[],
+			workspaces
+		);
+		expect(split).toEqual([
+			{ slug: 'client', name: 'client', color: '#000', plannedMinutes: 440, doneMinutes: 0 },
+			{ slug: 'wellbeing', name: 'wellbeing', color: '#000', plannedMinutes: 30, doneMinutes: 30 }
+		]);
+	});
+
+	it('counts a block inside another block of the same workspace once', () => {
+		const split = dayByWorkspace(
+			[block('Client project', 640, 1080), block('Client project call', 700, 760, 'done'), block('Client project review', 720, 780, 'done')],
+			[],
+			workspaces
+		);
+		// 10:40-18:00 planned, and 11:40-13:00 of it ticked as two overlapping
+		// blocks, which is 80 minutes of the day rather than 120.
+		expect(split).toEqual([{ slug: 'client', name: 'client', color: '#000', plannedMinutes: 440, doneMinutes: 80 }]);
+	});
+
+	it('counts a tick the timer never measured', () => {
+		const split = dayByWorkspace([block('Morning stretch', 570, 600, 'done')], [], workspaces);
+		expect(split[0].doneMinutes).toBe(30);
+	});
+
+	it('does not count a tick twice when a timer measured the same work', () => {
+		const split = dayByWorkspace(
+			[block('Morning stretch', 570, 600, 'done')],
+			[entry('Morning stretch', 572, 595)],
+			workspaces
+		);
+		expect(split[0]).toMatchObject({ plannedMinutes: 30, doneMinutes: 0 });
+	});
+
+	it('gives a cancelled block its planned time and no done time', () => {
+		const split = dayByWorkspace([block('Morning stretch', 570, 600, 'cancelled')], [], workspaces);
+		expect(split[0]).toMatchObject({ plannedMinutes: 30, doneMinutes: 0 });
+	});
+
+	it('leaves out a block no workspace claims', () => {
+		expect(dayByWorkspace([block('Read a book', 840, 870)], [], workspaces)).toEqual([]);
+	});
+
+	it('leaves out a block with no clock, which is not time at all', () => {
+		const loose = { ...block('Client project', 0, 0), startMin: 600, endMin: null };
+		expect(dayByWorkspace([loose], [], workspaces)).toEqual([]);
+	});
+
+	it('is empty for a day with no blocks', () => {
+		expect(dayByWorkspace([], [], workspaces)).toEqual([]);
 	});
 });
 
