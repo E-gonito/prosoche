@@ -103,7 +103,7 @@ to be used.
 ## Tests
 
 ```bash
-npm test                              # 916 unit tests, no vault needed
+npm test                              # 951 unit tests, no vault needed
 VAULT_PATH=~/vault npm test           # adds a conformance pass over your vault
 npm run build && npm run e2e          # browser tests against a throwaway vault
 ```
@@ -152,7 +152,9 @@ out of existence where possible. Reading a note that does not exist returns an
 empty note. Writing returns a conflict instead of throwing one.
 
 For the fuller explanation behind what each screen's hint text only gestures
-at, see [`docs/how-it-works.md`](docs/how-it-works.md).
+at, see [`docs/how-it-works.md`](docs/how-it-works.md). For the token scale,
+the shared classes and the three shared components every screen is built from,
+see [`docs/design.md`](docs/design.md).
 
 ## The AI layer
 
