@@ -119,14 +119,11 @@
 			{/each}
 		</tbody>
 	</table>
-	<p class="hint">
-		There is no mode that writes without you. prosoche never passes
-		<code>--dangerously-skip-permissions</code>, and the CLI is never given the vault as a working directory.
-	</p>
+	<p class="hint">There is no mode that writes without you.</p>
 </section>
 
 <section class="card">
-	<h3>Limits, enforced whatever a feature asks for</h3>
+	<h3>Limits</h3>
 	<div class="kv">
 		<b>Daily budget</b>
 		<span><input type="number" min="0" max="100" step="0.5" bind:value={settings.budget.dailyUsd} data-testid="daily-budget" aria-label="Daily budget" /> US dollars</span>
@@ -182,7 +179,7 @@
 			<li><span class="badge">{id}</span> {title}</li>
 		{/each}
 	</ol>
-	<p class="hint">These are code paths, not instructions in a prompt. They hold whatever the model says.</p>
+	<p class="hint">These are code paths, not instructions in a prompt.</p>
 </section>
 
 <style>

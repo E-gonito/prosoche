@@ -155,7 +155,7 @@
 			{ticked.length === previews.length ? 'Accept all' : `Accept ${ticked.length}`}
 		</button>
 		<button class="btn" disabled={busy} onclick={onreject} data-testid="reject-proposal">Reject</button>
-		<span class="muted note">Nothing is written until you accept. A snapshot is kept either way.</span>
+		<span class="muted note">Nothing is written until you accept; a snapshot is kept either way.</span>
 	</footer>
 </section>
 

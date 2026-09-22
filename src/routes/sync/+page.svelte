@@ -178,10 +178,7 @@
 					Discard {chosen.length || ''}
 				</button>
 			</div>
-			<p class="hint">
-				Discarding throws away the change on this server and puts it back to the last commit. A copy of every
-				file is saved to <code>{data.undoPath}</code> first, so it is recoverable.
-			</p>
+			<p class="hint">Discarding reverts to the last commit; a copy is saved to <code>{data.undoPath}</code> first.</p>
 		{/if}
 	</div>
 
@@ -199,14 +196,11 @@
 			</span>
 		</div>
 		{#if data.status.error}<p class="err">{data.status.error}</p>{/if}
-		<p class="hint">
-			Automatic commits only ever stage files this app wrote. Anything you changed in your editor waits here for
-			you to choose.
-		</p>
+		<p class="hint">Automatic commits only stage files this app wrote; your own edits wait here.</p>
 	</div>
 
 	<div class="card">
-		<h3>Index <span class="right">rebuildable, never authoritative</span></h3>
+		<h3>Index</h3>
 		<div class="kv">
 			<b>notes</b><span>{data.health.notes}</span>
 			<b>tasks</b><span>{data.health.tasks}</span>
@@ -218,17 +212,17 @@
 
 	{#if data.status.conflicts.length}
 		<div class="card bad-card">
-			<h3>Conflicts <span class="right">pushing is paused until these are resolved</span></h3>
+			<h3>Conflicts</h3>
+			<p class="hint">Pushing is paused until these are resolved.</p>
 			{#each data.status.conflicts as file (file)}
 				<div class="row">
 					<span class="path">{file}</span>
 					<button class="btn small" onclick={() => inspectConflict(file)}>Compare</button>
 				</div>
 			{/each}
-			<p class="hint">
-				The rebase was rolled back, so your working copy is intact. Compare the two versions, copy across what
-				you need, then commit. The commands are <code>git rebase origin/{data.branch}</code> or
-				<code>git reset --hard origin/{data.branch}</code>.
+			<p class="hint">Your working copy is intact; compare the two versions and commit what you choose.</p>
+			<p class="commands">
+				<code>git rebase origin/{data.branch}</code> or <code>git reset --hard origin/{data.branch}</code>
 			</p>
 		</div>
 	{/if}
@@ -330,5 +324,7 @@
 	.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 	.two-up h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
 	.files { margin: 0; padding-left: 18px; font: 12px var(--mono); }
+	.commands { margin: 4px 0 0; }
+	.commands code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 	@media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
 </style>
