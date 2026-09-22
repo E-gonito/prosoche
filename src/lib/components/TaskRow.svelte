@@ -69,7 +69,7 @@
 		<span class="time">{formatMinutes(task.startMin)}–{formatMinutes(task.endMin)}</span>
 	{/if}
 	{#if workspace}
-		<span class="ws" style="--dot: {workspace.color}" title={workspace.name}></span>
+		<span class="ws" data-testid="task-workspace" style="--dot: {workspace.color}" title={workspace.name}></span>
 	{/if}
 	{#if onopen}
 		<button class="text open" data-testid="open-task" title="Open the card" onclick={() => onopen(task)}>

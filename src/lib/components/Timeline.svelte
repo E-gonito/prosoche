@@ -497,6 +497,7 @@
 				>
 					<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}{#if owner}<span
 							class="ws"
+							data-testid="task-workspace"
 							style="--dot: {owner.color}"
 							title={owner.name}
 						></span>{/if}</div>

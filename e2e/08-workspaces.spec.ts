@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { vaultFile, lineWith, dragTo, centre, waitForFile, resetVault } from './helpers';
+import {
+	vaultFile,
+	lineWith,
+	dragTo,
+	centre,
+	centreBlock,
+	waitForFile,
+	resetVault,
+	TODAY_NOTE
+} from './helpers';
 
 const DECK = 'Work/Atlas/Tasks.md';
 const PLAN = 'Work/Atlas/Test plan.md';
@@ -243,5 +252,60 @@ test.describe('a board on a phone', () => {
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
 		);
 		expect(overflow).toBeLessThanOrEqual(1);
+	});
+});
+
+/**
+ * The day is where most tasks are written, so it is where a task is put in a
+ * workspace. Every assertion here is about the bytes: one tag, one line, and
+ * the note identical again once the tag comes off.
+ */
+test.describe("a task's workspace, from the day", () => {
+	test.beforeEach(async ({ page, request }) => {
+		await resetVault(request);
+		await page.goto('/');
+	});
+
+	test('the drawer writes the tag on one line and takes it off again', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE).split('\n');
+		await page.getByTestId('task-row').filter({ hasText: 'Twenty push ups' }).getByTestId('open-task').click();
+		await expect(page.getByTestId('card-drawer')).toBeVisible();
+
+		await page.getByTestId('drawer-workspace').selectOption('ws/study');
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('- [ ] Twenty push ups #ws/study'))).toBe(true);
+		expect(changedLines(TODAY_NOTE, before)).toHaveLength(1);
+
+		// Reopened, the select reports what the line now says.
+		await page.getByTestId('drawer-close').click();
+		await page.getByTestId('task-row').filter({ hasText: 'Twenty push ups' }).getByTestId('open-task').click();
+		await expect(page.getByTestId('drawer-workspace')).toHaveValue('ws/study');
+
+		await page.getByTestId('drawer-workspace').selectOption('');
+		expect(await waitForFile(TODAY_NOTE, (c) => !c.includes('#ws/study'))).toBe(true);
+		expect(vaultFile(TODAY_NOTE).split('\n')).toEqual(before);
+	});
+
+	test('a block clicked rather than dragged opens the card it came from', async ({ page }) => {
+		const at = await centreBlock(page, 'Client project');
+		await page.mouse.move(at.x, at.y);
+		await page.mouse.down();
+		await page.mouse.up();
+
+		const drawer = page.getByTestId('card-drawer');
+		await expect(drawer).toBeVisible();
+		await expect(drawer.getByTestId('drawer-text')).toHaveValue('Client project');
+		// Attributed by the workspace file's alias, with nothing on the line.
+		await expect(drawer).toContainText('Client');
+		await expect(drawer.getByTestId('drawer-workspace')).toHaveValue('');
+	});
+
+	test('a block shows a dot for the workspace its words name', async ({ page }) => {
+		const block = page.getByTestId('block').filter({ hasText: 'Client project' });
+		await expect(block.getByTestId('task-workspace')).toHaveAttribute('title', 'Client');
+		// The line is untouched: the attribution is read, not written.
+		expect(lineWith(TODAY_NOTE, 'Client project').text).toBe('- [ ] 10:40 - 18:00 Client project');
+		await expect(
+			page.getByTestId('block').filter({ hasText: 'Read a book' }).getByTestId('task-workspace')
+		).toHaveCount(0);
 	});
 });
