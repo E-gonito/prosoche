@@ -3,7 +3,8 @@
 The screens keep to one short hint per card, because a paragraph competing
 with your actual notes for attention is the wrong trade. The fuller
 explanation for anything trimmed from the UI lives here instead — nothing
-written about prosoche is lost, only moved.
+written about prosoche is lost, only moved. A unit test reads this page and
+`src/routes`, so a screen named here and missing there fails `npm test`.
 
 ## Today
 
