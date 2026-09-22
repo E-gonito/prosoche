@@ -65,7 +65,18 @@ literally everywhere they appear:
 - **960px** — too narrow for two widgets side by side, so each takes the row.
 
 A page whose own two columns stop fitting at some other width may name that
-width; three do. Nothing else invents one.
+width; two do, both narrower than 960px because they run out of room before a
+generic two-widget row would:
+
+- **860px** — a person's page (`routes/people/[...name]`). The 1.2fr log
+  column still holds an input and a row of task text, and both crowd before
+  960px would collapse them.
+- **860px** — a note (`routes/notes/[...path]`). Three panes (tree, note,
+  rail), not two, are fighting for the row, so it gives up sooner than a
+  two-column page would.
+
+Nothing else invents one; the sync page's two-up diff stops fitting at the
+usual 960px and uses that.
 
 ## Shared classes
 

@@ -147,6 +147,10 @@
 	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 	.hint code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px var(--s1); }
 
+	/* This page's own two columns, narrower than the usual 720px phone
+	   cutoff: the 1.2fr log column still has an input and a row of task text
+	   in it, and both get uncomfortably tight before 860px; see
+	   docs/design.md. */
 	@media (max-width: 860px) {
 		.layout { grid-template-columns: 1fr; }
 	}

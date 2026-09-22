@@ -85,7 +85,8 @@
  *   960px  too narrow for two widgets side by side: every card takes the row.
  *
  * A page with a two-column layout of its own may name the width at which its
- * own two columns stop fitting, and three do. Nothing else invents one.
+ * own two columns stop fitting, and two do — see docs/design.md for which and
+ * why. Nothing else invents one.
  */
 
 * { box-sizing: border-box; }

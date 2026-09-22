@@ -324,5 +324,6 @@
 	.files { margin: 0; padding-left: 18px; font: var(--t12) var(--mono); }
 	.commands { margin: var(--s1) 0 0; }
 	.commands code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
-	@media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
+	/* Too narrow for its own two columns side by side; see docs/design.md. */
+	@media (max-width: 960px) { .two-up { grid-template-columns: 1fr; } }
 </style>
