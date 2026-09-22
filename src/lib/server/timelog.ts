@@ -20,6 +20,15 @@
  *    a human reading the note in Obsidian; the minutes are always computed from
  *    the two times, so a hand-edited range cannot disagree with its own total.
  *
+ * ## Two records that the work happened
+ *
+ * A time log line is one. A ticked timed block in the day's plan is the other,
+ * and it is the one this vault actually uses: nine ticked blocks in a week and
+ * no timer at all is a normal week here. So the week's figures count a ticked
+ * block as done for as long as it was planned, and never again if a log line
+ * already measured the same work. Nothing is written for a tick; it is read
+ * back out of the plan the user had already written.
+ *
  * ## Why the running timer is the one thing outside the markdown
  *
  * A timer that has not stopped has no end time, and there is no honest way to

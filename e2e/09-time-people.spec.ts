@@ -87,6 +87,37 @@ test.describe('the timer', () => {
 	});
 });
 
+test.describe('the Time widget', () => {
+	test.beforeEach(async ({ request }) => {
+		await resetVault(request);
+	});
+
+	/**
+	 * The author's own week: timed blocks ticked off in the daily note, the
+	 * timer never started. Wellbeing claims "Morning stretch" by alias, so the
+	 * widget counts a block that carries no tag and was never edited.
+	 */
+	test('counts a ticked timed block as done, with no timer anywhere', async ({ page }) => {
+		await page.goto('/w/wellbeing');
+
+		await expect(page.getByTestId('done-total')).toHaveText('30m');
+		await expect(page.getByTestId('logged-total')).toHaveText('0m');
+		await expect(page.getByTestId('time-widget')).toContainText('of 30m planned');
+		// Something happened this week, so the widget does not ask for a timer.
+		await expect(page.getByText('Nothing ticked or timed')).toHaveCount(0);
+		// Read, not written: the block still carries no tag.
+		expect(lineWith(TODAY_NOTE, 'Morning stretch').text).toBe('- [x] 09:30 - 10:00 Morning stretch `Q1`');
+	});
+
+	test('says a week with neither a tick nor a timer is empty, and names both', async ({ page }) => {
+		await page.goto('/w/errands');
+
+		await expect(page.getByTestId('done-total')).toHaveText('0m');
+		await expect(page.getByText('Nothing ticked or timed against Errands this week.')).toBeVisible();
+		await expect(page.getByTestId('time-widget')).toContainText('Ticking a timed block counts as done');
+	});
+});
+
 test.describe('a person', () => {
 	test.beforeEach(async ({ page, request }) => {
 		await resetVault(request);
