@@ -15,6 +15,7 @@ const STUDY: Workspace = {
 	name: 'Study',
 	color: '#7c3aed',
 	tag: 'ws/study',
+	aliases: [],
 	folders: ['Study'],
 	template: 'study',
 	tabs: [],
