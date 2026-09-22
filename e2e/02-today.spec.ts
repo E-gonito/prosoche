@@ -145,12 +145,16 @@ test.describe('the day', () => {
 		await expect(backlog.getByTestId('checkbox')).toHaveCount(0);
 	});
 
-	test('the workspace panel shows a real task and counts what it excluded', async ({ page }) => {
+	test('the workspace panel shows a real task, and a deck card with no marks on it', async ({ page }) => {
 		const panel = page.locator('.card', { hasText: 'From your workspaces' });
 		await expect(panel).toContainText('Finish chapter 3');
 		await expect(panel).toContainText('Study');
 		// Syllabus.md has two quadrant-less checkboxes, which are not tasks.
 		await expect(panel).not.toContainText('Indexing');
+		// Work's deck note carries neither quadrant nor tag, and is still work:
+		// Today asks the board what it has open rather than asking for a `Q`.
+		await expect(panel).toContainText('Work');
+		await expect(panel).toContainText('Sign the new supplier contract');
 	});
 
 	test('quick capture appends to the inbox', async ({ page }) => {

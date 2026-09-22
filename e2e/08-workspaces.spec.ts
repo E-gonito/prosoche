@@ -56,7 +56,10 @@ test.describe('workspaces and boards', () => {
 		const column = (key: string) => page.locator(`[data-testid="column"][data-column="${key}"]`);
 		await expect(page.getByTestId('column')).toHaveCount(4);
 
-		await expect(column('to-do').getByTestId('card')).toHaveCount(4);
+		// Five in To do: three with markers, and the two bare deck lines that
+		// are cards because they are in the deck at all.
+		await expect(column('to-do').getByTestId('card')).toHaveCount(5);
+		await expect(column('to-do').getByTestId('card').filter({ hasText: 'weekly sync agenda' })).toHaveCount(1);
 		await expect(column('in-progress').getByTestId('card')).toHaveText([/Take ownership/]);
 		// A `#col/review` tag beats the status marker.
 		await expect(column('review').getByTestId('card')).toHaveText([/Sitting with the reviewer/]);
@@ -151,9 +154,10 @@ test.describe('workspaces and boards', () => {
 	});
 
 	test('the board says what it left out, and promotes a line only when asked', async ({ page }) => {
+		// Three, not four: "weekly sync agenda" is in the deck, so it is a card
+		// now, and the test plan is the only note left out. The line names it.
 		const excluded = page.getByTestId('excluded');
-		await expect(excluded).toContainText('4');
-		await expect(excluded).toContainText('no quadrant, due date, id or workspace tag');
+		await expect(excluded).toContainText('3 checklist lines in Test plan are not cards');
 
 		await page.getByTestId('review-excluded').click();
 		const line = page.getByTestId('candidate').filter({ hasText: 'an upload with no title' });
