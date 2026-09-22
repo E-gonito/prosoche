@@ -14,6 +14,7 @@ import {
 describe('the pickers', () => {
 	it('offers the current model ids', () => {
 		expect(MODELS.map((m) => m.id)).toEqual([
+			'claude-opus-5-5',
 			'claude-opus-5',
 			'claude-sonnet-5',
 			'claude-haiku-4-5-20251001',

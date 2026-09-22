@@ -16,7 +16,8 @@
  * once the alias moves.
  */
 export const MODELS = [
-	{ id: 'claude-opus-5', label: 'Opus 5', hint: 'Deepest reasoning. Slowest and dearest.' },
+	{ id: 'claude-opus-5-5', label: 'Opus 5.5', hint: 'The newest Opus. Deep reasoning; slow and dear.' },
+	{ id: 'claude-opus-5', label: 'Opus 5', hint: 'The previous Opus. Deep reasoning; slow and dear.' },
 	{ id: 'claude-sonnet-5', label: 'Sonnet 5', hint: 'The default. Good at everything.' },
 	{ id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', hint: 'Fast and cheap. Triage and sorting.' },
 	{ id: 'claude-fable-5-1', label: 'Fable 5.1', hint: 'Design review and hard debugging.' }
