@@ -41,7 +41,12 @@
 			class:active={data.tab === tab.slug}
 			aria-current={data.tab === tab.slug ? 'page' : undefined}
 			data-testid="tab"
-		>{tab.title}</a>
+		>
+			<span data-testid="tab-title">{tab.title}</span>
+			{#if tab.count !== null}
+				<span class="count" class:zero={tab.count === 0} data-testid="tab-count">{tab.count}</span>
+			{/if}
+		</a>
 	{/each}
 </nav>
 
@@ -67,6 +72,9 @@
 
 	.tabs { display: flex; gap: var(--s1); flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 	.tabs a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--s1);
 		padding: 7px var(--s3);
 		border-radius: var(--r-md) var(--r-md) 0 0;
 		color: var(--muted);
@@ -78,4 +86,13 @@
 	}
 	.tabs a:hover { background: var(--soft); color: var(--text); }
 	.tabs a.active { background: var(--panel); border-color: var(--line); color: var(--text); font-weight: 600; }
+	.count {
+		padding: 0 var(--s1);
+		border-radius: var(--r-pill);
+		background: var(--soft);
+		color: var(--text);
+		font-size: var(--t11);
+		line-height: 1.6;
+	}
+	.count.zero { color: var(--muted); }
 </style>
