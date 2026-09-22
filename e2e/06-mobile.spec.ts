@@ -95,7 +95,9 @@ test.describe('on a phone', () => {
 		// it to the middle first: a finger cannot reach what is not on screen,
 		// and neither can a synthetic pointer.
 		const { x, y } = await centreBlock(page, 'Read a book');
-		await page.touchscreen.tap(x, y);
+		// Straight into the gesture, with no tap first: a press that goes
+		// nowhere is how a block is opened for editing, and the card it opens
+		// would swallow the drag.
 		// Playwright's touchscreen has no drag, so use pointer events, which is
 		// what the component listens for either way.
 		await page.mouse.move(x, y);

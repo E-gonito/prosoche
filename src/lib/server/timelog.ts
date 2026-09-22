@@ -405,9 +405,10 @@ export interface WeekSummary {
  * no domain logic.
  *
  * Scoping uses the same rule as everything else: a log line belongs to the
- * workspace whose tag it carries, a planned block to the workspace its tag or
- * its folder gives it. Daily notes belong to no folder, so a scoped week shows
- * planned time only for blocks that carry the tag.
+ * workspace whose tag it carries, a planned block to whichever workspace its
+ * tag, its folder or one of its aliases gives it. Daily notes belong to no
+ * folder, so a scoped week shows the blocks that carry the tag and the ones
+ * that name the workspace in their own words.
  */
 export async function weekSummary(
 	vault: Vault,
@@ -423,7 +424,11 @@ export async function weekSummary(
 		const blocks = index
 			.tasksIn(dailyNotePath(day))
 			.filter((t) => !t.fenced && t.startMin !== null && t.endMin !== null)
-			.filter((t) => !workspace || workspaceFor(workspaces, { path: t.path, tags: t.tags })?.slug === workspace.slug);
+			.filter(
+				(t) =>
+					!workspace ||
+					workspaceFor(workspaces, { path: t.path, tags: t.tags, text: t.text })?.slug === workspace.slug
+			);
 		return plannedVsActual(blocks, entries.filter((e) => e.day === day));
 	});
 
@@ -512,8 +517,9 @@ export async function startTimer(
 		text,
 		// Resolved once, here, and written onto the log line at stop: a line that
 		// only made sense while the folder layout stayed put would not survive a
-		// reorganisation of the vault.
-		workspace: workspaceFor(workspaces, { path: spec.path, tags })?.tag ?? null,
+		// reorganisation of the vault. The words go in too, so timing "Work on
+		// Kaya" from a daily note logs it against Kaya.
+		workspace: workspaceFor(workspaces, { path: spec.path, tags, text })?.tag ?? null,
 		quadrant: task?.quadrant ?? null,
 		startedAt: now.toISOString(),
 		day: dayOf(now.toISOString())

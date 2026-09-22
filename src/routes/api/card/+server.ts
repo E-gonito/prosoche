@@ -10,9 +10,11 @@ import type { RequestHandler } from './$types';
  * One card: read it with its context, or create one.
  *
  * Reading goes to the vault rather than the index, because the drawer is about
- * to edit the line and has to show the bytes that are there now. Every failure
- * is a status code with a sentence the drawer can display; nothing here
- * throws.
+ * to edit the line and has to show the bytes that are there now. It answers
+ * with the workspace the card belongs to and the whole list of workspaces, so
+ * one request tells the drawer everything it can show or change about the card
+ * and no page has to thread the list through as a prop. Every failure is a
+ * status code with a sentence the drawer can display; nothing here throws.
  */
 export const GET: RequestHandler = async ({ url }) => {
 	const path = url.searchParams.get('path');
@@ -32,10 +34,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const lines = note.content.split('\n');
 	const parsed = parseNote(note.content, path);
-	const owner = workspaceFor(await workspaces(), {
+	const defs = await workspaces();
+	const owner = workspaceFor(defs, {
 		path,
 		tags: found.tags,
-		frontmatter: parsed.frontmatter
+		frontmatter: parsed.frontmatter,
+		text: found.text
 	});
 
 	return json({
@@ -43,7 +47,11 @@ export const GET: RequestHandler = async ({ url }) => {
 		// The indented sub-bullets the task owns, shown as written.
 		block: lines.slice(found.line + 1, found.blockEnd + 1),
 		title: index.noteTitle(path) ?? parsed.title,
-		workspace: owner ? { slug: owner.slug, name: owner.name, color: owner.color } : null
+		workspace: owner ? { slug: owner.slug, name: owner.name, color: owner.color } : null,
+		// Every workspace, with the tag that assigns a card to it. The drawer
+		// offers them as a choice and writes the tag it is given; which tag
+		// means which workspace stays a question for this module.
+		workspaces: defs.map((w) => ({ slug: w.slug, name: w.name, color: w.color, tag: w.tag }))
 	});
 };
 

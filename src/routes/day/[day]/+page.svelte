@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import Timeline from '$lib/components/Timeline.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
+	import CardDrawer from '$lib/components/CardDrawer.svelte';
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -23,8 +24,13 @@
 	let problem = $state('');
 	let creating = $state(false);
 	let filter = $state<string | null>(null);
+	// The card being edited, if any. Quadrant, due date and workspace all live
+	// in the drawer, so the day does not grow a second set of controls for them.
+	let opened = $state<Task | null>(null);
 
 	const keyOf = (task: Task) => `${data.day}|${task.path}:${task.line}`;
+	/** The workspace the server attributed a task to, for its coloured dot. */
+	const ownerOf = (task: Task) => data.owners[`${task.path}:${task.line}`] ?? null;
 	const merge = (list: Task[]) => list.map((task) => patches.get(keyOf(task)) ?? task);
 
 	const all = $derived([...merge(data.scheduled), ...merge(data.unscheduled)]);
@@ -173,9 +179,11 @@
 						isToday={data.isToday}
 						day={data.day}
 						dayPath={data.path}
+						owners={data.owners}
 						onchange={applied}
 						onplanned={planned}
 						onproblem={failed}
+						onopen={(task) => (opened = task)}
 					/>
 				{/key}
 			</div>
@@ -203,7 +211,14 @@
 				<h3>Unscheduled <span class="right">{unscheduled.length}</span></h3>
 				<Capture onproblem={failed} />
 				{#each unscheduled as task (task.path + ':' + task.line)}
-					<TaskRow {task} draggable onchange={applied} onproblem={failed} />
+					<TaskRow
+						{task}
+						draggable
+						workspace={ownerOf(task)}
+						onchange={applied}
+						onproblem={failed}
+						onopen={(t) => (opened = t)}
+					/>
 				{/each}
 				{#if unscheduled.length}
 					<p class="hint">Drag the ⠿ grip onto the timeline to give one a time.</p>
@@ -244,6 +259,10 @@
 			</div>
 		</div>
 	</div>
+{/if}
+
+{#if opened}
+	<CardDrawer task={opened} onclose={() => (opened = null)} onchange={applied} />
 {/if}
 
 {#if drag.task}

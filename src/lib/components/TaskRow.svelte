@@ -10,12 +10,18 @@
 		task,
 		onchange,
 		onproblem,
+		onopen,
+		workspace = null,
 		showPath = false,
 		draggable = false
 	}: {
 		task: Task;
 		onchange?: (task: Task) => void;
 		onproblem?: (message: string) => void;
+		/** Given, the row's text opens the card. Absent, the text is text. */
+		onopen?: (task: Task) => void;
+		/** The workspace this task belongs to, worked out by the server. */
+		workspace?: { slug: string; name: string; color: string } | null;
 		showPath?: boolean;
 		draggable?: boolean;
 	} = $props();
@@ -62,7 +68,16 @@
 	{#if task.startMin !== null && task.endMin !== null}
 		<span class="time">{formatMinutes(task.startMin)}–{formatMinutes(task.endMin)}</span>
 	{/if}
-	<span class="text">{displayText(task.text)}</span>
+	{#if workspace}
+		<span class="ws" data-testid="task-workspace" style="--dot: {workspace.color}" title={workspace.name}></span>
+	{/if}
+	{#if onopen}
+		<button class="text open" data-testid="open-task" title="Open the card" onclick={() => onopen(task)}>
+			{displayText(task.text)}
+		</button>
+	{:else}
+		<span class="text">{displayText(task.text)}</span>
+	{/if}
 	{#if !done}
 		<button
 			class="run"
@@ -151,5 +166,30 @@
 	.run:hover { color: var(--accent); }
 	.run.timing { color: var(--q1); }
 	.text { flex: 1; min-width: 0; }
+	/*
+	 * The text itself is the control, so the row still reads as a row: no
+	 * border, no background, the same type, and the underline only once the
+	 * pointer says it is about to be used.
+	 */
+	.text.open {
+		border: 0;
+		background: none;
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.text.open:hover { text-decoration: underline; }
+	.text.open:focus-visible { outline: var(--focus); outline-offset: 2px; border-radius: 3px; }
+	/* The workspace this line belongs to, by its tag, its folder or its words. */
+	.ws {
+		flex: none;
+		align-self: center;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--dot);
+	}
 	.path { font-size: var(--t11); color: var(--muted); flex: none; }
 </style>
