@@ -52,7 +52,7 @@
 
 <style>
 	form { display: flex; gap: var(--s2); flex: 1; min-width: 240px; max-width: 520px; }
-	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) var(--s3); font: inherit; background: var(--field); }
+	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s2) var(--s3); font: inherit; background: var(--field); }
 	.count { margin: 0 0 10px; font-size: var(--t13); }
 	.hit { display: block; text-decoration: none; color: inherit; margin-bottom: 10px; }
 	.hit:hover { border-color: var(--accent); }

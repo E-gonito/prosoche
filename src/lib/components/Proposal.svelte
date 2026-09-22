@@ -165,14 +165,14 @@
 	.stopped {
 		border: 1px solid var(--bad);
 		background: #fef2f2;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 10px var(--s3);
 		margin-bottom: var(--s3);
 		font-size: var(--t13);
 	}
 	.refusals { list-style: none; margin: 6px 0 0; padding: 0; font-size: var(--t12); }
 	.refusals li { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; flex-wrap: wrap; }
-	.edit { border: 1px solid var(--line); border-radius: 8px; padding: 10px var(--s3); margin-bottom: 10px; }
+	.edit { border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px var(--s3); margin-bottom: 10px; }
 	.edit.refused { border-color: var(--bad); background: #fffafa; }
 	header { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.tick { display: flex; align-items: center; gap: 6px; }

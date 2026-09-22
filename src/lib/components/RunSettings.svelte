@@ -83,7 +83,7 @@
 		padding: var(--s2) 10px;
 		background: var(--soft);
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font-size: var(--t12);
 	}
 	.compact { padding: 6px var(--s2); gap: var(--s2); }

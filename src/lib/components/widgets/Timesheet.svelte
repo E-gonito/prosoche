@@ -122,7 +122,7 @@
 		margin: 0 0 10px;
 		padding: 6px 10px;
 		background: var(--soft);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font-size: var(--t12);
 		color: var(--muted);
 	}
@@ -144,7 +144,7 @@
 		margin: var(--s2) 0;
 		padding: var(--s2) 10px;
 		background: var(--soft);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font: var(--t12)/1.5 var(--mono);
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;

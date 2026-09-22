@@ -79,7 +79,7 @@
 		width: 100%;
 		box-sizing: border-box;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 10px var(--s3);
 		font: inherit;
 		background: var(--field);

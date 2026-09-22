@@ -135,7 +135,7 @@
 		font-size: var(--t13);
 		padding: 7px 10px;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		background: var(--field);
 	}
 	.log { list-style: none; margin: var(--s3) 0 0; padding: 0; font-size: var(--t13); }

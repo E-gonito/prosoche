@@ -131,7 +131,7 @@
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: var(--s2) 10px;
 		font: inherit;
 		background: var(--field);
@@ -151,7 +151,7 @@
 	.template {
 		display: block;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: var(--s2) 10px;
 		cursor: pointer;
 		font-size: var(--t13);

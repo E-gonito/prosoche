@@ -137,7 +137,7 @@
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 7px 10px;
 		font: inherit;
 		background: var(--field);

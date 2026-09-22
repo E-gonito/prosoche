@@ -24,7 +24,7 @@ Type, named by the size it is. Body text is `--t14`.
 Radii, elevation, fields and focus:
 
 ```css
---r-sm: 6px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
+--r-sm: 6px; --r-md: 8px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
 --shadow: 0 6px 18px rgba(31, 35, 40, 0.18);      /* lifted off the page */
 --shadow-lg: 0 18px 48px rgba(31, 35, 40, 0.18);  /* floating over it */
 --field: #fff;                /* anything you type or choose into */

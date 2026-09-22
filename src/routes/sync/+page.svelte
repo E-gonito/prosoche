@@ -289,7 +289,7 @@
 	.err { color: var(--bad); font-size: var(--t13); margin: 10px 0 0; }
 	.bad-card { border-color: #fca5a5; background: #fff7f7; }
 
-	.pick { border: 1px solid var(--line); border-radius: 8px; max-height: 320px; overflow: auto; margin-bottom: 10px; }
+	.pick { border: 1px solid var(--line); border-radius: var(--r-md); max-height: 320px; overflow: auto; margin-bottom: 10px; }
 	.row {
 		display: flex;
 		align-items: center;
@@ -305,7 +305,7 @@
 	label.row { cursor: pointer; }
 
 	/* `.btn.small` and `.btn.danger` are shared, in app.css. */
-	.subject { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) 10px; font: inherit; font-size: var(--t13); background: var(--field); }
+	.subject { width: 100%; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s2) 10px; font: inherit; font-size: var(--t13); background: var(--field); }
 	.buttons { border: 0; padding: 10px 0 0; justify-content: flex-start; font-family: inherit; }
 
 	.wide { grid-column: 1 / -1; }
@@ -315,7 +315,7 @@
 		overflow: auto;
 		background: var(--soft);
 		padding: 10px;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		font-size: var(--t12);
 		white-space: pre-wrap;
 	}

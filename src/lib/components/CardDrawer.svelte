@@ -237,7 +237,7 @@
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 6px var(--s2);
 		font: inherit;
 		font-size: var(--t13);
@@ -249,7 +249,7 @@
 	pre {
 		margin: 4px 0 0;
 		background: var(--soft);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: var(--s2) 10px;
 		font: var(--t12) var(--mono);
 		white-space: pre-wrap;

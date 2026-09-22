@@ -231,7 +231,7 @@
 
 	.conflict { border-color: #fca5a5; background: #fff7f7; margin-bottom: var(--s3); }
 	.conflict .row { display: flex; gap: var(--s2); margin: 10px 0 0; }
-	.conflict pre { max-height: 220px; overflow: auto; background: var(--soft); padding: 10px; border-radius: 8px; font-size: var(--t12); }
+	.conflict pre { max-height: 220px; overflow: auto; background: var(--soft); padding: 10px; border-radius: var(--r-md); font-size: var(--t12); }
 	.msg { color: var(--bad); font-size: var(--t13); margin: 0 0 10px; }
 
 	.editor :global(.cm-editor) { font-size: 15px; }

@@ -195,7 +195,7 @@
 	input {
 		width: 100%;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 10px var(--s3);
 		font: inherit;
 		font-size: 15px;
@@ -220,7 +220,7 @@
 		text-align: left;
 		background: none;
 		border: 0;
-		border-radius: 8px;
+		border-radius: var(--r-md);
 		padding: 7px 10px;
 		font: inherit;
 		color: inherit;
