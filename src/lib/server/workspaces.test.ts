@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { loadWorkspaces, seedWorkspaces, workspaceFor, type Workspace } from './workspaces';
+import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, TEMPLATE_TABS, type Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -25,7 +25,7 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded.map((w) => w.slug).sort()).toEqual(['personal', 'side-projects', 'study', 'work']);
 		const work = loaded.find((w) => w.slug === 'work')!;
 		expect(work.folders).toEqual(['Work']);
-		expect(work.tabs[0]).toEqual({ title: 'Board', widgets: ['board'] });
+		expect(work.tabs[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
 	});
 
 	it('writes no aliases block, because none of the seeds has one', async () => {
@@ -170,5 +170,34 @@ describe('workspaceFor, by alias', () => {
 	it('never guesses when the caller passes no text', () => {
 		expect(workspaceFor(all, { path: DAY })).toBeNull();
 		expect(workspaceFor(all, { path: DAY, text: 'Write the daily log' })).toBeNull();
+	});
+});
+
+describe('TEMPLATE_TABS', () => {
+	it('starts a project and a business workspace with an Overview of the board and time', () => {
+		expect(TEMPLATE_TABS.project[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
+		expect(TEMPLATE_TABS.business[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
+	});
+
+	it('leaves the other five tabs on both templates as they were', () => {
+		expect(TEMPLATE_TABS.project.slice(1).map((t) => t.title)).toEqual(['Notes', 'People', 'Blocked', 'Insights']);
+		expect(TEMPLATE_TABS.business.slice(1).map((t) => t.title)).toEqual(['Notes', 'People', 'Blocked', 'Insights']);
+	});
+});
+
+describe('createWorkspace', () => {
+	it('writes the Overview tab onto a project workspace', async () => {
+		const created = await createWorkspace(vault, { name: 'Riverside Clinic', template: 'project' });
+		if (!created.ok) throw new Error('expected the workspace to be created');
+		expect(created.workspace.tabs).toEqual(TEMPLATE_TABS.project);
+
+		const loaded = (await loadWorkspaces(vault)).find((w) => w.slug === 'riverside-clinic')!;
+		expect(loaded.tabs).toEqual(TEMPLATE_TABS.project);
+	});
+
+	it('writes the Overview tab onto a business workspace', async () => {
+		const created = await createWorkspace(vault, { name: 'Riverside Clinic', template: 'business' });
+		if (!created.ok) throw new Error('expected the workspace to be created');
+		expect(created.workspace.tabs).toEqual(TEMPLATE_TABS.business);
 	});
 });

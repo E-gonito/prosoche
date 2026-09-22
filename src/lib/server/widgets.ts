@@ -13,7 +13,7 @@
 
 import type { NoteIndex } from './index/index';
 import type { Vault } from './vault/index';
-import type { Workspace } from './workspaces';
+import type { Workspace, WorkspaceTab } from './workspaces';
 import { WIDGETS, type LoadedWidget } from '$lib/shared/widgets';
 
 export type { LoadedWidget };
@@ -31,7 +31,10 @@ export interface WidgetContext {
 /** What a widget module exports. `data` is serialised straight to the browser. */
 export type WidgetLoad = (ctx: WidgetContext) => Promise<unknown>;
 
-type Loader = () => Promise<{ load: WidgetLoad }>;
+/** What a widget module may export beside `load`, to give its tab a count. */
+export type WidgetCount = (ctx: WidgetContext) => Promise<number>;
+
+type Loader = () => Promise<{ load: WidgetLoad; count?: WidgetCount }>;
 
 /** One importer per catalogue entry, so adding a widget is adding a file. */
 const LOADERS: Record<string, Loader> = {
@@ -77,4 +80,35 @@ export async function loadWidgets(names: string[], ctx: WidgetContext): Promise<
 			}
 		})
 	);
+}
+
+/**
+ * The number to show on each tab, for a tab bar built before any widget on it
+ * has otherwise loaded.
+ *
+ * A tab's count is its first widget that exports `count`, in the order the
+ * workspace file lists them - `[board, time]` counts by `board`, because
+ * `time` has no notion of a count. A tab with no counting widget reads null,
+ * which the tab bar renders as no pill at all rather than a zero it did not
+ * earn.
+ *
+ * An unknown widget name is skipped, the same as `loadWidgets` drops it; a
+ * name that fails to import or whose `count` throws ends the search for that
+ * tab with null, never an error page.
+ */
+export async function tabCounts(tabs: WorkspaceTab[], ctx: WidgetContext): Promise<Array<number | null>> {
+	return Promise.all(tabs.map((tab) => countFor(tab.widgets, ctx)));
+}
+
+async function countFor(names: string[], ctx: WidgetContext): Promise<number | null> {
+	for (const name of names) {
+		if (!(name in WIDGETS) || !(name in LOADERS)) continue;
+		try {
+			const module = await LOADERS[name]();
+			if (module.count) return await module.count(ctx);
+		} catch {
+			return null;
+		}
+	}
+	return null;
 }

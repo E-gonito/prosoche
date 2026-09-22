@@ -236,15 +236,14 @@ export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise
  */
 export const TEMPLATE_TABS: Record<string, WorkspaceTab[]> = {
 	project: [
-		{ title: 'Board', widgets: ['board'] },
+		{ title: 'Overview', widgets: ['board', 'time'] },
 		{ title: 'Notes', widgets: ['notes'] },
 		{ title: 'People', widgets: ['people'] },
 		{ title: 'Blocked', widgets: ['blocked'] },
-		{ title: 'Time', widgets: ['time'] },
 		{ title: 'Insights', widgets: ['insights'] }
 	],
 	business: [
-		{ title: 'Board', widgets: ['board'] },
+		{ title: 'Overview', widgets: ['board', 'time'] },
 		{ title: 'Notes', widgets: ['notes'] },
 		{ title: 'People', widgets: ['people'] },
 		{ title: 'Blocked', widgets: ['blocked'] },

@@ -37,6 +37,19 @@ export interface BlockedWidget {
 const LIMIT = 300;
 
 export async function load(ctx: WidgetContext): Promise<BlockedWidget> {
+	return { scope: ctx.workspace?.name ?? null, items: waitingItems(ctx) };
+}
+
+/** The tab count: the same items the widget lists, counted rather than rendered. */
+export async function count(ctx: WidgetContext): Promise<number> {
+	return waitingItems(ctx).length;
+}
+
+/**
+ * The one query behind both `load` and `count`, so a widget and its tab's
+ * pill can never disagree about what is waiting.
+ */
+function waitingItems(ctx: WidgetContext): BlockedItem[] {
 	const waiting = ctx.index.findTasks({
 		blocked: true,
 		statuses: OPEN_STATUSES,
@@ -65,12 +78,9 @@ export async function load(ctx: WidgetContext): Promise<BlockedWidget> {
 	});
 
 	const scope = ctx.workspace;
-	return {
-		scope: scope?.name ?? null,
-		items: scope
-			? items.filter((item) => item.mine || item.blockers.some((b) => b.workspace?.slug === scope.slug))
-			: items
-	};
+	return scope
+		? items.filter((item) => item.mine || item.blockers.some((b) => b.workspace?.slug === scope.slug))
+		: items;
 }
 
 function owningWorkspace(workspaces: Workspace[], task: Task): Workspace | null {

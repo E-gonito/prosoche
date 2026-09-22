@@ -40,13 +40,31 @@ test.describe('workspaces and boards', () => {
 
 	test('a workspace page renders its tabs, with the first as the default', async ({ page }) => {
 		await expect(page.getByTestId('workspace-name')).toHaveText('Atlas');
-		await expect(page.getByTestId('tab')).toHaveText(['Board', 'Notes', 'Blocked']);
+		await expect(page.getByTestId('tab-title')).toHaveText(['Board', 'Notes', 'Blocked']);
 		await expect(page.locator('[data-widget="board"]')).toBeVisible();
+
+		// The Board tab's count is its open cards: every column but Done, since
+		// Done is a closed status and `openCards` leaves it out.
+		const openOnBoard = await page
+			.locator('[data-testid="column"]:not([data-column="done"]) [data-testid="card"]')
+			.count();
+		await expect(
+			page.getByTestId('tab').filter({ has: page.getByTestId('tab-title').filter({ hasText: 'Board' }) }).getByTestId('tab-count')
+		).toHaveText(String(openOnBoard));
 
 		await page.getByTestId('tab').filter({ hasText: 'Notes' }).click();
 		await expect(page).toHaveURL(/\/w\/atlas\/notes$/);
 		await expect(page.getByTestId('notes-widget')).toContainText('Meeting notes');
 		await expect(page.getByTestId('inbox-widget')).toContainText('Idea');
+
+		// Blocked's count is the same items its widget lists, not the blockers
+		// nested inside each one.
+		await page.getByTestId('tab').filter({ hasText: 'Blocked' }).click();
+		await expect(page.getByTestId('blocked-widget')).toBeVisible();
+		const blockedItems = await page.locator('[data-testid="blocked-widget"] > li').count();
+		await expect(
+			page.getByTestId('tab').filter({ has: page.getByTestId('tab-title').filter({ hasText: 'Blocked' }) }).getByTestId('tab-count')
+		).toHaveText(String(blockedItems));
 	});
 
 	test('the workspace file is one link away, because that is where tabs live', async ({ page }) => {

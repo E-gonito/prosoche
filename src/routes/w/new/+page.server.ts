@@ -17,8 +17,8 @@ export const load: PageServerLoad = async () => {
 		existing: (await workspaces()).map((w) => ({ slug: w.slug, name: w.name })),
 		colors: ['#2f6fed', '#7c3aed', '#16a34a', '#ea580c', '#d9534f', '#0891b2', '#6b7280'],
 		templates: [
-			{ name: 'project', title: 'Project', tabs: 'Board, Notes, People, Blocked, Time, Insights' },
-			{ name: 'business', title: 'Business', tabs: 'Board, Notes, People, Blocked, Insights' },
+			{ name: 'project', title: 'Project', tabs: 'Overview, Notes, People, Blocked, Insights' },
+			{ name: 'business', title: 'Business', tabs: 'Overview, Notes, People, Blocked, Insights' },
 			{ name: 'study', title: 'Study', tabs: 'Overview, Board, Notes, Insights' },
 			{ name: 'area', title: 'Area of life', tabs: 'Dashboard, Board, Notes, Insights' }
 		]

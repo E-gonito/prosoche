@@ -8,7 +8,7 @@
  * nothing to show.
  */
 
-import { buildBoard } from '../board';
+import { buildBoard, openCards } from '../board';
 import type { BoardWidget } from '../../shared/board';
 import type { WidgetContext } from '../widgets';
 
@@ -19,4 +19,9 @@ export async function load(ctx: WidgetContext): Promise<BoardWidget> {
 		workspace: { slug: workspace.slug, name: workspace.name },
 		...buildBoard(ctx.index, workspace, ctx.workspaces)
 	};
+}
+
+/** The tab count: how many cards are open, the same rule the rail and Today use. */
+export async function count(ctx: WidgetContext): Promise<number> {
+	return ctx.workspace ? openCards(ctx.index, ctx.workspace, ctx.workspaces).length : 0;
 }
