@@ -43,6 +43,7 @@
 		'search',
 		'settings',
 		'sparkles',
+		'square',
 		'video',
 		'x'
 	] as const;

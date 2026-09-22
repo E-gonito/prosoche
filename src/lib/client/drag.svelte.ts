@@ -22,6 +22,14 @@ export interface DropZone {
 	element: HTMLElement;
 	/** Minute of the day at a screen position. Omitted by zones without time. */
 	minuteAt?: (clientY: number) => number;
+	/**
+	 * Scroll the zone when the pointer is at its edge, returning whether it
+	 * moved. A zone that scrolls internally — the timeline, inside its
+	 * fixed-height card — is otherwise only droppable on the part of itself
+	 * that happens to be on screen. Held still at the edge counts, so this is
+	 * called on a frame timer rather than on pointer movement.
+	 */
+	edgeScroll?: (clientX: number, clientY: number) => boolean;
 	/** Called on release inside the zone. `minute` is null for timeless zones. */
 	drop: (task: Task, minute: number | null) => void;
 }
@@ -91,7 +99,19 @@ export function startDrag(task: Task, event: PointerEvent): void {
 		drag.over = zone?.minuteAt ? zone.minuteAt(e.clientY) : null;
 	};
 
+	// A pointer resting against a scrolling zone's edge keeps scrolling it, so
+	// the loop runs on frames rather than on movement. It only ever asks the
+	// zone to scroll: where the drop would land is recomputed from the same
+	// pointer position afterwards, because the content moved under it.
+	let frame = requestAnimationFrame(function tick() {
+		frame = requestAnimationFrame(tick);
+		if (!active) return;
+		const zone = zoneAt(drag.x, drag.y);
+		if (zone?.edgeScroll?.(drag.x, drag.y)) drag.over = zone.minuteAt ? zone.minuteAt(drag.y) : null;
+	});
+
 	const up = (e: PointerEvent) => {
+		cancelAnimationFrame(frame);
 		window.removeEventListener('pointermove', move);
 		window.removeEventListener('pointerup', up);
 		window.removeEventListener('pointercancel', up);
