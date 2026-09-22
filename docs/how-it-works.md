@@ -6,6 +6,12 @@ explanation for anything trimmed from the UI lives here instead — nothing
 written about prosoche is lost, only moved. A unit test reads this page and
 `src/routes`, so a screen named here and missing there fails `npm test`.
 
+The sidebar and the command palette are two views onto the same short list of
+destinations. A "T3 Code" entry joins both, but only once `HUB_T3_URL` names
+a running T3 Code server; unset, neither shows it, rather than linking
+somewhere that will not answer. It opens in a new tab rather than this one,
+since its paired session belongs to that origin.
+
 ## Today
 
 The timeline is direct manipulation, not a form. Drag a block to move it, its
