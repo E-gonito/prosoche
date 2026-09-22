@@ -1,5 +1,6 @@
 <script lang="ts">
 	/** Cards waiting, and the one button that matters: start reviewing. */
+	import Icon from '$lib/components/Icon.svelte';
 	import Unavailable from './Unavailable.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
@@ -35,7 +36,7 @@
 		</div>
 
 		{#if data.decks.length > 0}
-			<p class="decks">{#each data.decks.slice(0, 5) as deck (deck.deck)}<span class="tag">{deck.deck} {deck.count}</span>{/each}</p>
+			<p class="decks">{#each data.decks.slice(0, 5) as deck (deck.deck)}<span class="tag"><b>{deck.deck}</b> · {deck.count}</span>{/each}</p>
 		{/if}
 
 		{#if data.waiting === 0}
@@ -44,8 +45,8 @@
 
 		{#each data.invisible as note (note.path)}
 			<p class="warn" data-testid="invisible">
-				<a href="/notes/{note.path}">{note.title}</a> has {note.cards}
-				{note.cards === 1 ? 'card' : 'cards'} Obsidian cannot see. Add <code>#flashcards</code> to the note.
+				<Icon name="alert-triangle" size={13} />
+				<a href="/notes/{note.path}">{note.title}</a> has {note.cards} {note.cards === 1 ? 'card' : 'cards'} Obsidian cannot see — add <code>#flashcards</code>.
 			</p>
 		{/each}
 	</div>
@@ -57,6 +58,17 @@
 	.of { font-size: 12px; color: var(--muted); flex: 1; }
 	.decks { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 	.none { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
-	.warn { margin: 10px 0 0; font-size: 12px; color: var(--warn); }
+	.warn {
+		margin: 10px 0 0;
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 12px;
+		color: var(--warn);
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+	.warn :global(svg) { flex: none; }
 	.warn code { font: 11px var(--mono); background: var(--soft); padding: 1px 4px; border-radius: 4px; }
 </style>

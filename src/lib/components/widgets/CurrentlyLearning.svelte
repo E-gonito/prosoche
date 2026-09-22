@@ -52,12 +52,14 @@
 			<ul>
 				{#each data.items as item (item.path)}
 					<li data-testid="learning-item" class:busy={busy === item.path}>
-						<span class="ic" title={item.kind}><Icon name={ICON[item.kind] ?? 'file-text'} /></span>
-						<a class="name" href="/notes/{item.path}" title={item.title}>{item.title}</a>
+						<div class="row">
+							<span class="ic" title={item.kind}><Icon name={ICON[item.kind] ?? 'file-text'} /></span>
+							<a class="name" href="/notes/{item.path}" title={item.title}>{item.title}</a>
+							<button class="btn ghost done" data-testid="finish" onclick={() => move(item, 'done')} title="Mark finished">
+								<Icon name="check" label="Mark finished" />
+							</button>
+						</div>
 						<span class="bar" aria-label="{item.progress}% done"><i style="width: {item.progress}%"></i></span>
-						<button class="btn ghost done" data-testid="finish" onclick={() => move(item, 'done')} title="Mark finished">
-							<Icon name="check" label="Mark finished" />
-						</button>
 					</li>
 				{/each}
 			</ul>
@@ -69,18 +71,18 @@
 
 <style>
 	ul { list-style: none; margin: 0; padding: 0; }
-	li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+	li { padding: 6px 0; border-top: 1px solid var(--line); }
 	li:first-child { border-top: 0; }
 	.busy { opacity: 0.5; }
+	/* Title on its own line, so a name past thirty characters gets the whole
+	   card's width instead of what the bar and button left over. */
+	.row { display: flex; align-items: center; gap: 8px; }
 	.ic { flex: none; display: inline-flex; color: var(--muted); }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	.name:hover { color: var(--accent); }
-	.bar { flex: none; width: 54px; height: 5px; border-radius: 3px; background: var(--soft); overflow: hidden; }
+	.bar { display: block; width: 100%; height: 5px; border-radius: 3px; background: var(--soft); overflow: hidden; margin-top: 6px; }
 	.bar i { display: block; height: 100%; background: var(--accent); }
 	.done { flex: none; padding: 3px 6px; }
 	.none { margin: 0; color: var(--muted); font-size: 13px; }
 	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
-	@media (max-width: 720px) {
-		.bar { width: 36px; }
-	}
 </style>

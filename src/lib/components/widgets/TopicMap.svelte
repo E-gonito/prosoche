@@ -34,8 +34,7 @@
 {:else}
 	<div data-testid="topic-map">
 		<div class="head">
-			<span class="tag">{data.full} covered</span>
-			<span class="tag gap">{data.gaps} gaps</span>
+			<span class="summary">{data.full} of {data.topics.length} covered · {data.gaps} {data.gaps === 1 ? 'gap' : 'gaps'}</span>
 			<label class="only"><input type="checkbox" bind:checked={gapsOnly} data-testid="gaps-only" /> gaps only</label>
 		</div>
 		<ul>
@@ -62,8 +61,8 @@
 
 <style>
 	.head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-	.only { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
-	.gap { color: var(--warn); }
+	.summary { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.only { margin-left: auto; flex: none; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 	ul { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; }
 	li { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px calc(var(--depth) * 14px); font-size: 13px; }
 	.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--q4); }
