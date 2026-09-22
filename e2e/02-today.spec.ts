@@ -178,6 +178,52 @@ test.describe('the day', () => {
 		await expect(panel).toContainText('Sign the new supplier contract');
 	});
 
+	test('the timeline says which project the day\'s hours are for', async ({ page }) => {
+		const chips = page.getByTestId('day-workspaces');
+		// 10:40 - 18:00 "Client project", claimed by the Client workspace's
+		// alias with nothing written on the line, and not yet ticked.
+		await expect(chips.getByTestId('day-workspace').filter({ hasText: 'Client' })).toContainText('7h 20m');
+		// 09:30 - 10:00 "Morning stretch", ticked and never timed, so all of
+		// what it planned is done and the plan is not repeated back.
+		const wellbeing = chips.getByTestId('day-workspace').filter({ hasText: 'Wellbeing' });
+		await expect(wellbeing).toContainText('30m done');
+		await expect(wellbeing).not.toContainText('of 30m');
+		// "Read a book" and "Write the daily log" belong to nobody, and no
+		// chip claims them.
+		await expect(chips.getByTestId('day-workspace')).toHaveCount(2);
+	});
+
+	test('a workspace card can be added to today without a drag', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE).split('\n');
+		const card = vaultFile('Study/Algorithms.md');
+		const panel = page.locator('.card', { hasText: 'From your workspaces' });
+
+		await panel.getByTestId('task-row').filter({ hasText: 'Finish chapter 3' }).getByTestId('add-to-today').click();
+
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('Finish chapter 3'))).toBe(true);
+		// Exactly one line gained, with a link back to the card and no time on
+		// it, so the block is waiting to be given one.
+		const after = vaultFile(TODAY_NOTE).split('\n');
+		const { index, text } = lineWith(TODAY_NOTE, 'Finish chapter 3');
+		expect(text).toBe('- [ ] Finish chapter 3 [[Study/Algorithms]] `Q2` #ws/study');
+		expect(after.toSpliced(index, 1)).toEqual(before);
+		expect(vaultFile('Study/Algorithms.md')).toBe(card);
+
+		// And it is where a block with no time belongs.
+		await expect(
+			page.getByTestId('unscheduled').getByTestId('task-row').filter({ hasText: 'Finish chapter 3' })
+		).toBeVisible();
+	});
+
+	test('a workspace card opens the drawer, like the day\'s own rows', async ({ page }) => {
+		const panel = page.locator('.card', { hasText: 'From your workspaces' });
+		await panel.getByTestId('task-row').filter({ hasText: 'Finish chapter 3' }).getByTestId('open-task').click();
+
+		const drawer = page.getByTestId('card-drawer');
+		await expect(drawer).toBeVisible();
+		await expect(drawer.getByTestId('drawer-text')).toHaveValue(/Finish chapter 3/);
+	});
+
 	test('quick capture appends to the inbox', async ({ page }) => {
 		await page.getByTestId('unscheduled').getByLabel('Quick capture').fill('remember the milk');
 		await page.getByRole('button', { name: 'Add' }).click();
