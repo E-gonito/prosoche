@@ -78,3 +78,42 @@ export function timelineRange(blocks: Array<{ startMin: number; endMin: number }
 export function snap(minutes: number, step = 10): number {
 	return Math.round(minutes / step) * step;
 }
+
+/**
+ * Where a timeline should be scrolled when it first appears.
+ *
+ * The grid is two pixels a minute inside a card that is capped at the height
+ * of the window, so what the card shows first is a real decision rather than
+ * "the top". Today opens at the hour before now, because the part of the day
+ * you are about to live is the part you came to look at, and the hour behind
+ * it is the context for it. Any other day opens just above its first block.
+ * A day with nothing on it opens at 08:00, which is where a day gets planned
+ * from.
+ *
+ * Returns a scrollTop in pixels: never negative, never past the end of the
+ * content, and zero whenever the content already fits. Pure, so the rule can
+ * be read and tested without a browser.
+ */
+export function timelineScrollTop(view: {
+	/** The minute the grid starts at, from `timelineRange`. */
+	fromMin: number;
+	/** Height of the whole grid in pixels. */
+	contentPx: number;
+	/** Height of the visible window onto it, in pixels. */
+	viewportPx: number;
+	pxPerMin: number;
+	/** The current minute when the day on screen is today, else null. */
+	nowMin: number | null;
+	/** Start of the earliest block, or null on a day with none. */
+	firstBlockMin: number | null;
+}): number {
+	const PLANNING_HOUR = 8 * 60;
+	/** A block is put a little below the top edge, not against it. */
+	const HEADROOM = 10;
+	const target =
+		view.nowMin !== null
+			? Math.floor(view.nowMin / 60) * 60 - 60
+			: (view.firstBlockMin ?? PLANNING_HOUR) - HEADROOM;
+	const px = (target - view.fromMin) * view.pxPerMin;
+	return Math.max(0, Math.min(px, view.contentPx - view.viewportPx));
+}

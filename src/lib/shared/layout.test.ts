@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutBlocks, timelineRange, snap } from './layout';
+import { layoutBlocks, timelineRange, snap, timelineScrollTop } from './layout';
 
 const at = (b: { startMin: number; endMin: number }) => b;
 const block = (startMin: number, endMin: number, name = '') => ({ startMin, endMin, name });
@@ -76,5 +76,42 @@ describe('snap', () => {
 	});
 	it('takes a different step when asked', () => {
 		expect(snap(607, 15)).toBe(600);
+	});
+});
+
+describe('timelineScrollTop', () => {
+	// A grid from 06:00 to 22:00 at two pixels a minute: 1920px of content in
+	// a 600px window, which is the shape the day page puts it in.
+	const view = { fromMin: 360, contentPx: 1920, viewportPx: 600, pxPerMin: 2 };
+
+	it('opens today at the hour before now', () => {
+		// 14:37, so 13:00 is at the top: (780 - 360) * 2.
+		expect(timelineScrollTop({ ...view, nowMin: 877, firstBlockMin: 540 })).toBe(840);
+	});
+
+	it('opens any other day just above its first block', () => {
+		// 09:00 less ten minutes of headroom: (530 - 360) * 2.
+		expect(timelineScrollTop({ ...view, nowMin: null, firstBlockMin: 540 })).toBe(340);
+	});
+
+	it('opens an empty day at the hour a day gets planned from', () => {
+		// 08:00 less the same headroom: (470 - 360) * 2.
+		expect(timelineScrollTop({ ...view, nowMin: null, firstBlockMin: null })).toBe(220);
+	});
+
+	it('never scrolls above the top of the grid', () => {
+		expect(timelineScrollTop({ ...view, nowMin: 400, firstBlockMin: null })).toBe(0);
+		expect(timelineScrollTop({ ...view, nowMin: null, firstBlockMin: 360 })).toBe(0);
+	});
+
+	it('never scrolls past the end of the content', () => {
+		// Late at night, where the hour before now is below the last pixel.
+		expect(timelineScrollTop({ ...view, nowMin: 1430, firstBlockMin: null })).toBe(1320);
+	});
+
+	it('stays at the top when the whole day already fits', () => {
+		expect(
+			timelineScrollTop({ ...view, viewportPx: 2000, nowMin: 877, firstBlockMin: 540 })
+		).toBe(0);
 	});
 });
