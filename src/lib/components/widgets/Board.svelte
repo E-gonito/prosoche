@@ -480,8 +480,7 @@
 			{#each candidates as note, i (note.path)}
 				<details class="note" data-testid="candidate-note" open={i === 0}>
 					<summary>
-						<span class="who">{note.title}</span>
-						<span class="n">{note.count}</span>
+						{note.title} <span class="n">{note.count} {note.count === 1 ? 'line' : 'lines'}</span>
 					</summary>
 					<a class="src" href="/notes/{note.path.split('/').map(encodeURIComponent).join('/')}">{note.path}</a>
 					{#each note.tasks as task (cardKey(task))}
@@ -669,9 +668,10 @@
 	.review { margin-top: var(--s3); border-top: 1px solid var(--line); padding-top: 10px; }
 	h5 { margin: 0 0 var(--s1); font-size: var(--t13); }
 	.note { margin-top: 10px; }
-	.note summary { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: var(--t13); }
-	.note .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.note summary .n { margin-left: auto; font-size: var(--t11); color: var(--muted); }
+	/* The native marker is kept, as in the file tree: a disclosure that does
+	   not look like one is worse than a plain list. */
+	.note summary { cursor: pointer; font-size: var(--t13); }
+	.note summary .n { font-size: var(--t11); color: var(--muted); }
 	.note .src { display: block; font-size: var(--t12); margin: 2px 0; max-width: none; }
 	.line { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t13); }
 	.line .text { flex: 1; min-width: 0; }
