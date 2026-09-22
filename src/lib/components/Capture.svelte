@@ -46,9 +46,9 @@
 
 <style>
 	/* The padding a task row uses, so this reads as the first line of the list. */
-	.row { display: flex; gap: 8px; padding: 4px 4px 8px; }
-	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
-	input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+	.row { display: flex; gap: var(--s2); padding: var(--s1) var(--s1) var(--s2); }
+	input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; background: var(--field); }
+	input:focus-visible { outline: var(--focus); outline-offset: -1px; }
 	.add { flex: none; padding: 6px 10px; }
 	.hint { margin: 0 0 6px; }
 </style>

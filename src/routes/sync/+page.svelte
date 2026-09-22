@@ -280,35 +280,33 @@
 {/if}
 
 <style>
-	.path { font: 12px var(--mono); }
-	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+	/* A path, so monospaced, as everywhere else a path is drawn. */
+	.path { font: var(--t12) var(--mono); }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s4); align-items: start; }
 	.msg { margin-bottom: 14px; }
 	.msg.ok { border-color: #a7f3d0; background: #f0fdf4; }
 	.msg.bad { border-color: #fca5a5; background: #fff7f7; }
-	.err { color: var(--bad); font-size: 13px; margin: 10px 0 0; }
+	.err { color: var(--bad); font-size: var(--t13); margin: 10px 0 0; }
 	.bad-card { border-color: #fca5a5; background: #fff7f7; }
 
 	.pick { border: 1px solid var(--line); border-radius: 8px; max-height: 320px; overflow: auto; margin-bottom: 10px; }
 	.row {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		padding: 6px 10px;
 		border-top: 1px solid var(--line);
-		font: 12px var(--mono);
+		font: var(--t12) var(--mono);
 	}
 	.pick .row:first-child { border-top: 0; }
-	.row.all { background: var(--soft); font-family: inherit; font-size: 13px; }
+	.row.all { background: var(--soft); font-family: inherit; font-size: var(--t13); }
 	.row .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.tag.by { background: var(--accent-soft); color: var(--accent); }
 	label.row { cursor: pointer; }
-	.small { padding: 2px 8px; font-size: 11px; }
 
-	.subject { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
+	/* `.btn.small` and `.btn.danger` are shared, in app.css. */
+	.subject { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) 10px; font: inherit; font-size: var(--t13); background: var(--field); }
 	.buttons { border: 0; padding: 10px 0 0; justify-content: flex-start; font-family: inherit; }
-	.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
-	.danger:hover:not(:disabled) { background: #a11414; }
-	.danger:disabled { opacity: 0.45; }
 
 	.wide { grid-column: 1 / -1; }
 	.diff, .two-up pre {
@@ -318,13 +316,13 @@
 		background: var(--soft);
 		padding: 10px;
 		border-radius: 8px;
-		font-size: 12px;
+		font-size: var(--t12);
 		white-space: pre-wrap;
 	}
-	.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-	.two-up h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
-	.files { margin: 0; padding-left: 18px; font: 12px var(--mono); }
-	.commands { margin: 4px 0 0; }
-	.commands code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
+	.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+	.two-up h4 { margin: 0 0 6px; font-size: var(--t12); color: var(--muted); }
+	.files { margin: 0; padding-left: 18px; font: var(--t12) var(--mono); }
+	.commands { margin: var(--s1) 0 0; }
+	.commands code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 	@media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
 </style>

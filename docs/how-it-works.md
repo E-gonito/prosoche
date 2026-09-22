@@ -85,6 +85,17 @@ A tab with no widgets it recognises says so instead of rendering a blank
 space: check the workspace file's `widgets:` list against the catalogue for a
 typo, since that is the only way to reach this state.
 
+A board shows the workspace's cards, in the columns the workspace file names.
+A card is a checkbox line carrying a quadrant, a due date, an id or the
+workspace's tag; a checkbox line carrying none of those in this workspace's
+notes is not shown: no quadrant, due date, id or workspace tag, so it reads as
+checklist notation rather than work. The board says how many it left out and
+will show them on request. Give a line a quadrant and it becomes a card, by
+the same convention the rest of your vault uses. Nothing is promoted for you.
+
+Cards are written to the workspace's deck note, appended one line at a time.
+Anything written in the workspace's notes shows here too.
+
 ## Sync
 
 The index — notes, tasks, links, tags — is rebuildable and never

@@ -123,22 +123,23 @@
 </form>
 
 <style>
-	.lead { color: var(--muted); font-size: 13px; margin: -8px 0 14px; max-width: 60ch; }
-	form { max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
-	.field { display: flex; align-items: center; gap: 12px; }
-	.field > span { flex: none; width: 90px; font-size: 12px; color: var(--muted); }
+	.lead { color: var(--muted); font-size: var(--t13); margin: -8px 0 14px; max-width: 60ch; }
+	form { max-width: 640px; display: flex; flex-direction: column; gap: var(--s3); }
+	.field { display: flex; align-items: center; gap: var(--s3); }
+	.field > span { flex: none; width: 90px; font-size: var(--t12); color: var(--muted); }
 	.field input:not([type='radio']) {
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 8px 10px;
+		padding: var(--s2) 10px;
 		font: inherit;
+		background: var(--field);
 	}
-	.swatches { display: flex; gap: 8px; }
+	.swatches { display: flex; gap: var(--s2); }
 	.swatch {
-		width: 24px;
-		height: 24px;
+		width: var(--s5);
+		height: var(--s5);
 		border-radius: 50%;
 		background: var(--dot);
 		border: 2px solid transparent;
@@ -146,27 +147,27 @@
 		padding: 0;
 	}
 	.swatch.chosen { border-color: var(--text); }
-	.templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; flex: 1; }
+	.templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--s2); flex: 1; }
 	.template {
 		display: block;
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 8px 10px;
+		padding: var(--s2) 10px;
 		cursor: pointer;
-		font-size: 13px;
+		font-size: var(--t13);
 	}
 	.template.chosen { border-color: var(--accent); background: var(--accent-soft); }
 	.template b { display: block; }
-	.template small { color: var(--muted); font-size: 11px; }
+	.template small { color: var(--muted); font-size: var(--t11); }
 	.template input { margin-right: 6px; }
-	.preview { margin: 0; font-size: 12px; color: var(--muted); }
-	.problem { margin: 0; font-size: 12px; color: var(--bad); }
+	.preview { margin: 0; font-size: var(--t12); color: var(--muted); }
+	.problem { margin: 0; font-size: var(--t12); color: var(--bad); }
 	.hint { margin: -4px 0 0; }
-	.actions { display: flex; gap: 8px; justify-content: flex-end; }
-	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
+	.actions { display: flex; gap: var(--s2); justify-content: flex-end; }
+	code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 
 	@media (max-width: 720px) {
-		.field { flex-direction: column; align-items: stretch; gap: 4px; }
+		.field { flex-direction: column; align-items: stretch; gap: var(--s1); }
 		.field > span { width: auto; }
 	}
 </style>

@@ -36,7 +36,7 @@
 		</div>
 
 		{#if data.decks.length > 0}
-			<p class="decks">{#each data.decks.slice(0, 5) as deck (deck.deck)}<span class="tag"><b>{deck.deck}</b> · {deck.count}</span>{/each}</p>
+			<p class="chips decks">{#each data.decks.slice(0, 5) as deck (deck.deck)}<span class="chip quiet num"><b>{deck.deck}</b> · {deck.count}</span>{/each}</p>
 		{/if}
 
 		{#if data.waiting === 0}
@@ -53,22 +53,28 @@
 {/if}
 
 <style>
-	.top { display: flex; align-items: center; gap: 12px; }
-	.count { font-size: 34px; line-height: 1; font-weight: 600; }
-	.of { font-size: 12px; color: var(--muted); flex: 1; }
-	.decks { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
-	.none { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+	.top { display: flex; align-items: center; gap: var(--s3); }
+	/* The one number the card exists for, so figures lined up. */
+	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+	.of { font-size: var(--t12); color: var(--muted); flex: 1; }
+	.decks { margin: 10px 0 0; }
+	.none { margin: 10px 0 0; color: var(--muted); font-size: var(--t13); }
+	/*
+	 * One sentence naming a note and the tag it is missing. On a 390px phone
+	 * it does not fit on a line, and clipping it hid the tag — which is the
+	 * only part that says what to do — so it wraps instead. `align-items` is
+	 * baseline rather than centre so the icon sits on the first line of it.
+	 */
 	.warn {
 		margin: 10px 0 0;
 		display: flex;
-		align-items: center;
+		flex-wrap: wrap;
+		align-items: baseline;
 		gap: 5px;
-		font-size: 12px;
+		font-size: var(--t12);
 		color: var(--warn);
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
+		overflow-wrap: anywhere;
 	}
-	.warn :global(svg) { flex: none; }
-	.warn code { font: 11px var(--mono); background: var(--soft); padding: 1px 4px; border-radius: 4px; }
+	.warn :global(svg) { flex: none; align-self: center; }
+	.warn code { font: var(--t11) var(--mono); background: var(--soft); padding: 1px var(--s1); border-radius: 4px; }
 </style>

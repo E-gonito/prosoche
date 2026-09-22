@@ -102,29 +102,30 @@
 {/if}
 
 <style>
-	.totals { margin: 0 0 10px; font-size: 13px; }
+	.totals { margin: 0 0 10px; font-size: var(--t13); }
 	.totals b { font-size: 15px; }
 	.days { list-style: none; margin: 0; padding: 0; }
-	.days li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+	.days li { display: flex; align-items: center; gap: var(--s2); padding: 2px 0; }
 	.days .today .dow { color: var(--accent); font-weight: 700; }
-	.dow { flex: none; width: 30px; font: 11px var(--mono); color: var(--muted); }
-	.bars { position: relative; flex: 1; height: 12px; min-width: 0; }
+	/* A day label and a count of minutes: body text, figures lined up. */
+	.dow { flex: none; width: 30px; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
+	.bars { position: relative; flex: 1; height: var(--s3); min-width: 0; }
 	.bars span {
 		position: absolute;
 		left: 0;
 		border-radius: 3px;
 		display: block;
 	}
-	.planned { top: 0; height: 12px; background: var(--soft); border: 1px solid var(--line); }
-	.logged { top: 2px; height: 8px; background: var(--accent); }
-	.mins { flex: none; width: 52px; text-align: right; font: 11px var(--mono); color: var(--muted); }
+	.planned { top: 0; height: var(--s3); background: var(--soft); border: 1px solid var(--line); }
+	.logged { top: 2px; height: var(--s2); background: var(--accent); }
+	.mins { flex: none; width: 52px; text-align: right; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
 
-	.split { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; }
+	.split { list-style: none; margin: 10px 0 0; padding: 0; font-size: var(--t12); }
 	.split li { display: flex; align-items: center; gap: 6px; padding: 2px 0; color: var(--muted); }
-	.split b { margin-left: auto; font: 11px var(--mono); color: var(--text); }
-	.split i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
-	.quadrants li { display: inline-flex; margin-right: 12px; }
-	.quadrants b { margin-left: 4px; }
+	.split b { margin-left: auto; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--text); }
+	.split i { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--dot); flex: none; }
+	.quadrants li { display: inline-flex; margin-right: var(--s3); }
+	.quadrants b { margin-left: var(--s1); }
 	.unplanned { overflow: hidden; }
 	.hint { margin: 10px 0 0; }
 </style>

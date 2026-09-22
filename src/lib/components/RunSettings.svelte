@@ -78,25 +78,25 @@
 	.run {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: var(--s3);
 		flex-wrap: wrap;
-		padding: 8px 10px;
+		padding: var(--s2) 10px;
 		background: var(--soft);
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		font-size: 12px;
+		font-size: var(--t12);
 	}
-	.compact { padding: 6px 8px; gap: 8px; }
+	.compact { padding: 6px var(--s2); gap: var(--s2); }
 	label { display: flex; align-items: center; gap: 5px; }
 	label span { color: var(--muted); }
 	select,
 	input {
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--t12);
 		border: 1px solid var(--line);
-		border-radius: 6px;
+		border-radius: var(--r-sm);
 		padding: 3px 6px;
-		background: var(--panel);
+		background: var(--field);
 		color: inherit;
 	}
 	.budget input { width: 68px; }

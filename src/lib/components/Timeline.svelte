@@ -547,8 +547,8 @@
 		border: 2px dashed var(--accent);
 		background: var(--accent-soft);
 		color: var(--accent);
-		font-size: 12px;
-		padding: 4px 8px;
+		font-size: var(--t12);
+		padding: var(--s1) var(--s2);
 		pointer-events: none;
 		z-index: 5;
 		overflow: hidden;
@@ -561,7 +561,7 @@
 		place-items: center;
 		margin: 0;
 		color: var(--muted);
-		font-size: 13px;
+		font-size: var(--t13);
 		pointer-events: none;
 	}
 
@@ -570,7 +570,8 @@
 		left: 0;
 		right: 0;
 		border-top: 1px solid var(--line);
-		font: 11px var(--mono);
+		font-size: var(--t11);
+		font-variant-numeric: tabular-nums;
 		color: var(--muted);
 		pointer-events: none;
 	}
@@ -596,13 +597,13 @@
 		border: 1px solid var(--line);
 		border-left: 4px solid var(--muted);
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-		font-size: 13px;
+		font-size: var(--t13);
 		cursor: grab;
 		overflow: hidden;
 		z-index: 2;
 	}
-	.block:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-	.block.active { z-index: 4; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); cursor: grabbing; }
+	.block:focus-visible { outline: var(--focus); outline-offset: 1px; }
+	.block.active { z-index: 4; box-shadow: var(--shadow); cursor: grabbing; }
 	.block.busy { opacity: 0.55; }
 	.block.done { opacity: 0.6; }
 	.block.done .label { text-decoration: line-through; }
@@ -611,7 +612,8 @@
 	.block.q3 { border-left-color: var(--q3); }
 	.block.q4 { border-left-color: var(--q4); }
 
-	.t { font: 11px var(--mono); line-height: 15px; color: var(--muted); }
+	/* A time, so body text with the figures lined up rather than monospace. */
+	.t { font-size: var(--t11); font-variant-numeric: tabular-nums; line-height: 15px; color: var(--muted); }
 	/*
 	 * Clamped to the lines the block has room for, computed from its height.
 	 * Without this a long name wrapped past the bottom edge and was sliced in
@@ -640,7 +642,7 @@
 	.block.compact {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		/* The right padding is the room the ▶ and ✕ occupy on hover. They are
 		   absolutely positioned, so only this keeps the text from running
 		   underneath them. The taller blocks reserve it on the badge instead. */
@@ -657,7 +659,7 @@
 		display: block;
 		flex: 0 1 auto;
 		min-width: 0;
-		font-size: 12px;
+		font-size: var(--t12);
 		line-height: inherit;
 	}
 	.block.compact .badge { position: static; flex: none; }

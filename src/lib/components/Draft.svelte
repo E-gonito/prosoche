@@ -102,7 +102,7 @@
 </script>
 
 <div class="draft" class:compact>
-	<button class="go" onclick={start} disabled={busy} {title} data-testid="draft-run">
+	<button class="btn go" onclick={start} disabled={busy} {title} data-testid="draft-run">
 		{busy ? 'Working…' : label}
 	</button>
 
@@ -114,7 +114,7 @@
 		<div class="card text">
 			<div class="head">
 				<b>Draft</b>
-				<button class="copy" onclick={() => copy(drafted?.text ?? '')}>Copy</button>
+				<button class="btn small copy" onclick={() => copy(drafted?.text ?? '')}>Copy</button>
 			</div>
 			<pre data-testid="draft-text">{drafted.text}</pre>
 			<p class="hint">Paste this into your timesheet yourself. The app never writes that file.</p>
@@ -146,41 +146,23 @@
 </div>
 
 <style>
-	.go {
-		border: 1px solid var(--line);
-		background: var(--panel);
-		border-radius: 6px;
-		padding: 4px 10px;
-		font: inherit;
-		font-size: 12px;
-		color: var(--muted);
-		cursor: pointer;
-	}
-	.go:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+	/* An ordinary `.btn`, with the two differences this one has: it says when
+	   it is working, and a widget row wants a smaller one than a toolbar. */
 	.go:disabled { cursor: default; opacity: 0.6; }
-	.compact .go { padding: 1px 6px; font-size: 11px; }
+	.compact .go { padding: 1px 6px; font-size: var(--t11); }
 	.text { margin-top: 10px; }
-	.head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
-	.copy {
-		margin-left: auto;
-		border: 1px solid var(--line);
-		background: var(--panel);
-		border-radius: 6px;
-		padding: 1px 8px;
-		font: inherit;
-		font-size: 11px;
-		cursor: pointer;
-	}
+	.head { display: flex; align-items: center; gap: var(--s2); margin-bottom: 6px; font-size: var(--t12); }
+	.copy { margin-left: auto; }
 	pre {
 		margin: 0;
 		padding: 10px;
 		background: var(--soft);
 		border-radius: 8px;
-		font: 12px/1.5 var(--mono);
+		font: var(--t12)/1.5 var(--mono);
 		white-space: pre-wrap;
 		overflow-x: auto;
 	}
-	.hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
-	.ok { margin: 8px 0 0; font-size: 12px; color: var(--ok); }
-	.problem { margin: 8px 0 0; font-size: 12px; color: var(--bad); }
+	.hint { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--muted); }
+	.ok { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--ok); }
+	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

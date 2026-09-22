@@ -56,12 +56,12 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 6px;
-		padding: 28px 16px;
+		padding: 28px var(--s4);
 		text-align: center;
 		color: var(--muted);
 	}
 	.empty-state :global(svg) { opacity: 0.6; }
-	.title { margin: 4px 0 0; color: var(--text); font-size: 13px; font-weight: 500; }
-	.hint { margin: 0; font-size: 12px; max-width: 46ch; }
+	.title { margin: var(--s1) 0 0; color: var(--text); font-size: var(--t13); font-weight: 500; }
+	.hint { margin: 0; font-size: var(--t12); max-width: 46ch; }
 	.action { margin-top: 6px; }
 </style>

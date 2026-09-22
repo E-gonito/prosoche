@@ -59,16 +59,16 @@
 
 <style>
 	.head {
-		margin: 0 0 16px;
+		margin: 0 0 var(--s4);
 	}
 	.back {
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;
-		font-size: 12px;
+		font-size: var(--t12);
 		color: var(--muted);
 		text-decoration: none;
-		margin-bottom: 4px;
+		margin-bottom: var(--s1);
 	}
 	.back:hover {
 		color: var(--accent);
@@ -78,12 +78,12 @@
 		align-items: center;
 		gap: 10px;
 		flex-wrap: wrap;
-		row-gap: 8px;
+		row-gap: var(--s2);
 	}
 	.dot {
 		flex: none;
-		width: 12px;
-		height: 12px;
+		width: var(--s3);
+		height: var(--s3);
 		border-radius: 50%;
 		background: var(--dot);
 	}
@@ -96,16 +96,16 @@
 	.meta {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		min-width: 0;
-		font-size: 13px;
+		font-size: var(--t13);
 		color: var(--muted);
 	}
 	.actions {
 		margin-left: auto;
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		flex-wrap: wrap;
 	}
 

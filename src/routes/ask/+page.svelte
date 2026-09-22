@@ -115,7 +115,7 @@
 			<p class="problem" data-testid="ask-problem">{problem}</p>
 			{#each refusals as refusal, i (i)}
 				<p class="refusal" data-testid="ask-refusal">
-					<span class="badge">{refusal.guardrail}</span>
+					<span class="tag bad">{refusal.guardrail}</span>
 					<b>{refusal.title}</b> — {refusal.message}
 				</p>
 			{/each}
@@ -154,33 +154,26 @@
 
 <style>
 	.asker { display: flex; flex-direction: column; gap: 10px; }
-	form { display: flex; gap: 8px; flex-wrap: wrap; }
+	form { display: flex; gap: var(--s2); flex-wrap: wrap; }
 	select,
 	input {
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 8px 10px;
+		padding: var(--s2) 10px;
 		font: inherit;
-		background: var(--panel);
+		background: var(--field);
 		color: inherit;
 	}
 	input { flex: 1; min-width: 220px; }
-	.turn { margin-top: 12px; }
-	.asked { margin: 0 0 8px; }
+	.turn { margin-top: var(--s3); }
+	.asked { margin: 0 0 var(--s2); }
 	.answer { white-space: pre-wrap; }
-	.cites { margin: 10px 0 0; font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
-	.stamp { margin: 6px 0 0; font: 11px var(--mono); }
+	.cites { margin: 10px 0 0; font-size: var(--t12); display: flex; gap: 10px; flex-wrap: wrap; }
+	/* A run's numbers, so body text with the figures lined up. */
+	.stamp { margin: 6px 0 0; font-size: var(--t11); font-variant-numeric: tabular-nums; }
 	.problem { margin: 0; color: var(--bad); }
-	.refusal { margin: 4px 0 0; font-size: 13px; }
-	.badge {
-		font: 11px var(--mono);
-		font-weight: 700;
-		background: var(--bad);
-		color: #fff;
-		border-radius: 4px;
-		padding: 1px 5px;
-	}
-	.history { max-height: 400px; overflow: auto; font: 12px/1.5 var(--mono); white-space: pre-wrap; }
-	.small { font-size: 12px; }
-	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
+	.refusal { margin: var(--s1) 0 0; font-size: var(--t13); }
+	.history { max-height: 400px; overflow: auto; font: var(--t12)/1.5 var(--mono); white-space: pre-wrap; }
+	.small { font-size: var(--t12); }
+	code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 </style>

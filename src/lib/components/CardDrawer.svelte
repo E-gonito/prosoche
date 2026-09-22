@@ -215,52 +215,52 @@
 	dialog {
 		border: 0;
 		padding: 0;
-		border-radius: 12px;
+		border-radius: var(--r-lg);
 		max-width: 560px;
 		width: calc(100% - 40px);
 		background: var(--panel);
 		color: var(--text);
-		box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-lg);
 	}
 	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
-	.inner { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+	.inner { padding: var(--s4) 18px 18px; display: flex; flex-direction: column; gap: 10px; }
 	header { display: flex; align-items: center; gap: 10px; }
 	h2 { margin: 0; font-size: 15px; }
-	.ws { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+	.ws { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t12); color: var(--muted); }
 	.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
 	header .btn { margin-left: auto; }
 
 	.row { display: flex; align-items: center; gap: 10px; }
-	.row > span { flex: none; width: 82px; font-size: 12px; color: var(--muted); }
+	.row > span { flex: none; width: 82px; font-size: var(--t12); color: var(--muted); }
 	.row input,
 	.row select {
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 6px 8px;
+		padding: 6px var(--s2);
 		font: inherit;
-		font-size: 13px;
-		background: #fff;
+		font-size: var(--t13);
+		background: var(--field);
 	}
-	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) 14px; }
 
-	.context .label { font-size: 12px; color: var(--muted); }
+	.context .label { font-size: var(--t12); color: var(--muted); }
 	pre {
 		margin: 4px 0 0;
 		background: var(--soft);
 		border-radius: 8px;
-		padding: 8px 10px;
-		font: 12px var(--mono);
+		padding: var(--s2) 10px;
+		font: var(--t12) var(--mono);
 		white-space: pre-wrap;
 		max-height: 180px;
 		overflow: auto;
 	}
 
 	footer { display: flex; align-items: center; gap: 10px; }
-	footer code { font: 11px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	footer code { font: var(--t11) var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	footer .btn { margin-left: auto; flex: none; }
-	.problem { margin: 0; font-size: 12px; color: var(--bad); }
+	.problem { margin: 0; font-size: var(--t12); color: var(--bad); }
 
 	@media (max-width: 720px) {
 		.grid { grid-template-columns: 1fr; }

@@ -74,7 +74,7 @@
 	<ul class="refusals" data-testid={testid}>
 		{#each items as refusal, i (i)}
 			<li>
-				<span class="badge">{refusal.guardrail}</span>
+				<span class="tag bad">{refusal.guardrail}</span>
 				<b>{refusal.title}</b>
 				<span>{refusal.message}</span>
 			</li>
@@ -161,41 +161,34 @@
 
 <style>
 	.proposal { margin-top: 14px; }
-	.summary { margin: 0 0 12px; }
+	.summary { margin: 0 0 var(--s3); }
 	.stopped {
 		border: 1px solid var(--bad);
 		background: #fef2f2;
 		border-radius: 8px;
-		padding: 10px 12px;
-		margin-bottom: 12px;
-		font-size: 13px;
+		padding: 10px var(--s3);
+		margin-bottom: var(--s3);
+		font-size: var(--t13);
 	}
-	.refusals { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12px; }
+	.refusals { list-style: none; margin: 6px 0 0; padding: 0; font-size: var(--t12); }
 	.refusals li { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; flex-wrap: wrap; }
-	.badge {
-		font: 11px var(--mono);
-		font-weight: 700;
-		background: var(--bad);
-		color: #fff;
-		border-radius: 4px;
-		padding: 1px 5px;
-	}
-	.edit { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+	.edit { border: 1px solid var(--line); border-radius: 8px; padding: 10px var(--s3); margin-bottom: 10px; }
 	.edit.refused { border-color: var(--bad); background: #fffafa; }
-	header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+	header { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.tick { display: flex; align-items: center; gap: 6px; }
-	.kind { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-	.path { font: 12px var(--mono); }
-	.counts { margin-left: auto; font: 11px var(--mono); }
-	.reason { margin: 6px 0; font-size: 13px; color: var(--muted); }
+	.kind { font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+	/* The path stays monospaced; the counts beside it are numbers, not code. */
+	.path { font: var(--t12) var(--mono); }
+	.counts { margin-left: auto; font-size: var(--t11); font-variant-numeric: tabular-nums; }
+	.reason { margin: 6px 0; font-size: var(--t13); color: var(--muted); }
 	.diff {
 		margin: 6px 0 0;
 		max-height: 360px;
 		overflow: auto;
 		background: var(--soft);
-		border-radius: 6px;
-		padding: 8px 10px;
-		font: 12px/1.5 var(--mono);
+		border-radius: var(--r-sm);
+		padding: var(--s2) 10px;
+		font: var(--t12)/1.5 var(--mono);
 		white-space: pre-wrap;
 		word-break: break-word;
 	}
@@ -204,14 +197,15 @@
 	.line.remove { background: #fdecea; }
 	textarea {
 		width: 100%;
-		font: 12px/1.5 var(--mono);
+		font: var(--t12)/1.5 var(--mono);
 		border: 1px solid var(--line);
-		border-radius: 6px;
-		padding: 8px;
+		border-radius: var(--r-sm);
+		padding: var(--s2);
 		margin-top: 6px;
+		background: var(--field);
 	}
-	.row { display: flex; gap: 8px; margin-top: 8px; }
-	.small { font-size: 12px; padding: 3px 8px; margin-top: 6px; }
-	footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-	.note { font-size: 12px; }
+	.row { display: flex; gap: var(--s2); margin-top: var(--s2); }
+	.small { font-size: var(--t12); padding: 3px var(--s2); margin-top: 6px; }
+	footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: var(--s1); }
+	.note { font-size: var(--t12); }
 </style>

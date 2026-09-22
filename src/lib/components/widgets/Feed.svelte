@@ -97,25 +97,27 @@
 	li {
 		display: grid;
 		grid-template-columns: 1fr auto;
-		gap: 2px 8px;
-		padding: 8px 2px;
+		gap: 2px var(--s2);
+		padding: var(--s2) 2px;
 		border-top: 1px solid var(--line);
 		min-width: 0;
 	}
 	li:first-child { border-top: 0; }
 	a { text-decoration: none; min-width: 0; overflow-wrap: anywhere; }
 	a:hover { text-decoration: underline; }
-	.meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 11px; color: var(--muted); }
+	.meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--t11); color: var(--muted); }
+	/* An identifier the other system chose, like a commit hash: monospaced. */
 	.ref { font-family: var(--mono); }
-	.state { background: var(--soft); border-radius: 999px; padding: 1px 7px; }
-	.flag { background: var(--soft); border-radius: 999px; padding: 1px 7px; }
+	.state { background: var(--soft); border-radius: var(--r-pill); padding: 1px 7px; }
+	.flag { background: var(--soft); border-radius: var(--r-pill); padding: 1px 7px; }
 	.flag.review { background: #fef3c7; color: var(--warn); }
-	.card { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 12px; padding: 4px 8px; }
-	.said { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+	.card { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: var(--t12); padding: var(--s1) var(--s2); }
+	.said { grid-column: 1 / -1; font-size: var(--t11); color: var(--muted); }
 	dl { margin: 6px 0 0; text-align: left; }
-	dt { font: 12px var(--mono); margin-top: 8px; }
-	dd { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
-	.opt { margin-left: 6px; font-family: inherit; font-size: 11px; color: var(--muted); }
+	/* The name of an environment variable, so monospaced. */
+	dt { font: var(--t12) var(--mono); margin-top: var(--s2); }
+	dd { margin: 2px 0 0; color: var(--muted); font-size: var(--t12); }
+	.opt { margin-left: 6px; font-family: inherit; font-size: var(--t11); color: var(--muted); }
 
 	@media (max-width: 720px) {
 		li { grid-template-columns: 1fr; }

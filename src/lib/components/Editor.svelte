@@ -220,19 +220,19 @@
 		flex-wrap: wrap;
 		padding-bottom: 10px;
 		border-bottom: 1px solid var(--line);
-		margin-bottom: 12px;
+		margin-bottom: var(--s3);
 	}
-	.toolbar .btn { padding: 4px 9px; }
-	.sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
-	.state { margin-left: auto; font-size: 12px; color: var(--muted); }
+	.toolbar .btn { padding: var(--s1) 9px; }
+	.sep { width: 1px; height: var(--t20); background: var(--line); margin: 0 2px; }
+	.state { margin-left: auto; font-size: var(--t12); color: var(--muted); }
 	.state.dirty { color: var(--warn); }
 	.state.error { color: var(--bad); }
 	.state.saved { color: var(--ok); }
 
-	.conflict { border-color: #fca5a5; background: #fff7f7; margin-bottom: 12px; }
-	.conflict .row { display: flex; gap: 8px; margin: 10px 0 0; }
-	.conflict pre { max-height: 220px; overflow: auto; background: var(--soft); padding: 10px; border-radius: 8px; font-size: 12px; }
-	.msg { color: var(--bad); font-size: 13px; margin: 0 0 10px; }
+	.conflict { border-color: #fca5a5; background: #fff7f7; margin-bottom: var(--s3); }
+	.conflict .row { display: flex; gap: var(--s2); margin: 10px 0 0; }
+	.conflict pre { max-height: 220px; overflow: auto; background: var(--soft); padding: 10px; border-radius: 8px; font-size: var(--t12); }
+	.msg { color: var(--bad); font-size: var(--t13); margin: 0 0 10px; }
 
 	.editor :global(.cm-editor) { font-size: 15px; }
 	.editor :global(.cm-editor.cm-focused) { outline: none; }
@@ -264,7 +264,7 @@
 
 	.editor :global(.cm-strong) { font-weight: 700; }
 	.editor :global(.cm-emphasis) { font-style: italic; }
-	.editor :global(.cm-code) { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: 13px var(--mono); }
+	.editor :global(.cm-code) { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: var(--t13) var(--mono); }
 	.editor :global(.cm-highlight) { background: #fef08a; border-radius: 3px; padding: 0 2px; }
 	.editor :global(.cm-wikilink) { color: var(--accent); text-decoration: underline dotted; cursor: pointer; }
 	.editor :global(.cm-task-box) {
@@ -273,7 +273,7 @@
 		height: 15px;
 		border: 1.5px solid #9aa0a6;
 		border-radius: 3px;
-		font-size: 11px;
+		font-size: var(--t11);
 		line-height: 13px;
 		text-align: center;
 		vertical-align: -2px;

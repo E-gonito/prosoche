@@ -54,14 +54,14 @@
 
 <style>
 	ol { list-style: decimal inside; margin: 0; padding: 0; }
-	li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+	li { display: flex; align-items: center; gap: var(--s2); padding: 6px 0; border-top: 1px solid var(--line); }
 	li:first-child { border-top: 0; }
 	.busy { opacity: 0.5; }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	.name:hover { color: var(--accent); }
 	.src { flex: none; display: inline-flex; color: var(--muted); text-decoration: none; }
 	.src:hover { color: var(--accent); }
-	.none { margin: 0; color: var(--muted); font-size: 13px; }
-	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
-	button { flex: none; padding: 2px 8px; font-size: 12px; }
+	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
+	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
+	button { flex: none; padding: 2px var(--s2); font-size: var(--t12); }
 </style>

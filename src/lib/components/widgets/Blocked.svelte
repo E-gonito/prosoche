@@ -44,7 +44,7 @@
 					{#if item.task.quadrant}<span class="q q{item.task.quadrant}">Q{item.task.quadrant}</span>{/if}
 					<a href={href(item.task)}>{displayText(item.task.text)}</a>
 					{#if item.workspace && !item.mine}
-						<span class="chip"><span class="dot" style="--dot: {item.workspace.color}"></span>{item.workspace.name}</span>
+						<span class="who"><span class="dot" style="--dot: {item.workspace.color}"></span>{item.workspace.name}</span>
 					{/if}
 				</div>
 				<ul class="blockers">
@@ -73,10 +73,12 @@
 	.head a { text-decoration: none; flex: 1; min-width: 0; }
 	.head a:hover { text-decoration: underline; }
 	.foreign { opacity: 0.85; }
-	.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); flex: none; }
-	.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
-	.blockers { margin: 2px 0 0 0; font-size: 12px; color: var(--muted); }
+	/* A workspace's colour and name, not a pill: no border and no background,
+	   so it reads as a label on the row rather than as something to press. */
+	.who { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t11); color: var(--muted); flex: none; }
+	.dot { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--dot); }
+	.blockers { margin: 2px 0 0 0; font-size: var(--t12); color: var(--muted); }
 	.blockers li { border: 0; padding: 1px 0; }
 	.muted { color: var(--muted); }
-	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 4px; }
+	code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px var(--s1); }
 </style>

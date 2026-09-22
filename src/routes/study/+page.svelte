@@ -51,6 +51,6 @@
 
 <style>
 	.dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
-	.pick { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-	select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+	.pick { font-size: var(--t12); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+	select { font: inherit; font-size: var(--t13); padding: var(--s1) 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
 </style>

@@ -61,29 +61,29 @@
 	dialog {
 		border: 0;
 		padding: 0;
-		border-radius: 12px;
+		border-radius: var(--r-lg);
 		max-width: 520px;
 		width: calc(100% - 40px);
 		background: var(--panel);
 		color: var(--text);
-		box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-lg);
 	}
 	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
 	.inner { padding: 20px 22px; }
-	h2 { margin: 0 0 8px; font-size: 17px; }
-	p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+	h2 { margin: 0 0 var(--s2); font-size: 17px; }
+	p { margin: 0 0 var(--s3); color: var(--muted); font-size: var(--t13); }
+	/* Paths, so monospaced. */
 	ul {
 		margin: 0 0 14px;
-		padding: 10px 12px 10px 28px;
+		padding: 10px var(--s3) 10px 28px;
 		background: var(--soft);
 		border-radius: 8px;
-		font: 12px var(--mono);
+		font: var(--t12) var(--mono);
 		max-height: 220px;
 		overflow: auto;
 	}
 	li { margin: 2px 0; word-break: break-all; }
 	.more { list-style: none; margin-left: -14px; color: var(--muted); font-family: inherit; }
-	.row { display: flex; gap: 8px; justify-content: flex-end; }
-	.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
-	.danger:hover { background: #a11414; }
+	/* `.btn.danger` is shared, in app.css. */
+	.row { display: flex; gap: var(--s2); justify-content: flex-end; }
 </style>

@@ -60,17 +60,18 @@
 {/if}
 
 <style>
-	.head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-	.summary { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.only { margin-left: auto; flex: none; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+	.head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+	.summary { font-size: var(--t12); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.only { margin-left: auto; flex: none; font-size: var(--t12); color: var(--muted); display: flex; align-items: center; gap: var(--s1); }
 	ul { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; }
-	li { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px calc(var(--depth) * 14px); font-size: 13px; }
-	.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--q4); }
+	li { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0 var(--s1) calc(var(--depth) * 14px); font-size: var(--t13); }
+	.dot { flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--q4); }
 	.dot.covered { background: var(--ok); }
 	.dot.started { background: var(--q3); }
 	.dot.gap { background: var(--line); border: 1px solid var(--q4); }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	a.name:hover { color: var(--accent); }
-	.num { flex: none; display: inline-flex; align-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
-	.none { margin: 0; color: var(--muted); font-size: 13px; }
+	/* `.num` is shared, in app.css: a count, with its figures lined up. */
+	.num { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: var(--t11); color: var(--muted); }
+	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
 </style>

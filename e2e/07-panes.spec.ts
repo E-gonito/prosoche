@@ -31,10 +31,10 @@ test.describe('the notes panes', () => {
 	});
 
 	test('the links panel collapses independently', async ({ page }) => {
-		await page.getByRole('button', { name: 'Hide links and properties' }).click();
+		await page.getByRole('button', { name: "Hide the note's details" }).click();
 		await expect(page.locator('.rail')).toHaveCount(0);
 		await expect(page.locator('.tree')).toBeVisible();
-		await page.getByRole('button', { name: 'Show links and properties' }).click();
+		await page.getByRole('button', { name: "Show the note's details" }).click();
 		await expect(page.locator('.rail')).toBeVisible();
 	});
 
@@ -119,7 +119,7 @@ test.describe('the notes panes', () => {
 
 	test('the editor still works after the panes are rearranged', async ({ page }) => {
 		await page.getByRole('button', { name: 'Hide the file tree' }).click();
-		await page.getByRole('button', { name: 'Hide links and properties' }).click();
+		await page.getByRole('button', { name: "Hide the note's details" }).click();
 		await expect(page.locator('.cm-content')).toContainText('Algorithms');
 		// Clicking the heading itself, so the cursor lands on that line.
 		await page.locator('.cm-line.cm-h1').click();

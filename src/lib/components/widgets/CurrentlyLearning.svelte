@@ -76,13 +76,13 @@
 	.busy { opacity: 0.5; }
 	/* Title on its own line, so a name past thirty characters gets the whole
 	   card's width instead of what the bar and button left over. */
-	.row { display: flex; align-items: center; gap: 8px; }
+	.row { display: flex; align-items: center; gap: var(--s2); }
 	.ic { flex: none; display: inline-flex; color: var(--muted); }
 	.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; }
 	.name:hover { color: var(--accent); }
 	.bar { display: block; width: 100%; height: 5px; border-radius: 3px; background: var(--soft); overflow: hidden; margin-top: 6px; }
 	.bar i { display: block; height: 100%; background: var(--accent); }
 	.done { flex: none; padding: 3px 6px; }
-	.none { margin: 0; color: var(--muted); font-size: 13px; }
-	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
+	.none { margin: 0; color: var(--muted); font-size: var(--t13); }
+	.problem { color: var(--bad); font-size: var(--t12); margin: 6px 0 0; }
 </style>

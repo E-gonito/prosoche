@@ -69,7 +69,7 @@
 		{#if data.day.clock.length}
 			<p class="clock">
 				{#each data.day.clock as entry, i (i)}
-					<span class="chip"><b>{clockLabel[entry.label] ?? entry.label}</b>{entry.value || '—'}</span>
+					<span class="chip on num"><b>{clockLabel[entry.label] ?? entry.label}</b>{entry.value || '—'}</span>
 				{/each}
 			</p>
 		{/if}
@@ -123,34 +123,37 @@
 		padding: 6px 10px;
 		background: var(--soft);
 		border-radius: 8px;
-		font-size: 12px;
+		font-size: var(--t12);
 		color: var(--muted);
 	}
 	.banner a { margin-left: 6px; }
-	h4 { margin: 0 0 8px; font: 600 14px/1.3 var(--mono); }
-	h5 { margin: 12px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
-	h5.sub { text-transform: none; letter-spacing: 0; font-size: 12px; }
+	/* A day's heading is a date, so body text with the figures lined up. */
+	h4 { margin: 0 0 var(--s2); font: 600 var(--t14)/1.3 inherit; font-variant-numeric: tabular-nums; }
+	h5 { margin: var(--s3) 0 6px; font-size: var(--t12); text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+	h5.sub { text-transform: none; letter-spacing: 0; font-size: var(--t12); }
+	/* `.chip` is shared, in app.css; the clock's are the ones that are set. */
 	.clock { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-	.chip { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
-	.chip b { margin-right: 6px; font-weight: 600; }
+	.clock .chip { cursor: default; }
+	.clock .chip b { margin-right: 6px; font-weight: 600; }
 	ul { list-style: none; margin: 0; padding: 0; }
-	li { display: block; padding: 4px 0; font-size: 13px; }
+	li { display: block; padding: var(--s1) 0; font-size: var(--t13); }
 	.kids { margin-left: 18px; }
-	.n { color: var(--muted); font: 12px var(--mono); }
+	/* An item's number, so body text with the figures lined up. */
+	.n { color: var(--muted); font-size: var(--t12); font-variant-numeric: tabular-nums; }
 	pre {
-		margin: 8px 0;
-		padding: 8px 10px;
+		margin: var(--s2) 0;
+		padding: var(--s2) 10px;
 		background: var(--soft);
 		border-radius: 8px;
-		font: 12px/1.5 var(--mono);
+		font: var(--t12)/1.5 var(--mono);
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
-	pre.prose { background: transparent; padding: 0; font: 13px/1.5 inherit; color: var(--muted); }
-	.blockers { margin: 10px 0 0; font-size: 13px; }
+	pre.prose { background: transparent; padding: 0; font: var(--t13)/1.5 inherit; color: var(--muted); }
+	.blockers { margin: 10px 0 0; font-size: var(--t13); }
 	.blockers b { color: var(--warn); margin-right: 6px; }
 
 	@media (max-width: 720px) {
-		.clock { gap: 4px; }
+		.clock { gap: var(--s1); }
 	}
 </style>

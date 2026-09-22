@@ -31,15 +31,15 @@
 </ul>
 
 <style>
-	ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
-	ul.nested { padding-left: 12px; }
+	ul { list-style: none; margin: 0; padding: 0; font-size: var(--t13); }
+	ul.nested { padding-left: var(--s3); }
 	li { margin: 0; }
-	summary { cursor: pointer; padding: 3px 6px; border-radius: 6px; color: var(--muted); user-select: none; }
+	summary { cursor: pointer; padding: 3px 6px; border-radius: var(--r-sm); color: var(--muted); user-select: none; }
 	summary:hover { background: var(--soft); }
 	a {
 		display: block;
 		padding: 3px 6px;
-		border-radius: 6px;
+		border-radius: var(--r-sm);
 		color: var(--text);
 		text-decoration: none;
 		white-space: nowrap;

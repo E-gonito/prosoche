@@ -133,7 +133,7 @@
 		<aside class="card pane tree">
 			<div class="pane-head">
 				<span>Files</span>
-				<button class="collapse" onclick={() => tree.toggle()} aria-label="Hide the file tree" title="Hide">
+				<button class="icon-btn collapse" onclick={() => tree.toggle()} aria-label="Hide the file tree" title="Hide">
 					<Icon name="chevron-left" />
 				</button>
 			</div>
@@ -194,9 +194,9 @@
 		<button
 			class="rail-tab right"
 			onclick={() => rail.toggle()}
-			aria-label="Show links and properties"
-			title="Show links and properties"
-		>Links</button>
+			aria-label="Show the note's details"
+			title="Show the note's details"
+		>Details</button>
 	{:else}
 		<ResizeHandle
 			label="Resize the links panel"
@@ -208,9 +208,11 @@
 			ondoubleclick={() => rail.toggle()}
 		/>
 		<aside class="pane rail">
+			<!-- "Details" rather than "Links": the second card inside is called
+			     Links, and the word twice over reads as a mistake. -->
 			<div class="pane-head card-less">
-				<span>Links</span>
-				<button class="collapse" onclick={() => rail.toggle()} aria-label="Hide links and properties" title="Hide">
+				<span>Details</span>
+				<button class="icon-btn collapse" onclick={() => rail.toggle()} aria-label="Hide the note's details" title="Hide">
 					<Icon name="chevron-right" />
 				</button>
 			</div>
@@ -292,7 +294,7 @@
 	>
 		<div class="sheet-head">
 			<span>Files</span>
-			<button class="collapse" onclick={() => sheet?.close()} aria-label="Close the file tree">
+			<button class="icon-btn collapse" onclick={() => sheet?.close()} aria-label="Close the file tree">
 				<Icon name="x" />
 			</button>
 		</div>
@@ -315,32 +317,22 @@
 
 	.pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 	.pane-body { overflow: auto; flex: 1; min-height: 0; }
-	.pane-body.stack { display: flex; flex-direction: column; gap: 12px; }
+	.pane-body.stack { display: flex; flex-direction: column; gap: var(--s3); }
 	.pane-head {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		font-size: 11px;
+		gap: var(--s2);
+		font-size: var(--t11);
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
 		color: var(--muted);
-		padding-bottom: 8px;
-		margin-bottom: 8px;
+		padding-bottom: var(--s2);
+		margin-bottom: var(--s2);
 		border-bottom: 1px solid var(--line);
 	}
 	.pane-head span { flex: 1; }
-	.collapse {
-		border: 0;
-		background: transparent;
-		color: var(--muted);
-		cursor: pointer;
-		font-size: 14px;
-		line-height: 1;
-		padding: 2px 4px;
-		border-radius: 4px;
-		display: inline-flex;
-	}
-	.collapse:hover { background: var(--soft); color: var(--text); }
+	/* An `.icon-btn`; only the size it draws its chevron at is local. */
+	.collapse { font-size: var(--t14); }
 
 	.rail-tab {
 		border: 1px solid var(--line);
@@ -349,30 +341,30 @@
 		color: var(--muted);
 		cursor: pointer;
 		font: inherit;
-		font-size: 11px;
+		font-size: var(--t11);
 		letter-spacing: 0.5px;
 		text-transform: uppercase;
 		writing-mode: vertical-rl;
-		padding: 10px 4px;
+		padding: 10px var(--s1);
 	}
 	.rail-tab:hover { color: var(--accent); border-color: var(--accent); }
-	.rail-tab.left { margin-right: 8px; }
-	.rail-tab.right { margin-left: 8px; }
+	.rail-tab.left { margin-right: var(--s2); }
+	.rail-tab.right { margin-left: var(--s2); }
 
-	.note-pane { padding: 18px 24px; overflow: auto; min-width: 0; }
-	.rail .card { font-size: 13px; }
+	.note-pane { padding: 18px var(--s5); overflow: auto; min-width: 0; }
+	.rail .card { font-size: var(--t13); }
 	/* The rail is a couple of hundred pixels wide; the page-width key column
 	   would leave no room for the value. */
 	.rail .kv { grid-template-columns: minmax(0, 96px) minmax(0, 1fr); gap: 5px 10px; }
 
 	/* A group inside a rail card: the old cards' headings, one level down. */
-	.group + .group { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+	.group + .group { margin-top: var(--s3); padding-top: 10px; border-top: 1px solid var(--line); }
 	.group h4 {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--s2);
 		margin: 0 0 6px;
-		font-size: 11px;
+		font-size: var(--t11);
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.4px;
@@ -387,14 +379,14 @@
 		flex-wrap: wrap;
 		gap: 6px 10px;
 		color: var(--muted);
-		margin-bottom: 12px;
+		margin-bottom: var(--s3);
 	}
 	/* Only the path is monospaced: it is a file name, and the buttons beside it
 	   are the app speaking rather than the vault. */
 	.crumb .path {
 		flex: 1;
 		min-width: 0;
-		font: 12px var(--mono);
+		font: var(--t12) var(--mono);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -408,12 +400,11 @@
 	 */
 	.crumb :global(.draft) { display: contents; }
 	.crumb :global(.draft > *:not(.go)) { flex-basis: 100%; }
-	.crumb :global(.draft .go) { padding: 6px 12px; border-radius: 8px; font-size: 13px; }
 
 	.row { display: block; padding: 3px 0; color: var(--accent); text-decoration: none; }
 	.row:hover { text-decoration: underline; }
 	.counts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-	.counts .n { margin-right: 8px; color: var(--muted); }
+	.counts .n { margin-right: var(--s2); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 	/* Only offered where the tree pane itself is gone; see the media query. */
 	.crumb .files { display: none; }
@@ -427,7 +418,7 @@
 		max-height: 70dvh;
 		border: 0;
 		border-radius: 14px 14px 0 0;
-		padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+		padding: 14px var(--s4) calc(14px + env(safe-area-inset-bottom));
 		background: var(--panel);
 		color: var(--text);
 		box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
@@ -439,13 +430,13 @@
 	.sheet-head {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		font-size: 11px;
+		gap: var(--s2);
+		font-size: var(--t11);
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
 		color: var(--muted);
-		padding-bottom: 8px;
-		margin-bottom: 8px;
+		padding-bottom: var(--s2);
+		margin-bottom: var(--s2);
 		border-bottom: 1px solid var(--line);
 	}
 	.sheet-head span { flex: 1; }
@@ -466,7 +457,7 @@
 		.layout.tree-collapsed.rail-collapsed {
 			grid-template-columns: 1fr;
 			height: auto;
-			gap: 12px;
+			gap: var(--s3);
 		}
 		.pane, .note-pane { max-height: none; }
 		.tree, .rail-tab.left { display: none; }

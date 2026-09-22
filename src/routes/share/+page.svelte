@@ -74,17 +74,18 @@
 
 <style>
 	.card { max-width: 560px; }
-	label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+	label { display: block; font-size: var(--t13); color: var(--muted); margin-bottom: var(--s2); }
 	textarea {
 		width: 100%;
 		box-sizing: border-box;
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		padding: 10px 12px;
+		padding: 10px var(--s3);
 		font: inherit;
+		background: var(--field);
 		resize: vertical;
 	}
-	.row { display: flex; gap: 8px; align-items: center; margin: 10px 0 0; }
+	.row { display: flex; gap: var(--s2); align-items: center; margin: 10px 0 0; }
 	.done p { margin: 0 0 10px; }
-	.problem { color: var(--bad); font-size: 13px; margin: 10px 0 0; }
+	.problem { color: var(--bad); font-size: var(--t13); margin: 10px 0 0; }
 </style>

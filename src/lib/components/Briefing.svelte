@@ -96,7 +96,7 @@
 	<section class="card strip" data-testid="briefing">
 		<div class="bar">
 			<button
-				class="fold"
+				class="icon-btn fold"
 				data-testid="briefing-fold"
 				aria-expanded={open}
 				aria-label={open ? 'Hide the briefing' : 'Show the briefing'}
@@ -107,7 +107,7 @@
 			</button>
 			{#if !open && gist}<span class="gist">{gist}</span>{/if}
 			{#if isToday}
-				<button class="regen" onclick={regenerate} disabled={busy} data-testid="briefing-regenerate">
+				<button class="btn small regen" onclick={regenerate} disabled={busy} data-testid="briefing-regenerate">
 					{busy ? 'Thinking…' : current ? 'Regenerate' : 'Generate'}
 				</button>
 			{/if}
@@ -145,52 +145,33 @@
 {/if}
 
 <style>
-	.strip { padding: 8px 12px; }
+	.strip { padding: var(--s2) var(--s3); }
 	.bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+	/* An `.icon-btn` that carries its own label, so it reads as the card's
+	   heading rather than as a control sitting next to one. */
 	.fold {
-		display: inline-flex;
-		align-items: center;
 		gap: 6px;
-		border: 0;
-		background: none;
-		padding: 2px 0;
-		font: inherit;
-		font-size: 12px;
+		padding: 2px var(--s1);
+		font-size: var(--t12);
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
-		color: var(--muted);
-		cursor: pointer;
 	}
-	.fold:hover { color: var(--text); }
 	.name { font-weight: 600; }
 	/* The first line of the briefing, so the fold still says something. */
 	.gist {
 		flex: 1;
 		min-width: 0;
-		font-size: 13px;
+		font-size: var(--t13);
 		color: var(--muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.regen {
-		margin-left: auto;
-		border: 1px solid var(--line);
-		background: var(--panel);
-		border-radius: 6px;
-		padding: 2px 8px;
-		font: inherit;
-		font-size: 11px;
-		text-transform: none;
-		letter-spacing: 0;
-		color: var(--muted);
-		cursor: pointer;
-	}
-	.regen:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+	.regen { margin-left: auto; flex: none; }
 	.regen:disabled { cursor: default; opacity: 0.6; }
-	.prose { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
-	.label { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
-	ul { margin: 0 0 10px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+	.prose { margin: 0 0 10px; font-size: var(--t13); line-height: 1.5; }
+	.label { margin: 0 0 var(--s1); font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+	ul { margin: 0 0 10px; padding-left: 18px; font-size: var(--t13); line-height: 1.5; }
 	li { margin: 0 0 2px; }
-	.problem { margin: 8px 0 0; font-size: 12px; color: var(--bad); }
+	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>
