@@ -12,6 +12,12 @@
  * tools would be capability with nothing to spend it on, which is the
  * definition of an unnecessary risk. Anything that wants to write goes
  * through `proposal.ts` and a human.
+ *
+ * A workspace question gets one thing retrieval cannot find: a block of
+ * figures computed from the index and the daily notes, prepended to the
+ * passages as data (see `facts.ts`). It is not a citation, because a citation
+ * is a link to a note the reader can open and this is arithmetic; it is
+ * labelled in words so the model quotes it as computed rather than as a path.
  */
 
 import { today } from '../daily';
@@ -21,10 +27,19 @@ import type { Workspace } from '../workspaces';
 import { config } from '../config';
 import { logRun, spentOn } from './audit';
 import { runClaude, type CliDeps } from './cli';
+import { gatherWorkspaceFacts, renderFacts } from './facts';
 import { checkBudget, checkKillSwitch, wrapAsData } from './guardrails';
-import { retrieve } from './retrieval';
+import { DEFAULT_TOKEN_BUDGET, retrieve } from './retrieval';
 import { loadSettings } from './settings';
-import { scopeLabel, type Answer, type FeatureId, type Refusal, type RunSettings, type Scope } from '$lib/shared/ai';
+import {
+	estimateTokens,
+	scopeLabel,
+	type Answer,
+	type FeatureId,
+	type Refusal,
+	type RunSettings,
+	type Scope
+} from '$lib/shared/ai';
 
 export interface AskDeps {
 	vault: Vault;
@@ -59,8 +74,9 @@ let running = 0;
  * Inputs: the vault, index and workspaces; the question, the scope and any
  * per-run settings. Output: an `Answer` with its citations and the stamp of
  * what produced it, or the same shape carrying a `problem` and the refusals.
- * Side effects: spawns the CLI, appends to the audit log and to the chat
- * history file.
+ * Side effects: queries the index and reads notes to compute the figures a
+ * workspace question is answered from, spawns the CLI, appends to the audit
+ * log and to the chat history file.
  *
  * Never writes a note. Never throws: a model that returns nonsense, a CLI
  * that is not installed and a budget that is spent all come back as an answer
@@ -105,15 +121,24 @@ export async function ask(deps: AskDeps, request: AskRequest, overrides: Partial
 		};
 	}
 
-	const found = await retrieve(deps, { question: request.question, scope: request.scope });
+	// The figures first, because what is left of the budget is what retrieval
+	// may spend: the prompt is no bigger for having facts in it.
+	const facts = await factsFor(deps, request.scope, day);
+	const found = await retrieve(deps, {
+		question: request.question,
+		scope: request.scope,
+		tokenBudget: Math.max(0, DEFAULT_TOKEN_BUDGET - (facts ? estimateTokens(facts.text) : 0))
+	});
+	const passages = facts ? [facts, ...found.passages] : found.passages;
+
 	running++;
 	let result;
 	try {
 		result = await runClaude(
 			{
-				prompt: prompt(request, found.passages),
+				prompt: prompt(request, passages),
 				settings: budget.settings,
-				systemPrompt: systemPrompt(request, found.passages.length, request.conventions)
+				systemPrompt: systemPrompt(request, found.passages.length, facts !== null, request.conventions)
 			},
 			overrides
 		);
@@ -164,7 +189,8 @@ export async function ask(deps: AskDeps, request: AskRequest, overrides: Partial
 /**
  * The prompt. Note text goes through `wrapAsData` (G8) so that a line in
  * someone's notes reading "ignore the above" is quoted material rather than
- * an instruction.
+ * an instruction. The computed figures go through the same wrapper, for the
+ * same reason: they are made of the words in those notes.
  */
 function prompt(request: AskRequest, passages: Array<{ path: string; text: string }>): string {
 	if (passages.length === 0) {
@@ -178,10 +204,13 @@ function prompt(request: AskRequest, passages: Array<{ path: string; text: strin
 	return [`Question: ${request.question}`, '', wrapAsData(passages)].join('\n');
 }
 
-function systemPrompt(request: AskRequest, count: number, conventions?: string): string {
+function systemPrompt(request: AskRequest, count: number, facts: boolean, conventions?: string): string {
 	return [
 		'You are answering questions about one person\'s markdown notes.',
 		`The scope of this question is: ${scopeLabel(request.scope)}. ${count} passages were retrieved.`,
+		facts
+			? 'The first passage is not quoted from a note: it holds figures this app computed from the notes today, so state them as facts and cite them as "(computed from your notes)" rather than as a note path.'
+			: '',
 		'Answer only from the passages. If they do not say, say that they do not say.',
 		'Cite the notes you used by their path, in square brackets, as you use them.',
 		'Be brief. This person wrote these notes and does not need them summarised back at length.',
@@ -189,6 +218,37 @@ function systemPrompt(request: AskRequest, count: number, conventions?: string):
 	]
 		.filter(Boolean)
 		.join('\n');
+}
+
+/**
+ * The path the facts block is labelled with inside the data wrapper.
+ *
+ * A sentence rather than a path, because `wrapAsData` only needs a string and
+ * the model is told to cite this passage in words. Exported so the test and
+ * the system prompt agree on the wording.
+ */
+export function factsLabel(day: string): string {
+	return `computed from your notes on ${day}`;
+}
+
+/**
+ * The figures for a workspace-scoped question, as a passage, or null.
+ *
+ * Null for every other scope: a question about one note or the whole vault
+ * has no single workspace whose week could be summed. Null too when the slug
+ * names no workspace, and when gathering fails — an index that cannot answer
+ * costs the figures, never the answer, which is why this catches rather than
+ * letting `ask` throw from a page load.
+ */
+async function factsFor(deps: AskDeps, scope: Scope, day: string): Promise<{ path: string; text: string } | null> {
+	if (scope.kind !== 'workspace') return null;
+	const workspace = deps.workspaces.find((w) => w.slug === scope.slug);
+	if (!workspace) return null;
+	try {
+		return { path: factsLabel(day), text: renderFacts(await gatherWorkspaceFacts(deps, workspace, day)) };
+	} catch {
+		return null;
+	}
 }
 
 /* -------------------------------------------------------- chat history --- */

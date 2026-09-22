@@ -174,9 +174,15 @@ evening; there is no button that fills this list on demand.
 
 Answers are read-only. Nothing on this page can change a note, whatever the
 answer itself claims to have done — that guarantee lives in code, not in the
-answer's wording. Past conversations are kept as markdown in the vault's own
-history note, so they sync with everything else and no AI-backed feature can
-edit them after the fact.
+answer's wording. A question scoped to a workspace also carries a short block
+of figures: this week's planned, done and timed minutes day by day, the open
+cards column by column, what is overdue and what is blocked, the week's daily
+blocks, and the ten notes changed most recently. Those figures are computed
+from the index and the daily notes at the moment the question is asked rather
+than retrieved from any note, which is why an answer quotes them as "computed
+from your notes" instead of linking to a file. Past conversations are kept as
+markdown in the vault's own history note, so they sync with everything else
+and no AI-backed feature can edit them after the fact.
 
 ## AI settings
 
@@ -229,7 +235,10 @@ than showing an empty chart.
 
 **Insights** is Ask, scoped to whatever workspace or note it sits on, with
 the same guarantee: it is read-only, and switching the AI layer off in
-settings turns this widget off along with every other AI surface.
+settings turns this widget off along with every other AI surface. On a
+workspace it is handed the same computed figures the Ask page is, and the line
+under the box says what they amount to — open cards, overdue, blocked, the
+week's blocks and its hours — before anything is asked or spent.
 
 **Timesheet** renders today's timesheet section exactly as the note has it,
 read-only, because the note is a document shared at work and every route out

@@ -11,13 +11,23 @@
 	import RunSettings from '$lib/components/RunSettings.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { askQuestion } from '$lib/client/ai';
+	import { formatDuration } from '$lib/shared/duration';
 	import { scopeLabel, type Answer, type Refusal, type RunSettings as Run, type Scope } from '$lib/shared/ai';
 	import type { LoadedWidget } from '$lib/shared/widgets';
+
+	interface FactCounts {
+		cards: number;
+		overdue: number;
+		blocked: number;
+		blocks: number;
+		weekMinutes: number;
+	}
 
 	interface InsightsData {
 		scope: Scope;
 		label: string;
 		notes: number;
+		facts: FactCounts | null;
 		settings: Run;
 		enabled: boolean;
 		suggestions: string[];
@@ -40,6 +50,21 @@
 	});
 
 	const href = (path: string) => `/notes/${path.split('/').map(encodeURIComponent).join('/')}`;
+
+	/**
+	 * What the model is handed besides the notes, said plainly, so an answer
+	 * with a number in it is not a surprise and an empty workspace explains
+	 * its own empty answers before the question is asked.
+	 */
+	function figures(f: FactCounts): string {
+		const parts: string[] = [];
+		if (f.cards) parts.push(`${f.cards} open card${f.cards === 1 ? '' : 's'}`);
+		if (f.overdue) parts.push(`${f.overdue} overdue`);
+		if (f.blocked) parts.push(`${f.blocked} blocked`);
+		if (f.blocks) parts.push(`${f.blocks} block${f.blocks === 1 ? '' : 's'} this week`);
+		if (f.weekMinutes) parts.push(`${formatDuration(f.weekMinutes)} done or timed`);
+		return parts.length ? `figures: ${parts.join(', ')}` : 'nothing planned, nothing open: no figures to answer from';
+	}
 
 	async function send(text: string) {
 		if (!text.trim() || busy || !run) return;
@@ -87,7 +112,9 @@
 			<button class="btn primary" disabled={busy} data-testid="insights-ask">{busy ? 'Thinking…' : 'Ask'}</button>
 		</form>
 
-		<p class="scope muted">{scopeLabel(data.scope)} · {data.notes} note{data.notes === 1 ? '' : 's'}</p>
+		<p class="scope muted" data-testid="insights-scope">
+			{scopeLabel(data.scope)} · {data.notes} note{data.notes === 1 ? '' : 's'}{#if data.facts} · {figures(data.facts)}{/if}
+		</p>
 
 		{#if !answer && !problem}
 			<ul class="suggestions">

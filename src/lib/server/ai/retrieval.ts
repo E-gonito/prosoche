@@ -54,7 +54,13 @@ export interface Retrieved {
 	truncated: boolean;
 }
 
-const DEFAULT_BUDGET = 12_000;
+/**
+ * Roughly how many tokens of note text a prompt carries. Exported because a
+ * caller that puts something else in the prompt — `ask` prepends a block of
+ * computed figures for a workspace question — has to take it out of the same
+ * budget rather than adding to it.
+ */
+export const DEFAULT_TOKEN_BUDGET = 12_000;
 const DEFAULT_MAX_NOTES = 8;
 
 /**
@@ -68,7 +74,7 @@ const DEFAULT_MAX_NOTES = 8;
  * in a note from another.
  */
 export async function retrieve(deps: RetrievalDeps, request: RetrievalRequest): Promise<Retrieved> {
-	const budget = request.tokenBudget ?? DEFAULT_BUDGET;
+	const budget = request.tokenBudget ?? DEFAULT_TOKEN_BUDGET;
 	const maxNotes = request.maxNotes ?? DEFAULT_MAX_NOTES;
 	const within = scopeFilter(request.scope, deps.workspaces);
 	const terms = keyTerms(request.question);
