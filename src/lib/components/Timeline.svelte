@@ -27,13 +27,31 @@
 		tasks,
 		isToday = false,
 		onchange,
-		onproblem
+		onproblem,
+		onopen,
+		owners = {}
 	}: {
 		tasks: Task[];
 		isToday?: boolean;
 		onchange?: (task: Task) => void;
 		onproblem?: (message: string) => void;
+		/** Given, a block that was clicked rather than dragged opens the card. */
+		onopen?: (task: Task) => void;
+		/** Workspace per task, keyed `path:line`, worked out by the server. */
+		owners?: Record<string, { slug: string; name: string; color: string }>;
 	} = $props();
+
+	/** The workspace a block belongs to, or null. A lookup, not a rule. */
+	function ownerOf(task: Task) {
+		return owners[`${task.path}:${task.line}`] ?? null;
+	}
+
+	/**
+	 * How far the pointer may travel and still count as a click rather than a
+	 * drag. A press that goes nowhere is how a block is opened for editing,
+	 * and a hand on a trackpad is never perfectly still.
+	 */
+	const CLICK_SLOP_PX = 4;
 
 	/**
 	 * The scale, and the rule that sets it: **the shortest block this app lets
@@ -89,6 +107,8 @@
 		origEnd: number;
 		startMin: number;
 		endMin: number;
+		/** Where the press landed on screen, to tell a click from a drag. */
+		fromClient: { x: number; y: number };
 		/** Set when the pointer has left the timeline for a list. */
 		leaving: string | null;
 	};
@@ -246,6 +266,7 @@
 			origEnd: task.endMin!,
 			startMin: task.startMin!,
 			endMin: task.endMin!,
+			fromClient: { x: event.clientX, y: event.clientY },
 			leaving: null
 		};
 	}
@@ -327,7 +348,14 @@
 		if (!current) return;
 
 		const unschedule = current.leaving !== null;
-		if (!unschedule && current.startMin === current.origStart && current.endMin === current.origEnd) return;
+		if (!unschedule && current.startMin === current.origStart && current.endMin === current.origEnd) {
+			// Nothing moved. On a block that is how you say "open this": the
+			// affordance costs no pixels and cannot fight the drag, because a
+			// drag by definition moved.
+			const travelled = Math.hypot(pointer.x - current.fromClient.x, pointer.y - current.fromClient.y);
+			if (current.mode === 'move' && travelled <= CLICK_SLOP_PX) onopen?.(current.task);
+			return;
+		}
 
 		busy = new Set(busy).add(current.task.line);
 		const result = await editTask(
@@ -439,6 +467,7 @@
 			{#each placed as p (p.item.path + ':' + p.item.line)}
 				{@const task = p.item}
 				{@const done = isDone(task)}
+				{@const owner = ownerOf(task)}
 				{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
 				<div
 					class="block q{task.quadrant ?? 0}"
@@ -460,12 +489,17 @@
 					aria-label="{task.text}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}"
 					onpointerdown={(e) => start(e, task, 'move')}
 					onkeydown={(e) => {
+						if (e.key === 'Enter') { e.preventDefault(); onopen?.(task); }
 						if (e.key === 'ArrowUp') { e.preventDefault(); nudge(task, -SNAP); }
 						if (e.key === 'ArrowDown') { e.preventDefault(); nudge(task, SNAP); }
 						if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); void unschedule(task); }
 					}}
 				>
-					<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
+					<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}{#if owner}<span
+							class="ws"
+							style="--dot: {owner.color}"
+							title={owner.name}
+						></span>{/if}</div>
 					<div class="label">{displayText(task.text)}</div>
 					{#if task.quadrant}<span class="q q{task.quadrant} badge">Q{task.quadrant}</span>{/if}
 					{#if !done}
@@ -614,6 +648,15 @@
 
 	/* A time, so body text with the figures lined up rather than monospace. */
 	.t { font-size: var(--t11); font-variant-numeric: tabular-nums; line-height: 15px; color: var(--muted); }
+	/* The workspace this block belongs to, by its tag, its folder or its words. */
+	.t .ws {
+		display: inline-block;
+		width: 7px;
+		height: 7px;
+		margin-left: 5px;
+		border-radius: 50%;
+		background: var(--dot);
+	}
 	/*
 	 * Clamped to the lines the block has room for, computed from its height.
 	 * Without this a long name wrapped past the bottom edge and was sliced in

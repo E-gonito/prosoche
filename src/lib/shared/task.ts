@@ -39,6 +39,17 @@ export function hasTag(task: Task, tag: string): boolean {
 	return task.tags.some((t) => t === tag || t.startsWith(`${tag}/`));
 }
 
+/**
+ * The workspace tags written on the line, e.g. `ws/work`, in written order.
+ *
+ * Normally one or none. A line carrying two is left as it is and reported as
+ * both: the file is the truth, and tidying one away would be an edit nobody
+ * asked for. Callers that assign a workspace remove what this returns.
+ */
+export function workspaceTags(task: Task): string[] {
+	return task.tags.filter((t) => t === 'ws' || t.startsWith('ws/'));
+}
+
 export const OPEN_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'blocked'];
 
 export const isDone = (task: Task): boolean => task.status === 'done' || task.status === 'cancelled';

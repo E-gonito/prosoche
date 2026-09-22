@@ -12,7 +12,7 @@
 	 * and never edited here: they are prose, and the editor is a click away.
 	 */
 	import { untrack } from 'svelte';
-	import { displayText, type Task, type TaskStatus } from '$lib/shared/task';
+	import { displayText, workspaceTags, type Task, type TaskStatus } from '$lib/shared/task';
 	import { editTask, type TaskEdit } from '$lib/client/api';
 	import { cardContext, type CardContext } from '$lib/client/cards';
 
@@ -42,6 +42,10 @@
 	let field: HTMLInputElement | undefined = $state();
 
 	const pinned = $derived(current.tags.includes('pin'));
+	// What the line says now, which is what the select shows: the header's dot
+	// may name a workspace the folder or an alias gave it, but this control
+	// writes tags and so reports tags.
+	const tagged = $derived(workspaceTags(current)[0] ?? '');
 	const href = $derived(`/notes/${current.path.split('/').map(encodeURIComponent).join('/')}`);
 
 	$effect(() => {
@@ -78,6 +82,19 @@
 		const next = text.trim();
 		if (!next || next === current.text) return;
 		void save({ text: next });
+	}
+
+	/**
+	 * Put the card in a workspace, or in none, by rewriting the line's tags.
+	 *
+	 * One edit: the new tag added and every other `ws/` tag taken off, so the
+	 * card never ends up in two workspaces and the note is touched once.
+	 */
+	function setWorkspace(tag: string) {
+		const removeTags = workspaceTags(current).filter((t) => t !== tag);
+		const addTags = tag && !current.tags.includes(tag) ? [tag] : [];
+		if (!addTags.length && !removeTags.length) return;
+		void save({ addTags, removeTags });
 	}
 
 	function setBlockers() {
@@ -153,6 +170,20 @@
 				>
 					<option value="">None</option>
 					{#each [1, 2, 3, 4] as q (q)}<option value={String(q)}>Q{q}</option>{/each}
+				</select>
+			</label>
+
+			<label class="row">
+				<span>Workspace</span>
+				<select
+					data-testid="drawer-workspace"
+					value={tagged}
+					onchange={(e) => setWorkspace(e.currentTarget.value)}
+				>
+					<option value="">None</option>
+					{#each context?.workspaces ?? [] as workspace (workspace.slug)}
+						<option value={workspace.tag}>{workspace.name}</option>
+					{/each}
 				</select>
 			</label>
 

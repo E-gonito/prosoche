@@ -25,7 +25,10 @@ export interface CardContext {
 	block: string[];
 	/** Title of the note the card lives in. */
 	title: string;
+	/** The workspace the card belongs to now, by tag, folder or alias. */
 	workspace: { slug: string; name: string; color: string } | null;
+	/** Every workspace, with the tag that puts a card in it. */
+	workspaces: Array<{ slug: string; name: string; color: string; tag: string }>;
 }
 
 export interface NewCard {

@@ -50,6 +50,22 @@ export const load: PageServerLoad = async ({ params }) => {
 		.filter((g) => g.tasks.length > 0);
 	const unassigned = elsewhere.filter((e) => e.workspace === null).map((e) => e.task);
 
+	/**
+	 * Which workspace each of the day's own tasks belongs to, keyed
+	 * `path:line`.
+	 *
+	 * Here rather than in the components because membership is a rule of the
+	 * workspaces module — tag, then folder, then frontmatter, then a word in
+	 * the task's own text — and a component that worked it out would be a
+	 * second copy of that rule in another language of the app. A task no
+	 * workspace claims is simply absent, so a missing key means no dot.
+	 */
+	const owners: Record<string, { slug: string; name: string; color: string }> = {};
+	for (const task of [...scheduled, ...unscheduled]) {
+		const owner = workspaceFor(defs, { path: task.path, tags: task.tags, text: task.text });
+		if (owner) owners[`${task.path}:${task.line}`] = { slug: owner.slug, name: owner.name, color: owner.color };
+	}
+
 	return {
 		day: params.day,
 		label: formatDay(params.day),
@@ -61,6 +77,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		scheduled,
 		unscheduled,
 		backlog,
+		owners,
 		plannedMinutes: coveredMinutes(scheduled),
 		overlaps: overlappingCount(scheduled),
 		groups,
