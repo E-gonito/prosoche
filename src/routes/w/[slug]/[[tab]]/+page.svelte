@@ -44,7 +44,7 @@
 		This tab lists no widgets prosoche knows. Edit the workspace file to name some from the catalogue.
 	</p>
 {:else}
-	<div class="grid">
+	<div class="widget-grid">
 		{#each data.widgets as widget (widget.name)}
 			<Widget {widget} refresh={() => invalidateAll()} />
 		{/each}
@@ -74,11 +74,6 @@
 	.tabs a:hover { background: var(--soft); color: var(--text); }
 	.tabs a.active { background: var(--panel); border-color: var(--line); color: var(--text); font-weight: 600; }
 
-	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; align-items: start; }
 	.hint { margin-top: 14px; font-size: 12px; color: var(--muted); }
 	.empty { color: var(--muted); padding: 24px; text-align: center; }
-
-	@media (max-width: 720px) {
-		.grid { grid-template-columns: 1fr; }
-	}
 </style>

@@ -80,6 +80,21 @@ a { color: var(--accent); }
 .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; font-size: 13px; }
 .kv b { color: var(--muted); font-weight: 500; }
 
+/*
+ * A dashboard of widget cards, shared by the study page and every workspace
+ * tab. Twelve columns with `dense` packing rather than `auto-fit`, so a
+ * span-1 card can fill the hole a taller neighbour leaves instead of one
+ * always sitting empty underneath it. Each widget states its own column
+ * span, in `Widget.svelte`, against this same twelve-column grid.
+ */
+.widget-grid {
+	display: grid;
+	grid-template-columns: repeat(12, 1fr);
+	grid-auto-flow: dense;
+	gap: 14px;
+	align-items: start;
+}
+
 /* Rendered note content. Kept close to Obsidian's reading view. */
 .prose { font-size: 15px; line-height: 1.62; overflow-wrap: anywhere; }
 .prose h1, .prose h2, .prose h3 { color: #1d4ed8; line-height: 1.3; }

@@ -43,7 +43,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="grid" data-testid="study-grid">
+<div class="widget-grid" data-testid="study-grid">
 	{#each data.widgets as widget (widget.name)}
 		<Widget {widget} {refresh} />
 	{/each}
@@ -53,10 +53,4 @@
 	.dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
 	.pick { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 	select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
-	/* The scope picker stays: choosing what you are studying is the first
-	   thing this page is for, and a phone is where it is used most. */
-	@media (max-width: 720px) {
-		.grid { grid-template-columns: 1fr; }
-	}
 </style>
