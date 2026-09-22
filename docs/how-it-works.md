@@ -130,6 +130,13 @@ and the note is created the first time you add one. Anything written in the
 workspace's notes shows here too. The count beside a workspace in the rail is
 its open cards, the same ones Today lists under "From your workspaces".
 
+A new project or business workspace starts on five tabs: an Overview of its
+board and its time, then Notes, People, Blocked and Insights, each still
+empty until its notes give it something to show. A tab's own number, beside
+its title, is open cards for Overview, cards waiting on another for Blocked,
+and people in scope for People; a tab with nothing to count shows no number
+at all, and a tab with a genuine zero shows it muted rather than hidden.
+
 ## Sync
 
 The index — notes, tasks, links, tags — is rebuildable and never
