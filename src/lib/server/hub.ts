@@ -13,6 +13,67 @@ import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { startSchedule } from './ai/schedule';
 
+/**
+ * Keep an index true to a vault, and hand back the way to rebuild it.
+ *
+ * Inputs: the vault to follow and the index to fill. Output: a rebuild
+ * function that resolves with how long the build took. Side effects: a
+ * subscription to the vault that lasts as long as the process, and writes to
+ * the index.
+ *
+ * A rebuild reads every note and then replaces the whole index in one
+ * transaction. Reading is asynchronous, so a file written between the read
+ * and the replace — by the editor, by git, by another process holding the
+ * same vault — would be indexed as it was before, and no event is left to
+ * correct it: the index disagrees with the disk until something touches that
+ * file again, which shows up later as a phantom conflict on an edit or a
+ * missing line in a widget. So a rebuild remembers what changed underneath it
+ * and reindexes those paths before it resolves. Callers therefore never have
+ * to race the file watcher: once `rebuild()` resolves, the index matches the
+ * disk as it was when reading finished.
+ *
+ * Exported so a test can drive it with a real vault and a memory index.
+ */
+export function indexVault(vault: Vault, index: NoteIndex): () => Promise<number> {
+	/** Paths changed while a rebuild is reading, or null when none is. */
+	let underway: Set<string> | null = null;
+
+	// Whatever happened to a path, the answer is the same: make the index say
+	// what the disk says. A file that has since been deleted reads as missing,
+	// which is why a removal needs no case of its own.
+	const resync = async (path: string): Promise<void> => {
+		const note = await vault.read(path);
+		if (note.exists) index.put(path, note.content, note.mtimeMs, note.hash);
+		else index.forget(path);
+	};
+
+	// A change from any source reindexes just that file. Subscribing here
+	// rather than inside Vault keeps the vault ignorant of the index.
+	vault.subscribe((change) => {
+		underway?.add(change.path);
+		void resync(change.path);
+	});
+
+	return async () => {
+		const changed = (underway = new Set<string>());
+		let took: number;
+		try {
+			const notes = [];
+			for (const path of await vault.list()) {
+				const note = await vault.read(path);
+				notes.push({ path, content: note.content, mtimeMs: note.mtimeMs, hash: note.hash });
+			}
+			took = index.rebuild(notes);
+		} finally {
+			// Only this rebuild's own tracker, so a second one overlapping it
+			// keeps collecting for itself.
+			if (underway === changed) underway = null;
+		}
+		for (const path of changed) await resync(path);
+		return took;
+	};
+}
+
 export interface Hub {
 	vault: Vault;
 	index: NoteIndex;
@@ -38,30 +99,7 @@ function start(): Hub {
 	const vault = new Vault(config.vaultPath, sync);
 	const index = new NoteIndex(config.dbPath);
 
-	const rebuild = async (): Promise<number> => {
-		const paths = await vault.list();
-		const notes = [];
-		for (const path of paths) {
-			const note = await vault.read(path);
-			notes.push({ path, content: note.content, mtimeMs: note.mtimeMs, hash: note.hash });
-		}
-		return index.rebuild(notes);
-	};
-
-	// A change from any source reindexes just that file. Doing it here rather
-	// than inside Vault keeps the vault ignorant of the index.
-	vault.subscribe((change) => {
-		void reindex(change);
-	});
-
-	async function reindex(change: FileChange): Promise<void> {
-		if (change.kind === 'removed') {
-			index.forget(change.path);
-			return;
-		}
-		const note = await vault.read(change.path);
-		if (note.exists) index.put(change.path, note.content, note.mtimeMs, note.hash);
-	}
+	const rebuild = indexVault(vault, index);
 
 	const ready = rebuild().then(
 		async (ms) => {
