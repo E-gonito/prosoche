@@ -344,6 +344,6 @@
 		 * Taller here, and measured differently: the phone adds the segmented
 		 * control and the bottom tab bar, whose height the shell publishes.
 		 */
-		.day-timeline { --chrome: calc(var(--tabbar, 56px) + 244px); }
+		.day-timeline { --chrome: calc(var(--tabbar, 56px) + 330px); }
 	}
 </style>

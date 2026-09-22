@@ -290,17 +290,35 @@
 	}
 
 	/**
-	 * While a block is being dragged, a pointer at the edge scrolls the window
-	 * and the block follows. The gesture is measured in grid pixels, so the
-	 * scroll moving the grid under a still pointer is itself a movement.
+	 * The rest of the gesture, for as long as there is one.
+	 *
+	 * On the window rather than on the block, because the pointer does not
+	 * stay over the block: a drag against the edge of the window scrolls it,
+	 * and the block stops once the grid has no more to give while the pointer
+	 * keeps going. Handlers on the block itself missed both the last moves and
+	 * the release, and the drag was simply abandoned — the note never heard
+	 * about it. Pointer capture is asked for as well, but it is not something
+	 * to rely on.
+	 *
+	 * The frame timer is the other half: a pointer held still at the edge is
+	 * not moving, and it still means "keep going".
 	 */
 	$effect(() => {
 		if (!drag) return;
+		const up = () => void finish();
+		window.addEventListener('pointermove', move);
+		window.addEventListener('pointerup', up);
+		window.addEventListener('pointercancel', up);
 		let frame = requestAnimationFrame(function tick() {
 			frame = requestAnimationFrame(tick);
 			if (edgeScroll(pointer.x, pointer.y)) reposition();
 		});
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			window.removeEventListener('pointermove', move);
+			window.removeEventListener('pointerup', up);
+			window.removeEventListener('pointercancel', up);
+			cancelAnimationFrame(frame);
+		};
 	});
 
 	async function finish() {
@@ -441,9 +459,6 @@
 					tabindex="0"
 					aria-label="{task.text}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}"
 					onpointerdown={(e) => start(e, task, 'move')}
-					onpointermove={move}
-					onpointerup={finish}
-					onpointercancel={finish}
 					onkeydown={(e) => {
 						if (e.key === 'ArrowUp') { e.preventDefault(); nudge(task, -SNAP); }
 						if (e.key === 'ArrowDown') { e.preventDefault(); nudge(task, SNAP); }
@@ -485,8 +500,6 @@
 						tabindex="-1"
 						aria-label="Resize {task.text}"
 						onpointerdown={(e) => { e.stopPropagation(); start(e, task, 'resize'); }}
-						onpointermove={move}
-						onpointerup={finish}
 					></div>
 				</div>
 			{/each}
