@@ -33,8 +33,17 @@ export const config = {
 	 */
 	ignoredDirs: ['.git', '.obsidian', '.stversions', '.stfolder', '.venv', '__pycache__', 'node_modules', 'Excalidraw'],
 
-	/** Daily notes live at Journal/YYYY/MM/DD.md. */
-	dailyNote: { folder: 'Journal', format: 'YYYY/MM/DD', template: 'Journal/Journal Template.md' },
+	/**
+	 * Daily notes live at Journal/YYYY/MM/DD.md. `tasksHeading` is the heading
+	 * a day's plan sits under, and the one anything appending a block to a day
+	 * writes beneath, so the vault's name for it is stated once here.
+	 */
+	dailyNote: {
+		folder: 'Journal',
+		format: 'YYYY/MM/DD',
+		template: 'Journal/Journal Template.md',
+		tasksHeading: '# Tasks'
+	},
 
 	/**
 	 * Where a person note goes when the hub creates one. The vault has no such

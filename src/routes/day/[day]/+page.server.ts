@@ -5,6 +5,7 @@ import { renderMarkdown } from '$server/render';
 import { parseNote } from '$server/parse/note';
 import { coveredMinutes, overlappingCount } from '$server/schedule';
 import { workspaceFor } from '$server/workspaces';
+import { CONFLICT_MARKERS } from '$server/index/index';
 import { config } from '$server/config';
 import { BRIEFING_MARKER } from '$server/ai/guardrails';
 import { readRegion } from '$server/ai/proposal';
@@ -58,6 +59,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		next: shiftDay(params.day, 1),
 		path,
 		exists: note.exists,
+		// An unfinished merge in the day's note, so the page can say so rather
+		// than quietly showing half a day.
+		conflicted: index.problemFor(path) === CONFLICT_MARKERS,
 		scheduled,
 		unscheduled,
 		backlog,

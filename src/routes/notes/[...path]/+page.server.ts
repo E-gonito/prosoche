@@ -3,6 +3,7 @@ import { hub } from '$server/hub';
 import { parseNote, basename } from '$server/parse/note';
 import { renderMarkdown } from '$server/render';
 import { isMarkdown, PathOutsideVaultError } from '$server/vault/paths';
+import { CONFLICT_MARKERS } from '$server/index/index';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url }) => {
@@ -34,6 +35,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		content: note.content,
 		hash: note.hash,
 		editing,
+		// An unfinished merge, which the page says out loud: the markers are
+		// text like any other and would otherwise just render as odd headings.
+		conflicted: index.problemFor(path) === CONFLICT_MARKERS,
 		frontmatter: parsed.frontmatter,
 		html: editing ? '' : renderMarkdown(parsed.body, (t) => linkTo(index.resolveLink(t))),
 		tree: await vault.tree(),
