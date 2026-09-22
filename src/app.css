@@ -16,18 +16,79 @@
 	--warn: #b45309;
 	--bad: #b91c1c;
 	--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	/*
+	 * Spacing, on a four-pixel step. Six of them, because a seventh was never
+	 * the difference between a layout working and not. Anything outside the
+	 * scale is deliberate and says so where it is written: the 44px tap
+	 * target, the 220px a board column needs to hold a card, the timeline's
+	 * pixels-per-minute arithmetic.
+	 */
+	--s1: 4px;
+	--s2: 8px;
+	--s3: 12px;
+	--s4: 16px;
+	--s5: 24px;
+	--s6: 32px;
+
+	/* Type, named by the size it is. Body text is --t14; --t11 is the smallest
+	   the app will draw, and only for a label beside something larger. */
+	--t11: 11px;
+	--t12: 12px;
+	--t13: 13px;
+	--t14: 14px;
+	--t16: 16px;
+	--t20: 20px;
+	--t24: 24px;
+
+	/* Radii. --r is the default: a card, a pane, a panel. */
+	--r-sm: 6px;
 	--r: 10px;
-	/* Everything the shell puts above and below a page: the 48px header plus
-	   `main`'s padding. A page that wants to fill the rest of the window sizes
-	   itself with `calc(100dvh - var(--page-chrome))` rather than guessing. */
-	--page-chrome: 88px;
+	--r-lg: 12px;
+	--r-pill: 999px;
+
+	/* Two elevations: something lifted off the page, and something floating
+	   over it. Anything with a direction of its own — the bottom sheet's
+	   upward shadow — writes its own. */
+	--shadow: 0 6px 18px rgba(31, 35, 40, 0.18);
+	--shadow-lg: 0 18px 48px rgba(31, 35, 40, 0.18);
+
+	/* The background of anything you type or choose into. */
+	--field: #fff;
+	/* One focus ring, so every control answers the keyboard the same way. */
+	--focus: 2px solid var(--accent);
+
+	/*
+	 * The shell's own furniture, measured once here because two other files
+	 * need the numbers: see `--page-chrome` below and `--day-chrome` on the
+	 * day page.
+	 */
+	--header-h: 48px;
+	--tabbar-h: 56px;
+	/* Everything the shell puts above and below a page: the header plus
+	   `main`'s 20px of vertical padding, twice. A page that wants to fill the
+	   rest of the window sizes itself with `calc(100dvh - var(--page-chrome))`
+	   rather than guessing. */
+	--page-chrome: calc(var(--header-h) + 40px);
 }
+
+/*
+ * Breakpoints. A media query cannot read a custom property — the query is
+ * evaluated before the cascade exists — so these two numbers are written out
+ * literally wherever they are needed, and are documented here instead:
+ *
+ *   720px  a phone: one column, the sidebar becomes the bottom tab bar.
+ *   960px  too narrow for two widgets side by side: every card takes the row.
+ *
+ * There are no others. A layout that wants a third is usually a layout that
+ * should be using `.widget-grid`.
+ */
 
 * { box-sizing: border-box; }
 
 body {
 	margin: 0;
-	font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+	font: var(--t14)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
 	color: var(--text);
 	background: var(--bg);
 }
@@ -38,10 +99,10 @@ a { color: var(--accent); }
 	border: 1px solid var(--line);
 	background: #fff;
 	border-radius: 8px;
-	padding: 6px 12px;
+	padding: 6px var(--s3);
 	cursor: pointer;
 	font: inherit;
-	font-size: 13px;
+	font-size: var(--t13);
 	color: inherit;
 	text-decoration: none;
 	display: inline-flex;
@@ -51,6 +112,69 @@ a { color: var(--accent); }
 .btn:hover { background: var(--soft); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.ghost { border-color: transparent; color: var(--muted); }
+/* Destructive, and never the default: discarding local changes, deleting. */
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.danger:hover:not(:disabled) { background: #a11414; }
+.btn.danger:disabled { opacity: 0.45; }
+/* A button that sits inside a row of text rather than under it. */
+.btn.small { padding: 2px var(--s2); font-size: var(--t11); }
+
+/*
+ * A button that is nothing but its icon: no border, no fill, one square
+ * target wherever one appears — the more button on a board card, the collapse
+ * arrows beside a note, the briefing's fold. Callers keep their own testid
+ * and aria-label; nothing here says what the icon means.
+ */
+.icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	background: none;
+	padding: 2px var(--s1);
+	border-radius: var(--r-sm);
+	color: var(--muted);
+	font: inherit;
+	line-height: 1;
+	cursor: pointer;
+}
+.icon-btn:hover { background: var(--soft); color: var(--text); }
+
+/*
+ * A pill, and the row it lives in. `.chip` on its own is a choice not taken;
+ * `.chip.on` is the one that is. `.chip.quiet` reports rather than offers —
+ * a count, a total — so it loses the border and the pointer with it.
+ */
+.chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+	border: 1px solid var(--line);
+	background: var(--field);
+	border-radius: var(--r-pill);
+	padding: 3px 10px;
+	font: inherit;
+	font-size: var(--t12);
+	color: inherit;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip.quiet {
+	border-color: transparent;
+	background: var(--soft);
+	color: var(--muted);
+	padding: 2px var(--s2);
+	font-size: var(--t11);
+	cursor: default;
+}
+
+/* Times, counts and dates are body text with the figures lined up. Monospace
+   is for paths, code, tags and keyboard hints, and for nothing else. */
+.num { font-variant-numeric: tabular-nums; }
 
 .card {
 	background: var(--panel);
@@ -58,30 +182,42 @@ a { color: var(--accent); }
 	border-radius: var(--r);
 	padding: 14px;
 }
-.card h3 {
+/*
+ * One card heading, worn by every card and every widget: a small uppercase
+ * label on the left, and at most one count or control in `.right`. Widgets
+ * are named here too rather than repeating the rule in `Widget.svelte`, so a
+ * card on the day page and a card on a workspace tab cannot drift apart.
+ */
+.card h3,
+.widget > h3 {
 	margin: 0 0 10px;
-	font-size: 12px;
+	font-size: var(--t12);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
 	color: var(--muted);
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--s2);
 }
-.card h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.card h3 .right,
+.widget > h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-.q { font: 11px/1 var(--mono); font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; }
+/* A quadrant, written in the vault as inline code, so drawn as code here. */
+.q { font: var(--t11)/1 var(--mono); font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; }
 .q1 { background: var(--q1); }
 .q2 { background: var(--q2); }
 .q3 { background: var(--q3); }
 .q4 { background: var(--q4); }
 
-.tag { font-size: 11px; color: var(--muted); background: var(--soft); border-radius: 4px; padding: 1px 6px; }
+/* A square label: a tag from a note, a file's status. `.tag.bad` is the one
+   the guardrails wear when they refuse something. */
+.tag { font-size: var(--t11); color: var(--muted); background: var(--soft); border-radius: 4px; padding: 1px 6px; }
+.tag.bad { background: var(--bad); color: #fff; font-weight: 700; }
 .muted { color: var(--muted); }
-.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
-.empty { color: var(--muted); padding: 24px; text-align: center; }
+.hint { font-size: var(--t12); color: var(--muted); margin-top: var(--s2); }
+.empty { color: var(--muted); padding: var(--s5); text-align: center; }
 
-.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; font-size: 13px; }
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t13); }
 .kv b { color: var(--muted); font-weight: 500; }
 
 /*
@@ -107,20 +243,20 @@ a { color: var(--accent); }
 	color: var(--text);
 	line-height: 1.3;
 }
-.prose h1 { font-size: 25px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.01em; }
-.prose h2 { font-size: 19px; font-weight: 650; margin: 26px 0 8px; }
-.prose h3 { font-size: 16px; font-weight: 600; margin: 20px 0 6px; }
-.prose h4, .prose h5, .prose h6 { font-size: 14px; font-weight: 600; margin: 16px 0 4px; }
+.prose h1 { font-size: 25px; font-weight: 700; margin: 0 0 var(--s3); letter-spacing: -0.01em; }
+.prose h2 { font-size: 19px; font-weight: 650; margin: 26px 0 var(--s2); }
+.prose h3 { font-size: var(--t16); font-weight: 600; margin: 20px 0 6px; }
+.prose h4, .prose h5, .prose h6 { font-size: var(--t14); font-weight: 600; margin: var(--s4) 0 var(--s1); }
 .prose a { color: var(--accent); }
 .prose p { margin: 10px 0; }
-.prose ul, .prose ol { padding-left: 22px; margin: 8px 0; }
+.prose ul, .prose ol { padding-left: 22px; margin: var(--s2) 0; }
 .prose li { margin: 3px 0; }
 .prose li input[type='checkbox'] { margin-right: 6px; }
-.prose code { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: 13px var(--mono); }
-.prose pre { background: var(--soft); padding: 12px; border-radius: 8px; overflow-x: auto; }
+.prose code { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: var(--t13) var(--mono); }
+.prose pre { background: var(--soft); padding: var(--s3); border-radius: 8px; overflow-x: auto; }
 .prose pre code { background: none; padding: 0; }
 .prose blockquote { border-left: 3px solid var(--line); margin: 10px 0; padding: 2px 0 2px 14px; color: var(--muted); }
-.prose table { border-collapse: collapse; margin: 12px 0; font-size: 13px; display: block; overflow-x: auto; }
+.prose table { border-collapse: collapse; margin: var(--s3) 0; font-size: var(--t13); display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
 .prose th { background: var(--soft); }
 .prose img { max-width: 100%; }
