@@ -22,7 +22,9 @@ import { dailyNotePath, formatMinutes, shiftDay, type DayKey } from '../daily';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { config } from '../config';
-import { displayText, isDone, isOpen, type Task } from '$lib/shared/task';
+import { displayText, isDone, isOpen, matchKey, type Task } from '$lib/shared/task';
+import { compareTasks, openCards } from '../board';
+import { loadWorkspaces, type Workspace } from '../workspaces';
 import { BRIEFING_MARKER, checkBudget, checkKillSwitch } from './guardrails';
 import { apply, markerBlock, newId, policyFor, readRegion } from './proposal';
 import { enqueue } from './pending';
@@ -43,19 +45,28 @@ export interface BriefingFacts {
 	blocked: Task[];
 	/** Yesterday's open tasks, which is the list that stings. */
 	unfinished: Task[];
+	/**
+	 * The few cards each workspace has open that the day does not already
+	 * plan. Empty for a vault with no workspaces, or one where every board is
+	 * already on the day.
+	 */
+	fromWorkspaces: Array<{ workspace: { slug: string; name: string; color: string }; cards: Task[] }>;
 }
+
+/** How many of a workspace's cards a briefing is willing to name. */
+const CARDS_PER_WORKSPACE = 3;
 
 /**
  * Everything the briefing says, gathered from the index.
  *
- * Inputs: the index, the day, and the vault only for reading yesterday's
- * note. Output: four lists. Side effects: none beyond reads.
+ * Inputs: the index, the day and the workspace definitions. Output: five
+ * lists. Side effects: none beyond reads.
  *
  * Never invents a task and never reads a model: this is the part of the
  * briefing that is simply true, which is why it is also the part that keeps
  * working when the CLI is down.
  */
-export function gather(index: NoteIndex, day: DayKey): BriefingFacts {
+export function gather(index: NoteIndex, day: DayKey, workspaces: Workspace[]): BriefingFacts {
 	const todayPath = dailyNotePath(day);
 	const yesterdayPath = dailyNotePath(shiftDay(day, -1));
 
@@ -76,7 +87,30 @@ export function gather(index: NoteIndex, day: DayKey): BriefingFacts {
 
 	const unfinished = index.tasksIn(yesterdayPath).filter((t) => !t.fenced && isOpen(t) && !isDone(t));
 
-	return { day, scheduled, overdue, blocked, unfinished };
+	// What each project has waiting, minus whatever the day already plans.
+	// A card planned onto the day becomes a block that quotes its words and
+	// links back to it, so the card's key is contained in the block's rather
+	// than equal to it, and containment is the test — the same way a time log
+	// line is matched to the block it measured.
+	const planned = index
+		.tasksIn(todayPath)
+		.filter((t) => !t.fenced)
+		.map((t) => matchKey(t.text))
+		.filter(Boolean);
+	const fromWorkspaces = workspaces
+		.map((w) => ({
+			workspace: { slug: w.slug, name: w.name, color: w.color },
+			cards: openCards(index, w, workspaces)
+				.filter((task) => {
+					const key = matchKey(task.text);
+					return key !== '' && !planned.some((p) => p.includes(key));
+				})
+				.sort(compareTasks)
+				.slice(0, CARDS_PER_WORKSPACE)
+		}))
+		.filter((group) => group.cards.length > 0);
+
+	return { day, scheduled, overdue, blocked, unfinished, fromWorkspaces };
 }
 
 /**
@@ -108,6 +142,12 @@ export function render(facts: BriefingFacts, opener = ''): string {
 	);
 	section('Overdue', facts.overdue.map((t) => `- ${displayText(t.text)} (due ${t.due}) — ${link(t.path)}`));
 	section('Blocked', facts.blocked.map((t) => `- ${displayText(t.text)} waiting on ${t.blockedBy.join(', ')} — ${link(t.path)}`));
+	section(
+		'From your workspaces',
+		facts.fromWorkspaces.flatMap((group) =>
+			group.cards.map((t) => `- ${group.workspace.name}: ${displayText(t.text)} — ${link(t.path)}`)
+		)
+	);
 	section('Not finished yesterday', facts.unfinished.map((t) => `- ${displayText(t.text)}`));
 
 	if (lines.length === 0) {
@@ -248,7 +288,10 @@ export async function run(
 		return { day, text: existing, proposal: null, problem: stop[0].message, stamp };
 	}
 
-	const facts = gather(deps.index, day);
+	// Read here rather than taken as a dependency: the scheduled job and the
+	// route both hand this module a vault and an index, and a workspace file
+	// is a note in that vault like any other.
+	const facts = gather(deps.index, day, await loadWorkspaces(deps.vault));
 	const opener = await openingSentence(deps.vault, facts, chosen, settings.budget, options.cli);
 	const proposal = await propose(deps.vault, day, facts, opener.text, { ...stamp, ...opener.spent });
 
