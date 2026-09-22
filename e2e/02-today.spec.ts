@@ -225,8 +225,11 @@ test.describe('the day', () => {
 	});
 
 	test('quick capture appends to the inbox', async ({ page }) => {
-		await page.getByTestId('unscheduled').getByLabel('Quick capture').fill('remember the milk');
-		await page.getByRole('button', { name: 'Add' }).click();
+		// Scoped to the capture row: every workspace card offers an "Add … to
+		// today" button of its own now, so a bare "Add" is ambiguous.
+		const capture = page.getByTestId('unscheduled').getByTestId('capture-row');
+		await capture.getByLabel('Quick capture').fill('remember the milk');
+		await capture.getByRole('button', { name: 'Add' }).click();
 		expect(await waitForFile('Inbox/Capture.md', (c) => c.includes('remember the milk'))).toBe(true);
 		expect(vaultFile('Inbox/Capture.md')).toMatch(/## \d{4}-\d{2}-\d{2}\n- \d\d:\d\d remember the milk/);
 	});

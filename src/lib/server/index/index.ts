@@ -64,10 +64,12 @@ export interface TaskQuery {
 	/** Only tasks waiting on another. */
 	blocked?: boolean;
 	/**
-	 * Skip the dated daily notes. Every daily note is a copy of one template,
-	 * so without this a cross-day list repeats the same unfinished checklist
-	 * once per day. Unlike excluding the journal folder, this leaves alone the
-	 * workspace notes that happen to live inside it.
+	 * Skip the dated daily notes and the template they are copied from. Every
+	 * daily note is a copy of that template, so without this a cross-day list
+	 * repeats the same unfinished checklist once per day, and the template
+	 * itself contributes it once more as work that was never anyone's to do.
+	 * Unlike excluding the journal folder, this leaves alone the workspace
+	 * notes that happen to live inside it.
 	 */
 	excludeDailyNotes?: boolean;
 	excludePrefixes?: string[];
@@ -267,8 +269,8 @@ export class NoteIndex {
 		}
 		if (opts.blocked) where.push("t.blocked_by <> ''");
 		if (opts.excludeDailyNotes) {
-			where.push('t.path NOT GLOB ?');
-			params.push(DAILY_NOTE_GLOB);
+			where.push('t.path NOT GLOB ? AND t.path <> ?');
+			params.push(DAILY_NOTE_GLOB, config.dailyNote.template);
 		}
 		for (const prefix of opts.excludePrefixes ?? []) {
 			where.push('t.path NOT LIKE ? ESCAPE \'\\\'');
