@@ -35,6 +35,18 @@ are checklist notation inside reference notes, such as the syllabus and the
 manual test plan, rather than work to schedule. Add a `Q1` to one and it will
 appear here.
 
+Dragging one of those workspace tasks onto the timeline does something
+different from dragging an unscheduled task: it adds a block to the day's own
+note, linking back to the card, instead of writing a time onto the card's line
+in its project note. A time with no date says nothing about which day it
+belongs to, and this page only ever reads the day's note, so the card would
+otherwise have vanished on the drop. The card itself is left exactly as it
+was: the block is time spent on it, not a second copy of it.
+
+A note that still has git conflict markers in it says so, here and on the note
+itself, with a link to the sync page. Resolving a merge is yours to do, in
+Obsidian or there; nothing in the app rewrites those lines for you.
+
 The briefing strip only shows once the note actually has briefing markers in
 it. Before that, it says plainly that this note has no briefing markers yet;
 adding them changes your note, so it waits for you on the review page rather
