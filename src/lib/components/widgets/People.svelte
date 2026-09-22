@@ -9,6 +9,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { logContact } from '$lib/client/api';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
@@ -83,11 +84,11 @@
 {#if !data}
 	<Unavailable {widget} />
 {:else if !data.people.length}
-	<p class="empty-note">
-		No people {data.scope ? `in ${data.scope}` : 'yet'}. A person is a note in
-		<code>{data.folder}/</code>; mention someone with a wiki-link and log a contact from their page to
-		create one.
-	</p>
+	<EmptyState
+		icon="book"
+		title="No people {data.scope ? `in ${data.scope}` : 'yet'}."
+		hint="Mention someone with a wiki-link, or log a contact from their page, to create a note for them."
+	/>
 {:else}
 	<ul class="people" data-testid="people-widget">
 		{#each data.people as p (p.name)}
@@ -173,8 +174,6 @@
 		border: 1px solid var(--line);
 		border-radius: 8px;
 	}
-	.empty-note { margin: 0; color: var(--muted); font-size: 13px; }
-	.empty-note code { font: 12px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 	.problem { margin: 8px 0 0; font-size: 12px; color: var(--bad); }
 
 	@media (max-width: 720px) {

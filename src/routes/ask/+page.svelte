@@ -9,6 +9,7 @@
 	 * followed when an answer looks wrong.
 	 */
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import RunSettings from '$lib/components/RunSettings.svelte';
 	import { askQuestion } from '$lib/client/ai';
 	import { scopeLabel, type Answer, type Refusal, type RunSettings as Run, type Scope } from '$lib/shared/ai';
@@ -76,8 +77,12 @@
 </PageHeader>
 
 {#if !data.enabled}
-	<div class="card empty" data-testid="ask-off">
-		AI is switched off. Turn it back on in <a href="/settings/ai">Settings → AI</a>.
+	<div class="card">
+		<EmptyState testid="ask-off" icon="sparkles" title="AI is switched off.">
+			{#snippet action()}
+				<a class="btn ghost" href="/settings/ai">Turn it back on in Settings → AI</a>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="card asker">
@@ -104,9 +109,7 @@
 			<button class="btn primary" disabled={busy} data-testid="ask-send">{busy ? 'Thinking…' : 'Ask'}</button>
 		</form>
 
-		<p class="hint">
-			Answers are read-only. Nothing on this page can change a note, whatever the answer says.
-		</p>
+		<p class="hint">Answers are read-only; nothing here can change a note.</p>
 
 		{#if problem}
 			<p class="problem" data-testid="ask-problem">{problem}</p>
@@ -143,9 +146,7 @@
 	{#if turns.length === 0 && data.history}
 		<details class="card">
 			<summary>Earlier conversations</summary>
-			<p class="muted small">
-				Kept as markdown in <code>{data.historyPath}</code>, so it syncs with everything else and no AI path can edit it.
-			</p>
+			<p class="muted small">Kept as markdown in <code>{data.historyPath}</code>, which no AI path can edit.</p>
 			<pre class="history">{data.history}</pre>
 		</details>
 	{/if}

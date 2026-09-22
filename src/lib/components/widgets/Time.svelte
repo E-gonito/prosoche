@@ -8,6 +8,7 @@
 	 * hours, because a week of two-hour days should not render as seven slivers.
 	 */
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { formatDuration } from '$lib/shared/duration';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
@@ -91,10 +92,11 @@
 		{/if}
 
 		{#if !data.loggedMinutes}
-			<p class="hint">
-				Nothing logged{data.workspace ? ` against ${data.workspace}` : ''} this week. Start a timer on a
-				task and stopping it writes a line under <code>## Time log</code>.
-			</p>
+			<EmptyState
+				icon="calendar"
+				title="Nothing logged{data.workspace ? ` against ${data.workspace}` : ''} this week."
+				hint="Start a timer on a task; stopping it writes a line under ## Time log."
+			/>
 		{/if}
 	</div>
 {/if}
@@ -125,5 +127,4 @@
 	.quadrants b { margin-left: 4px; }
 	.unplanned { overflow: hidden; }
 	.hint { margin: 10px 0 0; }
-	.hint code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 4px; }
 </style>

@@ -9,6 +9,7 @@
 	 */
 	import { displayText, type Task } from '$lib/shared/task';
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	/** Produced by `src/lib/server/widgets/blocked.ts`. */
@@ -30,10 +31,11 @@
 {#if widget.problem || !widget.data}
 	<Unavailable {widget} />
 {:else if data.items.length === 0}
-	<p class="empty">
-		Nothing is waiting on anything{data.scope ? ` in ${data.scope}` : ''}. Add <code>⛔ id</code> to a task to
-		link it to the <code>🆔 id</code> that has to finish first.
-	</p>
+	<EmptyState
+		icon="check"
+		title="Nothing is waiting on anything{data.scope ? ` in ${data.scope}` : ''}."
+		hint="Add ⛔ id to a task to link it to the 🆔 id that has to finish first."
+	/>
 {:else}
 	<ul data-testid="blocked-widget">
 		{#each data.items as item (item.task.path + ':' + item.task.line)}
@@ -76,6 +78,5 @@
 	.blockers { margin: 2px 0 0 0; font-size: 12px; color: var(--muted); }
 	.blockers li { border: 0; padding: 1px 0; }
 	.muted { color: var(--muted); }
-	.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 	code { font: 11px var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 4px; }
 </style>

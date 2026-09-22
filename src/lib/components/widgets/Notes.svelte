@@ -6,6 +6,7 @@
 	 * what a workspace tab is for is "what have I touched lately".
 	 */
 	import Unavailable from './Unavailable.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { LoadedWidget } from '$lib/shared/widgets';
 
 	/** Produced by `src/lib/server/widgets/notes.ts`. */
@@ -23,13 +24,15 @@
 {#if widget.problem || !widget.data}
 	<Unavailable {widget} />
 {:else if data.notes.length === 0}
-	<p class="empty">
-		{#if data.folders.length}
-			No notes in {data.folders.join(', ')} yet.
-		{:else}
-			This workspace has no folders yet. Add a `folders:` list to its workspace file.
-		{/if}
-	</p>
+	{#if data.folders.length}
+		<EmptyState icon="file-text" title="No notes in {data.folders.join(', ')} yet." />
+	{:else}
+		<EmptyState
+			icon="file-text"
+			title="This workspace has no folders yet."
+			hint="Add a folders: list to its workspace file."
+		/>
+	{/if}
 {:else}
 	<ul data-testid="notes-widget">
 		{#each data.notes as note (note.path)}
@@ -62,7 +65,6 @@
 	.when { font: 11px var(--mono); color: var(--muted); flex: none; }
 	.where { font-size: 11px; color: var(--muted); margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-	.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 
 	@media (max-width: 720px) {
 		.where { display: none; }

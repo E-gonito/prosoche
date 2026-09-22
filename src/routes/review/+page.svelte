@@ -9,6 +9,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Proposal from '$lib/components/Proposal.svelte';
 	import { applyProposal, dismissProposal } from '$lib/client/ai';
 
@@ -50,15 +51,19 @@
 <svelte:head><title>Review · prosoche</title></svelte:head>
 
 <PageHeader title="Review" />
-<p class="lead">
-	Changes the app has drafted and not made. Nothing here has touched a note: the weekly review and the
-	morning briefing run while nobody is watching, so they stop and wait.
-</p>
+<p class="lead">Changes the app has drafted and not made.</p>
 
 {#if !data.enabled}
-	<div class="card empty">
-		The AI layer is switched off in <a href="/settings/ai">settings</a>, so nothing new will arrive here. Anything
-		already waiting can still be accepted or dismissed.
+	<div class="card">
+		<EmptyState
+			icon="sparkles"
+			title="AI is switched off, so nothing new will arrive here."
+			hint="Anything already waiting can still be accepted or dismissed."
+		>
+			{#snippet action()}
+				<a class="btn ghost" href="/settings/ai">Go to Settings → AI</a>
+			{/snippet}
+		</EmptyState>
 	</div>
 {/if}
 
@@ -84,9 +89,13 @@
 		{/if}
 	</article>
 {:else}
-	<div class="card empty" data-testid="review-empty">
-		Nothing is waiting. The briefing writes itself into today's note between its own markers, and the weekly
-		review appears here on a Sunday evening.
+	<div class="card">
+		<EmptyState
+			testid="review-empty"
+			icon="check"
+			title="Nothing is waiting."
+			hint="The briefing and the weekly review land here on their own schedule."
+		/>
 	</div>
 {/each}
 
@@ -97,6 +106,5 @@
 	.what .muted { color: var(--muted); }
 	.when { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
 	.ok { margin: 0; font-size: 13px; color: var(--ok); }
-	.empty { color: var(--muted); font-size: 13px; max-width: 70ch; }
 	.problem { margin: 0 0 12px; font-size: 13px; color: var(--bad); }
 </style>
