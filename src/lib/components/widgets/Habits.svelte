@@ -98,7 +98,17 @@
 	.strip i { width: 6px; height: 12px; border-radius: 2px; background: var(--soft); }
 	.strip i.on { background: var(--ok); }
 	.strip i.off { background: #e6b8b8; }
-	.streak { flex: none; display: inline-flex; align-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
+	.streak {
+		flex: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 2px;
+		min-width: 26px;
+		font: 11px var(--mono);
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+	}
 	.more { margin-top: 6px; font-size: 12px; padding: 2px 8px; }
 	.none { margin: 0; color: var(--muted); font-size: 13px; }
 	.problem { color: var(--bad); font-size: 12px; margin: 6px 0 0; }

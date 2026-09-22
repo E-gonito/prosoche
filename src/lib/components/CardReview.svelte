@@ -11,7 +11,9 @@
 	 * big enough to hit without looking.
 	 */
 	import { GRADES, intervalLabel, schedule, type Grade } from '$lib/shared/sm2';
+	import { collapseBreadcrumb } from '$lib/shared/breadcrumb';
 	import { applyShift, gradeCard, type Card } from '$lib/client/study';
+	import Icon from '$lib/components/Icon.svelte';
 
 	let { cards, today, onfinish }: { cards: Card[]; today: string; onfinish?: () => void } = $props();
 
@@ -100,7 +102,7 @@
 		</div>
 		<p class="meta">
 			<span data-testid="card-left">{left} left</span>
-			<span class="ctx" title={card.path}>{card.context}</span>
+			<span class="ctx" title={card.path}>{collapseBreadcrumb(card.context)}</span>
 		</p>
 
 		<button class="card" data-testid="card" onclick={() => (revealed = true)} aria-expanded={revealed}>
@@ -135,7 +137,7 @@
 	</div>
 {:else if done}
 	<div class="finish" data-testid="review-done">
-		<p class="tick">✓</p>
+		<p class="tick"><Icon name="check" size={40} /></p>
 		<h2>Done for today</h2>
 		<p class="muted">{graded} {graded === 1 ? 'answer' : 'answers'}{again > 0 ? `, ${again} to see again` : ''}.</p>
 		<a class="btn primary" href="/study">Back to study</a>
@@ -193,15 +195,27 @@
 	.where { font-size: 12px; margin-top: 14px; }
 
 	.finish { text-align: center; padding: 60px 16px; }
-	.tick { font-size: 44px; color: var(--ok); margin: 0; }
+	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
 	.finish h2 { margin: 8px 0; font-size: 20px; }
 	.finish .muted { color: var(--muted); margin-bottom: 18px; }
 
+	/*
+	 * The phone's whole session is exactly the space `+layout.svelte` leaves
+	 * between the shell header and the tab bar: `.session` is a flex column
+	 * filling that (see `.page` in `study/review/+page.svelte`, which grants
+	 * it `flex: 1`), the card takes what is left after the fixed-size chrome
+	 * around it and scrolls its own overflow, and the grades therefore end up
+	 * sitting on the floor of that space — pinned above the tab bar without
+	 * either element needing to know the tab bar's height.
+	 */
 	@media (max-width: 720px) {
-		.card { padding: 18px; min-height: 150px; }
+		.session { display: flex; flex-direction: column; min-height: 0; }
+		.card { padding: 18px; flex: 1; min-height: 0; overflow-y: auto; }
 		.q { font-size: 17px; }
-		.grades { gap: 6px; }
-		.grade { padding: 14px 2px; }
+		.grades { flex: none; gap: 6px; }
+		.grade { padding: 14px 2px; min-height: 56px; }
 		.grade b { font-size: 13px; }
+		/* A keyboard is not how a phone answers, so its hints are noise. */
+		.grade em { display: none; }
 	}
 </style>

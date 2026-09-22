@@ -17,6 +17,7 @@
 
 	/** The name of every icon. A name not in here will not compile. */
 	export const ICON_NAMES = [
+		'alert-triangle',
 		'arrow-up-down',
 		'ban',
 		'book',
@@ -52,6 +53,11 @@
 	export type IconName = (typeof ICON_NAMES)[number];
 
 	const PATHS: Record<IconName, string[]> = {
+		'alert-triangle': [
+			'm21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z',
+			'M12 9v4',
+			'M12 17h.01'
+		],
 		'arrow-up-down': ['m21 16-4 4-4-4', 'M17 20V4', 'm3 8 4-4 4 4', 'M7 4v16'],
 		ban: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z', 'm4.93 4.93 14.14 14.14'],
 		book: ['M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20'],
