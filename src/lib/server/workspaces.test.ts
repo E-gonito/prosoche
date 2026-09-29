@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, type Workspace } from './workspaces';
+import { createWorkspace, deleteWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, type Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -219,5 +219,25 @@ describe('createWorkspace', () => {
 		await createWorkspace(vault, { name: 'Atlas' });
 		const again = await createWorkspace(vault, { name: 'Atlas' });
 		expect(again).toEqual({ ok: false, reason: 'exists' });
+	});
+});
+
+describe('deleteWorkspace', () => {
+	it('removes only the definition file, leaving the workspace\'s notes where they are', async () => {
+		await createWorkspace(vault, { name: 'Side projects', folders: ['Writing'] });
+		await vault.write('Writing/Draft.md', '# Draft\n');
+		await vault.write('Writing/Board.md', '## To do\n');
+
+		expect(await deleteWorkspace(vault, 'side-projects')).toEqual({ ok: true });
+		expect((await loadWorkspaces(vault)).map((w) => w.slug)).not.toContain('side-projects');
+		expect((await vault.read('Writing/Draft.md')).exists).toBe(true);
+		expect((await vault.read('Writing/Board.md')).exists).toBe(true);
+	});
+
+	it('refuses an unknown slug and anything shaped like a path', async () => {
+		await vault.write('Other/x.md', 'keep');
+		expect(await deleteWorkspace(vault, 'nope')).toEqual({ ok: false, reason: 'not-found' });
+		expect(await deleteWorkspace(vault, '../Other/x')).toEqual({ ok: false, reason: 'not-found' });
+		expect((await vault.read('Other/x.md')).exists).toBe(true);
 	});
 });
