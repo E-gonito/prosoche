@@ -35,6 +35,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			drafted: (e.fields.drafted?.value ?? '').toLowerCase() === 'claude',
 			source: e.source ? { label: link ? (link[2] ?? link[1]).trim() : e.source, href: link ? resolve(link[1].trim()) : null } : null,
 			definition: e.definition ? renderMarkdown(e.definition, resolve) : '',
+			/** The definition as written, for the edit form. */
+			definitionRaw: e.definition,
 			relevance: e.relevance
 		};
 	});

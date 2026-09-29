@@ -1,15 +1,17 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { addTerm, startGlossary } from '$server/glossary';
+import { addTerm, deleteTerm, editTerm, startGlossary } from '$server/glossary';
 import type { Written } from '$server/rewrite';
 import type { RequestHandler } from './$types';
 
 interface Body {
-	action?: 'start' | 'add';
+	action?: 'start' | 'add' | 'edit' | 'delete';
 	/** The workspace whose glossary this is. */
 	slug?: string;
-	/** add. */
+	/** add: the new term. edit and delete: the term as it is now. */
 	term?: string;
+	/** edit: the fields to change; absent ones are left alone. */
+	change?: { term?: unknown; category?: unknown; definition?: unknown; relevance?: unknown };
 	category?: string | null;
 	source?: string | null;
 }
@@ -18,7 +20,7 @@ const STATUS: Record<Exclude<Written, { ok: true }>['reason'], number> = { confl
 
 /**
  * A glossary's writes, each one a user's click: start a workspace's
- * glossary, or add a term to it. Translation only; `$server/glossary`
+ * glossary, or add, edit or delete a term. Translation only; `$server/glossary`
  * decides what is written.
  *
  * Responds with `{ ok: true, path }`, or `{ ok: false, reason, message }`
@@ -46,6 +48,20 @@ export const POST: RequestHandler = async ({ request }) => {
 					source: text(body.source)
 				})
 			);
+		case 'edit': {
+			const c = body.change ?? {};
+			const optional = (value: unknown) => (typeof value === 'string' ? value : undefined);
+			return reply(
+				await editTerm(vault, workspace, String(body.term ?? ''), {
+					term: optional(c.term),
+					category: optional(c.category),
+					definition: optional(c.definition),
+					relevance: optional(c.relevance)
+				})
+			);
+		}
+		case 'delete':
+			return reply(await deleteTerm(vault, workspace, String(body.term ?? '')));
 		default:
 			return json({ ok: false, reason: 'invalid', message: 'Unknown action.' }, { status: 400 });
 	}

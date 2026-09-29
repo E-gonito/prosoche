@@ -173,7 +173,12 @@ Each entry shows its category, the definition, where it came from and the `→`
 line. There is no "my guess": a `- guess::` line written by an older version
 is left in the file and not shown. Type a term in (with a category if you
 like) to append an entry to look up; a term the glossary already has is
-refused rather than written twice. In a workspace with meetings, any term
+refused rather than written twice. **Edit** on an entry opens its name,
+category, definition and `→` line in place; saving rewrites only that entry's
+lines, keeps its other fields (source, drafted), and marks a term still to
+look up as looked up once it has a definition. A rename onto a term the
+glossary already has is refused. **Delete** asks first, then removes the
+entry's heading and every line under it, and nothing else. In a workspace with meetings, any term
 captured in a meeting that the glossary still lacks waits at the top, and
 **Add to glossary** appends an entry for it. **Start a meeting**, beside the
 title, goes to the workspace's meeting notes (see Meetings).

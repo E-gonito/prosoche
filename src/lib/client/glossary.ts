@@ -1,7 +1,7 @@
 /**
  * The browser's side of `/api/glossary`.
  *
- * One call, because both glossary writes have the same answer shape: the
+ * One call, because every glossary write has the same answer shape: the
  * path written, or why not. Never throws; a lost connection is a result.
  */
 
@@ -9,7 +9,9 @@ export type GlossaryResult = { ok: true; path: string } | { ok: false; message: 
 
 export type GlossaryAction =
 	| { action: 'start'; slug: string }
-	| { action: 'add'; slug: string; term: string; category?: string | null; source?: string | null };
+	| { action: 'add'; slug: string; term: string; category?: string | null; source?: string | null }
+	| { action: 'edit'; slug: string; term: string; change: { term?: string; category?: string; definition?: string; relevance?: string } }
+	| { action: 'delete'; slug: string; term: string };
 
 /** Send one glossary write. */
 export async function glossaryAction(body: GlossaryAction): Promise<GlossaryResult> {

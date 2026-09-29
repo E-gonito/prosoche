@@ -4,8 +4,8 @@
 	 * category, and one entry per term with its definition and why it matters.
 	 *
 	 * Terms captured in meetings but not yet in Glossary.md wait at the top.
-	 * Adding one, or typing a new one in, is the user's own act and writes
-	 * straight away. Looking one up is Claude's, so it arrives as a proposal
+	 * Adding one, typing a new one in, editing or deleting one is the user's own
+	 * act and writes straight away. Looking one up is Claude's, so it arrives as a proposal
 	 * and changes nothing until it is accepted.
 	 */
 	import { invalidateAll } from '$app/navigation';
@@ -22,6 +22,10 @@
 	let problem = $state('');
 	let adding = $state<string | null>(null);
 	let fresh = $state({ term: '', category: '' });
+	/** The term being edited, by its name as loaded, and the form's values. */
+	let editing = $state<string | null>(null);
+	let draft = $state({ term: '', category: '', definition: '', relevance: '' });
+	let saving = $state(false);
 
 	const pending = $derived(data.entries.filter((e) => e.pending));
 	const needle = $derived(query.trim().toLowerCase());
@@ -45,6 +49,38 @@
 		if (!result.ok) problem = result.message;
 		else await invalidateAll();
 		return result.ok;
+	}
+
+	function edit(entry: (typeof data.entries)[number]) {
+		problem = '';
+		editing = entry.term;
+		draft = { term: entry.term, category: entry.category ?? '', definition: entry.definitionRaw, relevance: entry.relevance ?? '' };
+	}
+
+	async function save(event: SubmitEvent) {
+		event.preventDefault();
+		if (!editing || !draft.term.trim()) return;
+		saving = true;
+		problem = '';
+		const result = await glossaryAction({ action: 'edit', slug: data.workspace.slug, term: editing, change: draft });
+		saving = false;
+		if (!result.ok) {
+			problem = result.message;
+			return;
+		}
+		editing = null;
+		await invalidateAll();
+	}
+
+	async function remove(term: string) {
+		if (!confirm(`Delete “${term}” from the glossary?`)) return;
+		problem = '';
+		const result = await glossaryAction({ action: 'delete', slug: data.workspace.slug, term });
+		if (!result.ok) problem = result.message;
+		else {
+			if (editing === term) editing = null;
+			await invalidateAll();
+		}
 	}
 
 	async function addFresh(event: SubmitEvent) {
@@ -131,28 +167,47 @@
 			<div class="sheet rows entries" data-testid="glossary-entries">
 				{#each shown as entry (entry.term)}
 					<article class="entry" data-testid="glossary-entry">
-						<h3>
-							{entry.term}
-							{#if entry.pending}<span class="badge warn">To look up</span>{/if}
-						</h3>
-						{#if entry.category}<p class="category">{entry.category}</p>{/if}
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{#if entry.definition}<div class="definition">{@html entry.definition}</div>{/if}
-						{#if entry.relevance}<p class="relevance"><span>→</span> {entry.relevance}</p>{/if}
-						{#if entry.source || entry.drafted}
-							<p class="from">
-								{#if entry.source}{'From '}{#if entry.source.href}<a href={entry.source.href}>{entry.source.label}</a>{:else}{entry.source.label}{/if}{/if}{#if entry.source && entry.drafted}{' · '}{/if}{#if entry.drafted}definition drafted by Claude{/if}
-							</p>
-						{/if}
-						{#if entry.pending}
-							<div class="lookup">
-								<Draft
-									label="Look up with Claude"
-									title="Claude drafts a definition and why it matters here. Nothing is written until you accept."
-									request={{ feature: 'glossary-lookup', slug: data.workspace.slug, terms: [entry.term] }}
-									ondone={() => invalidateAll()}
-								/>
-							</div>
+						{#if editing === entry.term}
+							<form class="edit" onsubmit={save} data-testid="edit-term-form">
+								<div class="edit-row">
+									<input class="field" bind:value={draft.term} aria-label="Term" data-testid="edit-term" />
+									<input class="field" bind:value={draft.category} placeholder="Category" aria-label="Category" list="glossary-categories" data-testid="edit-category" />
+								</div>
+								<textarea class="field" rows="3" bind:value={draft.definition} placeholder="Definition" aria-label="Definition" data-testid="edit-definition"></textarea>
+								<input class="field" bind:value={draft.relevance} placeholder="Why it matters here" aria-label="Why it matters here" data-testid="edit-relevance" />
+								<div class="edit-row">
+									<button class="btn primary" type="submit" disabled={saving || !draft.term.trim()} data-testid="edit-save">{saving ? 'Saving…' : 'Save'}</button>
+									<button class="btn ghost" type="button" onclick={() => (editing = null)}>Cancel</button>
+								</div>
+							</form>
+						{:else}
+							<h3>
+								{entry.term}
+								{#if entry.pending}<span class="badge warn">To look up</span>{/if}
+								<span class="actions">
+									<button class="btn ghost small" onclick={() => edit(entry)} data-testid="edit-term-open">Edit</button>
+									<button class="btn ghost small danger" onclick={() => remove(entry.term)} data-testid="delete-term">Delete</button>
+								</span>
+							</h3>
+							{#if entry.category}<p class="category">{entry.category}</p>{/if}
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+							{#if entry.definition}<div class="definition">{@html entry.definition}</div>{/if}
+							{#if entry.relevance}<p class="relevance"><span>→</span> {entry.relevance}</p>{/if}
+							{#if entry.source || entry.drafted}
+								<p class="from">
+									{#if entry.source}{'From '}{#if entry.source.href}<a href={entry.source.href}>{entry.source.label}</a>{:else}{entry.source.label}{/if}{/if}{#if entry.source && entry.drafted}{' · '}{/if}{#if entry.drafted}definition drafted by Claude{/if}
+								</p>
+							{/if}
+							{#if entry.pending}
+								<div class="lookup">
+									<Draft
+										label="Look up with Claude"
+										title="Claude drafts a definition and why it matters here. Nothing is written until you accept."
+										request={{ feature: 'glossary-lookup', slug: data.workspace.slug, terms: [entry.term] }}
+										ondone={() => invalidateAll()}
+									/>
+								</div>
+							{/if}
 						{/if}
 					</article>
 				{:else}
@@ -194,6 +249,12 @@
 	}
 	.cat-tabs button:hover { color: var(--text); }
 	.cat-tabs [aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+	.actions { margin-left: auto; display: flex; gap: var(--s1); }
+	.danger { color: var(--bad); }
+	.edit { display: flex; flex-direction: column; gap: var(--s2); }
+	.edit-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+	.edit-row .field { flex: 1 1 180px; width: auto; }
+	.edit textarea { resize: vertical; font: inherit; }
 	.category { margin: 0 0 var(--s1); font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 	.definition { font-size: var(--t15); line-height: 1.55; }
 	.definition :global(p) { margin: 0 0 var(--s1); }

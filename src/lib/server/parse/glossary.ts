@@ -221,6 +221,110 @@ export function insertDefinition(content: string, term: string, definition: stri
 	return lines.join('\n');
 }
 
+/** What an edit to one entry may change. Absent keys are left as they are. */
+export interface EntryChange {
+	/** A new name for the term: only the heading's text is rewritten. */
+	term?: string;
+	/** '' removes the field's line. */
+	category?: string;
+	status?: string;
+	/**
+	 * The entry's prose and its `→` line, replaced together: every line of the
+	 * entry that is not a field goes, and the new text is written where
+	 * `insertDefinition` would put it. Pass both, or neither.
+	 */
+	body?: { definition: string; relevance: string };
+}
+
+/**
+ * Edit one entry. Pure; returns null when there is no such entry.
+ *
+ * Every change is confined to the entry's own lines. The heading keeps its
+ * `##` and only its text changes; a field keeps its bullet and key spelling;
+ * fields the change does not name (source, drafted, anything else) are left
+ * where they are. Replacing the body is the one edit that drops lines, and
+ * only the entry's prose and relevance line: its fields and its trailing
+ * blank lines stay. Never touches another entry or the text above the first.
+ */
+export function editEntry(content: string, term: string, change: EntryChange): string | null {
+	let next: string | null = content;
+	if (change.body) {
+		next = clearBody(next, term);
+		if (next === null) return null;
+		next = insertDefinition(next, term, change.body.definition, change.body.relevance);
+	}
+	for (const key of ['category', 'status'] as const) {
+		const value = change[key];
+		if (value === undefined || next === null) continue;
+		next = oneLine(value) ? setField(next, term, key, value) : removeField(next, term, key);
+	}
+	if (next === null) return null;
+	if (change.term !== undefined && oneLine(change.term)) {
+		const entry = findEntry(next, term)!;
+		const lines = next.split('\n');
+		const cr = lines[entry.line].endsWith('\r') ? '\r' : '';
+		const hashes = /^(##[ \t]+)/.exec(lines[entry.line])![1];
+		lines[entry.line] = `${hashes}${oneLine(change.term)}${cr}`;
+		next = lines.join('\n');
+	}
+	return next;
+}
+
+/**
+ * Remove one entry: its heading and every line up to the next heading,
+ * trailing blank lines included, so the entry after it (or the end of the
+ * file) closes up the gap. Pure; returns null when there is no such entry.
+ */
+export function deleteEntry(content: string, term: string): string | null {
+	const entry = findEntry(content, term);
+	if (!entry) return null;
+	const lines = content.split('\n');
+	lines.splice(entry.line, entry.end - entry.line + 1);
+	// Deleting the last entry of a file that ended in a newline would leave
+	// none; put the one it had back.
+	if (content.endsWith('\n') && lines.length && lines[lines.length - 1] !== '') lines.push('');
+	return lines.join('\n');
+}
+
+/** Drop one field's line from one entry, or leave the note as it is. */
+function removeField(content: string, term: string, key: string): string | null {
+	const entry = findEntry(content, term);
+	if (!entry) return null;
+	const field = entry.fields[key.toLowerCase()];
+	if (!field) return content;
+	const lines = content.split('\n');
+	lines.splice(field.line, 1);
+	return lines.join('\n');
+}
+
+/**
+ * Remove an entry's prose and relevance line, keeping its heading, its
+ * fields (read the same way `readEntry` reads them, outside fences only) and
+ * its trailing blank lines.
+ */
+function clearBody(content: string, term: string): string | null {
+	const entry = findEntry(content, term);
+	if (!entry) return null;
+	const lines = content.split('\n');
+	let last = entry.end;
+	while (last > entry.line && lines[last].trim() === '') last--;
+
+	const keep: string[] = [];
+	let fence: string | null = null;
+	for (let i = entry.line + 1; i <= last; i++) {
+		const raw = lines[i].replace(/\r$/, '');
+		const f = FENCE.exec(raw);
+		if (f) {
+			if (fence === null) fence = f[1];
+			else if (f[1] === fence) fence = null;
+			continue;
+		}
+		if (fence === null && FIELD_LINE.test(raw)) keep.push(lines[i]);
+	}
+	lines.splice(entry.line + 1, last - entry.line, ...keep);
+	return lines.join('\n');
+}
+
 /**
  * Append a new entry at the end of the note. Pure.
  *

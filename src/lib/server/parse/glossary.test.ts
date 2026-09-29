@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField } from './glossary';
+import { appendEntry, deleteEntry, editEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField } from './glossary';
 
 const GLOSSARY = `# Glossary
 
@@ -119,6 +119,72 @@ describe('setField', () => {
 
 	it('returns null for a missing entry', () => {
 		expect(setField(GLOSSARY, 'Missing', 'status', 'x')).toBeNull();
+	});
+});
+
+describe('editEntry', () => {
+	const changed = (before: string, after: string) => {
+		const a = before.split('\n');
+		const b = after.split('\n');
+		return { removed: a.filter((l) => !b.includes(l)), added: b.filter((l) => !a.includes(l)) };
+	};
+
+	it('renames a term by rewriting only its heading text', () => {
+		const after = editEntry(GLOSSARY, 'cookie cutter', { term: 'Cookiecutter' })!;
+		expect(changed(GLOSSARY, after)).toEqual({ removed: ['## Cookie Cutter'], added: ['## Cookiecutter'] });
+	});
+
+	it('sets, adds and removes fields in place, leaving the others', () => {
+		const after = editEntry(GLOSSARY, 'DVC', { category: 'Tooling', status: 'looked-up' })!;
+		expect(changed(GLOSSARY, after)).toEqual({ removed: ['- category:: ML'], added: ['- category:: Tooling'] });
+		const cleared = editEntry(GLOSSARY, 'DVC', { category: '' })!;
+		expect(changed(GLOSSARY, cleared)).toEqual({ removed: ['- category:: ML'], added: [] });
+		expect(findEntry(cleared, 'DVC')!.fields.drafted.value).toBe('Claude');
+	});
+
+	it('replaces the prose and the relevance line together, keeping every field', () => {
+		const after = editEntry(GLOSSARY, 'DVC', { body: { definition: 'Data Version Control.', relevance: 'Traceable models.' } })!;
+		const entry = findEntry(after, 'DVC')!;
+		expect(entry.definition).toBe('Data Version Control.');
+		expect(entry.relevance).toBe('Traceable models.');
+		expect(Object.keys(entry.fields)).toEqual(['guess', 'status', 'category', 'source', 'drafted']);
+		// The entry after it is untouched, and so is the text above the first.
+		expect(after.slice(after.indexOf('## Cookie Cutter'))).toBe(GLOSSARY.slice(GLOSSARY.indexOf('## Cookie Cutter')));
+		expect(after.startsWith('# Glossary\n\nTerms from the dev meetings.\n\n## DVC\n')).toBe(true);
+	});
+
+	it('gives a bare entry a body without swallowing the next heading', () => {
+		const after = editEntry(GLOSSARY, 'Cookie Cutter', { body: { definition: 'A project template tool.', relevance: '' } })!;
+		expect(after).toContain('- source:: [[2026-09-28 Dev Weekly]]\n\nA project template tool.\n\n## RPE');
+	});
+
+	it('clears a body to nothing when both parts are empty', () => {
+		const after = editEntry(GLOSSARY, 'DVC', { body: { definition: '', relevance: '' } })!;
+		expect(findEntry(after, 'DVC')).toMatchObject({ definition: '', relevance: null });
+		expect(after).toContain('- drafted:: Claude\n\n## Cookie Cutter');
+	});
+
+	it('returns null for a missing entry', () => {
+		expect(editEntry(GLOSSARY, 'Missing', { category: 'x' })).toBeNull();
+	});
+});
+
+describe('deleteEntry', () => {
+	it('removes the entry and its trailing blank lines, and nothing else', () => {
+		const after = deleteEntry(GLOSSARY, 'cookie cutter')!;
+		expect(parseGlossary(after).map((e) => e.term)).toEqual(['DVC', 'RPE']);
+		expect(after).toContain('→ For Eye2Gene, DVC makes training data traceable.\n\n## RPE\n');
+		expect(after).toBe(GLOSSARY.replace('## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[2026-09-28 Dev Weekly]]\n\n', ''));
+	});
+
+	it('deletes the last entry and keeps the file ending in a newline', () => {
+		expect(deleteEntry('# Glossary\n\n## A\nOne.\n\n## B\nTwo.\n', 'B')).toBe('# Glossary\n\n## A\nOne.\n');
+		expect(deleteEntry('# Glossary\n## A\nOne.\n', 'A')).toBe('# Glossary\n');
+		expect(deleteEntry('# Glossary\n## A\nOne.', 'A')).toBe('# Glossary');
+	});
+
+	it('returns null for a missing entry', () => {
+		expect(deleteEntry(GLOSSARY, 'Missing')).toBeNull();
 	});
 });
 

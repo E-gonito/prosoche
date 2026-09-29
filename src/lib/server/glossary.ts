@@ -3,8 +3,9 @@
  * means, and why it matters to that workspace.
  *
  * The Glossary routes talk to this module. It owns where a workspace keeps
- * its glossary, which workspaces have one, and the two writes a user's click
- * makes: starting a glossary and adding a term. Both are insertions through
+ * its glossary, which workspaces have one, and the writes a user's click
+ * makes: starting a glossary, and adding, editing or deleting a term. Each
+ * is an insertion, a span edit or the removal of one entry's lines through
  * the grammar in `parse/glossary.ts`; nothing here re-serialises a note.
  *
  * Any workspace with a folder can have a glossary, meetings or not. Terms
@@ -17,7 +18,7 @@
  * `ai/meeting-drafts.ts`.
  */
 
-import { appendEntry, normaliseTerm, parseGlossary, type GlossaryEntry } from './parse/glossary';
+import { appendEntry, deleteEntry, editEntry, findEntry, normaliseTerm, parseGlossary, type EntryChange, type GlossaryEntry } from './parse/glossary';
 import { invalid, rewrite, type Written } from './rewrite';
 import type { Workspace } from './workspaces';
 import type { Vault } from './vault/index';
@@ -150,4 +151,65 @@ export async function addTerm(
 		2,
 		{ create: true, unchanged: 'That term is already in the glossary.' }
 	);
+}
+
+/** An edit to one term, as the glossary page sends it. */
+export interface TermEdit {
+	term?: string;
+	category?: string;
+	definition?: string;
+	relevance?: string;
+}
+
+/**
+ * Edit one term: rename it, change its category, rewrite its definition and
+ * `→` line. Giving a pending term a definition marks it looked up, since
+ * that is what having one means.
+ *
+ * Refuses an unknown term, an empty new name, and a new name another entry
+ * already has. Only the entry's own lines change (see `editEntry`). A clash
+ * with an edit made a moment earlier is retried once, against the term by
+ * name, so it cannot land on a different entry.
+ */
+export async function editTerm(vault: Vault, workspace: Workspace, term: string, edit: TermEdit): Promise<Written> {
+	const path = glossaryPath(workspace);
+	if (!path) return invalid('This workspace has no folder to keep a glossary in.');
+	if (edit.term !== undefined && !edit.term.trim()) return invalid('A term needs a name.');
+	const renamed = edit.term !== undefined && normaliseTerm(edit.term) !== normaliseTerm(term) ? edit.term : undefined;
+
+	let problem = 'That term is not in the glossary any more.';
+	const result = await rewrite(
+		vault,
+		path,
+		(content) => {
+			const entry = findEntry(content, term);
+			if (!entry) return null;
+			if (renamed && findEntry(content, renamed)) {
+				problem = 'Another term already has that name.';
+				return null;
+			}
+			const change: EntryChange = {};
+			if (edit.term !== undefined) change.term = edit.term;
+			if (edit.category !== undefined) change.category = edit.category;
+			if (edit.definition !== undefined || edit.relevance !== undefined) {
+				const definition = edit.definition ?? entry.definition;
+				change.body = { definition, relevance: edit.relevance ?? entry.relevance ?? '' };
+				if (definition.trim() && entry.pending) change.status = 'looked-up';
+			}
+			return editEntry(content, term, change);
+		},
+		2
+	);
+	// The change function said why it refused; `rewrite` only knows it did.
+	return !result.ok && result.reason === 'invalid' ? invalid(problem) : result;
+}
+
+/**
+ * Delete one term: its heading and every line of its entry. Refuses a term
+ * the glossary does not have. Nothing else in the file changes.
+ */
+export async function deleteTerm(vault: Vault, workspace: Workspace, term: string): Promise<Written> {
+	const path = glossaryPath(workspace);
+	if (!path) return invalid('This workspace has no folder to keep a glossary in.');
+	return rewrite(vault, path, (content) => deleteEntry(content, term), 2, { unchanged: 'That term is not in the glossary any more.' });
 }

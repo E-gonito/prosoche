@@ -35,7 +35,7 @@ test.describe('Glossary', () => {
 		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Study', 'Work']);
 	});
 
-	test('filters by text and by chip', async ({ page }) => {
+	test('filters by text and by category tab', async ({ page }) => {
 		await page.goto('/glossary/work');
 		const count = page.getByTestId('glossary-count');
 		const entries = page.getByTestId('glossary-entry');
@@ -96,6 +96,47 @@ test.describe('Glossary', () => {
 		await page.getByTestId('new-add').click();
 		await expect(page.locator('.problem')).toHaveText('That term is already in the glossary.');
 		expect(vaultFile('Work/Glossary.md')).toBe(after);
+	});
+
+	test('a term is edited in place, and a pending one becomes looked up', async ({ page }) => {
+		const before = vaultFile('Work/Glossary.md');
+		await page.goto('/glossary/work');
+		const mlflow = page.getByTestId('glossary-entry').filter({ hasText: 'MLflow' });
+		await mlflow.getByTestId('edit-term-open').click();
+		await expect(page.getByTestId('edit-term')).toHaveValue('MLflow');
+		await expect(page.getByTestId('edit-category')).toHaveValue('Tooling');
+		await page.getByTestId('edit-term').fill('MLflow Tracking');
+		await page.getByTestId('edit-definition').fill('Records runs, parameters and metrics.');
+		await page.getByTestId('edit-relevance').fill('How we compare model versions.');
+		await page.getByTestId('edit-save').click();
+
+		const edited = page.getByTestId('glossary-entry').filter({ hasText: 'MLflow Tracking' });
+		await expect(edited).toContainText('Records runs, parameters and metrics.');
+		await expect(edited).toContainText('→ How we compare model versions.');
+		await expect(edited.locator('.badge')).toHaveCount(0);
+		expect(vaultFile('Work/Glossary.md')).toBe(
+			before.replace(
+				'## MLflow\n- status:: to-look-up\n- category:: Tooling\n',
+				'## MLflow Tracking\n- status:: looked-up\n- category:: Tooling\n\nRecords runs, parameters and metrics.\n\n→ How we compare model versions.\n'
+			)
+		);
+
+		// Renaming onto another term is refused, and the file is left alone.
+		const after = vaultFile('Work/Glossary.md');
+		await edited.getByTestId('edit-term-open').click();
+		await page.getByTestId('edit-term').fill('dvc');
+		await page.getByTestId('edit-save').click();
+		await expect(page.locator('.problem')).toHaveText('Another term already has that name.');
+		expect(vaultFile('Work/Glossary.md')).toBe(after);
+	});
+
+	test('a term is deleted after a confirm, and nothing else changes', async ({ page }) => {
+		const before = vaultFile('Work/Glossary.md');
+		await page.goto('/glossary/work');
+		page.once('dialog', (dialog) => dialog.accept());
+		await page.getByTestId('glossary-entry').filter({ hasText: 'MLflow' }).getByTestId('delete-term').click();
+		await expect(page.getByTestId('glossary-count')).toHaveText('1 of 1 terms');
+		expect(vaultFile('Work/Glossary.md')).toBe(before.replace(/\n## MLflow\n[\s\S]*$/, ''));
 	});
 
 	test('the notebook\'s old glossary address goes to the new one', async ({ page }) => {
