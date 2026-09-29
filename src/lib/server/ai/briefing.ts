@@ -283,9 +283,15 @@ export async function run(
 	const stamp: RunStamp = { ...chosen, feature: 'briefing', startedAt, durationMs: 0, costUsd: 0 };
 	const path = dailyNotePath(day);
 
-	const existing = readRegion((await deps.vault.read(path)).content, BRIEFING_MARKER);
+	const note = await deps.vault.read(path);
+	const existing = readRegion(note.content, BRIEFING_MARKER);
 	if (existing !== null && !options.regenerate) {
 		return { day, text: existing, proposal: null, problem: null, stamp };
+	}
+	// Only Obsidian makes daily notes, so a briefing has nowhere to be saved
+	// until it has. Refused before the model is called, so it costs nothing.
+	if (!note.exists) {
+		return { day, text: null, proposal: null, problem: 'Today’s note is not here yet. Open it in Obsidian, then Brief me once it has synced.', stamp };
 	}
 
 	const stop = checkKillSwitch(settings.enabled);

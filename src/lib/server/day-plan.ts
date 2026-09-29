@@ -25,7 +25,6 @@
 import { appendUnderHeading } from './sections';
 import { config } from './config';
 import { dailyNotePath, type DayKey } from './daily';
-import { openDay } from './daily-note';
 import { parseTaskLine, toTask } from './parse/task';
 import { scanTags } from './parse/note';
 import { workspaceFor, type Workspace } from './workspaces';
@@ -55,6 +54,8 @@ export type DayPlanned =
 			task: Task;
 	  }
 	| { ok: false; reason: 'no-note' }
+	/** The day has no note. Only Obsidian makes daily notes, so nothing is written. */
+	| { ok: false; reason: 'no-day' }
 	| { ok: false; reason: 'not-a-task' }
 	| { ok: false; reason: 'line-changed'; current: string | null };
 
@@ -67,9 +68,10 @@ export type DayPlanned =
  * claims the card and its words do not already say so. The wikilink is always
  * there — without it the block is a copy rather than a reference.
  *
- * Creates the day's note from the template when it is missing, through
- * `openDay`, and inserts under `config.dailyNote.tasksHeading`, which puts the
- * block at the end of the plan and above whatever heading follows it.
+ * Inserts under `config.dailyNote.tasksHeading`, which puts the block at the
+ * end of the plan and above whatever heading follows it. Never creates the
+ * day's note: daily notes are made in Obsidian, and a server-made copy of the
+ * same file is what makes two devices' git histories collide.
  *
  * Refuses rather than writes when the card's note is gone, when its line is no
  * longer the line the caller saw, or when that line is not a task. It never
@@ -94,13 +96,14 @@ export async function addToDay(
 
 	const raw = blockLine(card.text, card.quadrant, task.path, workspaceFor(workspaces, { path: task.path, tags: card.tags }), time);
 	const path = dailyNotePath(day);
+	if (!(await vault.read(path)).exists) return { ok: false, reason: 'no-day' };
 
 	// Guarded by the note's hash, then tried once more against what is there
 	// now. A third clash writes unguarded: the append is additive, so the worst
 	// case is losing a keystroke typed in the same instant, while dropping the
 	// write would lose the plan the user just made. Same trade as `appendEntry`.
 	for (let attempt = 0; attempt < 3; attempt++) {
-		const note = attempt === 0 ? await openDay(vault, day) : await vault.read(path);
+		const note = await vault.read(path);
 		const next = appendUnderHeading(note.content, config.dailyNote.tasksHeading, raw);
 		const result = await vault.write(path, next.content, attempt < 2 ? note.hash : undefined);
 		if (result.ok) {

@@ -82,14 +82,12 @@ describe('addToDay', () => {
 		expect((await vault.read(CARD)).content).toBe(ALGORITHMS);
 	});
 
-	it('creates the day from the template when it has none', async () => {
+	it('refuses a day with no note rather than creating one, since only Obsidian makes daily notes', async () => {
 		await vault.write('Journal/Journal Template.md', '# Tasks\n- [ ] Morning stretch `Q1`\n## Backlog\n');
 		const result = await addToDay(vault, [STUDY], DAY, card());
 
-		expect(result.ok).toBe(true);
-		expect((await vault.read(PATH)).content).toBe(
-			'# Tasks\n- [ ] Morning stretch `Q1`\n- [ ] Finish chapter 3 [[Study/Algorithms]] `Q2` #ws/study\n## Backlog\n'
-		);
+		expect(result).toEqual({ ok: false, reason: 'no-day' });
+		expect((await vault.read(PATH)).exists).toBe(false);
 	});
 
 	it('writes no time prefix when the card is dropped without one', async () => {

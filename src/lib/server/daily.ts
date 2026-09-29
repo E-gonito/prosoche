@@ -1,9 +1,9 @@
 /**
  * Where a day's note lives, and how days are named in the UI.
  *
- * The vault's daily notes are `Journal/YYYY/MM/DD.md`, created from
- * `Journal/Journal Template.md`. Dates are handled as plain `YYYY-MM-DD`
- * strings rather than Date objects, because a calendar day here is a local
+ * The vault's daily notes are `Journal/YYYY/MM/DD.md`, created by Obsidian
+ * from `Journal/Journal Template.md` and never by this app. Dates are handled
+ * as plain `YYYY-MM-DD` strings rather than Date objects, because a calendar day here is a local
  * label, not an instant, and timezone arithmetic on it only creates bugs.
  */
 

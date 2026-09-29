@@ -16,7 +16,7 @@
 	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { createDay, editTask, planOnDay } from '$lib/client/api';
+	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
 	import { formatMinutes } from '$lib/shared/time';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
@@ -30,7 +30,6 @@
 	// unscheduled falls out of the filters for free.
 	let patches = $state(new Map<string, Task>());
 	let problem = $state('');
-	let creating = $state(false);
 	/** The card being edited, if any. */
 	let opened = $state<Task | null>(null);
 
@@ -113,14 +112,6 @@
 		else failed(result.message);
 	}
 
-	async function makeDay() {
-		creating = true;
-		const result = await createDay(data.day);
-		creating = false;
-		if (result.ok) await invalidateAll();
-		else problem = result.message;
-	}
-
 	function formatEventTime(event: TodayEvent): string {
 		if (event.startMin === null) return '';
 		return event.endMin !== null ? `${formatMinutes(event.startMin)}–${formatMinutes(event.endMin)}` : formatMinutes(event.startMin);
@@ -158,17 +149,9 @@
 				<div class="sheet">
 					<EmptyState
 						icon="file-text"
-						title={data.isToday ? 'Today’s note has not been created yet.' : 'No note for this day yet.'}
-						hint={data.isToday
-							? 'The server creates it at 00:05. This is a fallback for the rare case it has not run yet.'
-							: 'Copies Journal/Journal Template.md exactly as it is.'}
-					>
-						{#snippet action()}
-							<button class="btn primary" onclick={makeDay} disabled={creating}>
-								{creating ? 'Creating…' : data.isToday ? 'Create today’s note' : 'Create note'}
-							</button>
-						{/snippet}
-					</EmptyState>
+						title={data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}
+						hint="Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced."
+					/>
 				</div>
 			{:else}
 				<div class="segmented" data-testid="today-segment" role="tablist" aria-label="What to show">

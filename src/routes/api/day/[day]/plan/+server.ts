@@ -38,5 +38,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	if (result.ok) return json({ ok: true, task: result.task }, { status: 201 });
 	if (result.reason === 'line-changed') return json(result, { status: 409 });
+	if (result.reason === 'no-day') {
+		return json({ ...result, error: 'That day has no note yet. Open it in Obsidian first; daily notes are made there.' }, { status: 404 });
+	}
 	return json(result, { status: result.reason === 'no-note' ? 404 : 422 });
 };

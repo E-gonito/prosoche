@@ -11,7 +11,6 @@ import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
-import { startSchedule } from './ai/schedule';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -108,9 +107,6 @@ function start(): Hub {
 			if (seeded.length) console.log(`[hub] created ${seeded.length} workspace files under _hub/workspaces/`);
 			vault.watch();
 			sync.start();
-			// After the first index, because the briefing's facts are queries
-			// against it and an empty index would write an empty briefing.
-			startSchedule({ vault, index });
 		},
 		(e) => {
 			console.error('[hub] initial index failed', e);

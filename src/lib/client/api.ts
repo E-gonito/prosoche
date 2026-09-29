@@ -110,11 +110,6 @@ export async function updateContact(
 	return post('/api/crm', { workspace, name, expectedHash, ...change }, (body) => ({ hash: body.hash as string }), 'PATCH');
 }
 
-/** Create today's note from the vault template. Idempotent. */
-export async function createDay(day: string): Promise<Result<{ path: string }>> {
-	return post(`/api/day/${day}`, {}, (body) => ({ path: body.path }));
-}
-
 /** Save a whole note. A conflict carries the other version. */
 export async function saveNote(
 	path: string,

@@ -315,6 +315,14 @@ describe('run', () => {
 		expect(result.proposal).toBeNull();
 	});
 
+	it('refuses a day with no note, rather than drafting into a file only Obsidian may create', async () => {
+		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
+		const result = await run({ vault, index }, '2026-09-25', { regenerate: true });
+		expect(result.proposal).toBeNull();
+		expect(result.problem).toContain('Obsidian');
+		expect((await vault.read('Journal/2026/09/25.md')).exists).toBe(false);
+	});
+
 	it('is a no-op while the kill switch is off, the vault default', async () => {
 		const result = await run({ vault, index }, DAY, { regenerate: true });
 		expect(result.proposal).toBeNull();

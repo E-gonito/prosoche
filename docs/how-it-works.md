@@ -21,6 +21,12 @@ arrows either side and a jump back to today when you have wandered off it. A
 one-line summary counts what the day did and is still owed: done against the
 total, time planned, meetings, and anything overdue.
 
+**Daily notes are made in Obsidian, never here.** When the day's note has not
+synced yet, Today says so and waits; nothing on this page, the briefing or a
+card planned onto a day will create it. Two devices each making the same new
+file is the one clash git cannot merge on its own, and Obsidian already makes
+the note the moment you open the day.
+
 **Briefing.** Press "Brief me" for a short read on today and the rest of the
 week. It is shown on screen as a draft, never written until you press **Save
 to note** — the same accept step every AI feature in the app goes through.
