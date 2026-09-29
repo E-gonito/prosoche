@@ -81,8 +81,10 @@ is a route folder and a line:
   blocked cards, calendar events, and a briefing button that drafts a
   paragraph you save yourself.
 - **Meetings** — one card per workspace: a primer, live notes with a capture
-  box, prep talking points, and a glossary, each with a Claude draft you
-  accept or throw away.
+  box and prep talking points, each with a Claude draft you accept or throw
+  away. Captured terms can feed a glossary.
+- **Glossary** — standalone glossaries, one file each in `Glossaries/`, with
+  Claude look-ups and a "find terms in my notes" proposal.
 - **Workspaces** — tasks or a board, an inbox, a dated log, contacts and a
   deal pipeline, past meetings, and read-only notes.
 - **Study** — topics, a reading list, flashcard review, goals with
