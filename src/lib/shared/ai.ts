@@ -54,7 +54,8 @@ export type FeatureId =
 	| 'timesheet'
 	| 'primer-draft'
 	| 'meeting-prep'
-	| 'glossary-lookup';
+	| 'glossary-lookup'
+	| 'dating-insights';
 
 /** The four controls the user picks, plus the two limits that bound a run. */
 export interface RunSettings {
@@ -92,7 +93,10 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	timesheet: { model: 'claude-sonnet-5', effort: 'high', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 180 },
 	'primer-draft': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
 	'meeting-prep': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
-	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 }
+	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
+	// Read-only by construction, never just by default: Dating's own budget row,
+	// kept low because a read on a private log is a small, occasional ask.
+	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', permission: 'read-only', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
@@ -105,7 +109,8 @@ export const FEATURE_LABELS: Record<FeatureId, string> = {
 	timesheet: 'Timesheet draft',
 	'primer-draft': 'Meeting primer',
 	'meeting-prep': 'Meeting prep',
-	'glossary-lookup': 'Glossary look-up'
+	'glossary-lookup': 'Glossary look-up',
+	'dating-insights': 'Dating insights'
 };
 
 /** The caps G7 enforces, whatever an individual feature's row asks for. */
