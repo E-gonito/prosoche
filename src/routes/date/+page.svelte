@@ -79,7 +79,7 @@
 			const body = await res.json().catch(() => ({}));
 			if (!res.ok) {
 				problem = body.error ?? `Save failed (${res.status})`;
-				if (res.status === 409) await goto(`/dating?day=${data.day}`, { invalidateAll: true });
+				if (res.status === 409) await goto(`/date?day=${data.day}`, { invalidateAll: true });
 				return;
 			}
 			hash = body.hash;
@@ -92,12 +92,12 @@
 	}
 </script>
 
-<svelte:head><title>Log · Dating · prosoche</title></svelte:head>
+<svelte:head><title>Log · Date · prosoche</title></svelte:head>
 
 <div class="stepper">
 	<a
 		class="btn step"
-		href="/dating?day={prevDay}"
+		href="/date?day={prevDay}"
 		aria-label="Previous day"
 		data-testid="dating-prev-day"
 	><Icon name="chevron-left" /></a>
@@ -110,7 +110,7 @@
 	{#if isToday}
 		<span class="btn step ghost" aria-hidden="true"></span>
 	{:else}
-		<a class="btn step" href="/dating?day={nextDay}" aria-label="Next day" data-testid="dating-next-day">
+		<a class="btn step" href="/date?day={nextDay}" aria-label="Next day" data-testid="dating-next-day">
 			<Icon name="chevron-right" />
 		</a>
 	{/if}

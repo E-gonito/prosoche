@@ -23,7 +23,7 @@ export interface Module {
 	/**
 	 * A private module reads the vault's private folder and nothing it holds
 	 * appears anywhere else: not on Today, not in search, not in the palette's
-	 * note list. Only Dating is private.
+	 * note list. Only Date is private.
 	 */
 	private?: boolean;
 	/** One of the four destinations on a phone's bottom bar. */
@@ -36,7 +36,7 @@ export const MODULES: Module[] = [
 	{ id: 'meetings', title: 'Meetings', icon: 'users', href: '/meetings', tab: true },
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
-	{ id: 'dating', title: 'Dating', icon: 'heart', href: '/dating', private: true },
+	{ id: 'date', title: 'Date', icon: 'heart', href: '/date', private: true },
 	{ id: 'notes', title: 'Notes', icon: 'book-open', href: '/notes', tab: true }
 ];
 

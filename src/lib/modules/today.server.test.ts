@@ -11,7 +11,7 @@ import type { Hub } from '$server/hub';
 
 /**
  * `docs/plan-rebuild.md`'s rule for Today's module cards: a private module
- * (Dating, the only one) contributes nothing anywhere but its own screen.
+ * (Date, the only one) contributes nothing anywhere but its own screen.
  * Rather than trust every future contributor to remember that by hand, this
  * runs every one of them against a fixture vault and checks the module each
  * names against the registry itself.

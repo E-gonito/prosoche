@@ -74,7 +74,7 @@ it was: the block is time spent on it, not a second copy of it.
 
 Beyond that, any module may add a card of its own — Study offers one for
 flashcards due, once something is. A private module never does: nothing of
-Dating's appears here, or anywhere outside its own screen.
+Date's appears here, or anywhere outside its own screen.
 
 A note that still has git conflict markers in it says so, with a link to the
 sync page. Resolving a merge is yours to do, in Obsidian or there; nothing in
@@ -270,7 +270,7 @@ read-only, from the folders named in the workspace file.
 page's own script can run but can never reach this origin's cookies, storage
 or anything outside its frame.
 
-## Dating
+## Date
 
 Everything here lives under `Private/`, a folder that is never committed,
 never indexed, never searched and never shown anywhere else: not on Today,

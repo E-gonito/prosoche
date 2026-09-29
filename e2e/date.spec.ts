@@ -9,9 +9,9 @@ async function tap(page: import('@playwright/test').Page, testId: string, times 
 	for (let i = 0; i < times; i++) await page.getByTestId(testId).click();
 }
 
-test.describe.serial('Dating', () => {
+test.describe.serial('Date', () => {
 	test('logs today with the counters and saves the exact ledger line', async ({ page }) => {
-		await page.goto('/dating');
+		await page.goto('/date');
 		await expect(page.locator('.day b')).toHaveText('Today');
 
 		await tap(page, 'dating-sent-plus', 3);
@@ -32,7 +32,7 @@ test.describe.serial('Dating', () => {
 	});
 
 	test('re-saving the day changes only the fields that changed', async ({ page }) => {
-		await page.goto('/dating');
+		await page.goto('/date');
 		await expect(page.getByTestId('dating-sent-value')).toHaveText('3');
 		await expect(page.getByTestId('dating-notes')).toHaveValue('good energy today');
 
@@ -47,7 +47,7 @@ test.describe.serial('Dating', () => {
 	});
 
 	test('loads the day again with what was saved when stepping to it', async ({ page }) => {
-		await page.goto(`/dating?day=2026-09-01`);
+		await page.goto(`/date?day=2026-09-01`);
 		await expect(page.getByTestId('dating-sent-value')).toHaveText('3');
 		await expect(page.getByTestId('dating-matches-value')).toHaveText('1');
 		await expect(page.getByTestId('dating-save')).toHaveText('Save');
@@ -56,22 +56,22 @@ test.describe.serial('Dating', () => {
 	test('shows the right match rate on Stats', async ({ page }) => {
 		// Ledger now: 2026-09-01 sent 3 matches 1; today sent 4 matches 2.
 		// All-time: sent 7, matches 3 -> 43%.
-		await page.goto('/dating/stats');
+		await page.goto('/date/stats');
 		await expect(page.getByTestId('dating-match-rate-all')).toHaveText('43%');
 	});
 
 	test('lists days newest first on History, and a day opens on Log', async ({ page }) => {
-		await page.goto('/dating/history');
+		await page.goto('/date/history');
 		const rows = page.getByTestId('dating-history-day');
 		await expect(rows.first()).toContainText(TODAY);
 		await expect(rows.last()).toContainText('2026-09-01');
 
 		await rows.first().click();
-		await expect(page).toHaveURL(`/dating?day=${TODAY}`);
+		await expect(page).toHaveURL(`/date?day=${TODAY}`);
 	});
 
 	test('adds a person and a date', async ({ page }) => {
-		await page.goto('/dating/people');
+		await page.goto('/date/people');
 		await page.getByTestId('dating-add-name').fill('Grace Hopper');
 		await page.getByTestId('dating-add-submit').click();
 		await expect(page.getByRole('link', { name: 'Grace Hopper' })).toBeVisible();
@@ -88,7 +88,7 @@ test.describe.serial('Dating', () => {
 
 	test('changes a person\'s stage by rewriting only that one line', async ({ page }) => {
 		const before = vaultFile(ADA);
-		await page.goto('/dating/people/Ada');
+		await page.goto('/date/people/Ada');
 		await expect(page.getByTestId('dating-stage-select')).toHaveValue('talking');
 
 		const [response] = await Promise.all([
@@ -124,7 +124,7 @@ test.describe.serial('Dating', () => {
 
 	test('phone layout: the day stepper and counters are comfortably tappable', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
-		await page.goto('/dating');
+		await page.goto('/date');
 		await expect(page.getByTestId('dating-tabs')).toBeVisible();
 
 		for (const testId of ['dating-prev-day', 'dating-sent-plus', 'dating-sent-minus']) {

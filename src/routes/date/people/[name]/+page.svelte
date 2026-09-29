@@ -83,7 +83,7 @@
 	}
 </script>
 
-<svelte:head><title>{data.name} · Dating · prosoche</title></svelte:head>
+<svelte:head><title>{data.name} · Date · prosoche</title></svelte:head>
 
 <div class="title-row">
 	<h2>{data.name}</h2>

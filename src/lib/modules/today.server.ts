@@ -7,7 +7,7 @@
  * contributor reads the vault and the index — this file, and everything it
  * imports, never reaches the browser.
  *
- * A private module (only Dating, today) must never contribute: nothing of
+ * A private module (only Date, today) must never contribute: nothing of
  * its should appear anywhere but its own screen. `today.server.test.ts`
  * checks that by construction, against `MODULES`, so a future contributor
  * cannot reintroduce the leak by mistake.

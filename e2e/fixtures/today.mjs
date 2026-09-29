@@ -19,7 +19,7 @@ export default function today({ TODAY }) {
 		// Claimed by the `work` workspace through its folder, the same way
 		// `Work/Handbook.md` already is. Long overdue, so the suite never has
 		// to chase a date that will one day stop being in the past.
-		'Work/Tasks.md': '# Work\n\n- [ ] Chase the overdue invoice `Q1` 📅 2000-01-01\n',
+		'Work/Billing.md': '# Billing\n\n- [ ] Chase the overdue invoice `Q1` 📅 2000-01-01\n',
 		[`Journal/${fy}/${fm}/${fd}.md`]: '# Tasks\n- [ ] Prep the demo for Thursday `Q1`\n'
 	};
 }

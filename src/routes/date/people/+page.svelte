@@ -46,14 +46,14 @@
 	}
 </script>
 
-<svelte:head><title>People · Dating · prosoche</title></svelte:head>
+<svelte:head><title>People · Date · prosoche</title></svelte:head>
 
 {#each groups as g (g.stage)}
 	{#if g.people.length}
 		<p class="label">{g.stage} <span class="right muted">{g.people.length}</span></p>
 		<div class="sheet rows" data-testid="dating-people-group">
 			{#each g.people as p (p.path)}
-				<a class="person-row" href="/dating/people/{encodeURIComponent(p.name)}">
+				<a class="person-row" href="/date/people/{encodeURIComponent(p.name)}">
 					<b>{p.name}</b>
 					<span class="muted small">{[p.app, p.place, p.job].filter(Boolean).join(' · ') || '—'}</span>
 				</a>
@@ -65,7 +65,7 @@
 	<p class="label">No stage set <span class="right muted">{unstaged.length}</span></p>
 	<div class="sheet rows">
 		{#each unstaged as p (p.path)}
-			<a class="person-row" href="/dating/people/{encodeURIComponent(p.name)}"><b>{p.name}</b></a>
+			<a class="person-row" href="/date/people/{encodeURIComponent(p.name)}"><b>{p.name}</b></a>
 		{/each}
 	</div>
 {/if}

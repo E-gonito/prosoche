@@ -4,7 +4,7 @@ test.describe('the shell', () => {
 	test('the rail lists every module and the workspaces under Workspaces', async ({ page }) => {
 		await page.goto('/notes');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
-		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Meetings', 'Workspaces', 'Study', 'Dating', 'Notes']);
+		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Meetings', 'Workspaces', 'Study', 'Date', 'Notes']);
 		// The fixture has a workspace called Study too; it sits under Workspaces.
 		await expect(rail.locator('.spaces a')).toHaveText(['Study', 'Work']);
 		await expect(rail.locator('.modules > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
@@ -18,7 +18,7 @@ test.describe('the shell', () => {
 		await expect(bar.getByRole('link')).toHaveCount(4);
 		await bar.getByTestId('tab-more').click();
 		await expect(page.locator('dialog.more')).toBeVisible();
-		await expect(page.locator('dialog.more').getByRole('link', { name: 'Dating' })).toBeVisible();
+		await expect(page.locator('dialog.more').getByRole('link', { name: 'Date', exact: true })).toBeVisible();
 	});
 
 	test('the palette opens from the keyboard', async ({ page }) => {

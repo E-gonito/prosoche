@@ -10,7 +10,7 @@ premise. The plan you wrote this morning and the day you actually had are the
 same file.
 
 > Working, and in daily use by its author. Six modules — Today, Meetings,
-> Workspaces, Study, Dating and Notes — plus the AI layer are all in. It has
+> Workspaces, Study, Date and Notes — plus the AI layer are all in. It has
 > no login and is meant to run on a private network.
 
 ## Why
@@ -87,7 +87,7 @@ is a route folder and a line:
   deal pipeline, past meetings, and read-only notes.
 - **Study** — topics, a reading list, flashcard review, goals with
   milestones, and a session log.
-- **Dating** — a daily counter ledger, stats and history, and person
+- **Date** — a daily counter ledger, stats and history, and person
   profiles. Everything here lives under a gitignored `Private/` folder:
   never indexed, searched, shown on Today, or committed to git.
 - **Notes** — a read-only Obsidian viewer, with search, backlinks and a
@@ -207,13 +207,13 @@ ships — every surface still loads and says so.
 
 - [x] Vault reading, full-text index, file tree, rendered notes, git sync, daily note view
 - [x] Ticking tasks, drag-and-drop timeline, conflict resolver
-- [x] Six modules: Today, Meetings, Workspaces, Study, Dating, Notes
+- [x] Six modules: Today, Meetings, Workspaces, Study, Date, Notes
 - [x] Kanban boards, contacts and a deal pipeline, task dependencies
 - [x] LLM assistance over the vault, behind an accept-or-reject proposal flow
       so nothing is written without confirmation
 - [x] Study tracker: resource queue, topic coverage, spaced repetition, goals
       and a session log
-- [x] A private, gitignored Dating module with its own ledger and profiles
+- [x] A private, gitignored Date module with its own ledger and profiles
 - [x] Command palette, phone and desktop, installable via add-to-home-screen
 - [ ] Multi-vault, and a second sync provider to prove the interface
 - [ ] Outlook calendars, deferred behind Google's ICS feed

@@ -78,19 +78,16 @@
 <div class="page">
 	<div class="title">
 		<h1>Meetings</h1>
-		<p>Today and the next seven days. Read the card before you go in; capture what you don't know while you're there.</p>
+		<p>Read the card before you go in; capture what you don't know while you're there.</p>
 	</div>
 
-	{#if !data.calendar.ok}
+	<!-- No calendar is the normal case: the author chose not to connect one, so
+	     the page is just the notebooks and says nothing about it. -->
+	{#if !data.calendar.ok && data.calendar.reason === 'unreachable'}
 		<p class="callout" data-testid="no-calendar">
-			{#if data.calendar.reason === 'not-configured'}
-				<b>No calendar yet.</b> Set <code>HUB_GCAL_ICS</code> to your Google Calendar's secret iCal address to see your
-				meetings here. Until then, open a notebook below and start a meeting by hand.
-			{:else}
-				<b>Calendar unreachable.</b> {data.calendar.message} The notebooks below still work.
-			{/if}
+			<b>Calendar unreachable.</b> {data.calendar.message} The notebooks below still work.
 		</p>
-	{:else if data.days.length === 0}
+	{:else if data.calendar.ok && data.days.length === 0}
 		<p class="none">Nothing on the calendar this week.</p>
 	{/if}
 

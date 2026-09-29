@@ -3,11 +3,11 @@
 	let { data } = $props();
 </script>
 
-<svelte:head><title>History · Dating · prosoche</title></svelte:head>
+<svelte:head><title>History · Date · prosoche</title></svelte:head>
 
 <div class="sheet rows" data-testid="dating-history">
 	{#each data.days as d (d.day)}
-		<a class="day-row" href="/dating?day={d.day}" data-testid="dating-history-day">
+		<a class="day-row" href="/date?day={d.day}" data-testid="dating-history-day">
 			<span class="date">{d.day}</span>
 			<span class="counts">
 				<span class="num"><b>{d.sent}</b> sent</span>

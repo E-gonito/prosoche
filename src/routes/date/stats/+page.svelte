@@ -74,7 +74,7 @@
 	}
 </script>
 
-<svelte:head><title>Stats · Dating · prosoche</title></svelte:head>
+<svelte:head><title>Stats · Date · prosoche</title></svelte:head>
 
 <div class="cards" data-testid="dating-stats-cards">
 	{#each CARDS as card (card.key)}

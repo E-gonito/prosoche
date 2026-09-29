@@ -17,7 +17,8 @@ test.describe('Meetings', () => {
 
 	test('the page works without a calendar and lists the notebooks', async ({ page }) => {
 		await page.goto('/meetings');
-		await expect(page.getByTestId('no-calendar')).toContainText('HUB_GCAL_ICS');
+		// No calendar connected is the normal case, and the page is quiet about it.
+		await expect(page.getByTestId('no-calendar')).toHaveCount(0);
 		const notebooks = page.getByTestId('notebooks');
 		await expect(notebooks.getByRole('link', { name: /Work/ })).toContainText('1 meeting');
 		await expect(notebooks.getByRole('link', { name: /Study/ })).toContainText('no primer');
