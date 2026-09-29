@@ -165,6 +165,22 @@ describe('grounding found terms', () => {
 		expect(groundTerms([wrapped], sources, []).supported).toEqual([wrapped]);
 	});
 
+	it.each<[string, string, string]>([
+		['the part before a bracket', 'Traits (Rust)', 'Traits define shared behaviour across types.'],
+		['the abbreviation in a bracket', 'Mean Squared Error (MSE)', 'We minimise the MSE over the batch.'],
+		['either side of a slash', 'Async/Await', 'Use await inside an async function.'],
+		['the plural of a singular term', 'Socket', 'Sockets are identified by the four-tuple.'],
+		['the singular of a plural term', 'Weights', 'Each weight is updated by the gradient.']
+	])('accepts a term named by %s', (_, term, quote) => {
+		const entry = found({ term, quote, source: 'CS/Other.md' });
+		expect(groundTerms([entry], [{ path: 'CS/Other.md', text: quote }], []).supported).toEqual([entry]);
+	});
+
+	it('still drops a qualified term none of whose parts the quote names', () => {
+		const entry = found({ term: 'Shift Left (testing)', quote: 'Test earlier in the cycle.', source: 'CS/Other.md' });
+		expect(groundTerms([entry], [{ path: 'CS/Other.md', text: 'Test earlier in the cycle.' }], []).dropped).toEqual([entry]);
+	});
+
 	it('leaves out a term the glossary has, or one proposed twice, without calling it dropped', () => {
 		const result = groundTerms([found({}), found({ term: 'three-way  handshake' }), found({ term: 'Socket', quote: 'A socket is identified by the four-tuple' })], sources, ['socket']);
 		expect(result.supported.map((f) => f.term)).toEqual(['Three-way handshake']);

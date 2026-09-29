@@ -299,8 +299,12 @@ export function findPrompt(input: { glossary: string; known: string[]; categorie
  * not, and leave out any the glossary already has.
  *
  * Support means the entry's `source` is one of the notes that was sent, its
- * quote is found in that note's text as sent, and the term is found in the
- * quote, all compared on words (see `words`). A term already in `known`, or
+ * quote is found in that note's text as sent, and the term is named in the
+ * quote, all compared on words (see `words`). A term is named when the quote
+ * holds the whole term, the part before a bracket ("Traits" of "Traits
+ * (Rust)"), the part inside it ("MSE" of "Mean Squared Error (MSE)"), or
+ * either side of a slash ("Async/Await"), in the singular or the plural. The
+ * quote itself must still be the note's own words. A term already in `known`, or
  * proposed twice, is neither: it is left out without counting as dropped.
  * Pure. Exported because this is the rule the feature exists to enforce.
  */
@@ -315,13 +319,25 @@ export function groundTerms(found: FoundTerm[], sources: Source[], known: string
 		const note = text.get(entry.source.trim());
 		const quote = words(entry.quote);
 		const term = words(entry.term);
-		const ok = Boolean(note) && quote.trim() !== '' && term.trim() !== '' && note!.includes(quote) && quote.includes(term);
+		const ok = Boolean(note) && quote.trim() !== '' && term.trim() !== '' && note!.includes(quote) && names(quote, entry.term);
 		if (ok) {
 			seen.add(key);
 			supported.push(entry);
 		} else dropped.push(entry);
 	}
 	return { supported, dropped };
+}
+
+/** Whether `quote` (already `words`-normalised) names `term`; see `groundTerms`. */
+function names(quote: string, term: string): boolean {
+	const bracket = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(term);
+	const forms = [term, ...(bracket ? [bracket[1], bracket[2]] : []), ...term.split('/')];
+	const singular = (text: string) => text.replace(/([a-z0-9]{3,})s(?= )/g, '$1');
+	const said = singular(quote);
+	return forms.some((form) => {
+		const w = words(form);
+		return w.trim() !== '' && said.includes(singular(w));
+	});
 }
 
 /**
