@@ -32,12 +32,14 @@
 	<div class="head">
 		<a class="crumb" href="/notes">Notes</a>{#if data.folder}<span class="crumb"> / {data.folder}</span>{/if}
 		<div class="actions">
-			<Draft
-				label="Suggest cards"
-				title="Draft flashcards from this note. Nothing reaches the note until you accept it."
-				request={{ feature: 'suggest-flashcards', path: data.path }}
-				ondone={() => invalidateAll()}
-			/>
+			{#if data.subject}
+				<Draft
+					label="Make cards"
+					title="Draft flashcards for {data.subject} from this note. Nothing reaches the note until you accept it."
+					request={{ feature: 'suggest-flashcards', path: data.path }}
+					ondone={() => invalidateAll()}
+				/>
+			{/if}
 			<button class="btn ghost" onclick={() => sheet?.showModal()} data-testid="open-files"><Icon name="file-text" /> Browse</button>
 		</div>
 	</div>

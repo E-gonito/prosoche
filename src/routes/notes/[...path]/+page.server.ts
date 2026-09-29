@@ -4,6 +4,7 @@ import { parseNote, basename } from '$server/parse/note';
 import { renderMarkdown } from '$server/render';
 import { isMarkdown, PathOutsideVaultError } from '$server/vault/paths';
 import { CONFLICT_MARKERS } from '$server/index/index';
+import { subjectFor } from '$server/study/subjects';
 import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const path = params.path;
 	if (!isMarkdown(path)) error(404, 'Not a note');
 
-	const { vault, index, ready } = hub();
+	const { vault, index, ready, workspaces } = hub();
 	await ready;
 
 	let note;
@@ -45,6 +46,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		}),
 		tree: await vault.tree(),
 		tags: parsed.tags,
+		// The study subject the note is in, which is what offers "Make cards".
+		subject: subjectFor(await workspaces(), path, parsed.tags)?.name ?? null,
 		backlinks: index
 			.backlinks(name)
 			.filter((b) => b.path !== path)

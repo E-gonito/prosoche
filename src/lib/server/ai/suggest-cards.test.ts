@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { partition, propose, suggestCards, type Suggestion } from './suggest-cards';
-import { scanCards } from '../study/flashcards';
+import { isCardSource, scanCards } from '../study/flashcards';
+import { parseNote } from '../parse/note';
 import type { RunStamp } from '$lib/shared/ai';
 
 const STAMP: RunStamp = {
@@ -97,6 +98,16 @@ describe('propose', () => {
 		expect(found.map((c) => c.answer)).toEqual(['SYN, SYN-ACK, ACK', 'The four-tuple']);
 	});
 
+	it('tags a note that is not yet a card source, so its cards are seen', () => {
+		const proposal = propose('CS/TCP.md', cards, STAMP, { tag: true });
+		const edit = proposal.edits[0];
+		const text = 'text' in edit ? edit.text : '';
+		expect(text.startsWith('\n#flashcards\nHandshake?::')).toBe(true);
+		const after = `${NOTE}${text}`;
+		expect(isCardSource(parseNote(after, 'CS/TCP.md').tags, after)).toBe(true);
+		expect(scanCards(after, 'CS/TCP.md').map((c) => c.question)).toEqual(['Handshake?', 'Socket?']);
+	});
+
 	it('flattens a question written over several lines', () => {
 		const proposal = propose('CS/TCP.md', [{ question: 'a\nb', answer: 'c\nd', quote: 'x' }], STAMP);
 		const edit = proposal.edits[0];
@@ -169,6 +180,8 @@ describe('suggestCards', () => {
 		const edit = result.proposal!.edits[0];
 		expect('text' in edit ? edit.text : '').toContain('Handshake?::SYN, SYN-ACK, ACK');
 		expect('text' in edit ? edit.text : '').not.toContain('65535');
+		// The note carried no flashcard tag, so the block brings one.
+		expect('text' in edit ? edit.text : '').toContain('\n#flashcards\n');
 	});
 
 	it('proposes nothing when every suggestion was invented', async () => {
