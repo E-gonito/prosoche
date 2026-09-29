@@ -357,6 +357,15 @@ switches over.
 - **Backups:** the Proxmox host backs up the box, `Private/` included.
 - **Parked features:** none are ported. The timesheet is edited in Obsidian.
 - **Calendar matching:** a manual pick, remembered by event title.
+- **Built and deployed 2026-09-29.** Five agents built the modules in
+  parallel, one worktree each, merged into `rebuild` and then into `main`.
+  There was no separate preview service on 3101, because every phase landed
+  the same day.
+- **Dating is called Date,** at `/date`. Its vault folder stays
+  `Private/Dating/`.
+- **No calendar for now.** The author chose not to connect Google Calendar.
+  The ICS reader stays in `calendar.ts`, dormant, and nothing on screen asks
+  for `HUB_GCAL_ICS`.
 
 ## Open questions
 
