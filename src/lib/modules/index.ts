@@ -30,10 +30,24 @@ export interface Module {
 	tab?: boolean;
 }
 
+/**
+ * An entry the rail nests under a module: one workspace under Workspaces,
+ * one workspace's glossary under Glossary. They come from the vault, so the
+ * root layout's loader supplies them, keyed by module id; this file only
+ * says what one looks like and which one a path is on.
+ */
+export interface SubItem {
+	href: string;
+	title: string;
+	/** The workspace's colour, drawn as a dot before the title. */
+	color: string;
+}
+
 /** In the order the rail draws them. */
 export const MODULES: Module[] = [
 	{ id: 'today', title: 'Today', icon: 'sun', href: '/today', tab: true },
 	{ id: 'meetings', title: 'Meetings', icon: 'users', href: '/meetings', tab: true },
+	{ id: 'glossary', title: 'Glossary', icon: 'book-a', href: '/glossary' },
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
 	{ id: 'date', title: 'Date', icon: 'calendar', href: '/date', private: true },
@@ -54,4 +68,12 @@ export function moduleFor(pathname: string): Module | null {
 	if (pathname === '/') return MODULES[0];
 	const first = pathname.split('/')[1] ?? '';
 	return [...MODULES, ...SYSTEM].find((m) => m.id === first) ?? null;
+}
+
+/**
+ * The sub-item a path is on: the one whose href the path is, or is under.
+ * Null when it is on none, such as a module's own index page. Pure.
+ */
+export function subItemFor(items: SubItem[], pathname: string): SubItem | null {
+	return items.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
 }
