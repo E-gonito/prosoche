@@ -61,9 +61,11 @@
 	}
 </script>
 
-<svelte:head><title>AI settings · prosoche</title></svelte:head>
+<svelte:head><title>Settings · prosoche</title></svelte:head>
 
-<PageHeader title="AI settings">
+<div class="page">
+
+<PageHeader title="Settings">
 	{#snippet meta()}
 		<span class="path">{data.settingsPath}</span>
 	{/snippet}
@@ -181,6 +183,7 @@
 	</ol>
 	<p class="hint">These are code paths, not instructions in a prompt.</p>
 </section>
+</div>
 
 <style>
 	/* A path, so monospaced. */

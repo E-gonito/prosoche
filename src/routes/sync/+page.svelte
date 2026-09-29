@@ -115,6 +115,8 @@
 
 <svelte:head><title>Sync · prosoche</title></svelte:head>
 
+<div class="page">
+
 <PageHeader title="Sync">
 	{#snippet meta()}
 		<span class="path">{data.vaultPath}</span>
@@ -278,6 +280,7 @@
 		oncancel={() => (asking = null)}
 	/>
 {/if}
+</div>
 
 <style>
 	/* A path, so monospaced, as everywhere else a path is drawn. */
