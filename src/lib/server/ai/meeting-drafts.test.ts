@@ -40,9 +40,9 @@ const WORK: Workspace = {
 	aliases: [],
 	folders: ['Work'],
 	template: 'project',
-	tabs: [],
 	deck: 'Work/Tasks.md',
 	kanbanColumns: [],
+	stages: ['lead', 'proposal', 'won'],
 	path: '_hub/workspaces/work.md'
 };
 

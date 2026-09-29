@@ -1,13 +1,18 @@
 /**
- * Workspaces: the modular tabs that divide a vault into the areas of a life,
- * such as work, study and personal.
+ * Workspaces: the areas a vault is divided into, such as work, study and
+ * personal.
  *
  * A workspace is one markdown file in `_hub/workspaces/`, so it is editable in
- * Obsidian and travels with the vault. Its frontmatter names the workspace,
- * where its notes live, and which widgets appear on which tab. The widget
- * catalogue itself is rendered in phase 2; this module only reads and writes
- * the definitions, and answers the one question everything else needs: does
- * this note or task belong to this workspace?
+ * Obsidian and travels with the vault. Its frontmatter names the workspace and
+ * where its notes live; this module only reads and writes the definitions, and
+ * answers the one question everything else needs: does this note or task
+ * belong to this workspace?
+ *
+ * Earlier versions let a workspace file list `tabs:` of named widgets. The
+ * rebuild gives every workspace the same sections instead — Overview, Tasks,
+ * Inbox, Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
+ * longer read. A file that still has one from before is parsed the same as
+ * any other frontmatter the hub does not recognise: harmlessly ignored.
  */
 
 import { parseNote } from './parse/note';
@@ -16,11 +21,8 @@ import { displayText } from '$lib/shared/task';
 import { config } from './config';
 import type { Vault } from './vault/index';
 
-export interface WorkspaceTab {
-	title: string;
-	/** Widget names from the catalogue, e.g. `board`, `topic-map`. */
-	widgets: string[];
-}
+/** The pipeline a workspace's deals move through, unless its file says otherwise. */
+export const DEFAULT_STAGES = ['lead', 'proposal', 'negotiation', 'won', 'lost'];
 
 export interface Workspace {
 	/** Derived from the file name, e.g. `_hub/workspaces/study.md` -> `study`. */
@@ -37,12 +39,18 @@ export interface Workspace {
 	 */
 	aliases: string[];
 	folders: string[];
-	template: string;
-	tabs: WorkspaceTab[];
+	/**
+	 * What kind of workspace this is, from `template:` in its file. Only one
+	 * value means anything today: `study` marks the workspace the Study module
+	 * reads. Absent for an ordinary project.
+	 */
+	template?: string;
 	/** Note new cards are appended to when the board has nowhere better. */
 	deck: string;
 	/** Board column titles. Empty means the five task statuses. */
 	kanbanColumns: string[];
+	/** Deal pipeline stages, in order. `DEFAULT_STAGES` unless the file sets its own. */
+	stages: string[];
 	path: string;
 }
 
@@ -120,6 +128,16 @@ function mentions(text: string, alias: string): boolean {
 const ALIAS_PATTERNS = new Map<string, RegExp>();
 
 /**
+ * The workspace's home folder: where its `Tasks.md`, `Inbox.md`, `Log.md`,
+ * `Deals.md` and `Pages/` live. The first folder a workspace names, so a
+ * workspace with several folders still has one unambiguous place for the
+ * files only it writes; `Inbox` for one that names none yet.
+ */
+export function homeFolder(workspace: Workspace): string {
+	return workspace.folders[0] ?? 'Inbox';
+}
+
+/**
  * Write the starting set of workspaces into a vault that has none.
  *
  * All or nothing, deliberately. Seeding file by file would add a stray
@@ -140,32 +158,21 @@ export async function seedWorkspaces(vault: Vault): Promise<string[]> {
 
 function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 	const slug = (path.split('/').pop() ?? '').replace(/\.md$/, '');
+	const folders = strList(fm.folders);
+	const stages = strList(fm.stages).map((s) => s.trim()).filter(Boolean);
 	return {
 		slug,
 		name: str(fm.name) ?? slug,
 		color: str(fm.color) ?? '#6b7280',
 		tag: str(fm.tag) ?? `ws/${slug}`,
 		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
-		folders: strList(fm.folders),
-		template: str(fm.template) ?? 'project',
-		tabs: toTabs(fm.tabs),
-		deck: str(fm.deck) ?? `${strList(fm.folders)[0] ?? 'Inbox'}/Tasks.md`,
+		folders,
+		template: str(fm.template) ?? undefined,
+		deck: str(fm.deck) ?? `${folders[0] ?? 'Inbox'}/Tasks.md`,
 		kanbanColumns: strList(fm.kanban_columns),
+		stages: stages.length ? stages : [...DEFAULT_STAGES],
 		path
 	};
-}
-
-function toTabs(value: unknown): WorkspaceTab[] {
-	if (!Array.isArray(value)) return [];
-	return value
-		.map((entry) => {
-			if (typeof entry !== 'object' || entry === null) return null;
-			const tab = entry as Record<string, unknown>;
-			const title = str(tab.title);
-			if (!title) return null;
-			return { title, widgets: strList(tab.widgets) };
-		})
-		.filter((t): t is WorkspaceTab => t !== null);
 }
 
 function str(value: unknown): string | null {
@@ -181,7 +188,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases'> {
+interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'stages'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];
@@ -191,7 +198,6 @@ export type NewWorkspace = {
 	name: string;
 	color?: string;
 	folders?: string[];
-	template?: string;
 };
 
 export type WorkspaceCreated =
@@ -202,9 +208,8 @@ export type WorkspaceCreated =
  * Create one workspace file from the wizard.
  *
  * Refuses rather than overwrites when the slug is taken, because a workspace
- * file is the user's own document and silently replacing one would lose the
- * tabs they had arranged. The tabs come from the named template, or from
- * `project` when the name is not one this version knows.
+ * file is the user's own document and silently replacing one would lose
+ * whatever the user had already put in it.
  */
 export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise<WorkspaceCreated> {
 	const slug = slugify(spec.name ?? '');
@@ -213,55 +218,18 @@ export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise
 	const path = `${WORKSPACE_DIR}/${slug}.md`;
 	if ((await vault.read(path)).exists) return { ok: false, reason: 'exists' };
 
-	const template = spec.template && TEMPLATE_TABS[spec.template] ? spec.template : 'project';
 	const seed: Seed = {
 		slug,
 		name: spec.name.trim(),
 		color: spec.color ?? '#6b7280',
 		tag: `ws/${slug}`,
 		folders: (spec.folders ?? []).map((f) => f.replace(/^\/+|\/+$/g, '')).filter(Boolean),
-		template,
-		tabs: [...TEMPLATE_TABS[template]],
 		description: `Created from the hub. Point \`folders\` at wherever its notes live.`
 	};
 	const result = await vault.write(path, renderWorkspace(seed));
 	if (!result.ok) return { ok: false, reason: 'exists' };
 	return { ok: true, workspace: toWorkspace(path, parseNote(result.note.content, path).frontmatter) };
 }
-
-/**
- * What each template starts a workspace with. Exported so the new-workspace
- * form can describe a template accurately instead of repeating the list in
- * prose that drifts.
- */
-export const TEMPLATE_TABS: Record<string, WorkspaceTab[]> = {
-	project: [
-		{ title: 'Overview', widgets: ['board', 'time'] },
-		{ title: 'Notes', widgets: ['notes'] },
-		{ title: 'People', widgets: ['people'] },
-		{ title: 'Blocked', widgets: ['blocked'] },
-		{ title: 'Insights', widgets: ['insights'] }
-	],
-	business: [
-		{ title: 'Overview', widgets: ['board', 'time'] },
-		{ title: 'Notes', widgets: ['notes'] },
-		{ title: 'People', widgets: ['people'] },
-		{ title: 'Blocked', widgets: ['blocked'] },
-		{ title: 'Insights', widgets: ['insights'] }
-	],
-	study: [
-		{ title: 'Overview', widgets: ['currently-learning', 'queue', 'flashcards-due', 'topic-map'] },
-		{ title: 'Board', widgets: ['board'] },
-		{ title: 'Notes', widgets: ['notes'] },
-		{ title: 'Insights', widgets: ['insights'] }
-	],
-	area: [
-		{ title: 'Dashboard', widgets: ['habits', 'currently-learning', 'topic-map'] },
-		{ title: 'Board', widgets: ['board'] },
-		{ title: 'Notes', widgets: ['notes'] },
-		{ title: 'Insights', widgets: ['insights'] }
-	]
-};
 
 /**
  * The starting set, written once into a vault that has none. They are meant to
@@ -276,8 +244,6 @@ const SEEDS: Seed[] = [
 		color: '#2f6fed',
 		tag: 'ws/work',
 		folders: ['Work'],
-		template: 'project',
-		tabs: [...TEMPLATE_TABS.project],
 		description: 'The day job. Point `folders` at wherever its notes live.'
 	},
 	{
@@ -285,9 +251,8 @@ const SEEDS: Seed[] = [
 		name: 'Study',
 		color: '#7c3aed',
 		tag: 'ws/study',
-		folders: ['Study'],
 		template: 'study',
-		tabs: [...TEMPLATE_TABS.study],
+		folders: ['Study'],
 		description: 'Courses, books and whatever you are learning now.'
 	},
 	{
@@ -296,8 +261,6 @@ const SEEDS: Seed[] = [
 		color: '#16a34a',
 		tag: 'ws/personal',
 		folders: ['Inbox'],
-		template: 'area',
-		tabs: [...TEMPLATE_TABS.area],
 		description: 'Habits, reading, everything outside work.'
 	},
 	{
@@ -306,17 +269,12 @@ const SEEDS: Seed[] = [
 		color: '#ea580c',
 		tag: 'ws/side',
 		folders: ['Projects'],
-		template: 'project',
-		tabs: [...TEMPLATE_TABS.project],
 		description: 'Things you build on your own time.'
 	}
 ];
 
 /** A workspace file a human can read and edit in Obsidian. */
 function renderWorkspace(seed: Seed): string {
-	const tabs = seed.tabs
-		.map((tab) => `  - title: ${tab.title}\n    widgets: [${tab.widgets.join(', ')}]`)
-		.join('\n');
 	const folders = seed.folders.map((f) => `  - ${JSON.stringify(f)}`).join('\n');
 	// Written only when there is one to write, like every other optional marker
 	// this app produces: an empty `aliases:` in a file the user opens in
@@ -324,21 +282,19 @@ function renderWorkspace(seed: Seed): string {
 	const aliases = seed.aliases?.length
 		? `aliases:\n${seed.aliases.map((a) => `  - ${JSON.stringify(a)}`).join('\n')}\n`
 		: '';
+	const template = seed.template ? `template: ${seed.template}\n` : '';
 	return `---
 name: ${seed.name}
 color: "${seed.color}"
 tag: ${seed.tag}
-template: ${seed.template}
-folders:
+${template}folders:
 ${folders}
-${aliases}tabs:
-${tabs}
----
+${aliases}---
 
 ${seed.description}
 
-Edit this file to change the workspace. Tabs are lists of widgets from the
-catalogue: board, notes, people, blocked, time, insights, pinned, habits,
-currently-learning, queue, topic-map, flashcards-due, timesheet, inbox.
+Edit this file to change the workspace: its name, colour, tag and which
+folders belong to it. Add a \`stages:\` list to change the deal pipeline from
+the default (lead, proposal, negotiation, won, lost).
 `;
 }

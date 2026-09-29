@@ -14,10 +14,9 @@ const workspace = (slug: string, folders: string[]): Workspace => ({
 	tag: `ws/${slug}`,
 	aliases: [],
 	folders,
-	template: 'project',
-	tabs: [],
 	deck: `${folders[0]}/Tasks.md`,
 	kanbanColumns: [],
+	stages: [],
 	path: `_hub/workspaces/${slug}.md`
 });
 

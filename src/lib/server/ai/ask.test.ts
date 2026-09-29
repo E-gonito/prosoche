@@ -34,10 +34,9 @@ const EYE2GENE: Workspace = {
 	tag: 'ws/eye2gene',
 	aliases: ['eye2gene'],
 	folders: ['Work Projects/eye2gene'],
-	template: 'project',
-	tabs: [],
 	deck: DECK,
 	kanbanColumns: [],
+	stages: [],
 	path: '_hub/workspaces/eye2gene.md'
 };
 

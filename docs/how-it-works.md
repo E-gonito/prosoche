@@ -193,20 +193,23 @@ comment, so a card reviewed here is due correctly in Obsidian too.
 by status, inferred from the note when it says nothing itself. Moving one
 between groups writes a single `status:` line into its frontmatter.
 
-## Workspaces and boards
+## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — which folders and tag belong to it, and which widgets each of
-its tabs shows — so editing it here or in Obsidian is the same edit. The "Edit
-definition" link on a workspace's page goes straight to that file for exactly
-this reason; there is deliberately no settings form that would rewrite it
-behind your back.
+definition — its name, colour, tag, folders and deal stages — so editing it
+here or in Obsidian is the same edit. The "edit definition" link on a
+workspace's page goes straight to that file for exactly this reason; there is
+deliberately no settings form that would rewrite it behind your back. Older
+workspace files may still carry a `tabs:` list from before this shape; it is
+read and ignored rather than rejected, because every workspace now gets the
+same sections regardless of what its file used to say.
 
 Folders are comma separated and vault-relative. Notes and tasks inside them
 belong to the workspace, and so does anything tagged `#ws/<slug>` wherever it
 lives in the vault, which is what lets a task belong to a workspace without
-living inside one of its folders. Leaving the field empty is fine — folders
-can be added to the file later.
+living inside one of its folders. The first folder is the workspace's home:
+it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Deals.md` and a `Pages/` folder
+of custom pages all live.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily
@@ -218,32 +221,55 @@ text — in practice only daily notes and the Inbox are ever claimed this way.
 The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
-A tab with no widgets it recognises says so instead of rendering a blank
-space: check the workspace file's `widgets:` list against the catalogue for a
-typo, since that is the only way to reach this state.
+A workspace always has an Overview: next actions, an inbox preview, the
+latest log entry, anything blocked, recent notes, and a link into its meeting
+notebook. Every other tab — Tasks, Inbox, Log, People, Notes, and one per file
+in `Pages/` — hides itself until it has something to show, so a brand new
+workspace opens quiet rather than full of empty panes; visiting one directly
+still works; adding its first card, capture, log line, person or deal is what
+brings the tab back.
 
-A board shows the workspace's cards, in the columns the workspace file names.
-A card is a checkbox line carrying a quadrant, a due date, an id or the
-workspace's tag, or one that lives in the workspace's deck note. The deck is
-the board written down, so every checkbox in it is a card whether or not it
-carries anything else; a line anywhere else in the workspace's notes carrying
-none of those marks is not shown, because it reads as checklist notation
-rather than work. The board says how many it left out and which notes they
-came from, and will show them one note at a time on request. Give a line a
-quadrant and it becomes a card, by the same convention the rest of your vault
-uses. Nothing is promoted for you.
+**Tasks** is the board: a card is a checkbox line carrying a quadrant, a due
+date, an id or the workspace's tag, or one that lives in the workspace's deck
+note. The deck is the board written down, so every checkbox in it is a card
+whether or not it carries anything else; a line anywhere else in the
+workspace's notes carrying none of those marks is not shown, because it reads
+as checklist notation rather than work. The board says how many it left out
+and which notes they came from, and will show them one note at a time on
+request. Give a line a quadrant and it becomes a card, by the same convention
+the rest of your vault uses. Nothing is promoted for you. The same tab also
+offers a flat list, filterable by status, for a quick scan or a phone.
 
-Cards are written to the workspace's deck note, appended one line at a time,
-and the note is created the first time you add one. Anything written in the
-workspace's notes shows here too. The count beside a workspace in the rail is
-its open cards, the same ones Today lists under "From your workspaces".
+**Inbox** is a capture box over `Inbox.md`: a bullet already written as a task
+is ticked in place through the ordinary task rewrite; "make it a task" copies
+any line's words into `Tasks.md` and ticks the inbox line to show it has been
+filed. Nothing is ever deleted, only marked done.
 
-A new project or business workspace starts on five tabs: an Overview of its
-board and its time, then Notes, People, Blocked and Insights, each still
-empty until its notes give it something to show. A tab's own number, beside
-its title, is open cards for Overview, cards waiting on another for Blocked,
-and people in scope for People; a tab with nothing to count shows no number
-at all, and a tab with a genuine zero shows it muted rather than hidden.
+**Log** is `Log.md`, a `## YYYY-MM-DD` heading per session. Sessions are shown
+newest first; the file itself only ever grows downward, because "add an
+update" appends under today's heading and never touches an earlier one.
+
+**People** is the workspace's CRM: everyone its notes mention, the same way
+`people.ts` finds anyone elsewhere, plus a deal pipeline read from
+`Deals.md`. A deal line uses Dataview-style inline fields —
+
+    - Moorfields pilot [[Jane Doe]] stage:: proposal value:: 12000 next:: 2026-10-03
+
+— so it stays readable in Obsidian; a field this app does not know about is
+kept exactly as written. The pipeline's stages default to lead, proposal,
+negotiation, won and lost, or to whatever a workspace's own `stages:` list
+names. Moving a deal writes only its `stage::` value, through the same
+per-line conflict guard a task edit gets.
+
+**Notes** lists the workspace's own notes, most recently changed first,
+read-only, from the folders named in the workspace file.
+
+**Custom pages** are the workspace's own HTML, one file per tab from its
+`Pages/` folder. Each is served through its own endpoint with a strict
+`sandbox` content-security-policy and embedded in an iframe with
+`sandbox="allow-scripts"` and nothing more — never `allow-same-origin` — so a
+page's own script can run but can never reach this origin's cookies, storage
+or anything outside its frame.
 
 ## Dating
 
@@ -312,62 +338,3 @@ sentence explaining that. The ten guardrails listed below are the same story:
 they are code paths, not instructions in a prompt, so they hold regardless of
 whatever the model itself says about what it is about to do.
 
-## Widgets
-
-**Inbox** lists what has not been filed yet, from the quick-capture note and
-from stray notes dropped into the inbox folder. Nothing waiting there is a
-finished state, not a lack of data.
-
-**Pinned** lists anything tagged `#pin`; add that tag to a task to keep it
-pinned here regardless of where else it lives in the vault.
-
-**Blocked** lists cards waiting on another task, using a `⛔ id` /`🆔 id` pair
-to connect the two. Nothing waiting on anything is the widget saying every
-dependency it knows about is already clear.
-
-**Notes** lists a workspace's own notes, most recently touched first, from
-the folders named in the workspace file. A workspace with no folders yet has
-nothing to list until one is added to its `folders:` line.
-
-**People** lists the people a workspace, or the vault, has open threads with.
-A person is a note under the people folder (`People/` by default); mentioning
-someone with a wiki-link, or logging a contact from their own page, is what
-creates that note — nobody has to create it up front. The person page
-mirrors this: visiting someone with no note yet still shows the same
-layout, minus the note itself, and logging a contact there is what brings the
-note into existence.
-
-**Time** compares this week's planned time against what actually happened,
-scaled to the busiest day rather than to a fixed number of hours. Two things
-say work happened. Ticking a timed block counts its planned length as done,
-because the tick is the user's own statement that the block went as planned;
-a timer counts what it measured. A ticked block a timer entry matched counts
-once, as timed, since the timer line is the finer record of the same work.
-Blocks nest, so a short block inside a long one counts once in the day but
-once for each project the two belong to, which is why the per-project split
-can add up to more than the week and says so when it does. Nothing ticked
-and nothing timed is exactly that, and it names both ways of counting rather
-than showing an empty chart.
-
-**Insights** is Ask, scoped to whatever workspace or note it sits on, with
-the same guarantee: it is read-only, and switching the AI layer off in
-settings turns this widget off along with every other AI surface. On a
-workspace it is handed the same computed figures the Ask page is, and the line
-under the box says what they amount to — open cards, overdue, blocked, the
-week's blocks and its hours — before anything is asked or spent.
-
-**Timesheet** renders today's timesheet section exactly as the note has it,
-read-only, because the note is a document shared at work and every route out
-of the card leads to Obsidian or to the read-only note view rather than to an
-editor. Nothing written yet for today still names the last entry that does
-exist, if there is one; no timesheet note at all names the folder prosoche
-looked in, since it only ever reads notes named `TIMESHEET…` and never writes
-one itself.
-
-**GitHub** and **Linear** share one component for their rows, because the
-server modules behind them return the same shape. Nothing open and assigned
-to you is a real answer, not an error. Not connected is the state that ships
-until a token exists: it names the environment variables to set and what each
-is for, and reloading after setting them is what turns the card on — no
-token is ever stored in the vault or the repository, and without one
-prosoche simply never calls out to that provider.

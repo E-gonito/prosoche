@@ -17,15 +17,21 @@ import type { Vault } from './vault/index';
 
 export const CAPTURE_PATH = 'Inbox/Capture.md';
 
-/** Append one captured line. Returns the path it went to. */
-export async function capture(vault: Vault, text: string, now = new Date()): Promise<string> {
+/**
+ * Append one captured line to `path`, or to the vault's own `Inbox/Capture.md`
+ * when the caller names none. A workspace's inbox is captured to the same
+ * way — same `## <day>` heading, same task-or-bullet rule — so a workspace's
+ * capture box and the vault-wide one are one feature with two front doors,
+ * not two.
+ */
+export async function capture(vault: Vault, text: string, now = new Date(), path: string = CAPTURE_PATH): Promise<string> {
 	const trimmed = text.trim();
-	if (!trimmed) return CAPTURE_PATH;
+	if (!trimmed) return path;
 
-	const note = await vault.read(CAPTURE_PATH);
+	const note = await vault.read(path);
 	const updated = appendUnderDay(note.exists ? note.content : '# Capture\n', trimmed, today(now), clock(now));
-	await vault.write(CAPTURE_PATH, updated, note.exists ? note.hash : undefined);
-	return CAPTURE_PATH;
+	await vault.write(path, updated, note.exists ? note.hash : undefined);
+	return path;
 }
 
 /**

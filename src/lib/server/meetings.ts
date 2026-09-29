@@ -412,10 +412,7 @@ export interface CustomPage {
 export async function customPages(vault: Vault, workspace: Workspace): Promise<CustomPage[]> {
 	const paths = notebookPaths(workspace);
 	if (!paths) return [];
-	// TODO(lead): switch to vault.files after merge, e.g.
-	// `(await vault.files(`${paths.home}/Pages`, '.html')).map(basenameOfPath)`.
-	void vault;
-	const files: string[] = [];
+	const files = await vault.files(`${paths.home}/Pages`, 'html');
 	return files.map((file) => ({ file, title: pageTitle(file), href: `/w/${workspace.slug}/pages/${encodeURIComponent(file)}` }));
 }
 

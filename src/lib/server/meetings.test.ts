@@ -35,9 +35,9 @@ const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	aliases: [],
 	folders: [slug[0].toUpperCase() + slug.slice(1)],
 	template: 'project',
-	tabs: [],
 	deck: '',
 	kanbanColumns: [],
+	stages: ['lead', 'proposal', 'won'],
 	path: `_hub/workspaces/${slug}.md`,
 	...over
 });
@@ -322,7 +322,11 @@ date: 2026-09-28
 		expect(await assignTitle(vault, workspaces, 'X', 'nope')).toMatchObject({ ok: false, reason: 'invalid' });
 	});
 
-	it('lists no custom pages until the vault can list them', async () => {
+	it('lists the workspace\'s custom pages as tabs served by Workspaces', async () => {
 		expect(await customPages(vault, work)).toEqual([]);
+		await vault.write(`${work.folders[0]}/Pages/eye-3d.html`, '<p>eye</p>');
+		expect(await customPages(vault, work)).toEqual([
+			{ file: 'eye-3d.html', title: 'Eye 3d', href: `/w/${work.slug}/pages/eye-3d.html` }
+		]);
 	});
 });

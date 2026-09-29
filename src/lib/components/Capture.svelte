@@ -9,7 +9,14 @@
 	 * on screen, and the confirmation says which file took it.
 	 */
 	import { captureText } from '$lib/client/api';
-	let { onproblem }: { onproblem?: (message: string) => void } = $props();
+	let {
+		onproblem,
+		workspace
+	}: {
+		onproblem?: (message: string) => void;
+		/** Given, the line goes to that workspace's own `Inbox.md` instead. */
+		workspace?: string;
+	} = $props();
 
 	let text = $state('');
 	let saving = $state(false);
@@ -20,7 +27,7 @@
 		const value = text.trim();
 		if (!value || saving) return;
 		saving = true;
-		const result = await captureText(value);
+		const result = await captureText(value, workspace);
 		saving = false;
 		if (result.ok) {
 			text = '';

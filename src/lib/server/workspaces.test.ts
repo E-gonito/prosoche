@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, TEMPLATE_TABS, type Workspace } from './workspaces';
+import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, DEFAULT_STAGES, type Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -25,7 +25,12 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded.map((w) => w.slug).sort()).toEqual(['personal', 'side-projects', 'study', 'work']);
 		const work = loaded.find((w) => w.slug === 'work')!;
 		expect(work.folders).toEqual(['Work']);
-		expect(work.tabs[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
+		expect(work.stages).toEqual(DEFAULT_STAGES);
+	});
+
+	it('writes no tabs: block; the vault format no longer has one', async () => {
+		await seedWorkspaces(vault);
+		expect((await vault.read('_hub/workspaces/work.md')).content).not.toContain('tabs:');
 	});
 
 	it('writes no aliases block, because none of the seeds has one', async () => {
@@ -68,7 +73,23 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		await vault.write('_hub/workspaces/broken.md', 'no frontmatter at all');
 		const loaded = await loadWorkspaces(vault);
 		expect(loaded).toHaveLength(1);
-		expect(loaded[0]).toMatchObject({ slug: 'broken', name: 'broken', tag: 'ws/broken', tabs: [] });
+		expect(loaded[0]).toMatchObject({ slug: 'broken', name: 'broken', tag: 'ws/broken', stages: DEFAULT_STAGES });
+	});
+
+	it('parses an old file that still has a tabs: list, ignoring it', async () => {
+		const old = '---\nname: Legacy\ntabs:\n  - title: Board\n    widgets: [board]\n---\n';
+		await vault.write('_hub/workspaces/legacy.md', old);
+		const loaded = (await loadWorkspaces(vault)).find((w) => w.slug === 'legacy')!;
+		expect(loaded.name).toBe('Legacy');
+		expect(loaded).not.toHaveProperty('tabs');
+	});
+
+	it('reads a stages: list from the workspace file, or falls back to the default pipeline', async () => {
+		await vault.write('_hub/workspaces/pipeline.md', '---\nname: Pipeline\nstages: [new, qualifying, won]\n---\n');
+		await vault.write('_hub/workspaces/default-stages.md', '---\nname: Default\n---\n');
+		const loaded = await loadWorkspaces(vault);
+		expect(loaded.find((w) => w.slug === 'pipeline')!.stages).toEqual(['new', 'qualifying', 'won']);
+		expect(loaded.find((w) => w.slug === 'default-stages')!.stages).toEqual(DEFAULT_STAGES);
 	});
 });
 
@@ -82,8 +103,7 @@ describe('workspaceFor', () => {
 		folders,
 		deck: 'Inbox/Tasks.md',
 		kanbanColumns: [],
-		template: 'project',
-		tabs: [],
+		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const all = [ws('client', 'ws/client', ['Work/Client']), ws('work', 'ws/work', ['Work'])];
@@ -117,8 +137,7 @@ describe('workspaceFor, by alias', () => {
 		folders,
 		deck: 'Inbox/Tasks.md',
 		kanbanColumns: [],
-		template: 'project',
-		tabs: [],
+		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const kaya = ws('kaya', ['Kaya Thai'], ['Kaya', 'kaya thai therapy']);
@@ -173,31 +192,30 @@ describe('workspaceFor, by alias', () => {
 	});
 });
 
-describe('TEMPLATE_TABS', () => {
-	it('starts a project and a business workspace with an Overview of the board and time', () => {
-		expect(TEMPLATE_TABS.project[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
-		expect(TEMPLATE_TABS.business[0]).toEqual({ title: 'Overview', widgets: ['board', 'time'] });
-	});
-
-	it('leaves the other five tabs on both templates as they were', () => {
-		expect(TEMPLATE_TABS.project.slice(1).map((t) => t.title)).toEqual(['Notes', 'People', 'Blocked', 'Insights']);
-		expect(TEMPLATE_TABS.business.slice(1).map((t) => t.title)).toEqual(['Notes', 'People', 'Blocked', 'Insights']);
-	});
-});
-
 describe('createWorkspace', () => {
-	it('writes the Overview tab onto a project workspace', async () => {
-		const created = await createWorkspace(vault, { name: 'Riverside Clinic', template: 'project' });
+	it('writes a workspace file with a name, colour and folders, and no tabs: or template: field', async () => {
+		const created = await createWorkspace(vault, { name: 'Riverside Clinic', color: '#123456', folders: ['Work/Riverside'] });
 		if (!created.ok) throw new Error('expected the workspace to be created');
-		expect(created.workspace.tabs).toEqual(TEMPLATE_TABS.project);
+		expect(created.workspace).toMatchObject({
+			slug: 'riverside-clinic',
+			name: 'Riverside Clinic',
+			color: '#123456',
+			tag: 'ws/riverside-clinic',
+			folders: ['Work/Riverside'],
+			stages: DEFAULT_STAGES
+		});
+
+		const content = (await vault.read(created.workspace.path)).content;
+		expect(content).not.toContain('tabs:');
+		expect(content).not.toContain('template:');
 
 		const loaded = (await loadWorkspaces(vault)).find((w) => w.slug === 'riverside-clinic')!;
-		expect(loaded.tabs).toEqual(TEMPLATE_TABS.project);
+		expect(loaded.folders).toEqual(['Work/Riverside']);
 	});
 
-	it('writes the Overview tab onto a business workspace', async () => {
-		const created = await createWorkspace(vault, { name: 'Riverside Clinic', template: 'business' });
-		if (!created.ok) throw new Error('expected the workspace to be created');
-		expect(created.workspace.tabs).toEqual(TEMPLATE_TABS.business);
+	it('refuses rather than overwrites a taken slug', async () => {
+		await createWorkspace(vault, { name: 'Atlas' });
+		const again = await createWorkspace(vault, { name: 'Atlas' });
+		expect(again).toEqual({ ok: false, reason: 'exists' });
 	});
 });

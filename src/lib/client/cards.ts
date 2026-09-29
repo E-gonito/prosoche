@@ -44,7 +44,6 @@ export interface NewWorkspace {
 	name: string;
 	color?: string;
 	folders?: string[];
-	template?: string;
 }
 
 /**

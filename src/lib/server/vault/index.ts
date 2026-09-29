@@ -152,6 +152,29 @@ export class Vault {
 		return out.sort();
 	}
 
+	/**
+	 * File names directly inside one folder whose name ends in `.` + `ext`,
+	 * sorted. Public scope only: a workspace's custom pages are meant to be
+	 * embedded read-only, which is a public feature, so there is no reason yet
+	 * to let a private folder's non-markdown files through this door.
+	 *
+	 * Unlike `list`, this never recurses and never returns a markdown file —
+	 * it exists for the handful of formats the vault holds beside markdown,
+	 * such as a workspace's custom HTML pages, named by the caller rather than
+	 * assumed. A folder that does not exist reads as empty, the same as an
+	 * empty one, because "no pages yet" is not an error.
+	 */
+	async files(folder: string, ext: string): Promise<string[]> {
+		if (isPrivate(folder)) return [];
+		const suffix = `.${ext.replace(/^\.+/, '')}`;
+		const absolute = toAbsolute(folder, this.root);
+		const entries = await readdir(absolute, { withFileTypes: true }).catch(() => []);
+		return entries
+			.filter((entry) => entry.isFile() && entry.name.endsWith(suffix) && !isIgnored(`${folder}/${entry.name}`))
+			.map((entry) => entry.name)
+			.sort();
+	}
+
 	/** The public file tree the notes viewer renders. Folders with no notes are omitted. */
 	async tree(): Promise<TreeNode[]> {
 		const paths = await this.list();

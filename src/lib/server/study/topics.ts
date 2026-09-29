@@ -238,7 +238,7 @@ export function studyPath(home: string, name: string): string {
  * rule, so every page under `/study` reads the same notes for it.
  */
 export async function studyContext(
-	workspaces: () => Promise<Array<{ template: string; folders: string[]; tag: string }>>
+	workspaces: () => Promise<Array<{ template?: string; folders: string[]; tag: string }>>
 ): Promise<{ scope: StudyScope; home: string }> {
 	const workspace = (await workspaces()).find((w) => w.template === 'study') ?? null;
 	const scope = scopeOf(workspace);
