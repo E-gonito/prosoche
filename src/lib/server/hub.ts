@@ -11,6 +11,7 @@ import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
+import { migrateGlossaries } from './glossary-migration';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -105,6 +106,16 @@ function start(): Hub {
 			console.log(`[hub] indexed ${index.health().notes} notes in ${ms} ms`);
 			const seeded = await seedWorkspaces(vault);
 			if (seeded.length) console.log(`[hub] created ${seeded.length} workspace files under _hub/workspaces/`);
+			// A failed migration is logged and leaves the old files in place; it
+			// must not keep the hub from starting.
+			try {
+				const migrated = await migrateGlossaries(vault, await loadWorkspaces(vault));
+				for (const m of migrated.moved) console.log(`[hub] moved glossary ${m.from} to ${m.to}`);
+				for (const l of migrated.linked) console.log(`[hub] workspace ${l.workspace} now captures terms into glossary ${l.glossary}`);
+				for (const l of migrated.left) console.warn(`[hub] left ${l.from} where it is: ${l.why}`);
+			} catch (e) {
+				console.error('[hub] glossary migration failed', e);
+			}
 			vault.watch();
 			sync.start();
 		},
