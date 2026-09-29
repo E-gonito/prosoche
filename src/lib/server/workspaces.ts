@@ -132,8 +132,8 @@ function mentions(text: string, alias: string): boolean {
 const ALIAS_PATTERNS = new Map<string, RegExp>();
 
 /**
- * The workspace's home folder: where its `Tasks.md`, `Inbox.md`, `Log.md`,
- * `CRM/` and `Pages/` live. The first folder a workspace names, so a
+ * The workspace's home folder: where its `Board.md`, `Overview.md`, `Inbox.md`,
+ * `Log.md`, `Glossary.md`, `CRM/` and `Pages/` live. The first folder a workspace names, so a
  * workspace with several folders still has one unambiguous place for the
  * files only it writes; `Inbox` for one that names none yet.
  */

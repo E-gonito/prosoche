@@ -315,10 +315,11 @@ the newer version. With no `Overview.md` yet there is a "Write an overview"
 button instead, and the first save creates the file.
 
 **Inbox** is a capture box over `Inbox.md`: a bullet already written as a task
-is ticked in place through the ordinary task rewrite; "make it a task" copies
-any line's words into `Tasks.md` and ticks the inbox line to show it has been
-filed. Nothing is ever deleted, only marked done. `Tasks.md` is an ordinary
-note now, not the board.
+is ticked in place through the ordinary task rewrite; "make it a task" adds
+any line's words as a card at the bottom of the board's first column, read
+the way quick-add reads them and without the capture time, and ticks the
+inbox line to show it has been filed. Nothing is ever deleted, only marked
+done. An old `Tasks.md` is an ordinary note now, not the board.
 
 **Log** is `Log.md`, a `## YYYY-MM-DD` heading per session. Sessions are shown
 newest first; the file itself only ever grows downward, because "add an

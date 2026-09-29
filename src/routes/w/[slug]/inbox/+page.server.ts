@@ -14,7 +14,6 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		path,
-		tasksPath: `${home}/Tasks.md`,
 		lines: listInboxLines(inbox.content, path)
 	};
 };

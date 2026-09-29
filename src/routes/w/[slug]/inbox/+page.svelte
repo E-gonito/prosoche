@@ -4,8 +4,8 @@
 	 * task) or make it one (it was just a thought).
 	 *
 	 * Nothing here ever deletes a line: ticking a plain capture only adds a
-	 * checkbox to it, and "make it a task" copies its words to `Tasks.md`
-	 * rather than moving them.
+	 * checkbox to it, and "make it a task" copies its words onto the board's
+	 * first column rather than moving them.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Capture from '$lib/components/Capture.svelte';

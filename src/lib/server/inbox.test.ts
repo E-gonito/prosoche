@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
 import { fileInboxLine, listInboxLines, openInboxCount } from './inbox';
+import type { Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -17,50 +18,62 @@ afterEach(async () => {
 });
 
 describe('fileInboxLine', () => {
-	it('appends a plain captured bullet to Tasks.md and ticks it in the inbox', async () => {
-		await vault.write('Work/Inbox.md', '# Inbox\n\n## 2026-09-29\n- 09:00 Call the supplier\n');
-		const result = await fileInboxLine(vault, 'Work/Inbox.md', 3, '- 09:00 Call the supplier', 'Work/Tasks.md');
-		expect(result).toEqual({ ok: true, path: 'Work/Tasks.md' });
+	const WORK: Workspace = {
+		slug: 'work',
+		name: 'Work',
+		color: '#2e6b85',
+		tag: 'ws/work',
+		aliases: [],
+		folders: ['Work'],
+		path: '_hub/workspaces/work.md'
+	};
+	const board = async () => (await vault.read('Work/Board.md')).content;
 
-		expect((await vault.read('Work/Tasks.md')).content).toBe('# Tasks\n- [ ] 09:00 Call the supplier\n');
+	it('adds a plain captured bullet to the first column, without its capture time, and ticks it in the inbox', async () => {
+		await vault.write('Work/Inbox.md', '# Inbox\n\n## 2026-09-29\n- 09:00 Call the supplier\n');
+		const result = await fileInboxLine(vault, WORK, 3, '- 09:00 Call the supplier');
+		expect(result).toEqual({ ok: true, path: 'Work/Board.md' });
+
+		expect(await board()).toMatch(/## To do\n\n- \[ \] Call the supplier\n/);
 		expect((await vault.read('Work/Inbox.md')).content).toContain('- [x] 09:00 Call the supplier');
 	});
 
-	it('ticks an inbox line already written as a task, through the task rewriter', async () => {
+	it('reads the words the way quick-add does, and ticks a task line through the task rewriter', async () => {
 		await vault.write('Work/Inbox.md', '# Inbox\n\n## 2026-09-29\n- [ ] Buy milk `Q3`\n');
-		await fileInboxLine(vault, 'Work/Inbox.md', 3, "- [ ] Buy milk `Q3`", 'Work/Tasks.md');
+		await fileInboxLine(vault, WORK, 3, '- [ ] Buy milk `Q3`');
 		expect((await vault.read('Work/Inbox.md')).content).toContain('- [x] Buy milk `Q3`');
-		expect((await vault.read('Work/Tasks.md')).content).toContain('- [ ] Buy milk `Q3`');
+		expect(await board()).toContain('- [ ] Buy milk `Q3`');
 	});
 
-	it('appends under an existing # Tasks heading rather than duplicating it', async () => {
-		await vault.write('Work/Inbox.md', '- 09:00 First\n- 10:00 Second\n');
-		await vault.write('Work/Tasks.md', '# Tasks\n- [ ] Already there\n');
-		await fileInboxLine(vault, 'Work/Inbox.md', 0, '- 09:00 First', 'Work/Tasks.md');
-		expect((await vault.read('Work/Tasks.md')).content).toBe('# Tasks\n- [ ] Already there\n- [ ] 09:00 First\n');
+	it('adds to the end of an existing first column and leaves the rest of the board alone', async () => {
+		await vault.write('Work/Inbox.md', '- 09:00 First\n');
+		const before = '---\n\nkanban-plugin: board\n\n---\n\n## Next\n\n- [ ] Already there\n\n## Later\n\n- [ ] Someday\n';
+		await vault.write('Work/Board.md', before);
+		await fileInboxLine(vault, WORK, 0, '- 09:00 First');
+		expect(await board()).toBe(before.replace('- [ ] Already there\n', '- [ ] Already there\n- [ ] First\n'));
 	});
 
 	it('never deletes the inbox line, only ticks it', async () => {
 		await vault.write('Work/Inbox.md', '- 09:00 Keep me\n');
-		await fileInboxLine(vault, 'Work/Inbox.md', 0, '- 09:00 Keep me', 'Work/Tasks.md');
+		await fileInboxLine(vault, WORK, 0, '- 09:00 Keep me');
 		expect((await vault.read('Work/Inbox.md')).content).toContain('Keep me');
 	});
 
-	it('refuses when the inbox line changed underneath', async () => {
+	it('refuses when the inbox line changed underneath, and writes no board', async () => {
 		await vault.write('Work/Inbox.md', '- 09:00 Original\n');
-		const result = await fileInboxLine(vault, 'Work/Inbox.md', 0, '- 09:00 Stale', 'Work/Tasks.md');
+		const result = await fileInboxLine(vault, WORK, 0, '- 09:00 Stale');
 		expect(result).toEqual({ ok: false, reason: 'line-changed' });
-		expect((await vault.read('Work/Tasks.md')).exists).toBe(false);
+		expect((await vault.read('Work/Board.md')).exists).toBe(false);
 	});
 
 	it('reports no-note for an inbox that does not exist', async () => {
-		const result = await fileInboxLine(vault, 'Work/Inbox.md', 0, '- x', 'Work/Tasks.md');
+		const result = await fileInboxLine(vault, WORK, 0, '- x');
 		expect(result).toEqual({ ok: false, reason: 'no-note' });
 	});
 
-	it('refuses a bullet with no words rather than filing an empty task', async () => {
+	it('refuses a bullet with no words rather than filing an empty card', async () => {
 		await vault.write('Work/Inbox.md', '-   \n');
-		const result = await fileInboxLine(vault, 'Work/Inbox.md', 0, '-   ', 'Work/Tasks.md');
+		const result = await fileInboxLine(vault, WORK, 0, '-   ');
 		expect(result).toEqual({ ok: false, reason: 'no-text' });
 	});
 });
