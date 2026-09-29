@@ -57,7 +57,7 @@
 				{#each items as resource (resource.path)}
 					<div class="resource" data-testid="resource">
 						<div class="main">
-							<a class="title" href={noteHref(resource.path)}>{resource.title}</a>
+							<a class="resource-title" href={noteHref(resource.path)}>{resource.title}</a>
 							<span class="meta muted small">
 								{resource.kind}
 								{#if resource.url}<a href={resource.url} target="_blank" rel="noreferrer" class="ext"><Icon name="external-link" size={12} label="Open link" /></a>{/if}
@@ -86,8 +86,8 @@
 <style>
 	.resource { display: flex; align-items: center; gap: var(--s3); }
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-	.title { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.title:hover { color: var(--accent); }
+	.resource-title { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.resource-title:hover { color: var(--accent); }
 	.meta { display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
 	.ext { display: inline-flex; color: var(--muted); }
 	.ext:hover { color: var(--accent); }

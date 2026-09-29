@@ -137,7 +137,7 @@
 							class="line {row.kind}">{row.kind === 'add' ? '+' : row.kind === 'remove' ? '-' : ' '}{row.text}
 </span>{/each}</pre>
 				{#if onedit && !refused}
-					<button class="btn ghost small" onclick={() => startEdit(preview)} data-testid="edit-before-accept">
+					<button class="btn ghost edit-toggle" onclick={() => startEdit(preview)} data-testid="edit-before-accept">
 						Edit before accepting
 					</button>
 				{/if}
@@ -205,7 +205,7 @@
 		background: var(--field);
 	}
 	.row { display: flex; gap: var(--s2); margin-top: var(--s2); }
-	.small { font-size: var(--t12); padding: 3px var(--s2); margin-top: 6px; }
+	.edit-toggle { font-size: var(--t12); padding: 3px var(--s2); margin-top: 6px; }
 	footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: var(--s1); }
 	.note { font-size: var(--t12); }
 </style>

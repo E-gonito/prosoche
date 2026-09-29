@@ -154,7 +154,7 @@
 								palette.choose();
 							}}
 						>
-							<span class="title" data-testid="palette-title">
+							<span class="result-title" data-testid="palette-title">
 								{#each item.parts as part, p (p)}{#if part.hit}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
 							</span>
 							{#if item.hint}<span class="sub">{item.hint}</span>{/if}
@@ -229,7 +229,7 @@
 		cursor: pointer;
 	}
 	.row.on { background: var(--accent-soft); }
-	.title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.result-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.sub {
 		grid-column: 1;
 		font-size: var(--t11);

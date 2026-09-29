@@ -56,7 +56,7 @@
 	</div>
 
 	<form onsubmit={submit} class="sheet form">
-		<label class="field">
+		<label class="form-row">
 			<span>Name</span>
 			<input bind:value={name} data-testid="ws-name" placeholder="Riverside Clinic" autocomplete="off" />
 		</label>
@@ -70,7 +70,7 @@
 			<p class="problem" data-testid="ws-taken">"{taken.name}" already uses that file name. Pick a different name.</p>
 		{/if}
 
-		<div class="field">
+		<div class="form-row">
 			<span>Colour</span>
 			<div class="swatches" role="radiogroup" aria-label="Colour">
 				{#each data.colors as option (option)}
@@ -89,7 +89,7 @@
 			</div>
 		</div>
 
-		<label class="field">
+		<label class="form-row">
 			<span>Folders</span>
 			<input bind:value={folders} data-testid="ws-folders" placeholder="Work/Atlas, Notes/Atlas" autocomplete="off" />
 		</label>
@@ -108,9 +108,9 @@
 
 <style>
 	.form { max-width: 640px; padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
-	.field { display: flex; align-items: center; gap: var(--s3); }
-	.field > span { flex: none; width: 90px; font-size: var(--t12); color: var(--muted); }
-	.field input {
+	.form-row { display: flex; align-items: center; gap: var(--s3); }
+	.form-row > span { flex: none; width: 90px; font-size: var(--t12); color: var(--muted); }
+	.form-row input {
 		flex: 1;
 		min-width: 0;
 		border: 1px solid var(--line);
@@ -135,8 +135,8 @@
 	code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px 5px; }
 
 	@media (max-width: 720px) {
-		.field { flex-direction: column; align-items: stretch; gap: var(--s1); }
-		.field > span { width: auto; }
+		.form-row { flex-direction: column; align-items: stretch; gap: var(--s1); }
+		.form-row > span { width: auto; }
 		.hint { margin-left: 0; }
 	}
 </style>

@@ -44,7 +44,7 @@
 
 <div class="empty-state" data-testid={testid}>
 	<Icon name={icon} size={28} />
-	<p class="title">{title}</p>
+	<p class="message">{title}</p>
 	{#if hint}<p class="hint">{hint}</p>{/if}
 	{#if children}{@render children()}{/if}
 	{#if action}<div class="action">{@render action()}</div>{/if}
@@ -61,7 +61,7 @@
 		color: var(--muted);
 	}
 	.empty-state :global(svg) { opacity: 0.6; }
-	.title { margin: var(--s1) 0 0; color: var(--text); font-size: var(--t13); font-weight: 500; }
+	.message { margin: var(--s1) 0 0; color: var(--text); font-size: var(--t13); font-weight: 500; }
 	.hint { margin: 0; font-size: var(--t12); max-width: 46ch; }
 	.action { margin-top: 6px; }
 </style>
