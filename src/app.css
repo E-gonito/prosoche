@@ -70,7 +70,7 @@
 	/* The shell's furniture, measured once. */
 	--rail-w: 232px;
 	--header-h: 52px;
-	--tabbar-h: 60px;
+	--tabbar-h: 52px;
 	/* A reading column: the width a page of prose is comfortable at. */
 	--read-w: 860px;
 	/* Everything the shell puts above and below a page on a desktop. */
@@ -339,7 +339,7 @@ textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
 .prose .wl-missing { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
 
 @media (max-width: 720px) {
-	.page { padding: var(--s4) var(--s4) calc(var(--tabbar-h) + 32px); }
+	.page { padding: var(--s4) var(--s4) calc(32px + env(safe-area-inset-bottom)); }
 	.title h1 { font-size: var(--t24); }
 	.sheet { padding: var(--s3) var(--s4); }
 	.kv { grid-template-columns: 1fr; }

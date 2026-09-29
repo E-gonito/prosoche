@@ -222,12 +222,12 @@
 
 	/*
 	 * The phone's whole session is exactly the space `+layout.svelte` leaves
-	 * between the shell header and the tab bar: `.session` is a flex column
+	 * under the shell header and its tab bar: `.session` is a flex column
 	 * filling that (see `.page` in the review pages under `study/`, which grant
 	 * it `flex: 1`), the card takes what is left after the fixed-size chrome
 	 * around it and scrolls its own overflow, and the grades therefore end up
-	 * sitting on the floor of that space — pinned above the tab bar without
-	 * either element needing to know the tab bar's height.
+	 * sitting on the floor of that space without either element needing to
+	 * know the header's height.
 	 */
 	@media (max-width: 720px) {
 		.session { display: flex; flex-direction: column; min-height: 0; }

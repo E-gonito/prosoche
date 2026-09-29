@@ -2,7 +2,7 @@
  * The modules: every tab in the app, written once.
  *
  * A module is a folder of routes under `src/routes/<id>/` plus one entry
- * here. The rail, the phone's bottom bar and the palette all draw from this
+ * here. The rail, the phone's tab bar and the palette all draw from this
  * list, so adding a tab is one route folder and one line. The alternative, a
  * plugin loader reading modules from the vault at runtime, was rejected in
  * `docs/plan-rebuild.md`: SvelteKit's file routing already gives each module
@@ -26,7 +26,7 @@ export interface Module {
 	 * note list. Only Date is private.
 	 */
 	private?: boolean;
-	/** One of the four destinations on a phone's bottom bar. */
+	/** One of the four destinations on a phone's tab bar. */
 	tab?: boolean;
 }
 
