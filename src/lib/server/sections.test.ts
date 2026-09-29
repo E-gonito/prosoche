@@ -52,4 +52,18 @@ describe('appendUnderHeading', () => {
 		const after = appendUnderHeading(before, TIME_LOG_HEADING, '- 10:00 - 10:30 Two (30m)');
 		expect(after.content).toBe('## Time log\n- 09:00 - 09:30 One (30m)\n- 10:00 - 10:30 Two (30m)\n\n## Notes\nprose\n');
 	});
+
+	describe('filing ahead of a line the caller picks', () => {
+		const newer = (day: string) => (line: string) => /^- (\d{4}-\d{2}-\d{2})/.exec(line)?.[1]! <= day;
+
+		it.each([
+			['goes on top of a newest-first list', '## History\n- 2026-09-22 First call\n', '2026-09-29', '## History\n- 2026-09-29 New\n- 2026-09-22 First call\n'],
+			['files a back-dated entry in date order', '## History\n- 2026-09-29 B\n- 2026-09-01 A\n', '2026-09-10', '## History\n- 2026-09-29 B\n- 2026-09-10 New\n- 2026-09-01 A\n'],
+			['goes last when nothing in the section is older', '## History\n- 2026-09-29 B\n\n## Other\n', '2026-01-01', '## History\n- 2026-09-29 B\n- 2026-01-01 New\n\n## Other\n'],
+			['never looks past the section', '## History\n\n## Other\n- 2000-01-01 x\n', '2026-09-29', '## History\n- 2026-09-29 New\n\n## Other\n- 2000-01-01 x\n'],
+			['keeps a blank line under the heading', '## History\n\n- 2026-09-22 First call\n', '2026-09-29', '## History\n\n- 2026-09-29 New\n- 2026-09-22 First call\n']
+		])('%s', (_name, note, day, expected) => {
+			expect(appendUnderHeading(note, '## History', `- ${day} New`, newer(day)).content).toBe(expected);
+		});
+	});
 });
