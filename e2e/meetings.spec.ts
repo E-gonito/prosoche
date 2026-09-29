@@ -53,7 +53,8 @@ test.describe('Meetings', () => {
 	test('the card renders the primer in the artifact\'s shape', async ({ page }) => {
 		await page.goto('/meetings/work');
 		// Eye is Work/Pages/eye.html from the Workspaces fixture, served by that module.
-		await expect(page.locator('.tabs a')).toHaveText(['Meeting card', 'Notes', 'Glossary', 'Eye']);
+		// The glossary is its own module now, so the notebook has no tab for it.
+		await expect(page.locator('.tabs a')).toHaveText(['Meeting card', 'Notes', 'Eye']);
 		await expect(page.locator('.tabs a', { hasText: 'Eye' })).toHaveAttribute('href', '/w/work/pages/Eye.html');
 		const primer = page.getByTestId('primer');
 		await expect(primer.locator('.lead')).toContainText('Your job in the room is to turn talk into constraints.');
@@ -85,6 +86,7 @@ test.describe('Meetings', () => {
 
 	test('start a meeting, capture into it and end it', async ({ page }) => {
 		const path = `Work/Meetings/${TODAY} Design review.md`;
+		const glossary = vaultFile('Work/Glossary.md');
 		await page.goto('/meetings/work/notes');
 		await expect(page.getByRole('button', { name: 'Prep with Claude' })).toBeVisible();
 		await page.getByTestId('meeting-title').fill('Design review');
@@ -115,6 +117,10 @@ test.describe('Meetings', () => {
 			'- decision:: Deploy to ECS, not Beanstalk\n' +
 			'- [ ] action:: Write up the decision\n';
 		expect(vaultFile(path)).toBe(captured);
+		// The term went into the workspace's glossary as well, appended and nothing more.
+		expect(vaultFile('Work/Glossary.md')).toBe(
+			`${glossary}\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[${TODAY} Design review]]\n`
+		);
 		// The new action is open, so it is waiting under Before you go in too.
 		await expect(page.getByTestId('open-action')).toHaveCount(2);
 
@@ -137,53 +143,9 @@ test.describe('Meetings', () => {
 		await expect(past.getByRole('link', { name: 'Open the note' })).toHaveAttribute('href', /\/notes\/Work\/Meetings\//);
 	});
 
-	test('the glossary filters by text and by chip', async ({ page }) => {
-		await page.goto('/meetings/work/glossary');
-		const count = page.getByTestId('glossary-count');
-		const entries = page.getByTestId('glossary-entry');
-		await expect(count).toHaveText('2 of 2 terms');
-		await expect(entries.first()).toContainText('An open-source tool that versions datasets');
-		await expect(entries.first()).toContainText('→ For Work, it makes training data traceable.');
-		await expect(entries.first()).toContainText(`From ${PAST} Dev Weekly · definition drafted by Claude`);
-		await expect(entries.first().locator('.badge')).toHaveText(['Mine', 'Looked up']);
-
-		await page.getByTestId('glossary-filter').fill('mlf');
-		await expect(count).toHaveText('1 of 2 terms');
-		await expect(entries).toHaveText([/MLflow/]);
-		await page.getByTestId('glossary-filter').fill('');
-
-		const chips = page.getByTestId('glossary-chips');
-		await expect(chips.getByRole('button')).toHaveText(['All', 'Mine (1)', 'To look up', 'ML', 'Tooling']);
-		await chips.getByRole('button', { name: 'Mine (1)' }).click();
-		await expect(entries).toHaveText([/DVC/]);
-		await chips.getByRole('button', { name: 'To look up' }).click();
-		await expect(entries).toHaveText([/MLflow/]);
-		await expect(entries.getByRole('button', { name: 'Look up with Claude' })).toBeVisible();
-		await chips.getByRole('button', { name: 'Tooling' }).click();
-		await expect(count).toHaveText('1 of 2 terms');
-		await chips.getByRole('button', { name: 'All' }).click();
-		await expect(count).toHaveText('2 of 2 terms');
-		await expect(page.getByRole('button', { name: 'Look up all (1)' })).toBeVisible();
-	});
-
-	test('Add to glossary appends the captured term as a new entry', async ({ page }) => {
-		const before = vaultFile('Work/Glossary.md');
-		await page.goto('/meetings/work/glossary');
-		const captured = page.getByTestId('captured-terms');
-		// DVC was captured too, but the glossary already has it.
-		await expect(captured.locator('b:not(.guess b)').first()).toHaveText('Cookie Cutter');
-		await expect(captured).not.toContainText('DVC');
-		await captured.getByTestId('add-term').click();
-		await expect(page.getByTestId('captured-terms')).toHaveCount(0);
-		expect(vaultFile('Work/Glossary.md')).toBe(
-			`${before}\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[${PAST} Dev Weekly]]\n`
-		);
-		await expect(page.getByTestId('glossary-count')).toHaveText('3 of 3 terms');
-	});
-
 	test('a phone gets the notebook in one column', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
-		for (const path of ['/meetings', '/meetings/work', '/meetings/work/notes', '/meetings/work/glossary']) {
+		for (const path of ['/meetings', '/meetings/work', '/meetings/work/notes']) {
 			await page.goto(path);
 			const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 			expect(overflow, path).toBeLessThanOrEqual(0);

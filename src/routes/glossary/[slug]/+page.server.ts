@@ -1,25 +1,29 @@
+import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { renderMarkdown } from '$server/render';
-import { loadGlossary, loadMeetings, notebookPaths } from '$server/meetings';
+import { loadGlossary } from '$server/glossary';
+import { capturedTerms } from '$server/meetings';
 import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /**
- * The glossary: every entry of `Glossary.md` ready to draw, and the terms
- * captured in meetings that it does not have yet.
+ * One workspace's glossary: every entry of `Glossary.md` ready to draw, and
+ * the terms captured in its meetings that it does not have yet. A workspace
+ * without meetings simply has none of those. Any workspace can have a
+ * glossary, so only an unknown slug is a 404.
  */
-export const load: PageServerLoad = async ({ parent }) => {
-	const { vault, index, workspaces } = hub();
-	const { workspace } = await parent();
-	const ws = (await workspaces()).find((w) => w.slug === workspace.slug)!;
-	const paths = notebookPaths(ws);
-	if (!paths) return { path: null, entries: [], captured: [], categories: [] };
+export const load: PageServerLoad = async ({ params }) => {
+	const { vault, index, ready, workspaces } = hub();
+	await ready;
+	const ws = (await workspaces()).find((w) => w.slug === params.slug);
+	if (!ws) error(404, 'No such workspace');
+	const workspace = { slug: ws.slug, name: ws.name, color: ws.color };
 
 	const resolve = (target: string) => {
 		const found = index.resolveLink(target);
 		return found ? noteHref(found) : null;
 	};
-	const glossary = await loadGlossary(vault, paths, await loadMeetings(vault, paths));
+	const glossary = await loadGlossary(vault, ws, await capturedTerms(vault, ws));
 
 	const entries = glossary.entries.map((e) => {
 		const link = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]$/.exec(e.source?.trim() ?? '');
@@ -37,7 +41,9 @@ export const load: PageServerLoad = async ({ parent }) => {
 	});
 
 	return {
-		path: paths.glossary,
+		workspace,
+		meetings: ws.meetings === true,
+		path: glossary.path,
 		entries,
 		captured: glossary.captured,
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))]

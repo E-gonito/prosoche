@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { addGlossaryTerm, assignTitle, captureItem, endMeeting, notebookPaths, startMeeting, type Written } from '$server/meetings';
+import { assignTitle, captureItem, endMeeting, notebookPaths, startMeeting } from '$server/meetings';
+import type { Written } from '$server/rewrite';
 import { CAPTURE_KINDS, type CaptureKind } from '$lib/shared/meetings';
 import type { RequestHandler } from './$types';
 
 interface Body {
-	action?: 'assign' | 'start' | 'capture' | 'end' | 'add-term';
+	action?: 'assign' | 'start' | 'capture' | 'end';
 	/** The workspace: every action is about one. */
 	slug?: string;
 	/** assign: the event title; start: the meeting title. */
@@ -19,17 +20,16 @@ interface Body {
 	kind?: string;
 	text?: string;
 	guess?: string | null;
-	/** add-term. */
-	term?: string;
-	source?: string | null;
 }
 
 const STATUS: Record<Exclude<Written, { ok: true }>['reason'], number> = { conflict: 409, 'not-found': 404, invalid: 400 };
 
 /**
  * The notebook's writes, each one a user's click: remember an event's
- * workspace, start a meeting, capture a line, end a meeting, add a glossary
- * term. Translation only; `$server/meetings` decides what is written.
+ * workspace, start a meeting, capture a line, end a meeting. Translation
+ * only; `$server/meetings` decides what is written, including the glossary
+ * entry a captured term also gets. Glossary writes of their own go to
+ * `/api/glossary`.
  *
  * Responds with `{ ok: true, path }`, or `{ ok: false, reason, message }`
  * with 409 for a clash, 404 for a missing note and 400 for a bad request.
@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const workspace = all.find((w) => w.slug === body.slug);
 	const paths = workspace ? notebookPaths(workspace) : null;
-	if (!paths) return json({ ok: false, reason: 'not-found', message: 'No such workspace, or it has no meetings notebook.' }, { status: 404 });
+	if (!workspace || !paths) return json({ ok: false, reason: 'not-found', message: 'No such workspace, or it has no meetings notebook.' }, { status: 404 });
 
 	switch (body.action) {
 		case 'start': {
@@ -65,7 +65,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		case 'capture': {
 			if (!CAPTURE_KINDS.includes(body.kind as CaptureKind)) return bad('Unknown capture type.');
 			return reply(
-				await captureItem(vault, paths, String(body.path ?? ''), {
+				await captureItem(vault, workspace, String(body.path ?? ''), {
 					kind: body.kind as CaptureKind,
 					text: String(body.text ?? ''),
 					guess: typeof body.guess === 'string' ? body.guess : undefined
@@ -77,14 +77,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 			return reply(await endMeeting(vault, paths, String(body.path ?? ''), time));
 		}
-		case 'add-term':
-			return reply(
-				await addGlossaryTerm(vault, paths, {
-					term: String(body.term ?? ''),
-					guess: typeof body.guess === 'string' ? body.guess : null,
-					source: typeof body.source === 'string' ? body.source : null
-				})
-			);
 		default:
 			return bad('Unknown action.');
 	}

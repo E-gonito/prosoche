@@ -5,16 +5,15 @@ import { join } from 'node:path';
 import { Vault } from './vault/index';
 import {
 	MEETING_MAP_PATH,
-	addGlossaryTerm,
 	assignTitle,
 	captureItem,
+	capturedTerms,
 	currentMeeting,
 	customPages,
 	endMeeting,
 	eventForNotebook,
 	isMeetingNote,
 	loadAssignments,
-	loadGlossary,
 	loadMeetings,
 	notebookPaths,
 	openActions,
@@ -61,7 +60,6 @@ describe('notebookPaths', () => {
 		expect(notebookPaths(ws('work', { folders: ['Work/Eye2Gene/', 'Other'] }))).toEqual({
 			home: 'Work/Eye2Gene',
 			primer: 'Work/Eye2Gene/Primer.md',
-			glossary: 'Work/Eye2Gene/Glossary.md',
 			log: 'Work/Eye2Gene/Log.md',
 			meetings: 'Work/Eye2Gene/Meetings'
 		});
@@ -256,10 +254,14 @@ date: 2026-09-28
 		expect(started).toEqual({ ok: true, path: 'Work/Meetings/2026-09-29 Dev Weekly.md' });
 		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
 
-		expect(await captureItem(vault, paths, path, { kind: 'term', text: 'DVC', guess: 'data versioning' })).toEqual({ ok: true, path });
-		await captureItem(vault, paths, path, { kind: 'action', text: 'Ask Ben' });
+		expect(await captureItem(vault, work, path, { kind: 'term', text: 'DVC', guess: 'data versioning' })).toEqual({ ok: true, path });
+		await captureItem(vault, work, path, { kind: 'action', text: 'Ask Ben' });
 		expect((await vault.read(path)).content).toBe(
 			'---\ntype: meeting\ndate: 2026-09-29\nattendees: [Ana]\n---\n# Dev Weekly\n\n## Captured\n- term:: DVC guess:: data versioning\n- [ ] action:: Ask Ben\n'
+		);
+		// The term went into the glossary too, and nothing else did.
+		expect((await vault.read('Work/Glossary.md')).content).toBe(
+			'# Glossary\n\n## DVC\n- guess:: data versioning\n- status:: to-look-up\n- source:: [[2026-09-29 Dev Weekly]]\n'
 		);
 
 		const meetings = await loadMeetings(vault, paths);
@@ -278,8 +280,8 @@ date: 2026-09-28
 
 	it('refuses to capture into a note outside the Meetings folder', async () => {
 		await vault.write('Work/Handbook.md', '# H\n');
-		expect(await captureItem(vault, paths, 'Work/Handbook.md', { kind: 'note', text: 'x' })).toMatchObject({ ok: false, reason: 'invalid' });
-		expect(await captureItem(vault, paths, 'Work/Meetings/2026-01-01 Gone.md', { kind: 'note', text: 'x' })).toMatchObject({
+		expect(await captureItem(vault, work, 'Work/Handbook.md', { kind: 'note', text: 'x' })).toMatchObject({ ok: false, reason: 'invalid' });
+		expect(await captureItem(vault, work, 'Work/Meetings/2026-01-01 Gone.md', { kind: 'note', text: 'x' })).toMatchObject({
 			ok: false,
 			reason: 'not-found'
 		});
@@ -298,32 +300,34 @@ date: 2026-09-28
 		expect(actions[1].task.raw).toBe('- [ ] action:: Clarify scope');
 	});
 
-	it('offers captured terms the glossary lacks, and adds one', async () => {
-		await vault.write('Work/Meetings/2026-09-28 Dev Weekly.md', PAST.replace('- decision', '- term:: DVC\n- decision'));
-		await vault.write('Work/Glossary.md', '# Glossary\n\n## DVC\n- status:: looked-up\n\nDefinition.\n');
-		const meetings = await loadMeetings(vault, paths);
-		const glossary = await loadGlossary(vault, paths, meetings);
-		expect(glossary.entries.map((e) => e.term)).toEqual(['DVC']);
-		expect(glossary.captured).toEqual([
-			{
-				term: 'Cookie Cutter',
-				guess: 'something for AI models',
-				source: '[[2026-09-28 Dev Weekly]]',
-				meeting: { path: 'Work/Meetings/2026-09-28 Dev Weekly.md', title: 'Dev Weekly', date: '2026-09-28' }
-			}
-		]);
-
-		const added = await addGlossaryTerm(vault, paths, glossary.captured[0]);
-		expect(added).toEqual({ ok: true, path: 'Work/Glossary.md' });
-		expect((await vault.read('Work/Glossary.md')).content).toBe(
-			'# Glossary\n\n## DVC\n- status:: looked-up\n\nDefinition.\n\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[2026-09-28 Dev Weekly]]\n'
-		);
-		expect(await addGlossaryTerm(vault, paths, { term: 'cookie cutter' })).toMatchObject({ ok: false, reason: 'invalid' });
+	it('keeps a captured term that is already in the glossary out of it, and still captures it', async () => {
+		const glossary = '# Glossary\n\n## DVC\n- status:: looked-up\n';
+		await vault.write('Work/Glossary.md', glossary);
+		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
+		await startMeeting(vault, paths, { type: 'meeting', title: 'Dev Weekly', date: '2026-09-29' });
+		expect(await captureItem(vault, work, path, { kind: 'term', text: 'dvc' })).toEqual({ ok: true, path });
+		expect((await vault.read(path)).content).toContain('- term:: dvc\n');
+		expect((await vault.read('Work/Glossary.md')).content).toBe(glossary);
 	});
 
-	it('creates the glossary when there is none', async () => {
-		await addGlossaryTerm(vault, paths, { term: 'RPE' });
-		expect((await vault.read('Work/Glossary.md')).content).toBe('# Glossary\n\n## RPE\n- status:: to-look-up\n');
+	it('refuses to capture for a workspace without meetings', async () => {
+		const quiet = { ...work, meetings: false };
+		expect(await captureItem(vault, quiet, 'Work/Meetings/2026-09-29 X.md', { kind: 'term', text: 'DVC' })).toMatchObject({
+			ok: false,
+			reason: 'not-found'
+		});
+		expect((await vault.read('Work/Glossary.md')).exists).toBe(false);
+	});
+
+	it('lists every captured term, newest meeting first, with its source', async () => {
+		await vault.write('Work/Meetings/2026-09-28 Dev Weekly.md', PAST.replace('- decision', '- term:: DVC\n- decision'));
+		await vault.write('Work/Meetings/2026-09-29 Standup.md', '# Standup\n\n## Captured\n- term:: DVC guess:: again\n');
+		expect((await capturedTerms(vault, work)).map((t) => [t.term, t.guess, t.source, t.meeting.date])).toEqual([
+			['DVC', 'again', '[[2026-09-29 Standup]]', '2026-09-29'],
+			['Cookie Cutter', 'something for AI models', '[[2026-09-28 Dev Weekly]]', '2026-09-28'],
+			['DVC', null, '[[2026-09-28 Dev Weekly]]', '2026-09-28']
+		]);
+		expect(await capturedTerms(vault, { ...work, meetings: false })).toEqual([]);
 	});
 
 	it('remembers an event title, rewriting only its line on a change', async () => {

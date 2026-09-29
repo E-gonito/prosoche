@@ -350,7 +350,17 @@ describe('drafting with a stand-in CLI', () => {
 		expect((await vault.read('Work/Glossary.md')).content).toBe(GLOSSARY);
 	});
 
-	it('says so when nothing is waiting to be looked up', async () => {
+	it('looks up a glossary in a workspace without meetings, and drafts it no primer', async () => {
+		await vault.write('Work/Glossary.md', GLOSSARY);
+		const quiet = { ...WORK, meetings: false };
+		const executable = await fakeCli({ entries: [{ term: 'MLflow', definition: 'Lifecycle.', relevance: 'For Eye2Gene, versions.' }] });
+		const result = await draftLookups(vault, quiet, ['MLflow'], { cli: { executable, vaultPath: dir } });
+		expect(result.destinations).toEqual(['Work/Glossary.md']);
+		expect(result.proposal?.edits[0]).toMatchObject({ path: 'Work/Glossary.md' });
+		expect((await draftPrimer(vault, quiet)).problem).toBe('This workspace has no meeting notebook to keep a primer in.');
+	});
+
+		it('says so when nothing is waiting to be looked up', async () => {
 		await vault.write('Work/Glossary.md', GLOSSARY);
 		const result = await draftLookups(vault, WORK, ['DVC']);
 		expect(result.proposal).toBeNull();

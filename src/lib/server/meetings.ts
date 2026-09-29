@@ -1,13 +1,14 @@
 /**
- * Meetings: a workspace's primer, its meeting notes and its glossary, and the
- * calendar events that lead into them.
+ * Meetings: a workspace's primer and its meeting notes, and the calendar
+ * events that lead into them.
  *
  * The Meetings routes talk to this module and nothing else in the core. It
  * owns where a workspace keeps its meeting files, which workspace an event
  * belongs to, and every write the notebook makes on a user's click: starting
- * a meeting, capturing a line, ending it, adding a glossary term, remembering
- * an event's workspace. Each of those is an insertion or a one-line rewrite
- * through the grammars in `parse/`; none re-serialises a note.
+ * a meeting, capturing a line, ending it, remembering an event's workspace.
+ * Each of those is an insertion or a one-line rewrite through the grammars in
+ * `parse/`; none re-serialises a note. The glossary is its own module,
+ * `glossary.ts`; a term captured here is handed to it.
  *
  * Only a workspace whose definition says `meetings: true` has a notebook.
  * Every function here that is about one workspace's meetings treats any
@@ -16,7 +17,6 @@
  * A workspace's home is its first folder:
  *
  *     <home>/Primer.md        the meeting card, free markdown
- *     <home>/Glossary.md      one `##` heading per term
  *     <home>/Log.md           dated updates, read as context for drafts
  *     <home>/Meetings/*.md    one note per meeting
  *
@@ -40,7 +40,8 @@ import {
 	setEnded,
 	type CaptureInput
 } from './parse/meeting';
-import { appendEntry, normaliseTerm, parseGlossary, type GlossaryEntry } from './parse/glossary';
+import { addTerm, type CapturedTerm } from './glossary';
+import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { parseMeetingMap, setMapping, slugForTitle, type MeetingMapping } from './parse/meeting-map';
 import { workspaceFor, type Workspace } from './workspaces';
 import type { CalendarEvent } from './calendar';
@@ -57,16 +58,10 @@ export interface Meeting extends MeetingSummary {
 	mtimeMs: number;
 }
 
-/** The outcome of a notebook write. A clash is a result, not an exception. */
-export type Written =
-	| { ok: true; path: string }
-	| { ok: false; reason: 'conflict' | 'not-found' | 'invalid'; message: string };
-
 /** The files a workspace's notebook is made of, vault-relative. */
 export interface NotebookPaths {
 	home: string;
 	primer: string;
-	glossary: string;
 	log: string;
 	/** The folder meeting notes go in, without a trailing slash. */
 	meetings: string;
@@ -83,7 +78,6 @@ export function notebookPaths(workspace: Workspace): NotebookPaths | null {
 	return {
 		home,
 		primer: `${home}/Primer.md`,
-		glossary: `${home}/Glossary.md`,
 		log: `${home}/Log.md`,
 		meetings: `${home}/Meetings`
 	};
@@ -171,17 +165,31 @@ export async function startMeeting(vault: Vault, paths: NotebookPaths, input: St
 }
 
 /**
- * Append one captured line under `## Captured` in a meeting note.
+ * Append one captured line under `## Captured` in a meeting note, and file a
+ * captured term in the workspace's glossary too.
  *
- * Refuses a path outside the notebook's Meetings folder and an empty
- * capture. An append is safe to redo, so a clash with an edit made a moment
- * earlier is retried once against the new text before it is reported.
+ * Takes the workspace rather than its notebook paths because a term goes to
+ * the glossary, which `glossary.ts` places. Refuses a workspace without a
+ * notebook, a path outside its Meetings folder and an empty capture. An
+ * append is safe to redo, so a clash with an edit made a moment earlier is
+ * retried once against the new text before it is reported.
+ *
+ * The meeting note is the record; the glossary entry is a convenience. So
+ * once the line is in the note the capture has succeeded, whatever the
+ * glossary says: a term it already has is left alone, and one that could not
+ * be written is still offered from the meeting on the glossary page.
  */
-export async function captureItem(vault: Vault, paths: NotebookPaths, path: string, input: CaptureInput): Promise<Written> {
+export async function captureItem(vault: Vault, workspace: Workspace, path: string, input: CaptureInput): Promise<Written> {
+	const paths = notebookPaths(workspace);
+	if (!paths) return { ok: false, reason: 'not-found', message: 'This workspace has no meetings notebook.' };
 	if (!isMeetingNote(paths, path)) return invalid('That is not a meeting note in this workspace.');
 	if (!input.text.trim()) return invalid('Nothing to capture.');
 	const line = formatCaptured(input);
-	return rewrite(vault, path, (content) => appendUnderHeading(content, CAPTURED_HEADING, line).content, 2);
+	const written = await rewrite(vault, path, (content) => appendUnderHeading(content, CAPTURED_HEADING, line).content, 2);
+	if (written.ok && input.kind === 'term') {
+		await addTerm(vault, workspace, { term: input.text, guess: input.guess ?? null, source: `[[${basename(path)}]]` });
+	}
+	return written;
 }
 
 /**
@@ -194,36 +202,20 @@ export async function endMeeting(vault: Vault, paths: NotebookPaths, path: strin
 	return rewrite(vault, path, (content) => setEnded(content, time), 1);
 }
 
-/** A term captured in a meeting that the glossary does not have yet. */
-export interface CapturedTerm {
-	term: string;
-	guess: string | null;
-	/** `[[<meeting note name>]]`, as the glossary's `source::` wants it. */
-	source: string;
-	meeting: { path: string; title: string; date: string | null };
-}
-
 /**
- * The glossary's entries and the captured terms it is missing.
- *
- * A term captured in several meetings is offered once, from the newest. A
- * missing Glossary.md is an empty glossary.
+ * Every term captured in the workspace's meetings, newest meeting first and
+ * in capture order within one, each with the meeting it came from. A term
+ * captured twice appears twice; `glossary.ts` decides what is still missing.
+ * Empty for a workspace without a notebook. Never writes.
  */
-export async function loadGlossary(
-	vault: Vault,
-	paths: NotebookPaths,
-	meetings: Meeting[]
-): Promise<{ exists: boolean; content: string; entries: GlossaryEntry[]; captured: CapturedTerm[] }> {
-	const note = await vault.read(paths.glossary);
-	const entries = parseGlossary(note.content);
-	const known = new Set(entries.map((e) => normaliseTerm(e.term)));
-	const captured: CapturedTerm[] = [];
-	for (const meeting of meetings) {
+export async function capturedTerms(vault: Vault, workspace: Workspace): Promise<CapturedTerm[]> {
+	const paths = notebookPaths(workspace);
+	if (!paths) return [];
+	const out: CapturedTerm[] = [];
+	for (const meeting of await loadMeetings(vault, paths)) {
 		for (const item of meeting.captured) {
-			const key = normaliseTerm(item.text);
-			if (item.kind !== 'term' || !key || known.has(key)) continue;
-			known.add(key);
-			captured.push({
+			if (item.kind !== 'term' || !item.text.trim()) continue;
+			out.push({
 				term: item.text,
 				guess: item.guess,
 				source: `[[${basename(meeting.path)}]]`,
@@ -231,31 +223,7 @@ export async function loadGlossary(
 			});
 		}
 	}
-	return { exists: note.exists, content: note.content, entries, captured };
-}
-
-/**
- * Append a new glossary entry, status to-look-up. Creates Glossary.md when
- * there is none. Refuses a term the glossary already has, rather than
- * writing a second heading for it.
- */
-export async function addGlossaryTerm(
-	vault: Vault,
-	paths: NotebookPaths,
-	term: { term: string; guess?: string | null; source?: string | null }
-): Promise<Written> {
-	if (!term.term.trim()) return invalid('A term needs a name.');
-	return rewrite(
-		vault,
-		paths.glossary,
-		(content) => {
-			const key = normaliseTerm(term.term);
-			if (parseGlossary(content).some((e) => normaliseTerm(e.term) === key)) return null;
-			return appendEntry(content, { term: term.term, guess: term.guess, source: term.source, status: 'to-look-up' });
-		},
-		2,
-		{ create: true, unchanged: 'That term is already in the glossary.' }
-	);
+	return out;
 }
 
 /** Every event-title mapping in `_hub/meetings.md`. A missing file maps nothing. */
@@ -434,38 +402,4 @@ export function pageTitle(file: string): string {
 /** The first folder without stray slashes, or null for a workspace with none. */
 function homeOf(workspace: Workspace): string | null {
 	return workspace.folders[0]?.replace(/^\/+|\/+$/g, '') || null;
-}
-
-/**
- * Read, change, write with the hash just read, and retry on a clash.
- *
- * `change` returns the new text, or null when there is nothing to do, which
- * is reported with `unchanged` as its message. A missing note is refused
- * unless `create` says a note may start empty.
- */
-async function rewrite(
-	vault: Vault,
-	path: string,
-	change: (content: string) => string | null,
-	attempts: number,
-	opts: { create?: boolean; unchanged?: string } = {}
-): Promise<Written> {
-	for (let i = 0; i < attempts; i++) {
-		const note = await vault.read(path);
-		if (!note.exists && !opts.create) return { ok: false, reason: 'not-found', message: 'That note is not there any more.' };
-		const next = change(note.content);
-		if (next === null) return invalid(opts.unchanged ?? 'Nothing to change.');
-		if (next === note.content && note.exists) return { ok: true, path };
-		const result = await vault.write(path, next, note.hash);
-		if (result.ok) return { ok: true, path };
-	}
-	return conflict();
-}
-
-function invalid(message: string): Written {
-	return { ok: false, reason: 'invalid', message };
-}
-
-function conflict(): Written {
-	return { ok: false, reason: 'conflict', message: 'That note changed on another device. Reload and try again.' };
 }
