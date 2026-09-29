@@ -15,7 +15,7 @@ The workspaces are also listed in the More sheet.
 
 ## Today
 
-The dashboard for one day and the week around it. The title names the day
+The dashboard for one day. The title names the day
 you are looking at — "Tuesday 29 September", "3 days ago" beneath it — with
 arrows either side and a jump back to today when you have wandered off it. A
 one-line summary counts what the day did and is still owed: done against the
@@ -60,12 +60,6 @@ and it is ticked in that board's `Board.md`. Then open tasks from anywhere
 else in the vault with a Tasks-plugin due date, daily notes excluded, because
 each of those is a copy of your template and would otherwise repeat the same
 unfinished checklist; each of those rows has a button to plan it onto today.
-
-**Rest of the week** runs from tomorrow through the coming Sunday, padded out
-to six days on a short week. Each day lists its calendar events, the open
-tasks already in that day's own note if one exists, and the board cards due
-that day, which can be ticked from there; clicking anywhere else on the day
-opens its own dashboard.
 
 **From your workspaces** shows each workspace's most urgent open board cards
 — priority first, then the soonest due date — collapsed beyond the first

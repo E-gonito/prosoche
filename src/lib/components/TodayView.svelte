@@ -238,39 +238,6 @@
 		</div>
 
 		<div class="side">
-			<p class="label">Rest of the week</p>
-			<div class="week" data-testid="week">
-				{#each data.week as wd (wd.day)}
-					<!-- The heading's link covers the whole day, so it opens from
-					     anywhere on it; a due card's checkbox sits above it. -->
-					<div class="sheet week-day" data-testid="week-day" data-day={wd.day}>
-						<h3><a class="day-link" href="/today/{wd.day}">{wd.label}</a></h3>
-						{#if wd.events.length}
-							<ul class="plain">
-								{#each wd.events as event (event.id)}
-									<li><Icon name="calendar" size={12} />{event.startMin !== null ? formatEventTime(event) : 'All day'} {event.title}</li>
-								{/each}
-							</ul>
-						{/if}
-						{#if wd.openTasks.length}
-							<ul class="plain">
-								{#each wd.openTasks as t (t.path + ':' + t.line)}<li>{displayText(t.text)}</li>{/each}
-							</ul>
-						{/if}
-						{#if wd.dueCards.length}
-							<div class="due-cards" data-testid="week-due">
-								{#each wd.dueCards as card (card.path + ':' + card.line)}
-									<CardRow {card} today={data.today} showWorkspace onproblem={failed} />
-								{/each}
-							</div>
-						{/if}
-						{#if !wd.events.length && !wd.openTasks.length && !wd.dueCards.length}
-							<p class="none">Nothing yet.</p>
-						{/if}
-					</div>
-				{/each}
-			</div>
-
 			{#if data.workspaces.length}
 				<p class="label">From your workspaces</p>
 				<div class="workspaces" data-testid="today-workspaces">
@@ -367,16 +334,6 @@
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 	h3 i { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; }
 
-	.week { display: flex; flex-direction: column; gap: var(--s2); margin-bottom: var(--s3); }
-	.week-day { position: relative; display: block; color: var(--text); }
-	.week-day:hover { border-color: var(--accent); }
-	.day-link { color: inherit; }
-	.day-link:hover { text-decoration: none; }
-	.day-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-lg); }
-	.plain { list-style: none; margin: 0 0 6px; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
-	.plain li { display: flex; align-items: center; gap: 6px; }
-	.due-cards { display: flex; flex-direction: column; gap: 2px; margin: 0 0 6px; }
-
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }
 	a.module-item:hover { color: var(--accent); }
@@ -400,11 +357,10 @@
 		box-shadow: var(--shadow);
 	}
 
-	/* Too narrow for a side column: the week and the workspaces move under the
-	   day and lay out across the page instead of down it. */
+	/* Too narrow for a side column: the workspaces move under the day and lay
+	   out across the page instead of down it. */
 	@container (max-width: 1100px) {
 		.grid { grid-template-columns: 1fr; }
-		.week { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 		.workspaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 	}
 

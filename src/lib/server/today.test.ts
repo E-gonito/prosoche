@@ -4,36 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NoteIndex } from './index/index';
 import { Vault } from './vault/index';
-import { loadToday, restOfWeek, summaryLine } from './today';
+import { loadToday, summaryLine } from './today';
 import type { Workspace } from './workspaces';
-
-describe('restOfWeek', () => {
-	it('runs to the coming Sunday, padded to six days when the week is short', () => {
-		// Tuesday: three days to Sunday, padded to six.
-		expect(restOfWeek('2026-09-29')).toEqual([
-			'2026-09-30',
-			'2026-10-01',
-			'2026-10-02',
-			'2026-10-03',
-			'2026-10-04',
-			'2026-10-05'
-		]);
-	});
-
-	it('is not padded when the natural week is already six days or more', () => {
-		// Sunday: the coming Sunday is next week's, seven days out.
-		expect(restOfWeek('2026-10-04')).toHaveLength(7);
-		expect(restOfWeek('2026-10-04')[6]).toBe('2026-10-11');
-	});
-
-	it('never returns today itself, or fewer than six days', () => {
-		for (const day of ['2026-09-28', '2026-10-02', '2026-10-03', '2026-10-04']) {
-			const week = restOfWeek(day);
-			expect(week.length).toBeGreaterThanOrEqual(6);
-			expect(week).not.toContain(day);
-		}
-	});
-});
 
 describe('summaryLine', () => {
 	it('reads exactly as the brief example does', () => {
@@ -135,15 +107,6 @@ describe('loadToday', () => {
 		expect(data.overdue.map((t) => t.text)).toContain('Overdue report');
 	});
 
-	it('lists the open tasks of a future day, and the board cards due on it', async () => {
-		await vault.write('Work/Board.md', BOARD);
-		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
-		const group = data.week.find((w) => w.day === FUTURE);
-		expect(group).toBeTruthy();
-		expect(group!.openTasks.map((t) => t.text)).toEqual(['Prep the slides']);
-		expect(group!.dueCards.map((c) => [c.title, c.workspace.slug])).toEqual([['Send the invoice', 'work']]);
-	});
-
 	it('puts a board card in Overdue once its day has passed, and counts it in the summary', async () => {
 		await vault.write('Work/Board.md', BOARD);
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
@@ -160,7 +123,6 @@ describe('loadToday', () => {
 
 	it('no longer treats tagged or deck tasks as workspace cards', async () => {
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
-		expect(data.week.flatMap((w) => w.dueCards)).toEqual([]);
 		expect(data.workspaces.find((w) => w.slug === 'work')?.cards ?? []).toEqual([]);
 	});
 

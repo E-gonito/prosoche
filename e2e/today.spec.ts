@@ -73,17 +73,9 @@ test.describe('Today', () => {
 		await expect(page.getByTestId('overdue').getByTestId('board-card-row').filter({ hasText: 'Draft the proposal' })).toHaveCount(0);
 	});
 
-	test('the rest of the week shows a task from a future daily note', async ({ page }) => {
-		const week = page.getByTestId('week');
-		const group = week.locator('[data-testid="week-day"]', { hasText: 'Prep the demo for Thursday' });
-		await expect(group).toBeVisible();
-		expect(await group.getAttribute('data-day')).toBe(FUTURE);
-	});
-
-	test('a day group in the rest of the week opens that day\'s own dashboard', async ({ page }) => {
-		const group = page.locator(`[data-testid="week-day"][data-day="${FUTURE}"]`);
-		await group.click();
-		await expect(page).toHaveURL(new RegExp(`/today/${FUTURE}$`));
+	test('has no rest-of-the-week section; another day opens through Next day', async ({ page }) => {
+		await expect(page.getByTestId('week')).toHaveCount(0);
+		await page.goto(`/today/${FUTURE}`);
 		await expect(page.getByTestId('unscheduled')).toContainText('Prep the demo for Thursday');
 	});
 

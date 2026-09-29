@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * One open board card, shown away from its board: on Today, in Overdue,
-	 * the rest of the week, or a workspace's list.
+	 * or a workspace's list.
 	 *
 	 * The checkbox ticks the card in its `Board.md`, sent with the hash the
 	 * page read that board at. Other cards on the page may come from the same

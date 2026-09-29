@@ -33,17 +33,6 @@ export interface TodayEvent {
 	href: string;
 }
 
-export interface WeekDay {
-	day: string;
-	/** "Wed 1 Oct". */
-	label: string;
-	events: TodayEvent[];
-	/** Open tasks in that day's own daily note, when it exists. */
-	openTasks: Task[];
-	/** Open cards on any workspace's board due that day. */
-	dueCards: OpenCard[];
-}
-
 export interface WorkspaceGroup {
 	slug: string;
 	name: string;
@@ -97,7 +86,6 @@ export interface TodayData {
 	overdueOwners: Record<string, Owner>;
 	/** Open board cards overdue as of the real today, soonest first. */
 	overdueCards: OpenCard[];
-	week: WeekDay[];
 	workspaces: WorkspaceGroup[];
 	cards: TodayCard[];
 	summary: string;

@@ -1,5 +1,5 @@
 /**
- * Today: the dashboard for one day and the week around it.
+ * Today: the dashboard for one day.
  *
  * This module composes the vault and the index through the existing core —
  * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar`, the AI proposal
@@ -25,10 +25,10 @@ import { formatDuration } from '$lib/shared/duration';
 import { relativeDay } from '$lib/shared/links';
 import { compareTasks, isOpen, OPEN_STATUSES, type Task } from '$lib/shared/task';
 import { compareCards } from '$lib/shared/kanban';
-import type { Owner, TodayData, TodayEvent, WeekDay, WorkspaceGroup } from '$lib/shared/today';
+import type { Owner, TodayData, TodayEvent, WorkspaceGroup } from '$lib/shared/today';
 import type { Vault } from './vault/index';
 
-export type { Owner, WeekDay, WorkspaceGroup, TodayData };
+export type { Owner, WorkspaceGroup, TodayData };
 
 /**
  * `loadToday`'s own half of the dashboard: everything but the module cards.
@@ -48,33 +48,6 @@ export const WORKSPACE_CARD_LIMIT = 3;
 const OVERDUE_LIMIT = 40;
 
 /**
- * The days strictly after `day` that make up "the rest of the week": every
- * remaining day through the coming Sunday, at least six of them.
- *
- * A short week — asked on a Friday or Saturday — is padded out to six days
- * rather than left at one or two, because a dashboard that goes blank after
- * Sunday on a Friday reads as broken. Asking on a Sunday itself means there
- * are no more days *this* week, so "the coming Sunday" is read as next
- * week's, which is what keeps the result from ever being empty.
- *
- * Pure and exported so the rule is table-tested on its own, without a vault.
- */
-export function restOfWeek(day: DayKey): DayKey[] {
-	const [y, m, d] = day.split('-').map(Number);
-	const weekday = new Date(y, m - 1, d).getDay(); // 0 Sunday .. 6 Saturday
-	let toSunday = (7 - weekday) % 7;
-	if (toSunday === 0) toSunday = 7;
-	const count = Math.max(6, toSunday);
-	return Array.from({ length: count }, (_, i) => shiftDay(day, i + 1));
-}
-
-/** "Wed 1 Oct", for a week-ahead group's own heading. */
-export function formatWeekDay(day: DayKey): string {
-	const [y, m, d] = day.split('-').map(Number);
-	return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-/**
  * "Tuesday 29 September", the title's own reading of a day — deliberately
  * without the year `daily.ts`'s `formatDay` carries, since the title already
  * says "today" or "3 days ago" right beneath it.
@@ -91,7 +64,7 @@ export function formatTitleDay(day: DayKey): string {
  * Every clause but the count of tasks is dropped once it is zero, because
  * "0 meetings" and "0 overdue" on an ordinary day is noise repeated every
  * morning. The task count never drops, even at 0 of 0, so the line always
- * says something about the day. Pure, for the same reason `restOfWeek` is.
+ * says something about the day. Pure, so the rule is table-tested on its own.
  */
 export function summaryLine(input: { total: number; done: number; plannedMinutes: number; meetings: number; overdue: number }): string {
 	const parts = [`${input.done} of ${input.total} done`];
@@ -116,10 +89,9 @@ export interface TodayDeps {
  *
  * `day` is whichever the route names — today or another one the user is
  * looking at — and only the scheduled/unscheduled section and its calendar
- * events follow it. Overdue, the rest of the week and the workspace cards are
- * always anchored to the real today: a card due last Tuesday is late whether
- * you are reading Monday's page or Friday's, and "the rest of the week" means
- * the same six days no matter which of them you are currently viewing.
+ * events follow it. Overdue and the workspace cards are always anchored to
+ * the real today: a card due last Tuesday is late whether you are reading
+ * Monday's page or Friday's.
  */
 export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: Date } = {}): Promise<TodayDashboard> {
 	const { vault, index, workspaces } = deps;
@@ -160,26 +132,11 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		if (owner) overdueOwners[key(task)] = { slug: owner.slug, name: owner.name, color: owner.color };
 	}
 
-	// Every open card on every board, read once: the overdue cards, the
-	// week's "due that day" and the workspace cards section all come from
-	// this rather than reading each board three times.
+	// Every open card on every board, read once: the overdue cards and the
+	// workspace cards section both come from this rather than reading each
+	// board twice.
 	const cards = await openCards(vault, workspaces);
 	const overdueCards = cards.filter((c) => c.due !== null && c.due < real).sort((a, b) => a.due!.localeCompare(b.due!) || compareCards(a, b));
-
-	const weekDays = restOfWeek(real);
-	const weekRange = weekDays.length ? await eventsBetween(weekDays[0], weekDays[weekDays.length - 1]) : { ok: true as const, events: [] };
-	const week: WeekDay[] = [];
-	for (const wd of weekDays) {
-		const wdPath = dailyNotePath(wd);
-		const wdExists = (await vault.read(wdPath)).exists;
-		week.push({
-			day: wd,
-			label: formatWeekDay(wd),
-			events: weekRange.ok ? weekRange.events.filter((e) => e.day === wd).map(toTodayEvent) : [],
-			openTasks: wdExists ? index.tasksIn(wdPath).filter((t) => !t.fenced && isOpen(t)) : [],
-			dueCards: cards.filter((c) => c.due === wd).sort(compareCards)
-		});
-	}
 
 	const workspaceGroups: WorkspaceGroup[] = [];
 	for (const workspace of workspaces) {
@@ -224,7 +181,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		overdue,
 		overdueOwners,
 		overdueCards,
-		week,
 		workspaces: workspaceGroups,
 		summary: summaryLine({
 			total: tasks.length,
