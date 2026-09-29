@@ -20,7 +20,7 @@
 
 import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process';
 import { config } from '../config';
-import { requireSandboxRoot, toolPolicyFor } from './guardrails';
+import { requireSandboxRoot, toJsonSchema, toolPolicyFor, type Schema } from './guardrails';
 import type { Refusal, RunSettings } from '$lib/shared/ai';
 
 /**
@@ -49,8 +49,12 @@ export interface RunRequest {
 	 * nothing for the model to open.
 	 */
 	sandboxRoot?: string;
-	/** JSON schema the CLI is asked to conform to, for structured features. */
-	jsonSchema?: unknown;
+	/**
+	 * The shape the CLI is asked to conform to, for structured features. Given
+	 * as the guardrails' own `Schema`, the one `validateModelOutput` checks
+	 * against, and translated to JSON Schema on the way out.
+	 */
+	jsonSchema?: Schema;
 }
 
 export type RunResult =
@@ -124,7 +128,7 @@ export function buildArgs(request: RunRequest): { args: string[]; cwd: string } 
 	args.push('--disallowedTools', policy.disallowed.join(','));
 
 	if (request.systemPrompt) args.push('--append-system-prompt', request.systemPrompt);
-	if (request.jsonSchema !== undefined) args.push('--json-schema', JSON.stringify(request.jsonSchema));
+	if (request.jsonSchema !== undefined) args.push('--json-schema', JSON.stringify(toJsonSchema(request.jsonSchema)));
 
 	// A read-only run has no business having a working directory inside
 	// anything interesting, so it gets the OS temp root.
@@ -215,7 +219,14 @@ export function parseOutput(stdout: string, durationMs: number): RunResult {
 					? body
 					: '';
 	const costUsd = numberOr(envelope.total_cost_usd, numberOr(envelope.cost_usd, 0));
-	const json = envelope.result !== undefined && typeof envelope.result !== 'string' ? envelope.result : parseMaybe(text);
+	// With `--json-schema` the CLI puts the parsed answer in `structured_output`
+	// as well as a JSON string in `result`; the object is the one to believe.
+	const json =
+		typeof envelope.structured_output === 'object' && envelope.structured_output !== null
+			? envelope.structured_output
+			: envelope.result !== undefined && typeof envelope.result !== 'string'
+				? envelope.result
+				: parseMaybe(text);
 
 	return { ok: true, text, json, costUsd, durationMs };
 }

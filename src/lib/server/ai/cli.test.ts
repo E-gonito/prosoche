@@ -94,8 +94,18 @@ describe('buildArgs', () => {
 
 	it('passes a schema only when one was asked for', () => {
 		expect(buildArgs(request()).args).not.toContain('--json-schema');
-		const { args } = buildArgs(request({ jsonSchema: { type: 'object' } }));
-		expect(value(args, '--json-schema')).toBe('{"type":"object"}');
+		const { args } = buildArgs(request({ jsonSchema: { type: 'object', fields: { term: { type: 'string', maxLength: 9 } } } }));
+		expect(JSON.parse(value(args, '--json-schema')!)).toEqual({
+			type: 'object',
+			properties: { term: { type: 'string', maxLength: 9 } },
+			required: ['term'],
+			additionalProperties: false
+		});
+	});
+
+	it('believes structured_output over the result string when the CLI gives both', () => {
+		const out = parseOutput(JSON.stringify({ result: '{"term":"x"}', structured_output: { term: 'VPC' }, total_cost_usd: 0.01 }), 5);
+		expect(out.ok && out.json).toEqual({ term: 'VPC' });
 	});
 });
 
