@@ -10,23 +10,6 @@ test.describe('Workspaces', () => {
 		await expect(page.getByTestId('new-workspace')).toBeVisible();
 	});
 
-	test('the overview shows the next action from the deck', async ({ page }) => {
-		await page.goto('/w/work');
-		await expect(page.getByText('Draft the proposal')).toBeVisible();
-	});
-
-	test('ticking a card on the board changes exactly that line in the vault', async ({ page }) => {
-		await page.goto('/w/work/tasks');
-		await page.getByTestId('open-card').filter({ hasText: 'Draft the proposal' }).click();
-		await page.getByTestId('drawer-status').selectOption('done');
-		expect(await waitForFile('Work/Tasks.md', (c) => c.includes('[x]'))).toBe(true);
-
-		const content = vaultFile('Work/Tasks.md');
-		expect(content).toContain('- [x] Draft the proposal `Q2`');
-		// Nothing else in the file moved.
-		expect(content.split('\n')[0]).toBe('# Tasks');
-	});
-
 	test('capture into the workspace inbox lands in Work/Inbox.md', async ({ page }) => {
 		await page.goto('/w/work/inbox');
 		await page.getByLabel('Quick capture').fill('Call the printer about the leaflets');
@@ -75,12 +58,5 @@ test.describe('Workspaces', () => {
 
 		const raw = await request.get(new URL(src!, page.url()).toString());
 		expect(raw.headers()['content-security-policy']).toBe('sandbox allow-scripts');
-	});
-
-	test('the board works at phone size: columns scroll, pills jump between them', async ({ page }) => {
-		await page.setViewportSize({ width: 390, height: 844 });
-		await page.goto('/w/work/tasks');
-		await expect(page.getByTestId('column-pills')).toBeVisible();
-		await expect(page.getByTestId('board')).toBeVisible();
 	});
 });

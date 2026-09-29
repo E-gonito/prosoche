@@ -1,12 +1,43 @@
 /**
  * A workspace with real content in every corner the Workspaces module reads:
- * a card in its own Tasks.md (via the deck rule, no tag needed), and a custom
- * HTML page so the sandboxed-iframe tab has something to embed.
+ * a board in the Obsidian Kanban plugin's own format, with a card carrying
+ * notes, a due date, a priority and a label, and a custom HTML page so the
+ * sandboxed-iframe tab has something to embed.
  *
- * Inbox, Log and Deals start empty on purpose: the suite creates them by
- * using the app, which is the behaviour worth proving.
+ * Overview.md, Inbox, Log and Deals start empty on purpose: the suite
+ * creates them by using the app, which is the behaviour worth proving.
  */
 export default () => ({
-	'Work/Tasks.md': '# Tasks\n- [ ] Draft the proposal `Q2`\n',
+	'Work/Board.md': [
+		'---',
+		'',
+		'kanban-plugin: board',
+		'',
+		'---',
+		'',
+		'## To do',
+		'',
+		'- [ ] Draft the proposal @{2000-01-01} `Q2` #client',
+		'\tAsk for the budget first.',
+		'- [ ] Book the venue',
+		'',
+		'',
+		'## Doing',
+		'',
+		'',
+		'',
+		'## Done',
+		'',
+		'- [x] Sign the contract',
+		'',
+		'',
+		'',
+		'',
+		'%% kanban:settings',
+		'```',
+		'{"kanban-plugin":"board"}',
+		'```',
+		'%%'
+	].join('\n'),
 	'Work/Pages/Eye.html': '<!doctype html>\n<html>\n<head><meta charset="utf-8"><title>Eye</title></head>\n<body><p id="marker">Eye 3D page</p></body>\n</html>\n'
 });

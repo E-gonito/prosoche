@@ -65,6 +65,14 @@ test.describe('Today', () => {
 		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('Chase the overdue invoice'))).toBe(true);
 	});
 
+	test('an overdue board card shows in Overdue, and ticking it ticks it in Board.md', async ({ page }) => {
+		const row = page.getByTestId('overdue').getByTestId('board-card-row').filter({ hasText: 'Draft the proposal' });
+		await expect(row.getByTestId('board-card-due')).toHaveText('1 Jan 2000');
+		await row.getByTestId('board-card-done').click();
+		expect(await waitForFile('Work/Board.md', (c) => c.includes('- [x] Draft the proposal @{2000-01-01}'))).toBe(true);
+		await expect(page.getByTestId('overdue').getByTestId('board-card-row').filter({ hasText: 'Draft the proposal' })).toHaveCount(0);
+	});
+
 	test('the rest of the week shows a task from a future daily note', async ({ page }) => {
 		const week = page.getByTestId('week');
 		const group = week.locator('[data-testid="week-day"]', { hasText: 'Prep the demo for Thursday' });
