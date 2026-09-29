@@ -23,6 +23,8 @@
  * rebuilds a note from the parsed entries.
  */
 
+import { normaliseTerm } from '$lib/shared/glossary';
+
 export interface GlossaryField {
 	value: string;
 	/** 0-based line of the field in the note. */
@@ -160,10 +162,9 @@ export function findEntry(content: string, term: string): GlossaryEntry | null {
 	return parseGlossary(content).find((e) => normaliseTerm(e.term) === wanted) ?? null;
 }
 
-/** How two spellings of a term are compared: trimmed, spaced once, lower-case. */
-export function normaliseTerm(term: string): string {
-	return term.replace(/\s+/g, ' ').trim().toLowerCase();
-}
+// How two spellings of a term are compared; shared with the browser, which
+// de-duplicates a scan's candidates by the same rule.
+export { normaliseTerm };
 
 /**
  * Set one field of one entry. Pure; returns null when there is no such
