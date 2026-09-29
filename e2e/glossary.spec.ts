@@ -68,11 +68,10 @@ test.describe('Glossary', () => {
 		await expect(page.getByTestId('glossaries')).toContainText('No glossary yet.');
 	});
 
-	test('Start a meeting goes to the notebook of the workspace pointing here', async ({ page }) => {
+	test('offers no Start a meeting, only a link to the notebook of the workspace pointing here', async ({ page }) => {
 		await page.goto('/glossary/work');
-		await expect(page.getByTestId('start-a-meeting')).toHaveText('Start a meeting');
-		await page.getByTestId('start-a-meeting').click();
-		await expect(page).toHaveURL(/\/meetings\/work\/notes$/);
+		await expect(page.getByTestId('start-a-meeting')).toHaveCount(0);
+		await expect(page.getByRole('link', { name: 'Work meetings' })).toHaveAttribute('href', '/meetings/work');
 	});
 
 	test('Find terms in my notes offers the vault\'s folders and reads nothing until pressed', async ({ page }) => {

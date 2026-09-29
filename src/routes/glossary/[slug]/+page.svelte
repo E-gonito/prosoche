@@ -156,11 +156,6 @@
 				What each term means, and why it matters{#each notebooks as w, i (w.slug)}{i ? ', ' : ' · '}<a href="/meetings/{w.slug}">{w.name} meetings</a>{/each}
 			</span>
 			<span class="own">
-				{#each notebooks as w (w.slug)}
-					<a class="btn small" href="/meetings/{w.slug}/notes" data-testid="start-a-meeting">
-						{notebooks.length > 1 ? `Start a ${w.name} meeting` : 'Start a meeting'}
-					</a>
-				{/each}
 				{#if confirmingDelete}
 					<span class="ask" data-testid="delete-glossary-ask">
 						Delete this glossary{data.entries.length ? ` and its ${data.entries.length} term${data.entries.length === 1 ? '' : 's'}` : ''}?

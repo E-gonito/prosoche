@@ -185,10 +185,9 @@ removes the entry's heading and every line under it, and nothing else.
 
 Any term captured in the meetings of a workspace that points at the glossary,
 and that the glossary still lacks, waits at the top under **Captured in
-meetings**, and **Add to glossary** appends an entry for it. When one
-workspace with meetings points here, **Start a meeting** beside the title
-goes to its meeting notes; with several, there is one button for each; with
-none, there is no button.
+meetings**, and **Add to glossary** appends an entry for it. The line under
+the title links to the meeting notebook of each such workspace; meetings are
+started from the workspace, not from here.
 
 **Rename**, beside the title, renames the file: the glossary's bytes are
 written unchanged under the new name, the old file is removed, and every

@@ -11,10 +11,10 @@ import type { PageServerLoad } from './$types';
 /**
  * One glossary: every entry of its file ready to draw, the terms captured in
  * the meetings of every workspace pointing at it that it does not have yet,
- * those workspaces (for Start a meeting), what a scan for new terms would
- * read now, the vault's folders it may be scanned from, and whether AI is
- * on. Reads every note under the glossary's sources to count them. Only an
- * unknown slug is a 404. Writes nothing.
+ * those workspaces (their notebooks are linked), what a scan for new terms
+ * would read now, the vault's folders it may be scanned from, and whether AI
+ * is on. Reads every note under the glossary's sources to count them. Only
+ * an unknown slug is a 404. Writes nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
 	const { vault, index, ready, workspaces } = hub();
