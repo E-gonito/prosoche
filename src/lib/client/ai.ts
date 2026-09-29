@@ -15,6 +15,7 @@ import type {
 	Refusal,
 	Validation
 } from '$lib/shared/ai';
+import type { CardDraft } from '$lib/shared/study';
 
 export type AiResult<T> =
 	| { ok: true; value: T }
@@ -25,8 +26,8 @@ export type AiResult<T> =
  * Re-run the guardrails over a proposal, without writing anything.
  *
  * `destinations` are the paths this particular run named, which the
- * per-feature path policy needs: `suggest-flashcards` may write the note it
- * read and nothing else, so the server has to be told which note that was.
+ * per-feature path policy needs: a primer draft may write that one primer
+ * and nothing else, so the server has to be told which primer that was.
  */
 export async function checkProposal(proposal: Proposal, destinations: string[] = []): Promise<AiResult<Validation>> {
 	return post(
@@ -112,8 +113,6 @@ export interface Drafted {
 	refusals: Refusal[];
 	/** Set by capture: the notes it was offered, so an empty vault says why. */
 	candidates?: string[];
-	/** Set by suggest-flashcards: cards the note did not support. */
-	unsupported?: Array<{ question: string; answer: string; quote: string }>;
 	/** Set by glossary-find: how much of the folder was read. */
 	batch?: { folder: string; from: number; read: number; total: number; chars: number; next: number | null } | null;
 	/** Set by glossary-find: terms dropped because their note does not support them. */
@@ -128,12 +127,11 @@ export interface Drafted {
  * must be passed through to that call, because the path policy is per-run.
  */
 export async function draftChange(request: {
-	feature: 'capture' | 'suggest-flashcards' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup' | 'glossary-find';
+	feature: 'capture' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup' | 'glossary-find';
 	path?: string;
 	line?: number;
 	expectedRaw?: string;
 	day?: string;
-	count?: number;
 	/** The meeting features: the workspace, the meeting title and event. */
 	slug?: string;
 	title?: string;
@@ -145,4 +143,22 @@ export async function draftChange(request: {
 	from?: number;
 }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
+}
+
+/**
+ * Ask Claude for flashcards from notes of subject `subject`: the notes and
+ * folders picked, read from the `from`th note in a batch, for the card file
+ * of `goal`. Read-only: the cards come back for a person to tick and edit,
+ * and nothing is written until `addCards` in `$lib/client/study` sends the
+ * ones they kept.
+ */
+export async function draftCards(request: {
+	subject: string;
+	notes: string[];
+	folders: string[];
+	goal: string | null;
+	count: number;
+	from: number;
+}): Promise<AiResult<CardDraft>> {
+	return post('/api/ai/suggest', { feature: 'suggest-flashcards', ...request }, (body) => body as CardDraft);
 }

@@ -26,11 +26,14 @@
 			<div class="due-row">
 				<span class="count" data-testid="due-count">{data.due}</span>
 				<span class="muted">due now{data.fresh > 0 ? `, ${data.fresh} new` : ''}</span>
-				{#if data.due > 0}
-					<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>
-				{/if}
+				<span class="buttons">
+					{#if data.due > 0}
+						<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>
+					{/if}
+					<a class="btn" class:primary={data.due === 0} href="{base}/make" data-testid="make-cards-link">Make cards</a>
+				</span>
 			</div>
-			{#if data.due === 0}<p class="none">Nothing due right now.</p>{/if}
+			{#if data.due === 0}<p class="none">Nothing due right now. Make some from your notes with Claude.</p>{/if}
 		</section>
 
 		<section class="sheet">
@@ -110,7 +113,8 @@
 <style>
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); align-items: start; }
 
-	.due-row { display: flex; align-items: center; gap: var(--s3); }
+	.due-row { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+	.due-row .buttons { margin-left: auto; display: flex; gap: var(--s2); }
 	/* The one figure on the page meant to be read from across the room. */
 	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
 	.none { margin-top: var(--s2); }

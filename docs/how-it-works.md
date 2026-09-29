@@ -255,9 +255,9 @@ The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
 heading. A line that is already a task is kept as written; anything else is
 stamped with the time. That file is the only thing the Notes module writes.
 
-A note inside a study subject's folders offers Make cards, which drafts
-flashcards from it (see Study). The draft is shown as a diff and nothing
-reaches the note until you accept it.
+A note inside a study subject's folders offers Make cards, which opens that
+subject's Make cards page with the note already picked (see Study). The
+cards go to the subject's own card files; the note itself is never written.
 
 The private folder, `Private/`, never appears here: not in search, the tree,
 backlinks or recent notes. A link straight to a private note is a 404.
@@ -375,12 +375,62 @@ correctly in Obsidian too. Notes holding cards but no tag are listed
 separately, since neither Obsidian nor Study reviews them until the tag is
 added.
 
-**Make cards**, on any note inside a subject's folders, drafts flashcards
-from that note with Claude. Only cards whose answer the note itself states
-are kept. The draft is shown as a diff to edit or reject, and nothing is
-written until it is accepted; then the cards are appended to the note as
-`question::answer` lines, with a `#flashcards` tag when the note had none,
-so Obsidian and Study both see them.
+**Make cards** (`/study/<subject>/make`) drafts flashcards from your notes
+with Claude, and you choose which to keep. It is the primary button on the
+Flashcards tab, a button on Overview and on each subject's card on the
+Study page, and Make cards on a note opens it with that note picked
+(`?note=<path>`).
+
+1. **Pick the notes.** Type in the search box to find the subject's notes
+   by title or path, click one of the recently edited notes shown as chips,
+   or add a whole folder from the picker; pick as many as you like. The
+   notes offered are those in the subject's folders or carrying its tag,
+   except its own `Goals.md`, `Reading List.md`, `Sessions.md` and anything
+   in `Flashcards/`.
+2. **Pick a goal** (none by default) and **how many cards**: 5, 10 or 20
+   (10 by default). The page says which file the cards will go to.
+3. **Draft cards.** Claude reads the notes in order, read-only and as
+   quoted data, at most 40,000 characters a run and 12,000 of any one
+   note, and the page says how far it got, "Read notes 1–5 of 40"; **Next
+   batch** reads on and adds its cards to the list. Each card must name the
+   note it came from and quote a sentence of it. A card is kept only when
+   that quote is in the note (word for word, or nearly: a slip in copying,
+   such as a corrected typo, is allowed in a quote of five words or more)
+   and every word of the answer that carries meaning is in the quote (one
+   may be missing from an answer of five or more such words, but never a
+   "not"). The rest are dropped and listed. A card whose question the
+   destination file already asks, ignoring case and punctuation, is left
+   out, and the page says so.
+4. **Review.** Each drafted card shows its question and answer, both
+   editable in place, the quoted sentence and a link to its note, and a
+   tick, on by default. Select all and None set every tick.
+5. **Add N cards** writes only the ticked cards, as edited. Nothing is
+   written before this: it is the accept step. The server checks everything
+   again rather than trusting the page: the goal must be in `Goals.md`, each
+   card's note must be one the page could have offered, each side must be
+   text of at most 4,000 characters, and at most 60 cards go at once; any
+   failure refuses the lot and writes nothing. Each side gets the Anki
+   import's escaping (a blank line dropped, a heading made bold, a lone `?`
+   and a `#word` escaped), a card is written `Q::A` when that reads back
+   and in the multiline `?` form otherwise, and the whole file is read back
+   through the card finder, which must find the cards that were there and
+   exactly the new ones, before the one write.
+6. The page says "Added 8 cards to Flashcards/Networking.md", with
+   **Review them now** (the subject's review, for that goal when one was
+   picked) and **Make more**.
+
+The cards go to the subject's own card files, never into the notes:
+`<home>/Flashcards/<Goal>.md` for a goal (a character a file name cannot
+hold becomes a space), or `<home>/Flashcards/From notes.md` for none. A new
+file starts as an imported deck does, with `goal:` in its frontmatter (empty
+for none) and a `#flashcards` line, so the Flashcards tab groups it under
+the goal. Each note the cards came from has a `## [[<note>]]` heading, and
+cards from it go at the end of that section when it is already there, or
+under a new heading at the end of the file; each card is its own
+paragraph. Nothing already in the file is changed or moved, and an edit
+made to the file meanwhile, in Obsidian or elsewhere, makes Add refuse
+rather than overwrite. Drafting uses the Suggest flashcards model settings.
+With AI off, the page says so and links to Settings.
 
 ## Workspaces
 

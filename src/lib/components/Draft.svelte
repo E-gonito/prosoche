@@ -111,13 +111,6 @@
 		<p class="hint">There is nowhere to file this yet. Give a workspace some folders first.</p>
 	{/if}
 
-	{#if drafted?.unsupported?.length}
-		<p class="hint" data-testid="draft-unsupported">
-			{drafted.unsupported.length} suggestion{drafted.unsupported.length === 1 ? ' was' : 's were'} dropped: the note
-			does not say the answer.
-		</p>
-	{/if}
-
 	{#if drafted?.batch}
 		{@const b = drafted.batch}
 		<p class="hint" data-testid="draft-batch">

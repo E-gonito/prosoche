@@ -105,7 +105,9 @@ with `.num`, which lines figures up without changing the typeface.
 - **`Icon`**: every glyph, from one hand-copied Lucide path set. `name`,
   `size` (default 16), `label` (absent means decorative).
 - **`Draft`**: a button that asks Claude for a proposal and shows it as a diff
-  with Accept and Reject. Every AI write in the app goes through it.
+  with Accept and Reject. Every AI write in the app goes through it, but
+  two: the briefing's Save, and Study's Make cards, where drafted cards are
+  shown as a list to tick and edit and Add is the accept.
 - **`Capture`**: one line into an inbox note.
 - **`FileTree`**: the vault's folders, used by Notes.
 - **`board/Board`**: a workspace's board. Columns are unboxed, a small-caps

@@ -51,6 +51,7 @@ export interface GoalsNote {
 
 const HEADING = /^(#{1,6})[ \t]+(.+?)[ \t]*$/;
 const TARGET = /^target::[ \t]*(\S.*?)[ \t]*$/;
+const FENCE = /^[ \t]*(```|~~~)/;
 
 /**
  * Every goal in a `Goals.md` note, milestones included, in file order.
@@ -67,8 +68,15 @@ export function parseGoals(content: string, path = ''): GoalsNote {
 
 	const lines = content.split('\n');
 	const headings: Array<{ level: number; title: string; line: number }> = [];
+	let fence: string | null = null;
 	for (let i = 0; i < lines.length; i++) {
-		const m = HEADING.exec(lines[i]);
+		const f = FENCE.exec(lines[i]);
+		if (f) {
+			if (fence === null) fence = f[1];
+			else if (f[1] === fence) fence = null;
+			continue;
+		}
+		const m = fence === null ? HEADING.exec(lines[i]) : null;
 		if (m) headings.push({ level: m[1].length, title: m[2], line: i });
 	}
 

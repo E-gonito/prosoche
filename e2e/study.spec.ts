@@ -304,11 +304,70 @@ test.describe('Make cards', () => {
 		await resetVault(request);
 	});
 
-	test('is offered on a note in a subject’s folders, and nowhere else', async ({ page }) => {
-		await page.goto('/notes/Study/Algorithms.md');
-		await expect(page.getByTestId('draft-run')).toHaveText('Make cards');
+	test('is offered on a note in a subject’s folders, and opens the page with that note picked', async ({ page }) => {
 		await page.goto(`/notes/Journal/${TODAY.slice(0, 4)}/${TODAY.slice(5, 7)}/${TODAY.slice(8, 10)}.md`);
-		await expect(page.getByTestId('draft-run')).toHaveCount(0);
+		await expect(page.getByTestId('make-cards')).toHaveCount(0);
+
+		await page.goto('/notes/Study/Algorithms.md');
+		await page.getByTestId('make-cards').click();
+		await expect(page).toHaveURL(`${BASE}/make?note=Study%2FAlgorithms.md`);
+		await expect(page.getByTestId('picked')).toContainText('Algorithms');
+		await expect(page.getByTestId('picked-count')).toHaveText('1 note picked.');
+	});
+
+	test('is linked from the Study index, Overview and Flashcards', async ({ page }) => {
+		await page.goto('/study');
+		await expect(page.getByTestId('subject-make-cards')).toHaveAttribute('href', `${BASE}/make`);
+		await page.goto(BASE);
+		await expect(page.getByTestId('make-cards-link')).toHaveAttribute('href', `${BASE}/make`);
+		await page.goto(`${BASE}/flashcards`);
+		const link = page.getByTestId('make-cards-link');
+		await expect(link).toHaveClass(/primary/);
+		await link.click();
+		await expect(page.locator('h1')).toHaveText('Make cards');
+	});
+
+	test('picks notes by search and folder, and says where the cards will go', async ({ page }) => {
+		await page.goto(`${BASE}/make`);
+		// The fixture vault has no `_hub/ai.md`, so AI is off: said, linked, and Draft is disabled.
+		await expect(page.getByTestId('ai-off')).toContainText('AI is off');
+		await expect(page.getByTestId('ai-off').getByRole('link')).toHaveAttribute('href', '/settings');
+		await expect(page.getByTestId('draft-cards')).toBeDisabled();
+
+		await page.getByTestId('source-search').fill('syllab');
+		await page.getByTestId('source-matches').getByRole('button', { name: /Syllabus/ }).click();
+		await expect(page.getByTestId('picked')).toContainText('Syllabus');
+		await page.getByTestId('source-folder').selectOption('Study');
+		await expect(page.getByTestId('picked')).toContainText('Study/');
+		// The subject's own Goals, Sessions and Reading List are never sources.
+		await expect(page.getByTestId('picked-count')).not.toHaveText('1 note picked.');
+
+		await expect(page.getByTestId('make-destination')).toContainText('Flashcards/From notes.md');
+		await page.getByTestId('make-goal').selectOption(AWS);
+		await expect(page.getByTestId('make-destination')).toContainText(`Flashcards/${AWS}.md`);
+	});
+
+	test('Add writes only what it is sent, to the goal’s card file, which then reviews under that goal', async ({ page, request }) => {
+		const algorithms = vaultFile('Study/Algorithms.md');
+		const card = { question: 'What does Algorithms link to?', answer: 'The Handbook', source: 'Study/Algorithms.md' };
+		const res = await request.post('/api/study/cards', { data: { subject: 'study', goal: AWS, cards: [card] } });
+		expect(res.status()).toBe(200);
+		expect(await res.json()).toMatchObject({ path: `Study/Flashcards/${AWS}.md`, added: 1, skipped: 0, goal: { slug: 'pass-aws-solutions-architect' } });
+
+		const file = vaultFile(`Study/Flashcards/${AWS}.md`);
+		expect(file).toBe(`---\ngoal: ${AWS}\n---\n\n#flashcards\n\n## [[Algorithms]]\n\nWhat does Algorithms link to?::The Handbook\n`);
+		expect(vaultFile('Study/Algorithms.md')).toBe(algorithms);
+
+		// Refused outright, nothing written: a goal not in Goals.md, a note outside the subject.
+		expect((await request.post('/api/study/cards', { data: { subject: 'study', goal: 'Cooking', cards: [card] } })).status()).toBe(422);
+		const outside = await request.post('/api/study/cards', { data: { subject: 'study', goal: null, cards: [{ ...card, source: 'Work/Plan.md' }] } });
+		expect(outside.status()).toBe(422);
+		expect((await outside.json()).error).toContain('Card 1 names a note');
+
+		await page.goto(`${BASE}/flashcards`);
+		await expect(page.getByTestId('card-group').filter({ hasText: AWS })).toContainText(`${AWS}.md`);
+		await page.goto(`${BASE}/review?goal=pass-aws-solutions-architect`);
+		await expect(page.getByTestId('card-question')).toBeVisible();
 	});
 });
 

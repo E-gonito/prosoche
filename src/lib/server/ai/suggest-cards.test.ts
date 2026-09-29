@@ -1,24 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { partition, propose, suggestCards, type Suggestion } from './suggest-cards';
-import { isCardSource, scanCards } from '../study/flashcards';
-import { parseNote } from '../parse/note';
-import type { RunStamp } from '$lib/shared/ai';
-
-const STAMP: RunStamp = {
-	model: 'claude-sonnet-5',
-	effort: 'medium',
-	permission: 'propose',
-	budgetUsd: 0.25,
-	timeoutSeconds: 120,
-	feature: 'suggest-flashcards',
-	startedAt: '2026-09-21T10:00:00.000Z',
-	durationMs: 1200,
-	costUsd: 0.03
-};
+import { MAKE_CHARS, MAKE_NOTE_CHARS, cardsPrompt, draftCards, groundCards, type Suggestion } from './suggest-cards';
+import type { Subject } from '../study/subjects';
 
 const NOTE = [
 	'# TCP',
@@ -28,94 +14,168 @@ const NOTE = [
 	''
 ].join('\n');
 
-describe('partition', () => {
-	const card = (over: Partial<Suggestion>): Suggestion => ({
-		question: 'q',
-		answer: 'a',
-		quote: 'q',
-		...over
-	});
+const UDP = '# UDP\n\nUDP sends datagrams with no handshake at all.\n';
 
-	it('keeps a card whose answer the note states', () => {
-		const good = card({
-			question: 'What are the steps of the three-way handshake?',
-			answer: 'SYN, SYN-ACK, ACK',
-			quote: 'The three-way handshake is SYN, SYN-ACK, ACK.'
-		});
-		expect(partition([good], NOTE).supported).toEqual([good]);
-	});
+const SOURCES = [
+	{ path: 'CS/TCP.md', text: NOTE },
+	{ path: 'CS/UDP.md', text: UDP }
+];
 
-	it('drops a card whose quote is not in the note', () => {
-		const invented = card({
-			answer: 'four',
-			quote: 'TCP uses a four-way handshake.'
-		});
-		const { supported, unsupported } = partition([invented], NOTE);
-		expect(supported).toEqual([]);
-		expect(unsupported).toEqual([invented]);
-	});
+const CS: Subject = {
+	slug: 'cs',
+	name: 'Computer Science',
+	color: '#000',
+	home: 'Study/CS',
+	scope: { folders: ['Study/CS', 'CS'], tags: [] },
+	files: {
+		goals: 'Study/CS/Goals.md',
+		reading: 'Study/CS/Reading List.md',
+		sessions: 'Study/CS/Sessions.md',
+		flashcards: 'Study/CS/Flashcards'
+	}
+};
 
-	it('drops a card whose answer is not in its own quote', () => {
-		const mismatched = card({
-			answer: 'UDP',
-			quote: 'The three-way handshake is SYN, SYN-ACK, ACK.'
-		});
-		expect(partition([mismatched], NOTE).supported).toEqual([]);
-	});
-
-	it('ignores punctuation and line wrapping when comparing', () => {
-		const wrapped = card({
-			answer: 'syn syn-ack ack',
-			quote: 'the three-way handshake  is\nSYN, SYN-ACK,  ACK'
-		});
-		expect(partition([wrapped], NOTE).supported).toEqual([wrapped]);
-	});
-
-	it('drops a card with an empty quote rather than trusting it', () => {
-		expect(partition([card({ quote: '   ' })], NOTE).supported).toEqual([]);
-	});
+const card = (over: Partial<Suggestion>): Suggestion => ({
+	question: 'What are the steps of the three-way handshake?',
+	answer: 'SYN, SYN-ACK, ACK',
+	source: 'CS/TCP.md',
+	quote: 'The three-way handshake is SYN, SYN-ACK, ACK.',
+	...over
 });
 
-describe('propose', () => {
-	const cards: Suggestion[] = [
-		{ question: 'Handshake?', answer: 'SYN, SYN-ACK, ACK', quote: 'x' },
-		{ question: 'Socket?', answer: 'The four-tuple', quote: 'y' }
+describe('groundCards', () => {
+	const cases: Array<{ what: string; card: Suggestion; kept: boolean }> = [
+		{ what: 'a card whose answer its note states', card: card({}), kept: true },
+		{ what: 'a card from the second note', card: card({ answer: 'no handshake', source: 'CS/UDP.md', quote: 'UDP sends datagrams with no handshake at all.' }), kept: true },
+		{ what: 'a card with the path padded by spaces', card: card({ source: ' CS/TCP.md ' }), kept: true },
+		{ what: 'punctuation and wrapping that differ', card: card({ answer: 'syn syn-ack ack', quote: 'the three-way handshake  is\nSYN, SYN-ACK,  ACK' }), kept: true },
+		{ what: 'a quote the note does not have', card: card({ answer: 'four', quote: 'TCP uses a four-way handshake.' }), kept: false },
+		{ what: 'an answer missing from its own quote', card: card({ answer: 'UDP' }), kept: false },
+		{ what: 'a quote from another note than the one named', card: card({ source: 'CS/UDP.md' }), kept: false },
+		{ what: 'a note that was not sent', card: card({ source: 'CS/Elsewhere.md' }), kept: false },
+		{ what: 'an empty quote', card: card({ quote: '   ' }), kept: false },
+		{ what: 'an answer with no words', card: card({ answer: '—' }), kept: false },
+		{ what: 'an answer of only filler words', card: card({ answer: 'the' }), kept: false }
 	];
 
-	it('is one append to the note it read and nothing else', () => {
-		const proposal = propose('CS/TCP.md', cards, STAMP);
-		expect(proposal.edits).toHaveLength(1);
-		expect(proposal.edits[0]).toMatchObject({ kind: 'append', path: 'CS/TCP.md' });
-		expect(proposal.accepted).toEqual([]);
-	});
-
-	it('writes cards the flashcard parser reads back', () => {
-		const proposal = propose('CS/TCP.md', cards, STAMP);
-		const edit = proposal.edits[0];
-		const after = `${NOTE}${'text' in edit ? edit.text : ''}`;
-		const found = scanCards(after, 'CS/TCP.md');
-		expect(found.map((c) => c.question)).toEqual(['Handshake?', 'Socket?']);
-		expect(found.map((c) => c.answer)).toEqual(['SYN, SYN-ACK, ACK', 'The four-tuple']);
-	});
-
-	it('tags a note that is not yet a card source, so its cards are seen', () => {
-		const proposal = propose('CS/TCP.md', cards, STAMP, { tag: true });
-		const edit = proposal.edits[0];
-		const text = 'text' in edit ? edit.text : '';
-		expect(text.startsWith('\n#flashcards\nHandshake?::')).toBe(true);
-		const after = `${NOTE}${text}`;
-		expect(isCardSource(parseNote(after, 'CS/TCP.md').tags, after)).toBe(true);
-		expect(scanCards(after, 'CS/TCP.md').map((c) => c.question)).toEqual(['Handshake?', 'Socket?']);
-	});
-
-	it('flattens a question written over several lines', () => {
-		const proposal = propose('CS/TCP.md', [{ question: 'a\nb', answer: 'c\nd', quote: 'x' }], STAMP);
-		const edit = proposal.edits[0];
-		expect('text' in edit ? edit.text : '').toBe('\na b::c d\n');
+	it.each(cases)('$what: kept $kept', ({ card: c, kept }) => {
+		const { supported, dropped } = groundCards([c], SOURCES);
+		expect(supported).toEqual(kept ? [c] : []);
+		expect(dropped).toEqual(kept ? [] : [c]);
 	});
 });
 
-describe('suggestCards', () => {
+/**
+ * Cards like the ones a real run drafted from the author's notes on HTTP
+ * methods and Postman, where the first rule (the answer's words, in order,
+ * inside the quote) dropped four good cards of five.
+ */
+describe('groundCards on real notes', () => {
+	const METHODS = [
+		'**idempotent** - Request is **idempotent** if intended effect on the server is identical for a single or several of the same request. ',
+		'## POST',
+		'submits an entity to a specified resource, often resulting in the _creation_ of a new subordinate resource. POST is **not** idempotent.',
+		'## DELETE',
+		'Deletes the specified resource, DELETE is idempotent',
+		'## PUT',
+		'Creates a new resource or replaces a representation at the target location, PUT is idempotent. Create or replace the URI with the exact data PUT provides',
+		''
+	].join('\n');
+	const POSTMAN = [
+		'**Query Parameters** = Method of refining the results within the url request.',
+		'',
+		'With a POST request, you must make the three assertions:',
+		'- **Asset Status Code** - Always check the HTTP status code response, for POST it should return `201`',
+		'- **Assert Response Body Structure** - The server\'s response should be the newly created object in the right format ',
+		'- **Assert Response Body Content** - assert that the data in the response matches the data sent. '
+	].join('\n');
+	const sources = [
+		{ path: 'Net/HTTP request methods.md', text: METHODS },
+		{ path: 'Net/APIs and Postman.md', text: POSTMAN }
+	];
+	const methods = (over: Partial<Suggestion>) => card({ source: 'Net/HTTP request methods.md', ...over });
+	const postman = (over: Partial<Suggestion>) => card({ source: 'Net/APIs and Postman.md', ...over });
+
+	const cases: Array<{ what: string; card: Suggestion; kept: boolean }> = [
+		{
+			what: 'an answer with an article the note leaves out',
+			card: postman({ answer: 'A method of refining the results within the url request', quote: 'Query Parameters = Method of refining the results within the url request.' }),
+			kept: true
+		},
+		{
+			what: 'a list answer whose quote fixed the note’s typo',
+			card: postman({
+				answer: 'Assert Status Code, Assert Response Body Structure, and Assert Response Body Content',
+				quote: 'With a POST request, you must make the three assertions: Assert Status Code - Always check the HTTP status code response, for POST it should return 201 - Assert Response Body Structure - The server\'s response should be the newly created object in the right format - Assert Response Body Content'
+			}),
+			kept: true
+		},
+		{
+			what: 'a long answer with one word of its own',
+			card: methods({
+				answer: 'PUT creates a new resource or replaces a representation at the target location, using the exact data PUT provides',
+				quote: 'Creates a new resource or replaces a representation at the target location, PUT is idempotent. Create or replace the URI with the exact data PUT provides'
+			}),
+			kept: true
+		},
+		{
+			what: 'a "No" the quote says as "not"',
+			card: methods({ question: 'Is POST idempotent?', answer: 'No', quote: 'POST is not idempotent.' }),
+			kept: true
+		},
+		{
+			what: 'an answer drawn from lines the quote does not hold',
+			card: methods({ answer: 'DELETE and PUT are idempotent; POST is not', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a negation the note does not make',
+			card: methods({ answer: 'DELETE is not idempotent', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a long answer whose one extra word is a negation',
+			card: methods({
+				answer: 'PUT never creates a new resource at the target location',
+				quote: 'Creates a new resource or replaces a representation at the target location, PUT is idempotent.'
+			}),
+			kept: false
+		},
+		{
+			what: 'a short answer with a word of its own',
+			card: methods({ answer: 'DELETE removes the resource', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a quote rewritten rather than copied',
+			card: methods({ answer: 'idempotent', quote: 'A request is idempotent when repeating it has the same effect as sending it once.' }),
+			kept: false
+		}
+	];
+
+	it.each(cases)('$what: kept $kept', ({ card: c, kept }) => {
+		expect(groundCards([c], sources).supported).toEqual(kept ? [c] : []);
+	});
+});
+
+describe('cardsPrompt', () => {
+	it('names the subject and goal, lists what is already asked, and gives the notes as data', () => {
+		const prompt = cardsPrompt({ subject: 'Computer Science', goal: 'Networking', count: 5, asked: ['What is  TCP?'], sources: SOURCES });
+		expect(prompt).toContain('Write up to 5 flashcards');
+		expect(prompt).toContain('"Computer Science" studies, towards their goal "Networking".');
+		expect(prompt).toContain('- What is TCP?');
+		expect(prompt).toContain('path="CS/TCP.md"');
+		expect(prompt).toContain('The three-way handshake is SYN, SYN-ACK, ACK.');
+	});
+
+	it('says nothing of a goal or old cards when there are none', () => {
+		const prompt = cardsPrompt({ subject: 'CS', goal: null, count: 10, asked: [], sources: SOURCES });
+		expect(prompt).toContain('"CS" studies.');
+		expect(prompt).not.toContain('already has cards');
+	});
+});
+
+describe('draftCards', () => {
 	let dir: string;
 	let vault: Vault;
 	let scratch: string;
@@ -127,6 +187,9 @@ describe('suggestCards', () => {
 		// The layer is off in a vault with no `_hub/ai.md`; these tests are
 		// about what happens once it is on.
 		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
+		await vault.write('Study/CS/Goals.md', '## Networking\n');
+		await vault.write('CS/TCP.md', NOTE);
+		await vault.write('CS/UDP.md', UDP);
 	});
 
 	afterEach(async () => {
@@ -134,89 +197,101 @@ describe('suggestCards', () => {
 		await rm(scratch, { recursive: true, force: true });
 	});
 
-	/** A stand-in CLI that prints one fixed response. */
-	async function fakeCli(body: string): Promise<string> {
+	/** A stand-in CLI that prints one fixed answer, and keeps the prompt it was given. */
+	async function fakeCli(result: unknown): Promise<string> {
 		const path = join(scratch, 'fake-claude');
-		await writeFile(path, `#!/bin/sh\ncat <<'JSON'\n${body}\nJSON\n`, 'utf8');
+		const body = JSON.stringify({ type: 'result', subtype: 'success', result: JSON.stringify(result), total_cost_usd: 0.01 });
+		// The prompt is the argument after `-p`.
+		await writeFile(path, `#!/bin/sh\nprintf '%s' "$2" > '${join(scratch, 'prompt.txt')}'\ncat <<'JSON'\n${body}\nJSON\n`, 'utf8');
 		await chmod(path, 0o755);
 		return path;
 	}
 
-	const envelope = (result: unknown) =>
-		JSON.stringify({ type: 'result', subtype: 'success', result: JSON.stringify(result), total_cost_usd: 0.01 });
+	const cli = (executable: string) => ({ cli: { executable, vaultPath: dir } });
 
-	it('proposes nothing for a note that is not there', async () => {
-		const result = await suggestCards(vault, 'CS/Missing.md');
-		expect(result.proposal).toBeNull();
+	it('keeps the cards the notes support, drops the rest, and writes nothing', async () => {
+		const executable = await fakeCli({
+			cards: [
+				card({}),
+				card({ question: 'Does UDP shake hands?', answer: 'no handshake', source: 'CS/UDP.md', quote: 'UDP sends datagrams with no handshake at all.' }),
+				card({ question: 'Port range?', answer: '0 to 65535', quote: 'Ports run from 0 to 65535.' })
+			]
+		});
+		const before = (await vault.list()).length;
+		const result = await draftCards(vault, CS, { folders: ['CS'], goal: 'networking' }, cli(executable));
+
 		expect(result.problem).toBeNull();
+		expect(result.destination).toBe('Study/CS/Flashcards/Networking.md');
+		expect(result.cards).toEqual([
+			{ question: 'What are the steps of the three-way handshake?', answer: 'SYN, SYN-ACK, ACK', quote: 'The three-way handshake is SYN, SYN-ACK, ACK.', source: 'CS/TCP.md', note: 'TCP' },
+			{ question: 'Does UDP shake hands?', answer: 'no handshake', quote: 'UDP sends datagrams with no handshake at all.', source: 'CS/UDP.md', note: 'UDP' }
+		]);
+		expect(result.dropped).toEqual([{ question: 'Port range?', answer: '0 to 65535', source: 'CS/TCP.md', why: 'unsupported' }]);
+		expect(result.batch).toEqual({ from: 0, read: 2, total: 2, chars: NOTE.length + UDP.length, next: null });
+		// Only the audit log is new; no note, no card file.
+		const after = await vault.list();
+		expect(after.filter((p) => !p.startsWith('_hub/'))).toHaveLength(before - 1);
+		expect(after.some((p) => p.startsWith('Study/CS/Flashcards/'))).toBe(false);
+		expect((await vault.read('CS/TCP.md')).content).toBe(NOTE);
 	});
 
-	it('proposes nothing while the kill switch is off', async () => {
+	it('leaves out what the card file already asks, and says so', async () => {
+		await vault.write('Study/CS/Flashcards/From notes.md', '#flashcards\n\nwhat are the steps of the three-way handshake::SYN\n');
+		const executable = await fakeCli({ cards: [card({})] });
+		const result = await draftCards(vault, CS, { notes: ['CS/TCP.md'] }, cli(executable));
+		expect(result.cards).toEqual([]);
+		expect(result.duplicates).toEqual(['What are the steps of the three-way handshake?']);
+		expect(result.problem).toBeNull();
+		// The model was told, too.
+		expect(await readFile(join(scratch, 'prompt.txt'), 'utf8')).toContain('- what are the steps of the three-way handshake');
+	});
+
+	it('shows each side as it would be written', async () => {
+		const executable = await fakeCli({ cards: [card({ question: 'What is #TCP handshake?' })] });
+		const result = await draftCards(vault, CS, { notes: ['CS/TCP.md'] }, cli(executable));
+		expect(result.cards[0].question).toBe('What is \\#TCP handshake?');
+	});
+
+	it('keeps at most the number asked for', async () => {
+		const many = Array.from({ length: 8 }, (_, i) => card({ question: `Handshake question ${i}?` }));
+		const executable = await fakeCli({ cards: many });
+		const result = await draftCards(vault, CS, { notes: ['CS/TCP.md'], count: 5 }, cli(executable));
+		expect(result.cards).toHaveLength(5);
+	});
+
+	it('reads a big folder in batches', async () => {
+		for (let i = 0; i < 6; i++) await vault.write(`CS/Big/${i}.md`, `Note ${i}. ${'x'.repeat(MAKE_NOTE_CHARS)}`);
+		const executable = await fakeCli({ cards: [] });
+		const first = await draftCards(vault, CS, { folders: ['CS/Big'] }, cli(executable));
+		const perRun = Math.floor(MAKE_CHARS / MAKE_NOTE_CHARS);
+		expect(first.batch).toMatchObject({ from: 0, read: perRun, total: 6, next: perRun });
+		expect(first.problem).toBe('No cards turned up in these notes.');
+		const last = await draftCards(vault, CS, { folders: ['CS/Big'], from: first.batch!.next! }, cli(executable));
+		expect(last.batch).toMatchObject({ from: perRun, read: 6 - perRun, next: null });
+	});
+
+	it.each([
+		['nothing picked', {}, 'Pick a note or a folder to make cards from.'],
+		['a note outside the subject', { notes: ['Journal/Day.md'] }, 'Pick a note or a folder to make cards from.'],
+		['a goal that is not in Goals.md', { notes: ['CS/TCP.md'], goal: 'Cooking' }, 'There is no goal called "Cooking"']
+	])('says why there is nothing for %s, without running Claude', async (_, input, problem) => {
+		await vault.write('Journal/Day.md', 'A day.\n');
+		const result = await draftCards(vault, CS, input, cli(join(scratch, 'not-there')));
+		expect(result.cards).toEqual([]);
+		expect(result.problem).toContain(problem);
+	});
+
+	it('refuses while the kill switch is off', async () => {
 		await vault.write('_hub/ai.md', '---\nenabled: false\n---\n');
-		await vault.write('CS/TCP.md', NOTE);
-		const result = await suggestCards(vault, 'CS/TCP.md');
-		expect(result.proposal).toBeNull();
-		expect(result.refusals[0].guardrail).toBe('G10');
-	});
-
-	it('drops the suggestions the note does not support', async () => {
-		await vault.write('CS/TCP.md', NOTE);
-		const executable = await fakeCli(
-			envelope({
-				cards: [
-					{
-						question: 'Handshake?',
-						answer: 'SYN, SYN-ACK, ACK',
-						quote: 'The three-way handshake is SYN, SYN-ACK, ACK.'
-					},
-					{ question: 'Port range?', answer: '0 to 65535', quote: 'Ports run from 0 to 65535.' }
-				]
-			})
-		);
-
-		const result = await suggestCards(vault, 'CS/TCP.md', { cli: { executable, vaultPath: dir } });
-		expect(result.unsupported.map((c) => c.question)).toEqual(['Port range?']);
-		expect(result.proposal?.edits).toHaveLength(1);
-		const edit = result.proposal!.edits[0];
-		expect('text' in edit ? edit.text : '').toContain('Handshake?::SYN, SYN-ACK, ACK');
-		expect('text' in edit ? edit.text : '').not.toContain('65535');
-		// The note carried no flashcard tag, so the block brings one.
-		expect('text' in edit ? edit.text : '').toContain('\n#flashcards\n');
-	});
-
-	it('proposes nothing when every suggestion was invented', async () => {
-		await vault.write('CS/TCP.md', NOTE);
-		const executable = await fakeCli(
-			envelope({ cards: [{ question: 'Port range?', answer: '0 to 65535', quote: 'Ports run from 0 to 65535.' }] })
-		);
-		const result = await suggestCards(vault, 'CS/TCP.md', { cli: { executable, vaultPath: dir } });
-		expect(result.proposal).toBeNull();
-		expect(result.unsupported).toHaveLength(1);
-		expect(result.problem).toBeNull();
+		const result = await draftCards(vault, CS, { notes: ['CS/TCP.md'] }, cli(join(scratch, 'not-there')));
+		expect(result.cards).toEqual([]);
+		expect(result.problem).toMatch(/off/i);
 	});
 
 	it('refuses output of the wrong shape rather than guessing at it', async () => {
-		await vault.write('CS/TCP.md', NOTE);
-		const executable = await fakeCli(envelope({ cards: [{ question: 'q' }] }));
-		const result = await suggestCards(vault, 'CS/TCP.md', { cli: { executable, vaultPath: dir } });
-		expect(result.proposal).toBeNull();
-		expect(result.refusals[0].guardrail).toBe('G6');
-	});
-
-	it('never writes the note, whatever came back', async () => {
-		await vault.write('CS/TCP.md', NOTE);
-		const executable = await fakeCli(
-			envelope({
-				cards: [
-					{
-						question: 'Handshake?',
-						answer: 'SYN, SYN-ACK, ACK',
-						quote: 'The three-way handshake is SYN, SYN-ACK, ACK.'
-					}
-				]
-			})
-		);
-		await suggestCards(vault, 'CS/TCP.md', { cli: { executable, vaultPath: dir } });
-		expect((await vault.read('CS/TCP.md')).content).toBe(NOTE);
+		const executable = await fakeCli({ cards: [{ question: 'q' }] });
+		const result = await draftCards(vault, CS, { notes: ['CS/TCP.md'] }, cli(executable));
+		expect(result.cards).toEqual([]);
+		expect(result.problem).not.toBeNull();
 	});
 });

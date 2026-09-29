@@ -33,6 +33,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	const parsed = parseNote(note.content, path);
 	const name = basename(path);
 	const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+	// The study subject the note is in, which is what offers "Make cards".
+	const subject = subjectFor(await workspaces(), path, parsed.tags);
 
 	return {
 		path,
@@ -46,8 +48,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		}),
 		tree: await vault.tree(),
 		tags: parsed.tags,
-		// The study subject the note is in, which is what offers "Make cards".
-		subject: subjectFor(await workspaces(), path, parsed.tags)?.name ?? null,
+		subject: subject ? { name: subject.name, slug: subject.slug } : null,
 		backlinks: index
 			.backlinks(name)
 			.filter((b) => b.path !== path)
