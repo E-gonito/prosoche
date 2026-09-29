@@ -51,7 +51,8 @@ export type FeatureId =
 	| 'weekly-review'
 	| 'capture'
 	| 'suggest-flashcards'
-	| 'timesheet';
+	| 'timesheet'
+	| 'dating-insights';
 
 /** The four controls the user picks, plus the two limits that bound a run. */
 export interface RunSettings {
@@ -86,7 +87,10 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	'weekly-review': { model: 'claude-opus-5', effort: 'high', permission: 'read-only', budgetUsd: 1, timeoutSeconds: 300 },
 	capture: { model: 'claude-haiku-4-5-20251001', effort: 'low', permission: 'propose', budgetUsd: 0.1, timeoutSeconds: 90 },
 	'suggest-flashcards': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
-	timesheet: { model: 'claude-sonnet-5', effort: 'high', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 180 }
+	timesheet: { model: 'claude-sonnet-5', effort: 'high', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 180 },
+	// Read-only by construction, never just by default: Dating's own budget row,
+	// kept low because a read on a private log is a small, occasional ask.
+	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', permission: 'read-only', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
@@ -96,7 +100,8 @@ export const FEATURE_LABELS: Record<FeatureId, string> = {
 	'weekly-review': 'Weekly review',
 	capture: 'Capture and file',
 	'suggest-flashcards': 'Suggest flashcards',
-	timesheet: 'Timesheet draft'
+	timesheet: 'Timesheet draft',
+	'dating-insights': 'Dating insights'
 };
 
 /** The caps G7 enforces, whatever an individual feature's row asks for. */
