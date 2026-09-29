@@ -71,6 +71,13 @@ describe('parseGoals', () => {
 		expect(goals.goals[0].milestones.map((m) => m.text)).toEqual(['One']);
 		expect(goals.goals[1].milestones.map((m) => m.text)).toEqual(['Two']);
 	});
+
+	it('does not take a heading-shaped line in a code fence for a goal, as appendUnderHeading does not', () => {
+		const note = '## Goal\n```sh\n## not a goal\n```\n- [ ] One\n';
+		expect(parseGoals(note).goals.map((g) => g.title)).toEqual(['Goal']);
+		const added = withNewMilestone(note, 'Goal', 'Two', null);
+		expect(parseGoals(added.content).goals[0].milestones.map((m) => m.text)).toEqual(['One', 'Two']);
+	});
 });
 
 describe('goalRefs', () => {

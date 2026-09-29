@@ -63,9 +63,18 @@ export function appendUnderHeading(
 		return { content: added, line: added.split('\n').length - 2 };
 	}
 
+	// A `# comment` inside a fenced block (a card's code, a shell snippet) is
+	// not a heading, so it does not end the section either.
 	let end = lines.length;
+	fence = null;
 	for (let i = at + 1; i < lines.length; i++) {
-		if (HEADING.test(lines[i])) {
+		const f = FENCE.exec(lines[i]);
+		if (f) {
+			if (fence === null) fence = f[1];
+			else if (f[1] === fence) fence = null;
+			continue;
+		}
+		if (fence === null && HEADING.test(lines[i])) {
 			end = i;
 			break;
 		}

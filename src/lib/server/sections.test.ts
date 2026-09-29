@@ -53,6 +53,12 @@ describe('appendUnderHeading', () => {
 		expect(after.content).toBe('## Time log\n- 09:00 - 09:30 One (30m)\n- 10:00 - 10:30 Two (30m)\n\n## Notes\nprose\n');
 	});
 
+	it('does not end the section at a heading-shaped line inside a code fence', () => {
+		const before = '## [[Bash]]\n\nHow to comment?\n?\n```\n# like this\n```\n\n## [[Next]]\n';
+		const after = appendUnderHeading(before, '## [[Bash]]', '\nQ::A');
+		expect(after.content).toBe('## [[Bash]]\n\nHow to comment?\n?\n```\n# like this\n```\n\nQ::A\n\n## [[Next]]\n');
+	});
+
 	describe('filing ahead of a line the caller picks', () => {
 		const newer = (day: string) => (line: string) => /^- (\d{4}-\d{2}-\d{2})/.exec(line)?.[1]! <= day;
 
