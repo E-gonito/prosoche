@@ -285,9 +285,17 @@ already has is refused, and so is "Review", which that page already is. The
 old single-subject addresses, such as `/study/goals`, open that tab of the
 only subject, or this page when there are several.
 
-Every subject has five tabs, always shown, because a new subject should
-invite filling in rather than hide: Overview, Goals, Reading list, Sessions
-and Flashcards.
+Every subject has six tabs, always shown, because a new subject should
+invite filling in rather than hide: Overview, Notes, Goals, Reading list,
+Sessions and Flashcards.
+
+**Notes** is the subject's own folders from the vault, as a tree on the left
+and the chosen note read in place on the right (on a phone, the tree above
+the note). A filter box narrows the tree to the notes whose path matches.
+Each note offers Make cards for this subject and Open in Notes for the
+vault-wide reader. It is read-only; editing stays in Obsidian. Only notes
+inside the subject's folders open here, so what it shows is exactly what the
+subject's `folders:` names.
 
 **Goals are a subject's topics.** A goal is a `## ` heading in `Goals.md`,
 with an optional `target::` date and its milestones as ordinary task lines

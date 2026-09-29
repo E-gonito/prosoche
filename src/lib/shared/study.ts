@@ -288,6 +288,7 @@ export interface StudyTab {
 /** A subject's tabs, in order. A fresh subject shows all of them, to be filled in. */
 export const STUDY_TABS: StudyTab[] = [
 	{ title: 'Overview', path: '' },
+	{ title: 'Notes', path: '/notes' },
 	{ title: 'Goals', path: '/goals' },
 	{ title: 'Reading list', path: '/reading' },
 	{ title: 'Sessions', path: '/sessions' },

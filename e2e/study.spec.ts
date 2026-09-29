@@ -75,7 +75,7 @@ test.describe('Study index', () => {
 		const file = vaultFile('_hub/workspaces/filipino.md');
 		expect(file).toContain('template: study\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
 		// Every tab shows, even for a subject with nothing in it yet.
-		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Goals', 'Reading list', 'Sessions', 'Flashcards']);
+		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list', 'Sessions', 'Flashcards']);
 	});
 
 	test('Review everything due reviews every subject’s cards', async ({ page }) => {
@@ -394,5 +394,31 @@ test.describe('Phone layout', () => {
 		const box = await grades.boundingBox();
 		expect(box!.width).toBeLessThanOrEqual(390);
 		expect(box!.width / 4).toBeGreaterThan(44);
+	});
+});
+
+test.describe('A subject’s Notes tab', () => {
+	test.beforeEach(async ({ request }) => {
+		await resetVault(request);
+	});
+
+	test('browses the subject’s folders and reads a note in place', async ({ page }) => {
+		await page.goto('/study/study/notes');
+		const tree = page.getByTestId('subject-tree');
+		await expect(tree).toContainText('Study');
+		await tree.getByRole('link', { name: 'Algorithms' }).click();
+		await expect(page).toHaveURL(/\/study\/study\/notes\?note=Study%2FAlgorithms\.md$/);
+		await expect(page.getByTestId('subject-note-body')).toBeVisible();
+		await expect(page.getByTestId('subject-make-cards')).toHaveAttribute('href', '/study/study/make?note=Study%2FAlgorithms.md');
+
+		await page.getByTestId('subject-notes-filter').fill('syllab');
+		await expect(tree.getByRole('link')).toHaveCount(1);
+		await expect(tree.getByRole('link')).toContainText('Syllabus');
+	});
+
+	test('will not open a note from outside the subject', async ({ page }) => {
+		await page.goto(`/study/study/notes?note=${encodeURIComponent('Work/Tasks.md')}`);
+		await expect(page.getByTestId('subject-note-body')).toHaveCount(0);
+		await expect(page.locator('.reader')).toContainText('not in Study');
 	});
 });
