@@ -14,72 +14,71 @@ More sheet.
 
 ## Today
 
-The timeline is direct manipulation, not a form. Drag a block to move it, its
-bottom edge to resize it, or focus one and use the arrow keys. Drag the ⠿ grip
-beside an unscheduled task to give it a time, and drag a block out onto the
-Unscheduled list, press its ✕, or press Backspace on it, to take the time off
-again. Everything snaps to ten minutes, and only the time on that line
-changes — the note keeps its own order regardless of where the UI displays a
-task.
+The dashboard for one day and the week around it. The title names the day
+you are looking at — "Tuesday 29 September", "3 days ago" beneath it — with
+arrows either side and a jump back to today when you have wandered off it. A
+one-line summary counts what the day did and is still owed: done against the
+total, time planned, meetings, and anything overdue.
 
-Under the Timeline heading is a chip for every project with a block today,
-saying what it planned and what of that is done — "7h 20m planned", "30m
-done", "1h 20m done of 7h 30m". A block counts towards a project when it
-carries the project's tag, sits in one of its folders, or simply names it, so
-a line reading "10:40 - 18:00 Client project" is counted without being tagged.
-Ticked blocks are what "done" means here, minus anything a timer already
-measured, and a short block inside a longer one of the same project counts
-once. Blocks no project claims are left out rather than gathered into a row
-that would only say you have not tagged them.
+**Briefing.** Press "Brief me" for a short read on today and the rest of the
+week. It is shown on screen as a draft, never written until you press **Save
+to note** — the same accept step every AI feature in the app goes through.
+Regenerating drafts again over whatever the note already has. If today's note
+has no briefing section yet, the first save only adds it; press Brief me
+again afterwards to fill it in, because adding a heading to your note is a
+change worth seeing on its own before the words that go under it are. If AI
+is off, the strip says so plainly and links to Settings rather than offering
+a button that would only fail.
+
+**The timeline** is direct manipulation, not a form. Drag a block to move it,
+its bottom edge to resize it, or focus one and use the arrow keys. Drag the ⠿
+grip beside an unscheduled task to give it a time, and drag a block out onto
+the Unscheduled list, press its ✕, or press Backspace on it, to take the time
+off again. Everything snaps to ten minutes, and only the time on that line
+changes — the note keeps its own order regardless of where the UI displays a
+task. Your Google Calendar events for the day sit on the same grid as sand
+blocks rather than teal ones, read-only, each linking to its card on
+Meetings. On a phone, a segmented control switches between the timeline and
+the plain list; the choice is remembered on that device.
 
 Capture appends to `Inbox/Capture.md` under today's date. A line written as a
 task stays a task, so a captured to-do is immediately schedulable rather than
-needing to be retyped later.
-
-The unscheduled list is exactly what it says: everything in it has no time
-yet. Once a task gets a time, from the grip or the timeline, it moves to the
+needing to be retyped later. The unscheduled list is exactly what it says:
+once a task gets a time, from the grip or the timeline, it moves to the
 timeline and leaves this list.
 
-Open work from the rest of the vault gets its own list, grouped by workspace
-and ordered the way a board column is: most urgent quadrant first, then the
-soonest due date, then where the line lives. Each workspace contributes exactly
-the open cards its board shows, so a line in a project's deck note appears here
-with nothing else on it, while a line elsewhere in that project's notes still
-needs a quadrant, a due date, an id or the workspace's tag. Work no workspace
-claims is listed last under "Elsewhere", and has to carry a `Q1` through `Q4`,
-because a quadrant is the only mark of intent such a line has. Daily notes are
-excluded either way: each one is a copy of your template, so they would repeat
-the same unfinished checklist every day. What is left out after that is
-checklist notation inside reference notes, such as a syllabus or a manual test
-plan, rather than work to schedule.
+**Overdue** lists open tasks from anywhere in the vault whose due date has
+passed, daily notes excluded, because each of those is a copy of your
+template and would otherwise repeat the same unfinished checklist. Each row
+carries its workspace's dot and a button to plan it onto today.
 
-Each of those rows shows its due date, in red once it has gone by, and clicking
-its text opens the same card drawer the day's own tasks use. The `+` button
-puts the card on today with no time on it, so it lands in the unscheduled list
-ready to be dragged onto the timeline — which is how you plan from a phone,
-where there is no drag onto a grid.
+**Rest of the week** runs from tomorrow through the coming Sunday, padded out
+to six days on a short week. Each day lists its calendar events, the open
+tasks already in that day's own note if one exists, and the workspace cards
+due that day; clicking the day opens its own dashboard.
 
-Dragging one of those workspace tasks onto the timeline does something
+**From your workspaces** shows each workspace's most urgent open cards — the
+same ones its board would, in the same order — collapsed beyond the first
+three, plus how many captures are waiting untriaged in its inbox. The button
+on a card adds it to today with no time on it, ready to be dragged onto the
+timeline, which is how you plan from a phone where there is no drag onto a
+grid.
+
+Dragging one of those workspace cards onto the timeline does something
 different from dragging an unscheduled task: it adds a block to the day's own
-note, linking back to the card, instead of writing a time onto the card's line
-in its project note. A time with no date says nothing about which day it
-belongs to, and this page only ever reads the day's note, so the card would
-otherwise have vanished on the drop. The card itself is left exactly as it
-was: the block is time spent on it, not a second copy of it.
+note, linking back to the card, instead of writing a time onto the card's
+line in its project note. A time with no date says nothing about which day it
+belongs to, and the timeline only ever reads the day's own note, so the card
+would otherwise have vanished on the drop. The card itself is left exactly as
+it was: the block is time spent on it, not a second copy of it.
 
-A note that still has git conflict markers in it says so, here and on the note
-itself, with a link to the sync page. Resolving a merge is yours to do, in
-Obsidian or there; nothing in the app rewrites those lines for you.
+Beyond that, any module may add a card of its own — Study offers one for
+flashcards due, once something is. A private module never does: nothing of
+Dating's appears here, or anywhere outside its own screen.
 
-The briefing strip only shows once the note actually has briefing markers in
-it. Before that, it says plainly that this note has no briefing markers yet;
-adding them changes your note, so it waits for you on the review page rather
-than being applied on the spot.
-
-The backlog — tasks written inside a fenced code block, such as the syllabus
-example in the README — is shown read-only, because Obsidian treats those
-lines as text, not tasks, and prosoche follows Obsidian's lead rather than
-inventing its own.
+A note that still has git conflict markers in it says so, with a link to the
+sync page. Resolving a merge is yours to do, in Obsidian or there; nothing in
+the app rewrites those lines for you.
 
 ## Notes
 
