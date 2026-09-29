@@ -151,7 +151,7 @@
 				<Icon name="chevron-right" />
 			</a>
 		{:else}
-			<p class="none">No workspace has a folder yet, so there is nowhere to keep a notebook.</p>
+			<p class="none">No workspace has meetings yet. Add <code>meetings: true</code> to a workspace's file to give it a notebook.</p>
 		{/each}
 	</div>
 </div>
@@ -173,6 +173,7 @@
 	.notebook .name { font-weight: 500; }
 	.notebook .muted { margin-left: auto; text-align: right; }
 	.notebook :global(svg) { color: var(--muted); flex: none; }
+	code { font: var(--t13) var(--mono); }
 
 	@media (max-width: 720px) {
 		.event { grid-template-columns: 1fr; gap: var(--s1); }
