@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, DEFAULT_STAGES, type Workspace } from './workspaces';
+import { createWorkspace, loadWorkspaces, seedWorkspaces, workspaceFor, type Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -25,7 +25,6 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded.map((w) => w.slug).sort()).toEqual(['personal', 'side-projects', 'study', 'work']);
 		const work = loaded.find((w) => w.slug === 'work')!;
 		expect(work.folders).toEqual(['Work']);
-		expect(work.stages).toEqual(DEFAULT_STAGES);
 	});
 
 	it('writes no tabs: block; the vault format no longer has one', async () => {
@@ -73,7 +72,7 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		await vault.write('_hub/workspaces/broken.md', 'no frontmatter at all');
 		const loaded = await loadWorkspaces(vault);
 		expect(loaded).toHaveLength(1);
-		expect(loaded[0]).toMatchObject({ slug: 'broken', name: 'broken', tag: 'ws/broken', stages: DEFAULT_STAGES });
+		expect(loaded[0]).toMatchObject({ slug: 'broken', name: 'broken', tag: 'ws/broken' });
 	});
 
 	it('parses an old file that still has a tabs: list, ignoring it', async () => {
@@ -84,12 +83,11 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded).not.toHaveProperty('tabs');
 	});
 
-	it('reads a stages: list from the workspace file, or falls back to the default pipeline', async () => {
+	it('parses an old file that still has a deal pipeline stages: list, ignoring it', async () => {
 		await vault.write('_hub/workspaces/pipeline.md', '---\nname: Pipeline\nstages: [new, qualifying, won]\n---\n');
-		await vault.write('_hub/workspaces/default-stages.md', '---\nname: Default\n---\n');
-		const loaded = await loadWorkspaces(vault);
-		expect(loaded.find((w) => w.slug === 'pipeline')!.stages).toEqual(['new', 'qualifying', 'won']);
-		expect(loaded.find((w) => w.slug === 'default-stages')!.stages).toEqual(DEFAULT_STAGES);
+		const loaded = (await loadWorkspaces(vault)).find((w) => w.slug === 'pipeline')!;
+		expect(loaded.name).toBe('Pipeline');
+		expect(loaded).not.toHaveProperty('stages');
 	});
 });
 
@@ -103,7 +101,6 @@ describe('workspaceFor', () => {
 		folders,
 		deck: 'Inbox/Tasks.md',
 		kanbanColumns: [],
-		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const all = [ws('client', 'ws/client', ['Work/Client']), ws('work', 'ws/work', ['Work'])];
@@ -137,7 +134,6 @@ describe('workspaceFor, by alias', () => {
 		folders,
 		deck: 'Inbox/Tasks.md',
 		kanbanColumns: [],
-		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const kaya = ws('kaya', ['Kaya Thai'], ['Kaya', 'kaya thai therapy']);
@@ -201,8 +197,7 @@ describe('createWorkspace', () => {
 			name: 'Riverside Clinic',
 			color: '#123456',
 			tag: 'ws/riverside-clinic',
-			folders: ['Work/Riverside'],
-			stages: DEFAULT_STAGES
+			folders: ['Work/Riverside']
 		});
 
 		const content = (await vault.read(created.workspace.path)).content;

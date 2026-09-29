@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
 import { NoteIndex } from './index/index';
-import { PEOPLE_FOLDER, listPeople, logContact, person, personName, personPath } from './people';
+import { PEOPLE_FOLDER, logContact, person, personName, personPath } from './people';
 
 const ADA = `---
 type: person
@@ -151,50 +151,6 @@ describe('person', () => {
 		const nobody = await person(vault, index, '../../etc/passwd');
 		expect(nobody.exists).toBe(false);
 		expect(nobody.path).toBe(`${PEOPLE_FOLDER}/etc passwd.md`);
-	});
-});
-
-describe('listPeople', () => {
-	beforeEach(async () => {
-		await add(`${PEOPLE_FOLDER}/Ada Lovelace.md`, ADA);
-		await add(`${PEOPLE_FOLDER}/Bob Barker.md`, '---\ntype: person\nworkspaces: [personal]\n---\n\n## Log\n- 2026-09-02 Beer.\n');
-		await add(`${PEOPLE_FOLDER}/Carol Kaye.md`, '---\ntype: person\n---\n\n## Log\n- 2026-09-19 Session.\n');
-		await add('Work/Kickoff.md', KICKOFF);
-	});
-
-	it('lists everyone with a note when nothing narrows it', async () => {
-		const people = await listPeople(vault, index);
-		expect(people.map((p) => p.name)).toEqual(['Ada Lovelace', 'Bob Barker', 'Carol Kaye']);
-	});
-
-	it('puts people with a dated follow-up first, then the longest unheard-from', async () => {
-		const people = await listPeople(vault, index);
-		// Ada has a follow-up due 2026-09-23; between the other two, Bob was last
-		// spoken to on the 2nd and Carol on the 19th.
-		expect(people.map((p) => [p.name, p.openFollowUps, p.lastContact])).toEqual([
-			['Ada Lovelace', 2, '2026-09-18'],
-			['Bob Barker', 0, '2026-09-02'],
-			['Carol Kaye', 0, '2026-09-19']
-		]);
-	});
-
-	it('narrows to the people a folder talks about', async () => {
-		const people = await listPeople(vault, index, { folders: ['Work'] });
-		expect(people.map((p) => p.name)).toEqual(['Ada Lovelace']);
-	});
-
-	it('narrows to the people a workspace claims in their own frontmatter', async () => {
-		const people = await listPeople(vault, index, { folders: ['Inbox'], slug: 'personal' });
-		expect(people.map((p) => p.name)).toEqual(['Bob Barker']);
-	});
-
-	it('is empty, rather than an error, when nobody is in scope', async () => {
-		expect(await listPeople(vault, index, { folders: ['Nowhere'] })).toEqual([]);
-	});
-
-	it('carries the same follow-up counts the person page shows', async () => {
-		const ada = (await listPeople(vault, index)).find((p) => p.name === 'Ada Lovelace')!;
-		expect(ada.openFollowUps).toBe((await person(vault, index, 'Ada Lovelace')).openFollowUps);
 	});
 });
 

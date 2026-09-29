@@ -13,7 +13,6 @@ function workspace(fields: Partial<Workspace> = {}): Workspace {
 		folders: ['Work'],
 		deck: 'Work/Tasks.md',
 		kanbanColumns: [],
-		stages: [],
 		path: '_hub/workspaces/work.md',
 		...fields
 	};

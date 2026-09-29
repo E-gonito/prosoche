@@ -10,9 +10,10 @@
  *
  * Earlier versions let a workspace file list `tabs:` of named widgets. The
  * rebuild gives every workspace the same sections instead — Overview, Tasks,
- * Inbox, Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
- * longer read. A file that still has one from before is parsed the same as
- * any other frontmatter the hub does not recognise: harmlessly ignored.
+ * CRM, Inbox, Log, Notes, and a tab per file in `Pages/` — so `tabs:` is no
+ * longer read, and neither is the deal pipeline's old `stages:` list. A file
+ * that still has either is parsed the same as any other frontmatter the hub
+ * does not recognise: harmlessly ignored.
  */
 
 import { parseNote } from './parse/note';
@@ -20,9 +21,6 @@ import { slugify } from '$lib/shared/slug';
 import { displayText } from '$lib/shared/task';
 import { config } from './config';
 import type { Vault } from './vault/index';
-
-/** The pipeline a workspace's deals move through, unless its file says otherwise. */
-export const DEFAULT_STAGES = ['lead', 'proposal', 'negotiation', 'won', 'lost'];
 
 export interface Workspace {
 	/** Derived from the file name, e.g. `_hub/workspaces/study.md` -> `study`. */
@@ -49,8 +47,6 @@ export interface Workspace {
 	deck: string;
 	/** Board column titles. Empty means the five task statuses. */
 	kanbanColumns: string[];
-	/** Deal pipeline stages, in order. `DEFAULT_STAGES` unless the file sets its own. */
-	stages: string[];
 	path: string;
 }
 
@@ -129,7 +125,7 @@ const ALIAS_PATTERNS = new Map<string, RegExp>();
 
 /**
  * The workspace's home folder: where its `Tasks.md`, `Inbox.md`, `Log.md`,
- * `Deals.md` and `Pages/` live. The first folder a workspace names, so a
+ * `CRM/` and `Pages/` live. The first folder a workspace names, so a
  * workspace with several folders still has one unambiguous place for the
  * files only it writes; `Inbox` for one that names none yet.
  */
@@ -159,7 +155,6 @@ export async function seedWorkspaces(vault: Vault): Promise<string[]> {
 function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 	const slug = (path.split('/').pop() ?? '').replace(/\.md$/, '');
 	const folders = strList(fm.folders);
-	const stages = strList(fm.stages).map((s) => s.trim()).filter(Boolean);
 	return {
 		slug,
 		name: str(fm.name) ?? slug,
@@ -170,7 +165,6 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		template: str(fm.template) ?? undefined,
 		deck: str(fm.deck) ?? `${folders[0] ?? 'Inbox'}/Tasks.md`,
 		kanbanColumns: strList(fm.kanban_columns),
-		stages: stages.length ? stages : [...DEFAULT_STAGES],
 		path
 	};
 }
@@ -188,7 +182,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'stages'> {
+interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];
@@ -294,7 +288,6 @@ ${aliases}---
 ${seed.description}
 
 Edit this file to change the workspace: its name, colour, tag and which
-folders belong to it. Add a \`stages:\` list to change the deal pipeline from
-the default (lead, proposal, negotiation, won, lost).
+folders belong to it.
 `;
 }

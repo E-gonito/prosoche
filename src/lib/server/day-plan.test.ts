@@ -19,7 +19,6 @@ const STUDY: Workspace = {
 	folders: ['Study'],
 	deck: '',
 	kanbanColumns: [],
-	stages: [],
 	path: '_hub/workspaces/study.md'
 };
 

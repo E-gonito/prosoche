@@ -73,6 +73,42 @@ export async function logContact(
 	}));
 }
 
+/** A contact's details as the CRM forms send them. Links are one per item. */
+export interface ContactDetails {
+	kind?: string;
+	company?: string;
+	role?: string;
+	email?: string;
+	phone?: string;
+	links?: string[];
+}
+
+/**
+ * Create a contact in a workspace's CRM. Refused, with a message saying why,
+ * for a name that cannot be a file name or that another contact already has.
+ */
+export async function createContact(
+	workspace: string,
+	name: string,
+	details: ContactDetails & { notes?: string }
+): Promise<Result<{ name: string }>> {
+	return post('/api/crm', { workspace, name, ...details }, (body) => ({ name: body.name as string }));
+}
+
+/**
+ * Change a contact: set or clear `fields` (an empty value clears), add one
+ * history `entry`, or both. `expectedHash` is the hash the page loaded; a
+ * contact changed since comes back as a conflict and nothing is written.
+ */
+export async function updateContact(
+	workspace: string,
+	name: string,
+	expectedHash: string,
+	change: { fields?: ContactDetails; entry?: { day: string; text: string } }
+): Promise<Result<{ hash: string }>> {
+	return post('/api/crm', { workspace, name, expectedHash, ...change }, (body) => ({ hash: body.hash as string }), 'PATCH');
+}
+
 /** Create today's note from the vault template. Idempotent. */
 export async function createDay(day: string): Promise<Result<{ path: string }>> {
 	return post(`/api/day/${day}`, {}, (body) => ({ path: body.path }));
@@ -107,17 +143,17 @@ export async function saveNote(
 	}
 }
 
-async function post<T>(url: string, body: unknown, pick: (body: any) => T): Promise<Result<T>> {
+async function post<T>(url: string, body: unknown, pick: (body: any) => T, method = 'POST'): Promise<Result<T>> {
 	try {
 		const res = await fetch(url, {
-			method: 'POST',
+			method,
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
 		const parsed = await res.json().catch(() => ({}));
 		if (res.ok) return { ok: true, value: pick(parsed) };
 		if (res.status === 409) {
-			return { ok: false, kind: 'conflict', message: 'That line changed on another device. Reloading.' };
+			return { ok: false, kind: 'conflict', message: parsed.error ?? 'That line changed on another device. Reloading.' };
 		}
 		return { ok: false, kind: 'error', message: parsed.error ?? `Request failed (${res.status})` };
 	} catch {

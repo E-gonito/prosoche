@@ -1,5 +1,5 @@
 /**
- * People: the vault's lightweight CRM.
+ * People: anyone the vault's notes link to.
  *
  * A person is a note, `People/<Full Name>.md`, and a connection to them is a
  * wiki-link. Mentioning `[[Ada Lovelace]]` in a meeting note is all it takes for
@@ -27,12 +27,8 @@
  *    of their log lines, that field if someone set it by hand, and the newest
  *    daily note that links to them.
  *
- * Who appears in a list is decided by who has a note. The alternative — reading
- * every note in scope and treating capitalised unresolved links as people — was
- * rejected: the index can say who links to a name but cannot enumerate the
- * links out of a folder, so it would mean a full scan on every page load, and
- * a link to a book or an idea — `[[Some Book Title]]`, `[[Some Concept]]` —
- * would be filed as a friend.
+ * There is no list of people. A workspace's contacts are its CRM (`crm.ts`),
+ * a separate set of notes; a person here is reached by following a link.
  */
 
 import { basename, parseNote } from './parse/note';
@@ -51,22 +47,6 @@ const LOG_HEADING = '## Log';
 const FOLLOW_UPS_HEADING = '## Follow-ups';
 const LOG_LINE = /^[ \t]*[-*+][ \t]+(\d{4}-\d{2}-\d{2})[ \t]+(.*)$/;
 
-/** Enough about a person for a list: who to talk to next, and when you last did. */
-export interface PersonSummary {
-	name: string;
-	/** Their note, or null when nobody has written one yet. */
-	path: string | null;
-	lastContact: DayKey | null;
-	openFollowUps: number;
-	/** The soonest due date among those follow-ups, or null when none is dated. */
-	nextDue: string | null;
-	/** How many notes link to them. */
-	mentions: number;
-	/** Their role and organisation, when the note gives them. */
-	role: string | null;
-	org: string | null;
-}
-
 /** One line of a person's `## Log`, in the order the file has them. */
 export interface LogLine {
 	/** The date the line starts with, or null for a line written without one. */
@@ -76,27 +56,26 @@ export interface LogLine {
 }
 
 /** Everything a person's page shows. */
-export interface Person extends PersonSummary {
+export interface Person {
+	name: string;
 	path: string;
 	/** False when they have no note; every other field still reads normally. */
 	exists: boolean;
+	lastContact: DayKey | null;
+	openFollowUps: number;
+	/** The soonest due date among those follow-ups, or null when none is dated. */
+	nextDue: string | null;
+	/** How many notes link to them. */
+	mentions: number;
+	/** Their role and organisation, when the note gives them. */
+	role: string | null;
+	org: string | null;
 	/** The note's body, frontmatter removed, for rendering. */
 	body: string;
 	frontmatter: Record<string, unknown>;
 	followUps: Task[];
 	log: LogLine[];
 	mentionedIn: Array<{ path: string; title: string; line: number }>;
-}
-
-/**
- * Which people a list is about. An empty scope means the whole vault; a
- * workspace passes its folders, its tag and its slug, and a person belongs when
- * their note or any note that mentions them sits inside it.
- */
-export interface PeopleScope {
-	folders?: string[];
-	tags?: string[];
-	slug?: string;
 }
 
 /** Vault-relative path of a person's note. Path separators are not names. */
@@ -111,44 +90,6 @@ export function personName(name: string): string {
 		.replace(/[\\/:*?"<>|]/g, ' ')
 		.replace(/\s+/g, ' ')
 		.replace(/^[.\s]+|[.\s]+$/g, '');
-}
-
-/**
- * The people in scope, the ones needing attention first.
- *
- * Ordered so the list reads as a prompt to act: anyone with a dated follow-up
- * first, soonest due first, then anyone else with follow-ups, then by how long
- * it has been since you last spoke, oldest first. Ties break on the name so the
- * order never wobbles between loads.
- *
- * Reads each person's note. Writes nothing. A person whose note is unreadable
- * still appears, with no follow-ups, rather than disappearing from the list.
- */
-export async function listPeople(vault: Vault, index: NoteIndex, scope: PeopleScope = {}): Promise<PersonSummary[]> {
-	const paths = (await vault.list()).filter((p) => p.startsWith(`${PEOPLE_FOLDER}/`));
-	const people: PersonSummary[] = [];
-
-	for (const path of paths) {
-		const name = basename(path);
-		const note = await vault.read(path);
-		const parsed = parseNote(note.content, path);
-		const links = index.backlinks(name);
-		if (!inScope(scope, path, parsed.frontmatter, parsed.tags, links)) continue;
-
-		const followUps = followUpsFor(index, name, path);
-		people.push({
-			name,
-			path,
-			lastContact: lastContact(parsed.frontmatter, readLog(note.content), links),
-			openFollowUps: followUps.length,
-			nextDue: followUps.map((t) => t.due).filter((d): d is string => !!d).sort()[0] ?? null,
-			mentions: new Set(links.map((l) => l.path)).size,
-			role: text(parsed.frontmatter.role),
-			org: text(parsed.frontmatter.org)
-		});
-	}
-
-	return people.sort(byAttention);
 }
 
 /**
@@ -285,39 +226,6 @@ function lastContact(
 		...links.map((l) => dayOfNote(l.path))
 	].filter((d): d is DayKey => !!d);
 	return days.sort().at(-1) ?? null;
-}
-
-function inScope(
-	scope: PeopleScope,
-	path: string,
-	frontmatter: Record<string, unknown>,
-	tags: string[],
-	links: Array<{ path: string }>
-): boolean {
-	const folders = scope.folders ?? [];
-	const scopeTags = scope.tags ?? [];
-	if (!folders.length && !scopeTags.length && !scope.slug) return true;
-
-	const under = (p: string) => folders.some((f) => p === f || p.startsWith(`${f.replace(/\/$/, '')}/`));
-	if (under(path) || links.some((l) => under(l.path))) return true;
-	if (scopeTags.some((t) => tags.includes(t) || tags.some((own) => own.startsWith(`${t}/`)))) return true;
-
-	if (scope.slug) {
-		const declared = frontmatter.workspaces ?? frontmatter.workspace;
-		const list = Array.isArray(declared) ? declared : [declared];
-		if (list.some((v) => typeof v === 'string' && v === scope.slug)) return true;
-	}
-	return false;
-}
-
-/** The order a list of people reads best in. See `listPeople`. */
-function byAttention(a: PersonSummary, b: PersonSummary): number {
-	const rank = (p: PersonSummary) => (p.nextDue ? 0 : p.openFollowUps ? 1 : 2);
-	if (rank(a) !== rank(b)) return rank(a) - rank(b);
-	if (a.nextDue && b.nextDue && a.nextDue !== b.nextDue) return a.nextDue.localeCompare(b.nextDue);
-	if (a.openFollowUps !== b.openFollowUps) return b.openFollowUps - a.openFollowUps;
-	if (a.lastContact !== b.lastContact) return (a.lastContact ?? '').localeCompare(b.lastContact ?? '');
-	return a.name.localeCompare(b.name);
 }
 
 /** The note a first contact creates: their name, the two headings, nothing else. */

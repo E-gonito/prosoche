@@ -5,9 +5,8 @@ import { renderMarkdown } from '$server/render';
 import type { PageServerLoad } from './$types';
 
 /**
- * One person's page, reached from a workspace's people widget or by following a
- * wiki-link. There is deliberately no page listing everyone: people live inside
- * the workspaces that care about them.
+ * One person's page, reached by following a wiki-link. There is deliberately
+ * no page listing everyone; a workspace's contacts are its CRM instead.
  *
  * Someone with no note is not an error. Their page shows who has mentioned them
  * and offers the log box, and writing the first line is what creates the note.

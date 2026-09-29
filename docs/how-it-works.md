@@ -195,7 +195,7 @@ between groups writes a single `status:` line into its frontmatter.
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders and deal stages — so editing it
+definition — its name, colour, tag and folders — so editing it
 here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back. Older
@@ -207,7 +207,7 @@ Folders are comma separated and vault-relative. Notes and tasks inside them
 belong to the workspace, and so does anything tagged `#ws/<slug>` wherever it
 lives in the vault, which is what lets a task belong to a workspace without
 living inside one of its folders. The first folder is the workspace's home:
-it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Deals.md` and a `Pages/` folder
+it is where `Tasks.md`, `Inbox.md`, `Log.md`, a `CRM/` folder and a `Pages/` folder
 of custom pages all live.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
@@ -222,10 +222,11 @@ to say it outright.
 
 A workspace always has an Overview: next actions, an inbox preview, the
 latest log entry, anything blocked, recent notes, and a link into its meeting
-notebook. Every other tab — Tasks, Inbox, Log, People, Notes, and one per file
-in `Pages/` — hides itself until it has something to show, so a brand new
-workspace opens quiet rather than full of empty panes; visiting one directly
-still works; adding its first card, capture, log line, person or deal is what
+notebook. CRM always shows, because a list of contacts starts empty and
+filling it is the point. Every other tab — Tasks, Inbox, Log, Notes, and one
+per file in `Pages/` — hides itself until it has something to show, so a
+brand new workspace opens quiet rather than full of empty panes; visiting one
+directly still works; adding its first card, capture or log line is what
 brings the tab back.
 
 **Tasks** is the board: a card is a checkbox line carrying a quadrant, a due
@@ -248,17 +249,44 @@ filed. Nothing is ever deleted, only marked done.
 newest first; the file itself only ever grows downward, because "add an
 update" appends under today's heading and never touches an earlier one.
 
-**People** is the workspace's CRM: everyone its notes mention, the same way
-`people.ts` finds anyone elsewhere, plus a deal pipeline read from
-`Deals.md`. A deal line uses Dataview-style inline fields —
+**CRM** is the workspace's suppliers, stakeholders and leads, one note each
+in `<home>/CRM/<Name>.md`. The file name is the contact's name, so
+`[[Mang Tomas Foods]]` in any note links straight to it from Obsidian:
 
-    - Moorfields pilot [[Jane Doe]] stage:: proposal value:: 12000 next:: 2026-10-03
+    ---
+    kind: supplier
+    company: Mang Tomas Foods
+    role: Sales
+    email: orders@mangtomas.ph
+    phone: +44 7700 900123
+    links:
+      - https://mangtomas.ph
+    ---
 
-— so it stays readable in Obsidian; a field this app does not know about is
-kept exactly as written. The pipeline's stages default to lead, proposal,
-negotiation, won and lost, or to whatever a workspace's own `stages:` list
-names. Moving a deal writes only its `stage::` value, through the same
-per-line conflict guard a task edit gets.
+    Pork and chicken supplier. Met at the trade fair.
+
+    ## History
+    - 2026-09-29 Asked for a wholesale price list
+    - 2026-09-22 First call
+
+`kind` is supplier, stakeholder or lead in the form; any other word typed by
+hand is still shown, and offered as a filter. The list is sorted by the
+newest history entry, so whoever you spoke to last is on top, and can be
+narrowed by kind and searched by name, company or role. "New contact" writes
+the file with every field present, empty ones as a bare `key:`, and refuses a
+name another contact already has (ignoring case, because Obsidian's links do)
+or one that cannot be a file name or a link — a slash, a colon, `#`, `^`,
+brackets, a leading or trailing dot.
+
+A contact's page shows the details, the notes rendered, and the history
+newest first. Saving the details rewrites only the fields you changed, each
+through its own frontmatter lines; a value YAML would misread, such as
+`+447700900123` or a bare date, is written in quotes. "Add entry" inserts one
+line under `## History`, creating the heading if the note has none, ahead of
+the first entry no newer than it, so a back-dated entry lands in date order.
+Both carry the hash the page loaded, and a note changed in Obsidian meanwhile
+is refused and reloaded rather than overwritten. Nothing here reads or writes
+under `Private/`, and person notes elsewhere in the vault are left alone.
 
 **Notes** lists the workspace's own notes, most recently changed first,
 read-only, from the folders named in the workspace file.

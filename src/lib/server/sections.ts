@@ -23,6 +23,11 @@ const HEADING = /^#{1,6}[ \t]/;
  * lines after the insertion point, its number. Trailing blank lines inside the
  * section are kept below the new line so the note's spacing survives.
  *
+ * `before`, when given, files the line ahead of the first line in the section
+ * it accepts instead of at the end — how a newest-first list, such as a CRM
+ * contact's `## History`, takes a new entry in date order. A section with no
+ * such line falls back to the end, so the rule never fails to file.
+ *
  * General markdown surgery rather than anything to do with time; `people.ts`
  * appends its log lines with it too. It wants a module of its own, shared with
  * `capture.ts`, which does the same thing for a `## <day>` heading.
@@ -30,7 +35,8 @@ const HEADING = /^#{1,6}[ \t]/;
 export function appendUnderHeading(
 	content: string,
 	heading: string,
-	line: string
+	line: string,
+	before?: (existing: string) => boolean
 ): { content: string; line: number } {
 	const lines = content.split('\n');
 	const wanted = heading.trim().toLowerCase();
@@ -64,8 +70,9 @@ export function appendUnderHeading(
 			break;
 		}
 	}
-	let insert = end;
-	while (insert > at + 1 && lines[insert - 1].trim() === '') insert--;
+	const ahead = before ? lines.slice(at + 1, end).findIndex(before) : -1;
+	let insert = ahead === -1 ? end : at + 1 + ahead;
+	if (ahead === -1) while (insert > at + 1 && lines[insert - 1].trim() === '') insert--;
 	lines.splice(insert, 0, line);
 	return { content: lines.join('\n'), line: insert };
 }

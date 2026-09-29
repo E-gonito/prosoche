@@ -45,7 +45,6 @@ const WORKSPACE: Workspace = {
 	folders: ['Work/Atlas'],
 	deck: '',
 	kanbanColumns: [],
-	stages: [],
 	path: '_hub/workspaces/atlas.md'
 };
 

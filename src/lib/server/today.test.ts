@@ -55,7 +55,6 @@ const STUDY: Workspace = {
 	aliases: [],
 	folders: ['Study'],
 	template: 'study',
-	stages: ['lead', 'proposal', 'won'],
 	deck: 'Study/Tasks.md',
 	kanbanColumns: [],
 	path: '_hub/workspaces/study.md'

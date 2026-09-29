@@ -47,23 +47,6 @@ test.describe('Workspaces', () => {
 		expect(content).toContain('- Shipped the first draft to the client');
 	});
 
-	test('adds a deal and changes its stage, writing the exact line', async ({ page }) => {
-		await page.goto('/w/work/people');
-		await page.getByTestId('add-deal-open').click();
-		await page.getByTestId('deal-name').fill('Moorfields pilot');
-		await page.getByTestId('deal-value').fill('12000');
-		await page.getByTestId('deal-add').click();
-
-		await expect(page.getByText('Moorfields pilot')).toBeVisible();
-		let content = vaultFile('Work/Deals.md');
-		expect(content).toContain('- Moorfields pilot stage:: lead value:: 12000');
-
-		await page.getByTestId('deal-stage-select').selectOption('negotiation');
-		expect(await waitForFile('Work/Deals.md', (c) => c.includes('stage:: negotiation'))).toBe(true);
-		content = vaultFile('Work/Deals.md');
-		expect(content).toContain('- Moorfields pilot stage:: negotiation value:: 12000');
-	});
-
 	test('a custom page tab renders in a sandboxed iframe', async ({ page, request }) => {
 		await page.goto('/w/work/pages/Eye.html');
 		const frame = page.frameLocator('iframe.embed');

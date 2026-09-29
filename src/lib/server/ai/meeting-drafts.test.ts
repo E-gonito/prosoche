@@ -42,7 +42,6 @@ const WORK: Workspace = {
 	template: 'project',
 	deck: 'Work/Tasks.md',
 	kanbanColumns: [],
-	stages: ['lead', 'proposal', 'won'],
 	path: '_hub/workspaces/work.md'
 };
 

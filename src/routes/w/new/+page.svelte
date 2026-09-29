@@ -8,7 +8,7 @@
 	 * than overwrites.
 	 *
 	 * There is no widget or tab choice here any more: every workspace gets the
-	 * same sections (Overview, Tasks, Inbox, Log, People, Notes), and a section
+	 * same sections (Overview, Tasks, CRM, Inbox, Log, Notes), and a section
 	 * with nothing in it hides itself.
 	 */
 	import { untrack } from 'svelte';
