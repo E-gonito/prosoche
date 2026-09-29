@@ -66,6 +66,13 @@ export interface Workspace {
 	 * workspaces may point at one.
 	 */
 	glossary?: string;
+	/**
+	 * For a study subject, how many cards never reviewed may join its reviews
+	 * each day, from `new_per_day:` in its file: a whole number, 0 for none.
+	 * Absent, or anything else written there, means the default (see
+	 * `study/subjects.ts`).
+	 */
+	newPerDay?: number;
 	path: string;
 }
 
@@ -212,8 +219,15 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		template: str(fm.template) ?? undefined,
 		meetings: fm.meetings === true,
 		...(str(fm.glossary) ? { glossary: str(fm.glossary)! } : {}),
+		...(count(fm.new_per_day) !== null ? { newPerDay: count(fm.new_per_day)! } : {}),
 		path
 	};
+}
+
+/** A whole number of zero or more, written as a number or a string of digits; otherwise null. */
+function count(value: unknown): number | null {
+	const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
+	return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 function str(value: unknown): string | null {

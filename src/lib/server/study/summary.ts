@@ -15,6 +15,7 @@
  */
 
 import { dueCards, type CardQueue } from './flashcards';
+import { newCardQuotas } from './new-cards';
 import { findGoal, goalRefs, readGoals, type Goal, type GoalsNote } from './goals';
 import { readReadingList } from './reading';
 import { minutesByGoal, minutesInWeek, readSessions, streak, weekStart, type StudySession } from './sessions';
@@ -56,7 +57,7 @@ export async function studySummary(
 	const refs = goalRefs(goals);
 	// A slug from a URL names the goal whose slug it is; anything else is taken as a name.
 	const wanted = goal === undefined ? undefined : (refs.find((g) => g.slug === goal)?.name ?? goal);
-	const queue = await dueCards(vault, index, { on: today, scope: subject.scope, goal: wanted });
+	const queue = await dueCards(vault, index, { on: today, scope: subject.scope, goal: wanted, newCards: await newCardQuotas(vault, [subject], today) });
 	// `Goals.md`'s `target:: <date>` reads as a card to the scanner; Study's
 	// own files are never card files, so they are not reported as ones
 	// Obsidian cannot see.
@@ -68,8 +69,10 @@ export async function studySummary(
 /**
  * The cards due across every subject, for "Review everything due" and for
  * Today. One sweep over the union of the subjects' scopes, so a note two
- * subjects share is reviewed once, not twice. No subjects means no cards,
- * never the whole vault. Never writes.
+ * subjects share is reviewed once, not twice. Each subject lets in its own
+ * new cards for today, so the new cards here are exactly those of every
+ * subject's own review. No subjects means no cards, never the whole vault.
+ * Never writes.
  */
 export async function dueEverywhere(
 	vault: Vault,
@@ -80,8 +83,8 @@ export async function dueEverywhere(
 ): Promise<CardQueue> {
 	const folders = [...new Set(subjects.flatMap((s) => s.scope.folders ?? []))];
 	const tags = [...new Set(subjects.flatMap((s) => s.scope.tags ?? []))];
-	if (!folders.length && !tags.length) return { cards: [], due: 0, fresh: 0, total: 0, files: [], invisible: [] };
-	return dueCards(vault, index, { on: today, scope: { folders, tags }, limit });
+	if (!folders.length && !tags.length) return { cards: [], due: 0, fresh: 0, waiting: 0, total: 0, files: [], invisible: [] };
+	return dueCards(vault, index, { on: today, scope: { folders, tags }, limit, newCards: await newCardQuotas(vault, subjects, today) });
 }
 
 /** One goal's standing, as the Overview shows it. */

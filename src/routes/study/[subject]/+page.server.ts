@@ -24,6 +24,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 		unassigned,
 		due: card.due,
 		fresh: summary.cards.fresh,
+		waiting: summary.cards.waiting,
 		weeklyHours: summary.goals.weeklyHours,
 		weekMinutes: card.weekMinutes,
 		streak: card.streak,

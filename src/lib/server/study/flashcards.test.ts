@@ -310,6 +310,33 @@ describe('dueCards', () => {
 		]);
 	});
 
+	it('lets in only as many unseen cards as a quota allows, in a stable order, and counts the rest as waiting', async () => {
+		const art = { folders: ['Art'] };
+		const cs = { folders: ['CS'] };
+		const one = await dueCards(vault, index, { on: '2026-09-21', newCards: [{ scope: cs, allowance: 0 }, { scope: art, allowance: 1 }] });
+		expect(one.cards.map((c) => c.question)).toEqual(['Overdue', 'Hue']);
+		expect(one).toMatchObject({ due: 1, fresh: 1, waiting: 1, total: 4 });
+		// A file's count is the same rule: CS's new card waits.
+		expect(one.files.map((f) => [f.path, f.due])).toEqual([
+			['Art/Colour.md', 1],
+			['CS/Due.md', 1]
+		]);
+		const none = await dueCards(vault, index, { on: '2026-09-21', newCards: [] });
+		expect(none).toMatchObject({ due: 1, fresh: 0, waiting: 2 });
+	});
+
+	it('picks a goal’s new cards from the subject’s, so the two reviews agree', async () => {
+		await vault.write('CS/Due.md', `---\ngoal: Systems\n---\n${(await vault.read('CS/Due.md')).content}More::new\n`);
+		await vault.write('CS/Aa.md', '#flashcards\n\nFirst::by path\n');
+		const quota = [{ scope: { folders: ['CS'] }, allowance: 1 }];
+		const subject = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota });
+		expect(subject.cards.map((c) => c.question)).toEqual(['Overdue', 'First']);
+		// CS/Aa.md comes first by path and names no goal, so the goal gets no new card today.
+		const goal = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota, goal: 'systems' });
+		expect(goal.cards.map((c) => c.question)).toEqual(['Overdue']);
+		expect(goal).toMatchObject({ fresh: 0, waiting: 2 });
+	});
+
 	it('reviews one goal’s files, matching the goal whatever its case, and still lists every file', async () => {
 		await vault.write('CS/Due.md', `---\ngoal: Computer systems\n---\n${(await vault.read('CS/Due.md')).content}`);
 		const queue = await dueCards(vault, index, { on: '2026-09-21', goal: 'Computer Systems' });

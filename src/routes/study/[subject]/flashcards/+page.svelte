@@ -32,7 +32,12 @@
 	<StudyTabs subject={data.subject} lede="Cards are written in your notes, in Spaced Repetition's syntax; a file's goal: puts its cards under a goal." />
 
 	<div class="review-row">
-		<p><b class="num" data-testid="cards-due">{data.due}</b> <span class="muted">due now, of {data.total} {data.total === 1 ? 'card' : 'cards'}</span></p>
+		<p>
+			<b class="num" data-testid="cards-due">{data.due}</b> <span class="muted">due now, of {data.total} {data.total === 1 ? 'card' : 'cards'}</span>
+			{#if data.fresh || data.waiting}
+				<span class="small muted new" data-testid="cards-new">{data.fresh} new today · {data.waiting} waiting</span>
+			{/if}
+		</p>
 		<div class="buttons">
 			<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
 			{#if data.due > 0}<a class="btn" href="{base}/review" data-testid="review-all">Review all</a>{/if}
@@ -99,6 +104,7 @@
 	.review-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s2); }
 	.review-row p { margin: 0; }
 	.review-row b { font-size: var(--t20); }
+	.review-row .new { display: block; }
 	.buttons { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
 	.file { display: flex; align-items: center; gap: var(--s3); justify-content: space-between; }
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

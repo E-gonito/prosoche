@@ -5,7 +5,8 @@ import type { PageServerLoad } from './$types';
 
 /**
  * A subject's card files, grouped by the goal each one's frontmatter names,
- * with what is due in each, and the notes holding cards Obsidian cannot see.
+ * with what is due in each, today's new cards and how many more wait, and
+ * the notes holding cards Obsidian cannot see.
  */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { subject } = await parent();
@@ -19,6 +20,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 		goals: summary.goalRefs,
 		due: groups.reduce((sum, g) => sum + g.due, 0),
 		total: summary.cards.total,
+		fresh: summary.cards.fresh,
+		waiting: summary.cards.waiting,
 		invisible: summary.cards.invisible
 	};
 };
