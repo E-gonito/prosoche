@@ -9,13 +9,10 @@
 
 import type {
 	AiSettings,
-	Answer,
 	ApplyResult,
 	BriefingRun,
 	Proposal,
 	Refusal,
-	RunSettings,
-	Scope,
 	Validation
 } from '$lib/shared/ai';
 
@@ -23,16 +20,6 @@ export type AiResult<T> =
 	| { ok: true; value: T }
 	| { ok: false; kind: 'refused'; message: string; refusals: Refusal[] }
 	| { ok: false; kind: 'offline' | 'error'; message: string };
-
-/** Ask a question. Read-only: this can never write to the vault. */
-export async function askQuestion(
-	question: string,
-	scope: Scope,
-	feature: 'ask' | 'insights',
-	override?: Partial<RunSettings>
-): Promise<AiResult<Answer>> {
-	return post('/api/ai/ask', { question, scope, feature, override }, (body) => body.answer as Answer);
-}
 
 /**
  * Re-run the guardrails over a proposal, without writing anything.
@@ -90,15 +77,20 @@ async function post<T>(url: string, body: unknown, pick: (body: any) => T): Prom
 	}
 }
 
+/** A drafted briefing, with the paths `applyProposal` must be told about. */
+export interface DraftedBriefing {
+	briefing: BriefingRun;
+	destinations: string[];
+}
+
 /**
- * Regenerate today's briefing and get back what the note now says.
- *
- * Writes, under G1's one exception, so this is a POST. A run that could not
- * produce a sentence is still a success carrying a `problem`, because the
- * lists were written either way and the card shows both.
+ * Draft today's briefing. Read-only: nothing is written until the proposal
+ * this returns is accepted through `applyProposal`. A run that could not
+ * produce an opening sentence is still a success, with the facts proposed
+ * and no sentence at the top.
  */
-export async function regenerateBriefing(day: string): Promise<AiResult<BriefingRun>> {
-	return post('/api/ai/briefing', { day }, (body) => body.briefing as BriefingRun);
+export async function draftBriefing(day: string): Promise<AiResult<DraftedBriefing>> {
+	return post('/api/ai/briefing', { day }, (body) => body as DraftedBriefing);
 }
 
 /**
@@ -118,8 +110,6 @@ export interface Drafted {
 	destinations: string[];
 	problem: string | null;
 	refusals: Refusal[];
-	/** Set by the timesheet draft: the text to copy, whether or not it is saved. */
-	text?: string;
 	/** Set by capture: the notes it was offered, so an empty vault says why. */
 	candidates?: string[];
 	/** Set by suggest-flashcards: cards the note did not support. */
@@ -127,19 +117,24 @@ export interface Drafted {
 }
 
 /**
- * Ask one of the three drafting features for a proposal.
+ * Ask one of the drafting features for a proposal.
  *
  * Read-only on the way in: nothing is written until the proposal comes back
  * and `applyProposal` is called with the ids the user ticked. `destinations`
  * must be passed through to that call, because the path policy is per-run.
  */
 export async function draftChange(request: {
-	feature: 'capture' | 'suggest-flashcards' | 'timesheet';
+	feature: 'capture' | 'suggest-flashcards' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup';
 	path?: string;
 	line?: number;
 	expectedRaw?: string;
 	day?: string;
 	count?: number;
+	/** The meeting features: the workspace, the meeting title, event and terms. */
+	slug?: string;
+	title?: string;
+	event?: string;
+	terms?: string[];
 }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
 }

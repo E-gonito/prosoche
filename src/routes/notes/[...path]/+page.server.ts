@@ -4,9 +4,16 @@ import { parseNote, basename } from '$server/parse/note';
 import { renderMarkdown } from '$server/render';
 import { isMarkdown, PathOutsideVaultError } from '$server/vault/paths';
 import { CONFLICT_MARKERS } from '$server/index/index';
+import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+/**
+ * One note, read-only, with what links to it and where it links.
+ *
+ * A private note reads as missing here, because the vault gives a public
+ * caller nothing from the private folder; a 404 is the whole answer.
+ */
+export const load: PageServerLoad = async ({ params }) => {
 	const path = params.path;
 	if (!isMarkdown(path)) error(404, 'Not a note');
 
@@ -24,34 +31,26 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	const parsed = parseNote(note.content, path);
 	const name = basename(path);
-	// Reading is the default and editing is a deliberate act, so the editor is
-	// only mounted when the URL asks for it by name. A link to a note is a link
-	// to its text, never to a text box someone can type into by accident.
-	const editing = url.searchParams.get('edit') === '1';
+	const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
 
 	return {
 		path,
-		title: parsed.title,
-		content: note.content,
-		hash: note.hash,
-		editing,
-		// An unfinished merge, which the page says out loud: the markers are
-		// text like any other and would otherwise just render as odd headings.
+		folder,
+		title: parsed.title || name,
 		conflicted: index.problemFor(path) === CONFLICT_MARKERS,
-		frontmatter: parsed.frontmatter,
-		html: editing ? '' : renderMarkdown(parsed.body, (t) => linkTo(index.resolveLink(t))),
+		frontmatter: Object.entries(parsed.frontmatter).map(([key, value]) => [key, Array.isArray(value) ? value.join(', ') : String(value)]),
+		html: renderMarkdown(parsed.body, (t) => {
+			const target = index.resolveLink(t);
+			return target ? noteHref(target) : null;
+		}),
 		tree: await vault.tree(),
-		tasks: index.tasksIn(path).filter((t) => !t.fenced),
 		tags: parsed.tags,
-		// Names for wikilink completion in the editor.
-		noteNames: (await vault.list()).map((p) => basename(p)).sort(),
-		backlinks: index.backlinks(name).map((b) => ({ ...b, title: index.noteTitle(b.path) ?? basename(b.path) })),
+		backlinks: index
+			.backlinks(name)
+			.filter((b) => b.path !== path)
+			.map((b) => ({ path: b.path, title: index.noteTitle(b.path) ?? basename(b.path) })),
 		outgoing: [...new Set(parsed.links.map((l) => l.target))]
 			.map((target) => ({ target, path: index.resolveLink(target) }))
-			.filter((l) => l.path !== null)
+			.filter((l): l is { target: string; path: string } => l.path !== null)
 	};
 };
-
-function linkTo(path: string | null): string | null {
-	return path ? `/notes/${path.split('/').map(encodeURIComponent).join('/')}` : null;
-}

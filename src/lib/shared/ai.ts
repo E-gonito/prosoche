@@ -45,13 +45,13 @@ export const PERMISSION_MODES = [
 export type PermissionMode = (typeof PERMISSION_MODES)[number]['id'];
 
 export type FeatureId =
-	| 'ask'
-	| 'insights'
 	| 'briefing'
-	| 'weekly-review'
 	| 'capture'
 	| 'suggest-flashcards'
-	| 'timesheet';
+	| 'primer-draft'
+	| 'meeting-prep'
+	| 'glossary-lookup'
+	| 'dating-insights';
 
 /** The four controls the user picks, plus the two limits that bound a run. */
 export interface RunSettings {
@@ -80,23 +80,25 @@ export interface RunStamp extends RunSettings {
  * copies of this table would drift.
  */
 export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
-	ask: { model: 'claude-sonnet-5', effort: 'medium', permission: 'read-only', budgetUsd: 0.25, timeoutSeconds: 90 },
-	insights: { model: 'claude-sonnet-5', effort: 'medium', permission: 'read-only', budgetUsd: 0.25, timeoutSeconds: 90 },
 	briefing: { model: 'claude-sonnet-5', effort: 'medium', permission: 'read-only', budgetUsd: 0.25, timeoutSeconds: 120 },
-	'weekly-review': { model: 'claude-opus-5', effort: 'high', permission: 'read-only', budgetUsd: 1, timeoutSeconds: 300 },
 	capture: { model: 'claude-haiku-4-5-20251001', effort: 'low', permission: 'propose', budgetUsd: 0.1, timeoutSeconds: 90 },
 	'suggest-flashcards': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
-	timesheet: { model: 'claude-sonnet-5', effort: 'high', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 180 }
+	'primer-draft': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
+	'meeting-prep': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
+	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
+	// Read-only by construction, never just by default: Dating's own budget row,
+	// kept low because a read on a private log is a small, occasional ask.
+	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', permission: 'read-only', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
-	ask: 'Ask',
-	insights: 'Insights',
 	briefing: 'Morning briefing',
-	'weekly-review': 'Weekly review',
 	capture: 'Capture and file',
 	'suggest-flashcards': 'Suggest flashcards',
-	timesheet: 'Timesheet draft'
+	'primer-draft': 'Meeting primer',
+	'meeting-prep': 'Meeting prep',
+	'glossary-lookup': 'Glossary look-up',
+	'dating-insights': 'Dating insights'
 };
 
 /** The caps G7 enforces, whatever an individual feature's row asks for. */
@@ -188,7 +190,15 @@ export type ProposalEdit =
 	| { id: string; kind: 'append'; path: string; text: string; reason: string }
 	| { id: string; kind: 'rewrite-task'; path: string; line: number; expectedRaw: string; edit: TaskLineEdit; reason: string }
 	| { id: string; kind: 'move'; path: string; to: string; reason: string }
-	| { id: string; kind: 'replace-region'; path: string; marker: string; text: string; reason: string };
+	| { id: string; kind: 'replace-region'; path: string; marker: string; text: string; reason: string }
+	/**
+	 * A whole new version of an existing note, for a revision a human reads
+	 * as a diff: a primer brought up to date, a glossary with definitions
+	 * filled in. `expectedHash` is the note as the draft read it, so a note
+	 * edited since is refused rather than overwritten; G5's line-loss cap
+	 * still applies to the result.
+	 */
+	| { id: string; kind: 'revise'; path: string; text: string; expectedHash: string; reason: string };
 
 export type EditKind = ProposalEdit['kind'];
 
@@ -197,7 +207,8 @@ export const EDIT_KIND_LABELS: Record<EditKind, string> = {
 	append: 'Append',
 	'rewrite-task': 'Rewrite task line',
 	move: 'Move',
-	'replace-region': 'Replace marker region'
+	'replace-region': 'Replace marker region',
+	revise: 'Revise note'
 };
 
 /**
@@ -250,51 +261,6 @@ export interface ApplyResult {
 	refusals: Refusal[];
 	/** Where the affected files were snapshotted, for undo. */
 	undoId: string | null;
-}
-
-/** Where a question is allowed to look. */
-export type Scope =
-	| { kind: 'vault' }
-	| { kind: 'workspace'; slug: string }
-	| { kind: 'folder'; path: string }
-	| { kind: 'note'; path: string };
-
-export function scopeLabel(scope: Scope): string {
-	switch (scope.kind) {
-		case 'vault':
-			return 'Whole vault';
-		case 'workspace':
-			return `Workspace: ${scope.slug}`;
-		case 'folder':
-			return `Folder: ${scope.path}`;
-		case 'note':
-			return `This note: ${scope.path}`;
-	}
-}
-
-/** One note the answer leaned on, so a claim can be checked against the source. */
-export interface Citation {
-	path: string;
-	title: string;
-	/** Heading the passage came from, when the note was trimmed to a section. */
-	heading: string | null;
-}
-
-/** A read-only answer: prose, the notes behind it, and what produced it. */
-export interface Answer {
-	question: string;
-	scope: Scope;
-	text: string;
-	citations: Citation[];
-	stamp: RunStamp;
-	/** Set instead of `text` when the run failed or was refused. */
-	problem?: string;
-	refusals?: Refusal[];
-}
-
-/** Rough token count, four characters to the token. Used for budgeting only. */
-export function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4);
 }
 
 export type DiffRow = { kind: 'same' | 'add' | 'remove'; text: string; line: number };

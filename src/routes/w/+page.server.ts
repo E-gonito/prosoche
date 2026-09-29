@@ -1,0 +1,44 @@
+import { hub } from '$server/hub';
+import { homeFolder } from '$server/workspaces';
+import { openCards } from '$server/board';
+import { openInboxCount } from '$server/inbox';
+import { readLog } from '$server/log';
+import { parseNote } from '$server/parse/note';
+import type { PageServerLoad } from './$types';
+
+/**
+ * Every workspace, one row each: a glance at what needs attention before you
+ * open one.
+ */
+export const load: PageServerLoad = async () => {
+	const { vault, index, ready, workspaces } = hub();
+	await ready;
+
+	const defs = await workspaces();
+	const rows = await Promise.all(
+		defs.map(async (workspace) => {
+			const home = homeFolder(workspace);
+			const [note, inbox, log] = await Promise.all([
+				vault.read(workspace.path),
+				vault.read(`${home}/Inbox.md`),
+				vault.read(`${home}/Log.md`)
+			]);
+			const description = parseNote(note.content, workspace.path)
+				.body.split('\n')
+				.map((l) => l.trim())
+				.find((l) => l && !l.startsWith('#'));
+
+			return {
+				slug: workspace.slug,
+				name: workspace.name,
+				color: workspace.color,
+				description: description ?? '',
+				openTasks: openCards(index, workspace, defs).length,
+				inboxCount: openInboxCount(inbox.content),
+				latestLog: readLog(log.content)[0]?.day ?? null
+			};
+		})
+	);
+
+	return { workspaces: rows };
+};

@@ -44,24 +44,24 @@ describe('fromFrontmatter', () => {
 		const settings = fromFrontmatter({
 			enabled: false,
 			daily_budget_usd: 2,
-			features: { ask: { model: 'claude-opus-5', effort: 'high' } }
+			features: { briefing: { model: 'claude-opus-5', effort: 'high' } }
 		});
 		expect(settings.enabled).toBe(false);
 		expect(settings.budget.dailyUsd).toBe(2);
-		expect(settings.features.ask.model).toBe('claude-opus-5');
-		expect(settings.features.ask.effort).toBe('high');
+		expect(settings.features.briefing.model).toBe('claude-opus-5');
+		expect(settings.features.briefing.effort).toBe('high');
 		// Untouched fields keep the shipped value.
-		expect(settings.features.ask.permission).toBe('read-only');
-		expect(settings.features.briefing.model).toBe('claude-sonnet-5');
+		expect(settings.features.briefing.permission).toBe('read-only');
+		expect(settings.features.capture.model).toBe('claude-haiku-4-5-20251001');
 	});
 
 	it('lets a defaults block cover every feature, with a row overriding it', () => {
 		const settings = fromFrontmatter({
 			defaults: { model: 'claude-haiku-4-5-20251001' },
-			features: { 'weekly-review': { model: 'claude-opus-5' } }
+			features: { 'meeting-prep': { model: 'claude-opus-5' } }
 		});
-		expect(settings.features.ask.model).toBe('claude-haiku-4-5-20251001');
-		expect(settings.features['weekly-review'].model).toBe('claude-opus-5');
+		expect(settings.features.briefing.model).toBe('claude-haiku-4-5-20251001');
+		expect(settings.features['meeting-prep'].model).toBe('claude-opus-5');
 	});
 
 	it('falls back to the safe value for a permission mode it does not know', () => {
@@ -70,24 +70,24 @@ describe('fromFrontmatter', () => {
 	});
 
 	it('falls back for a model or effort it does not know', () => {
-		const settings = fromFrontmatter({ features: { ask: { model: 'gpt-9', effort: 'maximum' } } });
-		expect(settings.features.ask.model).toBe('claude-sonnet-5');
-		expect(settings.features.ask.effort).toBe('medium');
+		const settings = fromFrontmatter({ features: { briefing: { model: 'gpt-9', effort: 'maximum' } } });
+		expect(settings.features.briefing.model).toBe('claude-sonnet-5');
+		expect(settings.features.briefing.effort).toBe('medium');
 	});
 
 	it('clamps a hand-typed budget or timeout rather than trusting it', () => {
 		const settings = fromFrontmatter({
 			daily_budget_usd: 10_000,
-			features: { ask: { timeout_s: 99_999, budget_usd: -5 } }
+			features: { briefing: { timeout_s: 99_999, budget_usd: -5 } }
 		});
 		expect(settings.budget.dailyUsd).toBe(100);
-		expect(settings.features.ask.timeoutSeconds).toBe(900);
-		expect(settings.features.ask.budgetUsd).toBe(0);
+		expect(settings.features.briefing.timeoutSeconds).toBe(900);
+		expect(settings.features.briefing.budgetUsd).toBe(0);
 	});
 
 	it('survives a file someone is halfway through editing', () => {
 		expect(() => fromFrontmatter({ features: 'not a map', enabled: 'maybe' })).not.toThrow();
-		expect(fromFrontmatter({ features: 'not a map' }).features.ask.model).toBe('claude-sonnet-5');
+		expect(fromFrontmatter({ features: 'not a map' }).features.briefing.model).toBe('claude-sonnet-5');
 	});
 });
 
@@ -95,8 +95,8 @@ describe('the round trip through the vault', () => {
 	it('reads back what it wrote', async () => {
 		const wanted = defaultSettings();
 		wanted.enabled = false;
-		wanted.features.ask.model = 'claude-opus-5';
-		wanted.features.ask.effort = 'xhigh';
+		wanted.features.briefing.model = 'claude-opus-5';
+		wanted.features.briefing.effort = 'xhigh';
 		wanted.features.capture.permission = 'propose';
 		wanted.budget.dailyUsd = 3;
 

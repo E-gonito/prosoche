@@ -1,10 +1,10 @@
 /**
  * Adding a line to a named section of a markdown note.
  *
- * Three features need the same thing — quick capture files a thought under
- * today's date, the timer files a stretch of work under `## Time log`, a
- * contact is filed under a person's `## Log` — and each wrote its own version
- * of it. There is one here now, because the fiddly parts are the same every
+ * Several features need the same thing — quick capture files a thought under
+ * today's date, a contact is filed under a person's `## Log`, a meeting's
+ * captured items land under `## Captured` — and each wrote its own version of
+ * it. There is one here now, because the fiddly parts are the same every
  * time: find the heading without being fooled by one inside a code fence, and
  * insert at the end of that section rather than the end of the file.
  *

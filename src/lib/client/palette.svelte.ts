@@ -15,8 +15,9 @@
  */
 
 import { goto } from '$app/navigation';
+import { MODULES, SYSTEM } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
-import { captureText, saveNote } from '$lib/client/api';
+import { captureText } from '$lib/client/api';
 import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
 
 export interface PaletteRow {
@@ -241,6 +242,9 @@ function row(parts: {
 	};
 }
 
+/** The single key that goes to each module, by module id. */
+const GO_KEYS: Record<string, string> = { today: 't', meetings: 'm', w: 'w', study: 'd', notes: 'g', sync: 'y' };
+
 /**
  * The commands, and the keys that reach them without the palette.
  *
@@ -258,16 +262,11 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 		// The only binding that works while typing: it is a chord, so it cannot
 		// be part of anything the user is writing.
 		{ keys: 'mod+k', description: 'Command palette', group: 'Commands', whileTyping: true, run: () => palette.toggle() },
-		{ keys: 't', description: 'Go to Today', group: 'Go', run: go('/') },
-		{ keys: 's', description: 'Search notes', group: 'Go', run: go('/search') },
-		{ keys: 'g', description: 'Go to Notes', group: 'Go', run: go('/notes') },
-		{ keys: 'y', description: 'Go to Sync', group: 'Go', run: go('/sync') },
-		{ keys: 'a', description: 'Ask your notes', group: 'Go', run: go('/ask') },
-		{ keys: 'd', description: 'Go to Study', group: 'Go', run: go('/study') },
-		// No single key. Review is where things wait rather than somewhere you
-		// go repeatedly, and the letters left are worth more elsewhere.
-		{ keys: '', description: 'Review waiting changes', group: 'Go', run: go('/review') },
-		{ keys: '', description: 'AI settings', group: 'Go', run: go('/settings/ai') },
+		// One per module, so a new tab is reachable here without touching this
+		// file. The letters are the modules' own; a private module has none, so
+		// it is never one stray keystroke away on a shared screen.
+		...MODULES.map((m) => ({ keys: m.private ? '' : (GO_KEYS[m.id] ?? ''), description: `Go to ${m.title}`, group: 'Go', run: go(m.href) })),
+		...SYSTEM.map((m) => ({ keys: GO_KEYS[m.id] ?? '', description: `Go to ${m.title}`, group: 'Go', run: go(m.href) })),
 		// Only offered when HUB_T3_URL is set; opens in a new tab because the
 		// paired WebSocket session belongs to that origin, not this one.
 		...(t3Url ? [{ keys: '', description: 'T3 Code', group: 'Go', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),
@@ -301,34 +300,6 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 						return result.ok ? `Card written to ${result.value.path}` : result.message;
 					}
 				})
-		},
-		{
-			keys: 'n',
-			description: 'New note',
-			group: 'Write',
-			run: () =>
-				palette.request({
-					title: 'New note',
-					placeholder: 'Note name…',
-					submit: async (name) => {
-						const path = `Inbox/${name.replace(/[\\/:*?"<>|]/g, '-')}.md`;
-						// An existing note is not an error: the write is refused
-						// and the user is taken to what is already there.
-						const result = await saveNote(path, `# ${name}\n\n`, '');
-						palette.close();
-						void goto(noteHref(path));
-						return result.ok ? `Created ${path}` : `${path} already exists`;
-					}
-				})
-		},
-		{
-			keys: '[',
-			description: 'Toggle sidebar',
-			group: 'View',
-			// The sidebar's collapsed state belongs to the layout, so the
-			// command presses the layout's own button rather than keeping a
-			// second copy of the answer.
-			run: () => document.querySelector<HTMLButtonElement>('header button[aria-expanded]')?.click()
 		},
 		{
 			keys: '',

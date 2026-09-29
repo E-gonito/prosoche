@@ -21,10 +21,23 @@
 	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
-	import { timer } from '$lib/client/timer.svelte';
+
+	/**
+	 * A calendar event, drawn on the grid beside the tasks. Deliberately not a
+	 * `Task`: it has no line to rewrite, so it carries only what a read-only
+	 * block needs to place and label itself, plus somewhere to send a click.
+	 */
+	export interface TimelineEvent {
+		id: string;
+		title: string;
+		startMin: number | null;
+		endMin: number | null;
+		href: string;
+	}
 
 	let {
 		tasks,
+		events = [],
 		isToday = false,
 		day,
 		dayPath,
@@ -35,6 +48,8 @@
 		owners = {}
 	}: {
 		tasks: Task[];
+		/** Calendar events for this day. Only the timed ones are placed on the grid. */
+		events?: TimelineEvent[];
 		isToday?: boolean;
 		/**
 		 * The day this timeline shows and the note that holds it. Given both, a
@@ -133,6 +148,10 @@
 	const scheduled = $derived(
 		tasks.filter((t) => Number.isFinite(t.startMin) && Number.isFinite(t.endMin))
 	);
+	/** All-day events have nowhere to sit on a grid of minutes. */
+	const timedEvents = $derived(
+		events.filter((e): e is TimelineEvent & { startMin: number; endMin: number } => e.startMin !== null && e.endMin !== null)
+	);
 
 	/** The range each block occupies, with the dragged one showing its preview. */
 	function rangeOf(task: Task): { startMin: number; endMin: number } {
@@ -142,8 +161,26 @@
 		return { startMin: task.startMin!, endMin: task.endMin! };
 	}
 
-	const range = $derived(timelineRange(scheduled.map(rangeOf)));
-	const placed = $derived(layoutBlocks(scheduled, rangeOf));
+	/**
+	 * Tasks and events placed on one grid together, so a meeting and a card at
+	 * the same hour take separate columns instead of drawing on top of each
+	 * other. An event carries no line to rewrite, so it is never draggable and
+	 * never the target of `start`.
+	 */
+	type Block = { kind: 'task'; task: Task } | { kind: 'event'; event: TimelineEvent & { startMin: number; endMin: number } };
+	const blocks = $derived<Block[]>([
+		...scheduled.map((task) => ({ kind: 'task' as const, task })),
+		...timedEvents.map((event) => ({ kind: 'event' as const, event }))
+	]);
+	function rangeOfBlock(block: Block): { startMin: number; endMin: number } {
+		return block.kind === 'task' ? rangeOf(block.task) : { startMin: block.event.startMin, endMin: block.event.endMin };
+	}
+	function blockKey(block: Block): string {
+		return block.kind === 'task' ? `${block.task.path}:${block.task.line}` : `event:${block.event.id}`;
+	}
+
+	const range = $derived(timelineRange(blocks.map(rangeOfBlock)));
+	const placed = $derived(layoutBlocks(blocks, rangeOfBlock));
 	const hours = $derived(
 		Array.from({ length: Math.ceil((range.toMin - range.fromMin) / 60) + 1 }, (_, i) => range.fromMin + i * 60)
 	);
@@ -483,7 +520,7 @@
 				</div>
 			{/if}
 
-			{#if scheduled.length === 0}
+			{#if blocks.length === 0}
 				<p class="vacant">
 					{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}
 				</p>
@@ -493,11 +530,27 @@
 				<div class="now" data-testid="now-line" style="top: {top(nowMin)}px"></div>
 			{/if}
 
-			{#each placed as p (p.item.path + ':' + p.item.line)}
-				{@const task = p.item}
+			{#each placed as p (blockKey(p.item))}
+				{#if p.item.kind === 'event'}
+					{@const event = p.item.event}
+					<a
+						class="block event"
+						data-testid="calendar-block"
+						href={event.href}
+						style="top: {top(p.startMin)}px; height: {(p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP}px;
+						       --label-lines: {labelLines((p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP)};
+						       left: calc(54px + {(p.column / p.columns) * 100}% - {(p.column / p.columns) * 58}px);
+						       width: calc({100 / p.columns}% - {58 / p.columns}px - 4px)"
+						class:compact={(p.endMin - p.startMin) * PX_PER_MIN < COMPACT_BELOW_PX}
+						aria-label="{event.title}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}, on your calendar"
+					>
+						<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
+						<div class="block-label">{event.title}</div>
+					</a>
+				{:else}
+				{@const task = p.item.task}
 				{@const done = isDone(task)}
 				{@const owner = ownerOf(task)}
-				{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
 				<div
 					class="block q{task.quadrant ?? 0}"
 					data-testid="block"
@@ -530,25 +583,8 @@
 							style="--dot: {owner.color}"
 							title={owner.name}
 						></span>{/if}</div>
-					<div class="label">{displayText(task.text)}</div>
-					{#if task.quadrant}<span class="q q{task.quadrant} badge">Q{task.quadrant}</span>{/if}
-					{#if !done}
-						<button
-							class="run"
-							class:timing
-							data-testid="block-timer"
-							title={timing ? 'Stop and log the time' : 'Start timing this block'}
-							aria-pressed={timing}
-							aria-label={timing
-								? `Stop timing "${displayText(task.text)}"`
-								: `Start timing "${displayText(task.text)}"`}
-							onpointerdown={(e) => e.stopPropagation()}
-							onclick={(e) => {
-								e.stopPropagation();
-								void (timing ? timer.stop() : timer.start(task.path, task.line));
-							}}
-						><Icon name={timing ? 'square' : 'play'} size={11} /></button>
-					{/if}
+					<div class="block-label">{displayText(task.text)}</div>
+					{#if task.quadrant}<span class="q q{task.quadrant} q-badge">Q{task.quadrant}</span>{/if}
 					<button
 						class="clear"
 						data-testid="clear-time"
@@ -566,6 +602,7 @@
 						onpointerdown={(e) => { e.stopPropagation(); start(e, task, 'resize'); }}
 					></div>
 				</div>
+				{/if}
 			{/each}
 		</div>
 	</div>
@@ -670,11 +707,26 @@
 	.block.active { z-index: 4; box-shadow: var(--shadow); cursor: grabbing; }
 	.block.busy { opacity: 0.55; }
 	.block.done { opacity: 0.6; }
-	.block.done .label { text-decoration: line-through; }
+	.block.done .block-label { text-decoration: line-through; }
 	.block.q1 { border-left-color: var(--q1); }
 	.block.q2 { border-left-color: var(--q2); }
 	.block.q3 { border-left-color: var(--q3); }
 	.block.q4 { border-left-color: var(--q4); }
+
+	/* A calendar event: read-only, sand rather than teal, so it never reads as
+	   a card you could drag or tick. Colour and cursor are the whole diff from
+	   `.block`; the rest of the shape — position, padding, the time line — is
+	   shared, so the two kinds of block still line up on the same grid. */
+	.block.event {
+		background: var(--sand);
+		border-color: var(--sand-edge);
+		border-left-width: 4px;
+		color: var(--text);
+		cursor: pointer;
+		z-index: 1;
+	}
+	.block.event:hover { text-decoration: none; box-shadow: var(--shadow); }
+	.block.event .t { color: var(--sand-edge); }
 
 	/* A time, so body text with the figures lined up rather than monospace. */
 	.t { font-size: var(--t11); font-variant-numeric: tabular-nums; line-height: 15px; color: var(--muted); }
@@ -693,7 +745,7 @@
 	 * half by `overflow: hidden`, which looks like a bug rather than like text
 	 * continuing.
 	 */
-	.label {
+	.block-label {
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: var(--label-lines, 2);
@@ -703,7 +755,7 @@
 		text-overflow: ellipsis;
 	}
 	/* Clear of the ✕ button, which appears in the same corner on hover. */
-	.badge { position: absolute; top: 5px; right: 26px; }
+	.q-badge { position: absolute; top: 5px; right: 26px; }
 
 	/*
 	 * A ten-minute block is eighteen pixels tall, so the compact row is built
@@ -716,10 +768,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--s2);
-		/* The right padding is the room the ▶ and ✕ occupy on hover. They are
+		/* The right padding is the room the ✕ occupies on hover. It is
 		   absolutely positioned, so only this keeps the text from running
-		   underneath them. The taller blocks reserve it on the badge instead. */
-		padding: 0 44px 0 9px;
+		   underneath it. The taller blocks reserve it on the badge instead. */
+		padding: 0 26px 0 9px;
 		white-space: nowrap;
 		line-height: 1.2;
 	}
@@ -728,14 +780,14 @@
 	   to the text rather than out at the edge. `min-width: 0` is what lets the
 	   ellipsis happen at all: without it a flex child will not shrink below
 	   its content, so a long label overflowed instead of truncating. */
-	.block.compact .label {
+	.block.compact .block-label {
 		display: block;
 		flex: 0 1 auto;
 		min-width: 0;
 		font-size: var(--t12);
 		line-height: inherit;
 	}
-	.block.compact .badge { position: static; flex: none; }
+	.block.compact .q-badge { position: static; flex: none; }
 
 	.handle { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
 
@@ -762,29 +814,4 @@
 	.block:focus-within .clear { opacity: 1; }
 	.clear:hover { background: var(--soft); color: var(--bad); }
 	.block.compact .clear { top: 50%; right: 2px; width: 16px; height: 16px; transform: translateY(-50%); }
-
-	/* Sits beside the ✕, and stays visible while this block is the one running. */
-	.run {
-		position: absolute;
-		top: 3px;
-		right: 23px;
-		width: 18px;
-		height: 18px;
-		padding: 0;
-		border: 0;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--muted);
-		line-height: 1;
-		cursor: pointer;
-		opacity: 0;
-		display: grid;
-		place-items: center;
-	}
-	.block:hover .run,
-	.block:focus-within .run,
-	.run.timing { opacity: 1; }
-	.run:hover { background: var(--soft); color: var(--accent); }
-	.run.timing { color: var(--q1); }
-	.block.compact .run { top: 50%; right: 20px; width: 16px; height: 16px; transform: translateY(-50%); }
 </style>

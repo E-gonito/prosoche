@@ -1,15 +1,16 @@
 <script lang="ts">
 	/**
-	 * The morning briefing, as it stands in today's note.
+	 * The morning briefing: a read on today and the rest of the week, on
+	 * request, written only once you say so.
 	 *
-	 * The text is read out of the note rather than held anywhere else, so what
-	 * this card shows and what Obsidian shows are the same characters. That is
-	 * also why there is no loading state for the usual case: by the time the
-	 * page renders, the briefing either is in the note or is not.
-	 *
-	 * Regenerating is a button rather than something that happens on arrival.
-	 * A card that quietly spends money every time a page is opened is the kind
-	 * of thing you find out about from a bill.
+	 * The text on screen is the note's own briefing region, read like any
+	 * other text — that is also why there is no loading state for the usual
+	 * case: by the time the page renders, the briefing either is in the note
+	 * or is not. Pressing "Brief me" drafts a fresh one and shows it as a
+	 * preview with **Save to note** and **Discard**; nothing reaches the vault
+	 * until Save is pressed, which is `Draft.svelte`'s own rule applied here
+	 * by hand rather than through that component, because a briefing reads
+	 * better as prose than as a diff.
 	 *
 	 * A strip above the timeline rather than a card beside it, and one that
 	 * folds away: the briefing is read once in the morning and is in the way
@@ -18,41 +19,29 @@
 	 * prospect of one, because a permanent "nothing was written for this day"
 	 * is noise on every day but one.
 	 */
-	import { regenerateBriefing } from '$lib/client/ai';
+	import { invalidateAll } from '$app/navigation';
+	import { applyProposal, checkProposal, draftBriefing } from '$lib/client/ai';
 	import Icon from '$lib/components/Icon.svelte';
-	import type { BriefingRun } from '$lib/shared/ai';
+	import type { Proposal } from '$lib/shared/ai';
 
 	let {
 		day,
 		text,
-		isToday
+		isToday,
+		aiEnabled
 	}: {
 		day: string;
+		/** The note's own briefing region, or null when it has none. */
 		text: string | null;
 		isToday: boolean;
+		aiEnabled: boolean;
 	} = $props();
 
 	let busy = $state(false);
-	let run = $state<BriefingRun | null>(null);
-
-	// The note is the source of truth, and a regenerate supersedes it only for
-	// the day it was asked about. Derived rather than copied, so navigating to
-	// yesterday cannot leave today's briefing on screen.
-	const fresh = $derived(run?.day === day ? run : null);
-	const current = $derived(fresh ? fresh.text : text);
-	const problem = $derived(fresh?.problem ?? '');
-	// A note with no markers gets a proposal instead of a write.
-	const needsAccept = $derived(fresh?.proposal != null);
-
-	/** Paragraphs and bullets, which is all `render` ever emits. */
-	const blocks = $derived(
-		(current ?? '')
-			.split(/\n{2,}/)
-			.map((block) => block.split('\n').filter(Boolean))
-			.filter((lines) => lines.length > 0)
-	);
-
-	let failure = $state('');
+	let problem = $state('');
+	let drafted = $state<{ body: string; addsMarkersOnly: boolean; destinations: string[] } | null>(null);
+	let proposalRef = $state<Proposal | null>(null);
+	let justAddedMarkers = $state(false);
 
 	let collapsed = $state(false);
 	// Read after mounting, because the server has no idea what this device
@@ -65,19 +54,75 @@
 		localStorage.setItem('hub:briefing-collapsed', collapsed ? '1' : '0');
 	}
 
-	// Something went wrong is not something to hide behind a fold.
-	const open = $derived(!collapsed || Boolean(problem || failure));
+	// A fresh draft or a problem is not something to hide behind a fold.
+	const open = $derived(!collapsed || Boolean(problem) || drafted !== null);
+	/** Paragraphs and bullets, which is all `render` ever emits. */
+	const blocks = (body: string) =>
+		body
+			.split(/\n{2,}/)
+			.map((block) => block.split('\n').filter(Boolean))
+			.filter((lines) => lines.length > 0);
+	const existingBlocks = $derived(blocks(text ?? ''));
+	const draftBlocks = $derived(drafted ? blocks(drafted.body) : []);
 	/** What the strip says about itself while it is folded: its first line. */
-	const gist = $derived(blocks[0]?.[0] ? item(blocks[0][0].replace(/\*\*/g, '')) : '');
+	const gist = $derived(existingBlocks[0]?.[0] ? item(existingBlocks[0][0].replace(/\*\*/g, '')) : '');
 
-	async function regenerate() {
+	async function brief() {
 		if (busy) return;
 		busy = true;
-		failure = '';
-		const result = await regenerateBriefing(day);
+		problem = '';
+		justAddedMarkers = false;
+		drafted = null;
+
+		const result = await draftBriefing(day);
+		if (!result.ok) {
+			problem = result.message;
+			busy = false;
+			return;
+		}
+		if (result.value.briefing.problem) problem = result.value.briefing.problem;
+
+		const proposal = result.value.briefing.proposal;
+		if (proposal) {
+			const edit = proposal.edits[0];
+			const checked = await checkProposal(proposal, result.value.destinations);
+			if (checked.ok) {
+				proposalRef = proposal;
+				drafted = {
+					body: edit.kind === 'replace-region' ? edit.text : '',
+					addsMarkersOnly: edit.kind === 'append',
+					destinations: result.value.destinations
+				};
+			} else {
+				problem = checked.message;
+			}
+		}
 		busy = false;
-		if (result.ok) run = result.value;
-		else failure = result.message;
+	}
+
+	async function save() {
+		if (busy || !proposalRef || !drafted) return;
+		busy = true;
+		const result = await applyProposal(proposalRef, proposalRef.edits.map((e) => e.id), drafted.destinations);
+		busy = false;
+		if (!result.ok) {
+			problem = result.message;
+			return;
+		}
+		if (result.value.written.length === 0) {
+			problem = result.value.refusals[0]?.message ?? 'Nothing was written.';
+			return;
+		}
+		justAddedMarkers = drafted.addsMarkersOnly;
+		drafted = null;
+		proposalRef = null;
+		await invalidateAll();
+	}
+
+	function discard() {
+		drafted = null;
+		proposalRef = null;
+		problem = '';
 	}
 
 	/** `**Scheduled**` is the only markup `render` emits at the head of a block. */
@@ -91,6 +136,20 @@
 		return line.replace(/^[-*]\s+/, '').replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, p, a) => a ?? p.split('/').pop());
 	}
 </script>
+
+{#snippet blockList(list: string[][])}
+	{#each list as lines, i (i)}
+		{@const head = heading(lines[0])}
+		{#if head}
+			<p class="section-label">{head}</p>
+			<ul>
+				{#each lines.slice(1) as line, j (j)}<li>{item(line)}</li>{/each}
+			</ul>
+		{:else}
+			<p class="prose">{lines.join(' ')}</p>
+		{/if}
+	{/each}
+{/snippet}
 
 {#if isToday || text}
 	<section class="card strip" data-testid="briefing">
@@ -106,41 +165,49 @@
 				<span class="name">Briefing</span>
 			</button>
 			{#if !open && gist}<span class="gist">{gist}</span>{/if}
-			{#if isToday}
-				<button class="btn small regen" onclick={regenerate} disabled={busy} data-testid="briefing-regenerate">
-					{busy ? 'Thinking…' : current ? 'Regenerate' : 'Generate'}
+			{#if isToday && aiEnabled}
+				<button class="btn small regen" onclick={brief} disabled={busy} data-testid="briefing-brief">
+					{busy ? 'Thinking…' : text ? 'Brief me again' : 'Brief me'}
 				</button>
 			{/if}
 		</div>
 
 		{#if open}
-			{#if blocks.length}
-				{#each blocks as lines, i (i)}
-					{@const head = heading(lines[0])}
-					{#if head}
-						<p class="label">{head}</p>
-						<ul>
-							{#each lines.slice(1) as line, j (j)}<li>{item(line)}</li>{/each}
-						</ul>
+			{#if drafted}
+				<div class="draft" data-testid="briefing-draft">
+					{#if drafted.addsMarkersOnly}
+						<p class="hint">
+							Today's note has no briefing section yet. Saving adds it; press Brief me again afterwards to fill it in.
+						</p>
 					{:else}
-						<p class="prose">{lines.join(' ')}</p>
+						{@render blockList(draftBlocks)}
 					{/if}
-				{/each}
-			{:else if !problem && !failure}
+					<div class="row">
+						<button class="btn primary" onclick={save} disabled={busy} data-testid="briefing-save">
+							{busy ? 'Saving…' : 'Save to note'}
+						</button>
+						<button class="btn" onclick={discard} disabled={busy} data-testid="briefing-discard">Discard</button>
+					</div>
+				</div>
+			{:else if existingBlocks.length}
+				{@render blockList(existingBlocks)}
+			{:else if !aiEnabled}
+				<p class="hint">AI is off, so there is no briefing to draft. <a href="/settings">Turn it on in Settings</a>.</p>
+			{:else if !problem}
 				<p class="hint">
 					{#if isToday}
-						No briefing yet today. It runs on its own at 07:00, or press Generate.
+						No briefing yet today. Press Brief me for a read on today and the rest of the week.
 					{:else}
 						Nothing was written for this day.
 					{/if}
 				</p>
 			{/if}
 
-			{#if needsAccept}
-				<p class="hint">Adding the markers changes your note, so it waits on the <a href="/review">review page</a>.</p>
+			{#if justAddedMarkers}
+				<p class="hint">Added the briefing section. Press Brief me again to fill it in.</p>
 			{/if}
 		{/if}
-		{#if problem || failure}<p class="problem">{problem || failure}</p>{/if}
+		{#if problem}<p class="problem" data-testid="briefing-problem">{problem}</p>{/if}
 	</section>
 {/if}
 
@@ -170,8 +237,10 @@
 	.regen { margin-left: auto; flex: none; }
 	.regen:disabled { cursor: default; opacity: 0.6; }
 	.prose { margin: 0 0 10px; font-size: var(--t13); line-height: 1.5; }
-	.label { margin: 0 0 var(--s1); font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+	.section-label { margin: 0 0 var(--s1); font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
 	ul { margin: 0 0 10px; padding-left: 18px; font-size: var(--t13); line-height: 1.5; }
 	li { margin: 0 0 2px; }
+	.draft { border-top: 1px dashed var(--line); padding-top: var(--s2); margin-top: var(--s1); }
+	.row { display: flex; gap: var(--s2); margin-top: var(--s1); }
 	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

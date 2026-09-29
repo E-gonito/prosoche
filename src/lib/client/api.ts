@@ -51,9 +51,9 @@ export async function planOnDay(
 	);
 }
 
-/** Append a line to the capture inbox. */
-export async function captureText(text: string): Promise<Result<{ path: string }>> {
-	return post('/api/capture', { text }, (body) => ({ path: body.path }));
+/** Append a line to the capture inbox, or to one workspace's own inbox. */
+export async function captureText(text: string, workspace?: string): Promise<Result<{ path: string }>> {
+	return post('/api/capture', { text, workspace }, (body) => ({ path: body.path }));
 }
 
 /**

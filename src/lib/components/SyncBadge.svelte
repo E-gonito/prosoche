@@ -46,7 +46,7 @@
 	);
 </script>
 
-<a class="badge {tone}" href="/sync" title={summary}>
+<a class="sync {tone}" href="/sync" title={summary}>
 	<i></i>
 	<span class="say">
 		{#if !status}
@@ -62,8 +62,7 @@
 </a>
 
 <style>
-	.badge {
-		margin-left: auto;
+	.sync {
 		display: inline-flex;
 		align-items: center;
 		gap: 7px;
@@ -74,7 +73,7 @@
 		border-radius: var(--r-pill);
 		padding: 3px 10px;
 	}
-	.badge:hover { background: var(--soft); }
+	.sync:hover { background: var(--soft); }
 	i { width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--muted); }
 	.ok i { background: var(--ok); }
 	.warn i { background: var(--q3); }
@@ -86,7 +85,7 @@
 	 * for; the title and the link to /sync carry the detail.
 	 */
 	@media (max-width: 720px) {
-		.badge { padding: 5px; }
+		.sync { padding: 5px; }
 		.say { display: none; }
 	}
 </style>

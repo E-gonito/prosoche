@@ -8,7 +8,6 @@ interface Body {
 	color?: string;
 	/** Folders as a list, or as the comma-separated string the wizard collects. */
 	folders?: string[] | string;
-	template?: string;
 }
 
 /**
@@ -26,8 +25,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const result = await createWorkspace(vault, {
 		name: body.name ?? '',
 		color: body.color,
-		folders: folders(body.folders),
-		template: body.template
+		folders: folders(body.folders)
 	});
 
 	if (!result.ok) {

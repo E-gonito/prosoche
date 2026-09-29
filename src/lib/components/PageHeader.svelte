@@ -89,7 +89,7 @@
 	}
 	h1 {
 		margin: 0;
-		font-size: 22px;
+		font-size: var(--t30);
 		line-height: 1.2;
 		min-width: 0;
 	}

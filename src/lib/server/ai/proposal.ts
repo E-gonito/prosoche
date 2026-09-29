@@ -13,11 +13,14 @@
  * "is this a deletion?", "is this a rename out of Inbox?", "is this a new
  * note or a rewrite of an old one?", and a span cannot be asked.
  *
- * So an edit is one of five named intentions, and the bytes it produces are
+ * So an edit is one of six named intentions, and the bytes it produces are
  * computed here, by our code, from the vault as it is right now. The model
- * never supplies bytes for anything except the text it is adding. The
- * guardrails then run twice over: once on the intention (kind, path) and once
- * on the resolved before-and-after (lines lost, files touched).
+ * never supplies bytes for anything except the text it is adding. The one
+ * exception is `revise`, a whole new version of a note, which exists for a
+ * document that is meant to be rewritten (a meeting primer); it is pinned to
+ * the hash the draft read and still judged on lines lost. The guardrails then
+ * run twice over: once on the intention (kind, path) and once on the resolved
+ * before-and-after (lines lost, files touched).
  *
  * ## The write rule
  *
@@ -101,20 +104,11 @@ export function policyFor(
 	});
 
 	switch (feature) {
-		// Read-only features. An empty allowlist denies everything, which is
-		// what makes "Ask cannot write" a property of the code and not a habit.
-		case 'ask':
-		case 'insights':
-			return wrap([]);
-
 		// The briefing is G1's exception, so its policy is the tightest here:
 		// one file, one day, no renames. The overlap with the writable-days
 		// list is deliberate - a date bug has to get past both.
 		case 'briefing':
 			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today], renamableUnder: [] });
-
-		case 'weekly-review':
-			return wrap([`${config.dailyNote.folder}/Weekly/`], { maxFiles: 1, renamableUnder: [] });
 
 		// Capture files one thing into the inbox and, at most, one destination
 		// it names when it proposes.
@@ -122,8 +116,18 @@ export function policyFor(
 			return wrap(['Inbox/', ...extra], { maxFiles: 2 });
 
 		case 'suggest-flashcards':
-		case 'timesheet':
 			return wrap(extra, { maxFiles: Math.min(settings.blast.maxFiles, 2) });
+
+		// The meeting features each write one note of one kind, and the
+		// destination names it exactly. The destination arrives back from the
+		// browser, so it is also held to its kind here: a forged one can at
+		// worst name another workspace's primer, glossary or meeting note.
+		case 'primer-draft':
+			return wrap(extra.filter((p) => p.endsWith('/Primer.md')).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+		case 'glossary-lookup':
+			return wrap(extra.filter((p) => p.endsWith('/Glossary.md')).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+		case 'meeting-prep':
+			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
 
 		default:
 			return wrap([]);
@@ -240,6 +244,27 @@ async function resolve(vault: Vault, edits: ProposalEdit[], policy: PathPolicy):
 					break;
 				}
 				out.push({ ...base, after: replaced });
+				break;
+			}
+
+			case 'revise': {
+				if (!note.exists) {
+					out.push({
+						...base,
+						after: note.content,
+						refusals: [refuse('G6', 'That note does not exist, so there is nothing to revise.', edit.path)]
+					});
+					break;
+				}
+				if (note.hash !== edit.expectedHash) {
+					out.push({
+						...base,
+						after: note.content,
+						refusals: [refuse('G6', 'That note changed after this was drafted, so it was left alone. Draft it again.', edit.path)]
+					});
+					break;
+				}
+				out.push({ ...base, after: edit.text });
 				break;
 			}
 

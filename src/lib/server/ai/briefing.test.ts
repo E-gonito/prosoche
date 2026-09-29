@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NoteIndex } from '../index/index';
 import { Vault } from '../vault/index';
 import { apply, policyFor, validate, type Policy } from './proposal';
-import { gather, openerPrompt, propose, render } from './briefing';
+import { gather, openerPrompt, propose, render, run } from './briefing';
 import type { Workspace } from '../workspaces';
 import type { RunStamp } from '$lib/shared/ai';
 
@@ -87,10 +87,9 @@ const STUDY: Workspace = {
 	tag: 'ws/study',
 	aliases: [],
 	folders: ['Study'],
-	template: 'study',
-	tabs: [],
 	deck: 'Study/Tasks.md',
 	kanbanColumns: [],
+	stages: [],
 	path: '_hub/workspaces/study.md'
 };
 const ERRANDS: Workspace = { ...STUDY, slug: 'errands', name: 'Errands', tag: 'ws/errands', folders: ['Errands'], deck: 'Errands/Tasks.md', path: '_hub/workspaces/errands.md' };
@@ -300,5 +299,61 @@ describe('openerPrompt', () => {
 		const prompt = openerPrompt(gather(index, DAY, WORKSPACES));
 		expect(prompt).toContain('one or two sentences');
 		expect(prompt).toContain('already written');
+	});
+});
+
+/** A `claude --output-format json` stand-in, so no test spawns the real CLI. */
+async function fakeCli(body: string): Promise<string> {
+	const path = join(root, `fake-cli-${Math.random().toString(36).slice(2)}.sh`);
+	await writeFile(path, `#!/bin/sh\ncat <<'JSON'\n${body}\nJSON\n`, 'utf8');
+	await chmod(path, 0o755);
+	return path;
+}
+const envelope = (text: string) => JSON.stringify({ type: 'result', subtype: 'success', result: text, total_cost_usd: 0.01 });
+
+describe('run', () => {
+	it('never writes: draft or not, the note is exactly as it was', async () => {
+		const before = (await vault.read(TODAY_PATH)).content;
+		await run({ vault, index }, DAY, { regenerate: true });
+		expect((await vault.read(TODAY_PATH)).content).toBe(before);
+	});
+
+	it('reads the region rather than drafting again, unless told to regenerate', async () => {
+		const result = await run({ vault, index }, DAY);
+		expect(result.text).toBe('stale text from yesterday');
+		expect(result.proposal).toBeNull();
+	});
+
+	it('is a no-op while the kill switch is off, the vault default', async () => {
+		const result = await run({ vault, index }, DAY, { regenerate: true });
+		expect(result.proposal).toBeNull();
+		expect(result.problem).toContain('off');
+	});
+
+	it('drafts a replace-region proposal once asked to regenerate, and applies nothing', async () => {
+		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
+		const executable = await fakeCli(envelope('A calm start to the day.'));
+
+		const result = await run({ vault, index }, DAY, { regenerate: true, cli: { executable, vaultPath: root } });
+
+		expect(result.proposal?.edits).toHaveLength(1);
+		expect(result.proposal?.edits[0].kind).toBe('replace-region');
+		if (result.proposal?.edits[0].kind === 'replace-region') {
+			expect(result.proposal.edits[0].text).toContain('A calm start to the day.');
+		}
+		// The stale text is what the page still shows until this is accepted.
+		expect(result.text).toBe('stale text from yesterday');
+		expect((await vault.read(TODAY_PATH)).content).toContain('stale text from yesterday');
+	});
+
+	it('proposes only adding the markers when the note has none yet, and still writes nothing', async () => {
+		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
+		await vault.write(TODAY_PATH, '# A plain day\n\nNo markers here.\n');
+		const executable = await fakeCli(envelope('x'));
+
+		const result = await run({ vault, index }, DAY, { regenerate: true, cli: { executable, vaultPath: root } });
+
+		expect(result.proposal?.edits[0].kind).toBe('append');
+		expect((await vault.read(TODAY_PATH)).content).toBe('# A plain day\n\nNo markers here.\n');
 	});
 });

@@ -1,11 +1,11 @@
 /**
- * The vocabulary of the study section: what a card, a resource, a topic and a
- * habit are.
+ * The vocabulary of the study section: what a card, a resource and a topic
+ * are.
  *
  * These shapes are the contract between the server modules that read them out
- * of the markdown, the API routes that serialise them and the five widgets
- * that render them. They live in `shared/` because all three sides need them
- * and neither side may import the other: a component must never reach into
+ * of the markdown, the API routes that serialise them and the screens that
+ * render them. They live in `shared/` because both sides need them and
+ * neither side may import the other: a component must never reach into
  * `$server`, and a server module must never pull a browser module into its
  * bundle.
  *
@@ -149,31 +149,12 @@ export interface TopicCoverage extends Topic {
 	state: 'covered' | 'started' | 'gap';
 }
 
-/** One day of a habit, for the streak strip. */
-export interface HabitDay {
-	day: string;
-	/** null when the day has no note at all, so a gap is not a failure. */
-	done: boolean | null;
-}
-
-export interface Habit {
-	/** The task text, with markdown reduced to words. */
-	text: string;
-	/** True when the task carries the Tasks plugin's recurrence field. */
-	recurring: boolean;
-	/** Today's state. `null` means today's note does not carry the habit. */
-	today: boolean | null;
-	/** The task line in today's note, so it can be ticked from the widget. */
-	path: string | null;
-	line: number | null;
-	raw: string | null;
-	/** Consecutive days up to and including yesterday, plus today if done. */
-	streak: number;
-	/** Days done out of the days that had a note, over the window. */
-	hit: number;
-	of: number;
-	/** Oldest day first, so the strip reads left to right. */
-	days: HabitDay[];
+/** One tab of the study section's own tab bar. */
+export interface StudyTab {
+	title: string;
+	href: string;
+	/** Overview is always visible; every other tab hides until it has data. */
+	visible: boolean;
 }
 
 /** Lines inserted into a note, which moves every card below them. */

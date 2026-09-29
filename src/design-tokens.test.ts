@@ -53,7 +53,7 @@ describe('the design tokens', () => {
 		for (const name of ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6']) {
 			expect(named, `docs/design.md documents ${name}`).toContain(name);
 		}
-		for (const name of ['--t11', '--t12', '--t13', '--t14', '--t16', '--t20', '--t24']) {
+		for (const name of ['--t11', '--t12', '--t13', '--t14', '--t15', '--t16', '--t20', '--t24', '--t30']) {
 			expect(named, `docs/design.md documents ${name}`).toContain(name);
 		}
 	});
@@ -62,7 +62,7 @@ describe('the design tokens', () => {
 describe('the design page', () => {
 	it('names both breakpoints, which cannot be tokens and so cannot be checked', () => {
 		expect(doc).toContain('720px');
-		expect(doc).toContain('960px');
+		expect(doc).toContain('1100px');
 	});
 
 	it('is short enough to be read before writing a style', () => {

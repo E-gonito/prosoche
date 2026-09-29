@@ -1,9 +1,9 @@
 /**
  * The jobs that run on a clock rather than on a click.
  *
- * There are three, and all are small: the day's note at 00:05, the morning
- * briefing each day, and the weekly review each Sunday evening. They live
- * together because the awkward
+ * There is one today: the day's note at 00:05. The briefing and the weekly
+ * review used to run here too; since the rebuild they run only when asked
+ * (`docs/plan-rebuild.md`). The scheduler stays general because the awkward
  * part is not either job, it is the scheduling — and doing that twice in two
  * files is how the two copies come to disagree about what "missed" means.
  *
@@ -34,8 +34,6 @@ import { openDay } from '../daily-note';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { loadSettings } from './settings';
-import { run as runBriefing } from './briefing';
-import { run as runWeeklyReview } from './weekly-review';
 
 /** Where the last-run stamps live. Transient: not committed, safe to lose. */
 export const STATE_PATH = `${config.hubFolder}/.state/schedule.json`;
@@ -72,23 +70,6 @@ export const JOBS: Job[] = [
 		usesAi: false,
 		run: async (deps, day) => {
 			await openDay(deps.vault, day);
-		}
-	},
-	{
-		id: 'briefing',
-		atMin: 7 * 60,
-		usesAi: true,
-		run: async (deps, day) => {
-			await runBriefing(deps, day);
-		}
-	},
-	{
-		id: 'weekly-review',
-		atMin: 18 * 60,
-		onWeekday: 0,
-		usesAi: true,
-		run: async (deps, day) => {
-			await runWeeklyReview(deps, day);
 		}
 	}
 ];

@@ -86,7 +86,7 @@ describe('GitSync against a real remote', () => {
 });
 
 describe('an explicit commit', () => {
-	it('never stages transient state, even when the caller names it', async () => {
+	it('never stages transient state or the private folder, even when the caller names them', async () => {
 		const root = await mkdtemp(join(tmpdir(), 'prosoche-sync-'));
 		const remote = join(root, 'remote.git');
 		const ours = join(root, 'ours');
@@ -106,12 +106,16 @@ describe('an explicit commit', () => {
 		await mkdir(join(ours, '_hub/.state'), { recursive: true });
 		await writeFile(join(ours, '_hub/.state/schedule.json'), '{}\n');
 		await writeFile(join(ours, '_hub/timer.json'), '{}\n');
+		await mkdir(join(ours, 'Private/Dating'), { recursive: true });
+		await writeFile(join(ours, 'Private/Dating/Ledger.md'), '- 2026-09-29 sent:: 3\n');
 		await writeFile(join(ours, 'Notes.md'), '# Notes\n\nMore.\n');
 
 		const sync = new GitSync(ours);
 		const pending = await sync.pending();
 		expect(pending.map((p) => p.path)).toEqual(['Notes.md']);
-		const status = await sync.commit(['Notes.md', '_hub/.state/schedule.json', '_hub/timer.json'], '');
+		expect((await sync.status()).pending).toEqual(['Notes.md']);
+		sync.markDirty('Private/Dating/Ledger.md');
+		const status = await sync.commit(['Notes.md', '_hub/.state/schedule.json', '_hub/timer.json', 'Private/Dating/Ledger.md'], '');
 		expect(status.error).toBeNull();
 		expect(git(remote, 'ls-tree', '-r', '--name-only', 'master').split('\n')).toEqual(['Notes.md']);
 		expect(git(remote, 'log', '-1', '--format=%s', 'master')).toBe('hub: 1 file (Notes.md)');

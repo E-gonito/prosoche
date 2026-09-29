@@ -17,7 +17,7 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { config } from '../config';
-import { toAbsolute } from './paths';
+import { isPrivate, toAbsolute } from './paths';
 import type { ConflictDetail, DiscardResult, PendingFile, SyncProvider, SyncStatus } from './sync';
 
 /**
@@ -29,6 +29,14 @@ const TRANSIENT = [`${config.hubFolder}/timer.json`, `${config.hubFolder}/.state
 
 export function isTransient(path: string): boolean {
 	return TRANSIENT.some((t) => path === t || path.startsWith(t));
+}
+
+/**
+ * Paths git must never see: transient state, and the private folder, which
+ * stays on this machine however a caller names it.
+ */
+function isUnsynced(path: string): boolean {
+	return isTransient(path) || isPrivate(path);
 }
 
 /** The same paths as git wants them on a command line: no trailing slash. */
@@ -58,7 +66,7 @@ export class GitSync implements SyncProvider {
 	async status(): Promise<SyncStatus> {
 		try {
 			const s = await this.git.status();
-			const pending = [...new Set([...s.not_added, ...s.modified, ...s.created, ...s.deleted, ...this.dirty])];
+			const pending = [...new Set([...s.not_added, ...s.modified, ...s.created, ...s.deleted, ...this.dirty])].filter((p) => !isUnsynced(p));
 			return {
 				...this.snapshot(),
 				pending,
@@ -149,8 +157,8 @@ export class GitSync implements SyncProvider {
 			const s = await this.git.status();
 			const seen = new Map<string, PendingFile>();
 			const add = (path: string, status: PendingFile['status']) => {
-				// Never offered for commit: see `isTransient`.
-				if (isTransient(path)) return;
+				// Never offered for commit: see `isUnsynced`.
+				if (isUnsynced(path)) return;
 				if (!seen.has(path)) seen.set(path, { path, status, byApp: this.dirty.has(path) });
 			};
 			for (const path of s.deleted) add(path, 'deleted');
@@ -190,7 +198,7 @@ export class GitSync implements SyncProvider {
 	 * a file that means nothing off the machine that wrote it.
 	 */
 	async commit(paths: string[], subject: string): Promise<SyncStatus> {
-		const safe = paths.filter((p) => this.isInsideVault(p) && !isTransient(p));
+		const safe = paths.filter((p) => this.isInsideVault(p) && !isUnsynced(p));
 		if (!safe.length) return this.status();
 		return this.push(subject || commitSubject(safe), safe);
 	}
@@ -249,7 +257,7 @@ export class GitSync implements SyncProvider {
 	 * It is not a source of truth, so losing it costs nothing.
 	 */
 	markDirty(path: string): void {
-		if (isTransient(path)) return;
+		if (isUnsynced(path)) return;
 		this.dirty.add(path);
 		this.scheduleCommit();
 	}

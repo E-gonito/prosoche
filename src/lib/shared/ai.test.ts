@@ -2,13 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
 	changedLines,
 	diffLines,
-	estimateTokens,
 	FEATURE_DEFAULTS,
 	GUARDRAILS,
 	MODELS,
 	PERMISSION_MODES,
-	refuse,
-	scopeLabel
+	refuse
 } from './ai';
 
 describe('the pickers', () => {
@@ -56,15 +54,6 @@ describe('refuse', () => {
 	});
 });
 
-describe('scopeLabel', () => {
-	it('names each scope in words', () => {
-		expect(scopeLabel({ kind: 'vault' })).toBe('Whole vault');
-		expect(scopeLabel({ kind: 'workspace', slug: 'work' })).toContain('work');
-		expect(scopeLabel({ kind: 'folder', path: 'Study' })).toContain('Study');
-		expect(scopeLabel({ kind: 'note', path: 'a.md' })).toContain('a.md');
-	});
-});
-
 describe('diffLines', () => {
 	it('is all same lines for an unchanged file', () => {
 		const rows = diffLines('a\nb\nc', 'a\nb\nc');
@@ -108,10 +97,3 @@ describe('changedLines', () => {
 	});
 });
 
-describe('estimateTokens', () => {
-	it('is four characters to the token, rounded up', () => {
-		expect(estimateTokens('')).toBe(0);
-		expect(estimateTokens('abc')).toBe(1);
-		expect(estimateTokens('a'.repeat(400))).toBe(100);
-	});
-});

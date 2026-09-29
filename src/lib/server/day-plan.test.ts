@@ -17,10 +17,9 @@ const STUDY: Workspace = {
 	tag: 'ws/study',
 	aliases: [],
 	folders: ['Study'],
-	template: 'study',
-	tabs: [],
 	deck: '',
 	kanbanColumns: [],
+	stages: [],
 	path: '_hub/workspaces/study.md'
 };
 

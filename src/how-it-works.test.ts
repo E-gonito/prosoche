@@ -10,8 +10,7 @@ import { fileURLToPath } from 'node:url';
  * This is the one direction worth checking. A route the page leaves out is a
  * gap in the documentation; a page the guide promises and the app lacks is a
  * broken promise. Only the `##` headings are read, one per screen, and each
- * is mapped to the route directory that serves it. "Widgets" is skipped
- * because it describes cards that appear on several screens, not a screen.
+ * is mapped to the route directory that serves it.
  *
  * Renaming a screen fails this test on purpose: update the heading and the
  * mapping together, so the guide keeps calling the screen what the app does.
@@ -27,16 +26,10 @@ const routes = new Set(
 
 /** Headings whose route directory is not simply the heading in lower case. */
 const ROUTE_FOR: Record<string, string> = {
-	Today: 'day',
-	'AI settings': 'settings',
-	'Workspaces and boards': 'w'
+	Workspaces: 'w'
 };
 
-const NOT_A_SCREEN = new Set(['Widgets']);
-
-const screens = [...doc.matchAll(/^## (.+)$/gm)]
-	.map(([, heading]) => heading)
-	.filter((heading) => !NOT_A_SCREEN.has(heading));
+const screens = [...doc.matchAll(/^## (.+)$/gm)].map(([, heading]) => heading);
 
 describe('docs/how-it-works.md', () => {
 	it.each(screens)('"%s" is served by a route', (heading) => {

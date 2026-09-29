@@ -1,27 +1,40 @@
-/* Design tokens, matching the approved mockup. Light theme only. */
+/*
+ * Design tokens: paper and ink. Light theme only. See docs/design.md, which a
+ * test reads alongside this file.
+ */
+@import '@fontsource-variable/source-serif-4/opsz.css';
+@import '@fontsource-variable/source-serif-4/opsz-italic.css';
+
 :root {
-	--bg: #f6f7f9;
-	--panel: #ffffff;
-	--line: #e3e6eb;
-	--text: #1f2328;
-	--muted: #6b7280;
-	--soft: #f0f2f5;
-	--accent: #2f6fed;
-	--accent-soft: #e8f0fe;
-	--q1: #d9534f;
-	--q2: #2f6fed;
-	--q3: #e0a100;
-	--q4: #9aa0a6;
-	--ok: #16a34a;
-	--warn: #b45309;
-	--bad: #b91c1c;
+	/* Paper, from the page up: the desk, the sheet, a shaded patch, a rule. */
+	--bg: #f7f3ec;
+	--panel: #fffdf9;
+	--soft: #f1ebe1;
+	--line: #e6ddd0;
+	/* Ink. */
+	--text: #2a2622;
+	--muted: #7a7068;
+	/* Deep teal for anything you can press; sand for an aside worth reading. */
+	--accent: #2e6b85;
+	--accent-soft: #e3eef2;
+	--sand: #efe6da;
+	--sand-edge: #b07a3a;
+
+	--q1: #c2553f;
+	--q2: #2e6b85;
+	--q3: #c8962b;
+	--q4: #a39a90;
+	--ok: #3f7d4e;
+	--warn: #a8641c;
+	--bad: #b3372b;
+
+	--serif: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
+	--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
 	--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
 	/*
-	 * Spacing, on a four-pixel step. Six of them, because a seventh was never
-	 * the difference between a layout working and not. Anything outside the
-	 * scale is deliberate and says so where it is written: the 44px tap
-	 * target, the 220px a board column needs to hold a card, the timeline's
+	 * Spacing, on a four-pixel step. Anything outside the scale is deliberate
+	 * and says so where it is written: the 44px tap target, the timeline's
 	 * pixels-per-minute arithmetic.
 	 */
 	--s1: 4px;
@@ -31,112 +44,176 @@
 	--s5: 24px;
 	--s6: 32px;
 
-	/* Type, named by the size it is. Body text is --t14; --t11 is the smallest
-	   the app will draw, and only for a label beside something larger. */
+	/* Type, named by the size it is. Body text is --t15; headings are serif. */
 	--t11: 11px;
 	--t12: 12px;
 	--t13: 13px;
 	--t14: 14px;
+	--t15: 15px;
 	--t16: 16px;
 	--t20: 20px;
 	--t24: 24px;
+	--t30: 30px;
 
-	/* Radii. --r is the default: a card, a pane, a panel. --r-md is the one
-	   every button and text field already drew before this token existed, so
-	   naming it here changed no pixel — it only gave the value a place to
-	   live beside its neighbours. */
 	--r-sm: 6px;
 	--r-md: 8px;
 	--r: 10px;
 	--r-lg: 12px;
 	--r-pill: 999px;
 
-	/* Two elevations: something lifted off the page, and something floating
-	   over it. Anything with a direction of its own — the bottom sheet's
-	   upward shadow — writes its own. */
-	--shadow: 0 6px 18px rgba(31, 35, 40, 0.18);
-	--shadow-lg: 0 18px 48px rgba(31, 35, 40, 0.18);
+	--shadow: 0 6px 18px rgba(60, 45, 30, 0.14);
+	--shadow-lg: 0 18px 48px rgba(60, 45, 30, 0.18);
 
-	/* The background of anything you type or choose into. */
-	--field: #fff;
-	/* One focus ring, so every control answers the keyboard the same way. */
+	--field: #fffdf9;
 	--focus: 2px solid var(--accent);
 
-	/*
-	 * The shell's own furniture, measured once here because two other files
-	 * need the numbers: see `--page-chrome` below and `--day-chrome` on the
-	 * day page.
-	 */
-	--header-h: 48px;
-	--tabbar-h: 56px;
-	/* Everything the shell puts above and below a page: the header plus
-	   `main`'s 20px of vertical padding, twice. A page that wants to fill the
-	   rest of the window sizes itself with `calc(100dvh - var(--page-chrome))`
-	   rather than guessing. */
-	--page-chrome: calc(var(--header-h) + 40px);
+	/* The shell's furniture, measured once. */
+	--rail-w: 232px;
+	--header-h: 52px;
+	--tabbar-h: 60px;
+	/* A reading column: the width a page of prose is comfortable at. */
+	--read-w: 860px;
+	/* Everything the shell puts above and below a page on a desktop. */
+	--page-chrome: calc(var(--s6) * 2);
 }
 
 /*
- * Breakpoints. A media query cannot read a custom property — the query is
- * evaluated before the cascade exists — so these two numbers are written out
- * literally wherever they are needed, and are documented here instead:
+ * Breakpoints, written out literally where they are needed because a media
+ * query cannot read a custom property:
  *
- *   720px  a phone: one column, the sidebar becomes the bottom tab bar.
- *   960px  too narrow for two widgets side by side: every card takes the row.
- *
- * A page with a two-column layout of its own may name the width at which its
- * own two columns stop fitting, and two do — see docs/design.md for which and
- * why. Nothing else invents one.
+ *   720px  a phone: the rail becomes the bottom tab bar.
+ *   1100px a page's side column drops under its main one.
  */
 
 * { box-sizing: border-box; }
 
+html { -webkit-text-size-adjust: 100%; }
+
 body {
 	margin: 0;
-	font: var(--t14)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+	font: var(--t15)/1.55 var(--sans);
 	color: var(--text);
 	background: var(--bg);
+	-webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--accent); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: var(--focus); outline-offset: 2px; }
+
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; }
+
+/*
+ * A page: a reading column centred on the sheet, as the primer artifact
+ * does. `.page.wide` is for boards and two-column pages.
+ */
+.page { max-width: var(--read-w); margin: 0 auto; padding: var(--s6) var(--s5) 64px; }
+.page.wide { max-width: 1240px; }
+
+/* A page's title block: a serif heading and one line of small print. */
+.title { margin-bottom: var(--s5); }
+.title h1 { font-size: var(--t30); line-height: 1.15; margin: 0; }
+.title p { margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
+.title .crumb { font-size: var(--t13); color: var(--muted); display: inline-block; margin-bottom: var(--s1); }
+
+/*
+ * A section label: small capitals over a group, the way the primer's
+ * "YOUR PRODUCT, IN THE PUBLISHED NUMBERS" sits over its list. Sections are
+ * separated by this and by space, not by a border around everything.
+ */
+.label {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+	margin: var(--s6) 0 var(--s3);
+	font: 600 var(--t12)/1.2 var(--sans);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--muted);
+}
+.label:first-child { margin-top: 0; }
+.label .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+/* A sheet: white paper on the desk, with a hairline edge. */
+.sheet {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--r-lg);
+	padding: var(--s4) var(--s5);
+}
+
+/* Rows inside a sheet, divided by hairlines rather than boxed one by one. */
+.rows > * + * { border-top: 1px solid var(--line); }
+.rows > * { padding: var(--s3) 0; }
+.rows > *:first-child { padding-top: 0; }
+.rows > *:last-child { padding-bottom: 0; }
+
+/* An aside worth reading: sand, with a warm rule down the left. */
+.callout {
+	background: var(--sand);
+	border-left: 3px solid var(--sand-edge);
+	border-radius: var(--r-sm);
+	padding: var(--s3) var(--s4);
+	font-size: var(--t14);
+}
+.callout b:first-child { color: var(--sand-edge); }
+
+/*
+ * Tabs across the top of a page, underlined like the primer's Meeting card /
+ * Notes / Glossary row. Links, so each tab is a URL.
+ */
+.tabs {
+	display: flex;
+	gap: var(--s1);
+	border-bottom: 1px solid var(--line);
+	margin: 0 0 var(--s5);
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.tabs a {
+	padding: var(--s2) var(--s3);
+	color: var(--muted);
+	font-size: var(--t14);
+	font-weight: 500;
+	white-space: nowrap;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+}
+.tabs a:hover { color: var(--text); text-decoration: none; }
+.tabs a[aria-current='page'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs .count { color: var(--muted); font-weight: 400; margin-left: 4px; }
 
 .btn {
 	border: 1px solid var(--line);
-	background: #fff;
+	background: var(--panel);
 	border-radius: var(--r-md);
-	padding: 6px var(--s3);
+	padding: 7px var(--s3);
 	cursor: pointer;
 	font: inherit;
-	font-size: var(--t13);
+	font-size: var(--t14);
+	font-weight: 500;
 	color: inherit;
 	text-decoration: none;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
 }
-.btn:hover { background: var(--soft); }
+.btn:hover { background: var(--soft); text-decoration: none; }
+.btn:disabled { opacity: 0.5; cursor: default; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.ghost { border-color: transparent; color: var(--muted); }
-/* Destructive, and never the default: discarding local changes, deleting. */
+.btn.primary:hover:not(:disabled) { background: #265a70; }
+.btn.ghost { border-color: transparent; background: none; color: var(--muted); }
+.btn.ghost:hover { background: var(--soft); color: var(--text); }
 .btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
-.btn.danger:hover:not(:disabled) { background: #a11414; }
-.btn.danger:disabled { opacity: 0.45; }
-/* A button that sits inside a row of text rather than under it. */
-.btn.small { padding: 2px var(--s2); font-size: var(--t11); }
+.btn.small { padding: 2px var(--s2); font-size: var(--t12); }
 
-/*
- * A button that is nothing but its icon: no border, no fill, one square
- * target wherever one appears — the more button on a board card, the collapse
- * arrows beside a note, the briefing's fold. Callers keep their own testid
- * and aria-label; nothing here says what the icon means.
- */
 .icon-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	border: 0;
 	background: none;
-	padding: 2px var(--s1);
+	padding: var(--s1);
 	border-radius: var(--r-sm);
 	color: var(--muted);
 	font: inherit;
@@ -145,11 +222,23 @@ a { color: var(--accent); }
 }
 .icon-btn:hover { background: var(--soft); color: var(--text); }
 
-/*
- * A pill, and the row it lives in. `.chip` on its own is a choice not taken;
- * `.chip.on` is the one that is. `.chip.quiet` reports rather than offers —
- * a count, a total — so it loses the border and the pointer with it.
- */
+/* Text you type into. */
+.field,
+input[type='text'].field,
+textarea.field,
+select.field {
+	width: 100%;
+	font: inherit;
+	font-size: var(--t15);
+	color: var(--text);
+	background: var(--field);
+	border: 1px solid var(--line);
+	border-radius: var(--r-md);
+	padding: 9px var(--s3);
+}
+.field:focus { outline: var(--focus); outline-offset: 0; border-color: transparent; }
+textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
+
 .chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .chip {
 	display: inline-flex;
@@ -157,108 +246,82 @@ a { color: var(--accent); }
 	gap: 6px;
 	flex: none;
 	border: 1px solid var(--line);
-	background: var(--field);
+	background: var(--panel);
 	border-radius: var(--r-pill);
-	padding: 3px 10px;
+	padding: 4px 12px;
 	font: inherit;
-	font-size: var(--t12);
+	font-size: var(--t13);
 	color: inherit;
 	text-decoration: none;
 	white-space: nowrap;
 	cursor: pointer;
 }
+.chip:hover { background: var(--soft); text-decoration: none; }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.chip.quiet {
-	border-color: transparent;
-	background: var(--soft);
-	color: var(--muted);
-	padding: 2px var(--s2);
-	font-size: var(--t11);
-	cursor: default;
-}
+.chip.quiet { border-color: transparent; background: var(--soft); color: var(--muted); padding: 2px var(--s2); font-size: var(--t12); cursor: default; }
 
-/* Times, counts and dates are body text with the figures lined up. Monospace
-   is for paths, code, tags and keyboard hints, and for nothing else. */
+/* A small uppercase badge: MINE, LOOKED UP, a stage. */
+.badge {
+	display: inline-block;
+	font: 600 10px/1 var(--sans);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	padding: 4px 6px;
+	border-radius: 4px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	vertical-align: middle;
+}
+.badge.ok { background: #e4efe5; color: var(--ok); }
+.badge.warn { background: #f6ead9; color: var(--warn); }
+.badge.muted { background: var(--soft); color: var(--muted); }
+
 .num { font-variant-numeric: tabular-nums; }
 
+/* A panel with a heading, for the few places a box is the right shape. */
 .card {
 	background: var(--panel);
 	border: 1px solid var(--line);
-	border-radius: var(--r);
-	padding: 14px;
+	border-radius: var(--r-lg);
+	padding: var(--s4);
 }
-/*
- * One card heading, worn by every card and every widget: a small uppercase
- * label on the left, and at most one count or control in `.right`. Widgets
- * are named here too rather than repeating the rule in `Widget.svelte`, so a
- * card on the day page and a card on a workspace tab cannot drift apart.
- */
-.card h3,
-.widget > h3 {
+.card h3 {
 	margin: 0 0 10px;
-	font-size: var(--t12);
+	font: 600 var(--t12)/1.2 var(--sans);
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
+	letter-spacing: 0.08em;
 	color: var(--muted);
 	display: flex;
 	align-items: center;
 	gap: var(--s2);
 }
-.card h3 .right,
-.widget > h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.card h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-/* A quadrant, written in the vault as inline code, so drawn as code here. */
 .q { font: var(--t11)/1 var(--mono); font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; }
 .q1 { background: var(--q1); }
 .q2 { background: var(--q2); }
 .q3 { background: var(--q3); }
 .q4 { background: var(--q4); }
 
-/* A square label: a tag from a note, a file's status. `.tag.bad` is the one
-   the guardrails wear when they refuse something. */
 .tag { font-size: var(--t11); color: var(--muted); background: var(--soft); border-radius: 4px; padding: 1px 6px; }
 .tag.bad { background: var(--bad); color: #fff; font-weight: 700; }
 .muted { color: var(--muted); }
-.hint { font-size: var(--t12); color: var(--muted); margin-top: var(--s2); }
+.small { font-size: var(--t13); }
+.hint { font-size: var(--t13); color: var(--muted); margin-top: var(--s2); }
 .empty { color: var(--muted); padding: var(--s5); text-align: center; }
-/* An inline error under a widget's own controls: a failed edit, a refused
-   request. A caller with different spacing needs sets only `margin`. */
-.problem { color: var(--bad); font-size: var(--t12); margin: var(--s2) 0 0; }
-/* "Nothing here yet" inside a widget that still drew its frame — smaller and
-   quieter than `EmptyState`, which owns the full-widget case instead. */
-.none { color: var(--muted); font-size: var(--t13); margin: 0; }
+.problem { color: var(--bad); font-size: var(--t13); margin: var(--s2) 0 0; }
+.none { color: var(--muted); font-size: var(--t14); margin: 0; }
 
-.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t13); }
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t14); }
 .kv b { color: var(--muted); font-weight: 500; }
 
-/*
- * A dashboard of widget cards, shared by the study page and every workspace
- * tab. Twelve columns with `dense` packing rather than `auto-fit`, so a
- * span-1 card can fill the hole a taller neighbour leaves instead of one
- * always sitting empty underneath it. Each widget states its own column
- * span, in `Widget.svelte`, against this same twelve-column grid.
- */
-.widget-grid {
-	display: grid;
-	grid-template-columns: repeat(12, 1fr);
-	grid-auto-flow: dense;
-	gap: 14px;
-	align-items: start;
-}
-
-/* Rendered note content. Kept close to Obsidian's reading view. */
-.prose { font-size: 15px; line-height: 1.62; overflow-wrap: anywhere; }
-/* Headings are text, not links: size and weight carry the hierarchy, and the
-   accent colour is left to mean "you can click this". */
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-	color: var(--text);
-	line-height: 1.3;
-}
-/* The largest heading in the app: the top of a note read in place. */
-.prose h1 { font-size: var(--t24); font-weight: 700; margin: 0 0 var(--s3); letter-spacing: -0.01em; }
-.prose h2 { font-size: 19px; font-weight: 650; margin: 26px 0 var(--s2); }
-.prose h3 { font-size: var(--t16); font-weight: 600; margin: 20px 0 6px; }
-.prose h4, .prose h5, .prose h6 { font-size: var(--t14); font-weight: 600; margin: var(--s4) 0 var(--s1); }
+/* Rendered note content, close to Obsidian's reading view, headings in serif. */
+.prose { font-size: 16px; line-height: 1.65; overflow-wrap: anywhere; }
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { color: var(--text); line-height: 1.3; font-family: var(--serif); }
+.prose h1 { font-size: 28px; font-weight: 600; margin: 0 0 var(--s3); }
+.prose h2 { font-size: 22px; font-weight: 600; margin: 28px 0 var(--s2); }
+.prose h3 { font-size: 18px; font-weight: 600; margin: 22px 0 6px; }
+.prose h4, .prose h5, .prose h6 { font-size: var(--t16); font-weight: 600; margin: var(--s4) 0 var(--s1); }
 .prose a { color: var(--accent); }
 .prose p { margin: 10px 0; }
 .prose ul, .prose ol { padding-left: 22px; margin: var(--s2) 0; }
@@ -267,10 +330,17 @@ a { color: var(--accent); }
 .prose code { background: var(--soft); border-radius: 4px; padding: 1px 5px; font: var(--t13) var(--mono); }
 .prose pre { background: var(--soft); padding: var(--s3); border-radius: var(--r-md); overflow-x: auto; }
 .prose pre code { background: none; padding: 0; }
-.prose blockquote { border-left: 3px solid var(--line); margin: 10px 0; padding: 2px 0 2px 14px; color: var(--muted); }
-.prose table { border-collapse: collapse; margin: var(--s3) 0; font-size: var(--t13); display: block; overflow-x: auto; }
+.prose blockquote { border-left: 3px solid var(--sand-edge); background: var(--sand); margin: 10px 0; padding: var(--s2) 14px; border-radius: var(--r-sm); }
+.prose table { border-collapse: collapse; margin: var(--s3) 0; font-size: var(--t14); display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
 .prose th { background: var(--soft); }
 .prose img { max-width: 100%; }
-.prose hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.prose hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .prose .wl-missing { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
+
+@media (max-width: 720px) {
+	.page { padding: var(--s4) var(--s4) calc(var(--tabbar-h) + 32px); }
+	.title h1 { font-size: var(--t24); }
+	.sheet { padding: var(--s3) var(--s4); }
+	.kv { grid-template-columns: 1fr; }
+}

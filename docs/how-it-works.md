@@ -6,117 +6,209 @@ explanation for anything trimmed from the UI lives here instead — nothing
 written about prosoche is lost, only moved. A unit test reads this page and
 `src/routes`, so a screen named here and missing there fails `npm test`.
 
-The sidebar and the command palette are two views onto the same short list of
-destinations. A "T3 Code" entry joins both, but only once `HUB_T3_URL` names
-a running T3 Code server; unset, neither shows it, rather than linking
-somewhere that will not answer. It opens in a new tab rather than this one,
-since its paired session belongs to that origin.
+Every tab is a module listed once in `src/lib/modules/index.ts`. The rail on a
+desktop, the bottom bar and More sheet on a phone, and the command palette's
+Go commands are all drawn from that list, so a new module appears in all of
+them at once. Workspaces are listed under Workspaces in the rail and in the
+More sheet.
 
 ## Today
 
-The timeline is direct manipulation, not a form. Drag a block to move it, its
-bottom edge to resize it, or focus one and use the arrow keys. Drag the ⠿ grip
-beside an unscheduled task to give it a time, and drag a block out onto the
-Unscheduled list, press its ✕, or press Backspace on it, to take the time off
-again. Everything snaps to ten minutes, and only the time on that line
-changes — the note keeps its own order regardless of where the UI displays a
-task.
+The dashboard for one day and the week around it. The title names the day
+you are looking at — "Tuesday 29 September", "3 days ago" beneath it — with
+arrows either side and a jump back to today when you have wandered off it. A
+one-line summary counts what the day did and is still owed: done against the
+total, time planned, meetings, and anything overdue.
 
-Under the Timeline heading is a chip for every project with a block today,
-saying what it planned and what of that is done — "7h 20m planned", "30m
-done", "1h 20m done of 7h 30m". A block counts towards a project when it
-carries the project's tag, sits in one of its folders, or simply names it, so
-a line reading "10:40 - 18:00 Client project" is counted without being tagged.
-Ticked blocks are what "done" means here, minus anything a timer already
-measured, and a short block inside a longer one of the same project counts
-once. Blocks no project claims are left out rather than gathered into a row
-that would only say you have not tagged them.
+**Briefing.** Press "Brief me" for a short read on today and the rest of the
+week. It is shown on screen as a draft, never written until you press **Save
+to note** — the same accept step every AI feature in the app goes through.
+Regenerating drafts again over whatever the note already has. If today's note
+has no briefing section yet, the first save only adds it; press Brief me
+again afterwards to fill it in, because adding a heading to your note is a
+change worth seeing on its own before the words that go under it are. If AI
+is off, the strip says so plainly and links to Settings rather than offering
+a button that would only fail.
+
+**The timeline** is direct manipulation, not a form. Drag a block to move it,
+its bottom edge to resize it, or focus one and use the arrow keys. Drag the ⠿
+grip beside an unscheduled task to give it a time, and drag a block out onto
+the Unscheduled list, press its ✕, or press Backspace on it, to take the time
+off again. Everything snaps to ten minutes, and only the time on that line
+changes — the note keeps its own order regardless of where the UI displays a
+task. Your Google Calendar events for the day sit on the same grid as sand
+blocks rather than teal ones, read-only, each linking to its card on
+Meetings. On a phone, a segmented control switches between the timeline and
+the plain list; the choice is remembered on that device.
 
 Capture appends to `Inbox/Capture.md` under today's date. A line written as a
 task stays a task, so a captured to-do is immediately schedulable rather than
-needing to be retyped later.
-
-The unscheduled list is exactly what it says: everything in it has no time
-yet. Once a task gets a time, from the grip or the timeline, it moves to the
+needing to be retyped later. The unscheduled list is exactly what it says:
+once a task gets a time, from the grip or the timeline, it moves to the
 timeline and leaves this list.
 
-Open work from the rest of the vault gets its own list, grouped by workspace
-and ordered the way a board column is: most urgent quadrant first, then the
-soonest due date, then where the line lives. Each workspace contributes exactly
-the open cards its board shows, so a line in a project's deck note appears here
-with nothing else on it, while a line elsewhere in that project's notes still
-needs a quadrant, a due date, an id or the workspace's tag. Work no workspace
-claims is listed last under "Elsewhere", and has to carry a `Q1` through `Q4`,
-because a quadrant is the only mark of intent such a line has. Daily notes are
-excluded either way: each one is a copy of your template, so they would repeat
-the same unfinished checklist every day. What is left out after that is
-checklist notation inside reference notes, such as a syllabus or a manual test
-plan, rather than work to schedule.
+**Overdue** lists open tasks from anywhere in the vault whose due date has
+passed, daily notes excluded, because each of those is a copy of your
+template and would otherwise repeat the same unfinished checklist. Each row
+carries its workspace's dot and a button to plan it onto today.
 
-Each of those rows shows its due date, in red once it has gone by, and clicking
-its text opens the same card drawer the day's own tasks use. The `+` button
-puts the card on today with no time on it, so it lands in the unscheduled list
-ready to be dragged onto the timeline — which is how you plan from a phone,
-where there is no drag onto a grid.
+**Rest of the week** runs from tomorrow through the coming Sunday, padded out
+to six days on a short week. Each day lists its calendar events, the open
+tasks already in that day's own note if one exists, and the workspace cards
+due that day; clicking the day opens its own dashboard.
 
-Dragging one of those workspace tasks onto the timeline does something
+**From your workspaces** shows each workspace's most urgent open cards — the
+same ones its board would, in the same order — collapsed beyond the first
+three, plus how many captures are waiting untriaged in its inbox. The button
+on a card adds it to today with no time on it, ready to be dragged onto the
+timeline, which is how you plan from a phone where there is no drag onto a
+grid.
+
+Dragging one of those workspace cards onto the timeline does something
 different from dragging an unscheduled task: it adds a block to the day's own
-note, linking back to the card, instead of writing a time onto the card's line
-in its project note. A time with no date says nothing about which day it
-belongs to, and this page only ever reads the day's note, so the card would
-otherwise have vanished on the drop. The card itself is left exactly as it
-was: the block is time spent on it, not a second copy of it.
+note, linking back to the card, instead of writing a time onto the card's
+line in its project note. A time with no date says nothing about which day it
+belongs to, and the timeline only ever reads the day's own note, so the card
+would otherwise have vanished on the drop. The card itself is left exactly as
+it was: the block is time spent on it, not a second copy of it.
 
-A note that still has git conflict markers in it says so, here and on the note
-itself, with a link to the sync page. Resolving a merge is yours to do, in
-Obsidian or there; nothing in the app rewrites those lines for you.
+Beyond that, any module may add a card of its own — Study offers one for
+flashcards due, once something is. A private module never does: nothing of
+Date's appears here, or anywhere outside its own screen.
 
-The briefing strip only shows once the note actually has briefing markers in
-it. Before that, it says plainly that this note has no briefing markers yet;
-adding them changes your note, so it waits for you on the review page rather
-than being applied on the spot.
+A note that still has git conflict markers in it says so, with a link to the
+sync page. Resolving a merge is yours to do, in Obsidian or there; nothing in
+the app rewrites those lines for you.
 
-The backlog — tasks written inside a fenced code block, such as the syllabus
-example in the README — is shown read-only, because Obsidian treats those
-lines as text, not tasks, and prosoche follows Obsidian's lead rather than
-inventing its own.
+## Meetings
+
+Meetings is a notebook per workspace: a card to read before you go in, a
+place to capture what you don't know while you're there, and a glossary for
+the words you had to guess at. Everything it keeps is markdown in the
+workspace's home folder (its first folder):
+
+- `Primer.md` is the meeting card. Write it in Obsidian, or press **Draft a
+  primer with Claude**; once it exists, **Suggest updates** proposes a
+  revised version. The card draws the note the way it is written: the
+  opening paragraph on its own, a `>` quote as a sand aside (a bold first
+  word becomes its lead-in), each `##` heading as a section label, a bullet
+  list as rows with any nested bullet as the muted line under its row, and a
+  numbered list as a set of frames.
+- `Meetings/YYYY-MM-DD Title.md` is one meeting. **Start meeting** or **Start
+  standup** creates it from a small template (`type`, `date`, the calendar
+  `event` and `attendees` when it came from one, and a `## Captured`
+  heading). The capture box adds one line under that heading per item:
+  `- term:: DVC guess:: data versioning`, `- question:: …`,
+  `- decision:: …`, `- [ ] action:: …`, or `- …` for a plain note. **End
+  meeting** writes one `ended: HH:MM` line into the frontmatter. The meeting
+  under way is today's latest note without `ended:`.
+- "Before you go in" lists every open task line from the workspace's meeting
+  notes. Ticking one rewrites that line and nothing else, as ticking a task
+  anywhere does.
+- `Glossary.md` holds one `##` heading per term, with `- guess::`,
+  `- status::` (`to-look-up` or `looked-up`), `- category::` and
+  `- source::` lines, then the definition, then a line starting `→` saying
+  why the term matters in this workspace. Terms you captured in a meeting
+  that the glossary lacks wait at the top of the Glossary tab; **Add to
+  glossary** appends an entry for one. **Look up with Claude** drafts the
+  definition and the `→` line from the primer and recent meetings, and marks
+  the entry looked up with `- drafted:: Claude`. **Look up all** does every
+  waiting term in one proposal.
+- `Pages/*.html` are the workspace's own pages. Each gets a tab in the
+  notebook.
+
+Every Claude button here (the primer, **Prep with Claude**, the look-ups)
+shows its proposal as a diff first and writes only the file it names, and
+only when you accept. **Prep with Claude** adds a `## Talking points`
+section to the meeting under way, drafted from the primer, the last three
+meetings, the open actions and the calendar event. With no meeting under
+way, it proposes the new meeting note with the talking points already in
+it, so accepting the prep also starts the meeting.
+
+The Meetings page lists today's and the next seven days' calendar events.
+Pick an event's workspace once and it is remembered by the event's title in
+`_hub/meetings.md`, one line per title (`- Dev Weekly Meeting → eye2gene`),
+which you can edit in Obsidian. A workspace whose alias appears in the title
+is offered first but never applied without a click. An assigned event has
+**Prep**, which opens its notebook ready to start it, and **Start**, which
+starts the meeting at once. Nothing from the private folder is ever read
+here.
+
+The calendar is Google's, read through its secret iCal address, so no
+sign-in is needed: in Google Calendar open Settings, choose your calendar,
+then Integrate calendar, copy "Secret address in iCal format", and set it as
+`HUB_GCAL_ICS` in the server's environment. Treat that address like a
+password. Without it the page still works: open a notebook and start a
+meeting by hand. Outlook calendars are not supported yet.
 
 ## Notes
 
-Cards go into a note in the Spaced Repetition plugin's own syntax, so Obsidian
-sees them too; nothing is written until you accept it from a proposal.
+Notes are read-only here: Obsidian is the editor. The list page searches the
+whole vault, shows what changed recently, and offers the folder tree. A note
+shows its rendered text beside its properties, tags, the notes that link to
+it and the notes it links to; Browse opens the folder tree as a side sheet.
 
-The editor's toolbar buttons are terser than what they do: "Make card" turns
-the current selection into a `Question::Answer` line, but that only reaches
-the Spaced Repetition plugin once the note itself carries a `#flashcards` tag
-— worth knowing the first time the card does not show up where you expected.
+The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
+heading. A line that is already a task is kept as written; anything else is
+stamped with the time. That file is the only thing the Notes module writes.
 
-A conflict banner appears when a note changed on another device while you
-were editing it. Nothing has been overwritten in that moment: your version and
-theirs both still exist, and the banner is there so you can choose which one
-to keep, or copy out anything you need from either side, before committing to
-one.
+Suggest cards drafts flashcards from the open note. The draft is shown as a
+diff and nothing reaches the note until you accept it.
+
+The private folder, `Private/`, never appears here: not in search, the tree,
+backlinks or recent notes. A link straight to a private note is a 404.
 
 ## Study
 
-Study widgets read flashcards, resources, topics and habits straight out of
-your notes; nothing here is a separate database with its own opinions about
-what you have learned.
+Study is scoped to the workspace whose `template:` says `study` — the `Study`
+workspace in a fresh vault — or the whole vault when there is none. Its own
+notes, `Goals.md` and `Sessions.md`, live in that workspace's first folder.
+Its tabs are Overview, Goals, Sessions, Flashcards and Reading list; a tab
+other than Overview hides itself until its note has something in it.
 
-## Workspaces and boards
+**Overview** shows what to review right now with a button straight into a
+session, each goal's milestones done out of its total and what is next, this
+week's time against a `weekly_hours:` target, the streak of consecutive days
+with a session logged, what you are currently reading, and a compact list of
+your top-level topic folders.
+
+**Goals** reads `Goals.md`: a `## ` heading per goal, an optional `target::`
+date, and its milestones as ordinary task lines underneath, due-dated with
+the same `📅` field every task in the vault uses. A milestone is a task, so
+ticking one is the ordinary task rewrite; "Add a goal" appends a heading and
+"Add a milestone" appends a task line under one.
+
+**Sessions** reads `Sessions.md`: one line per sitting, `- YYYY-MM-DD
+<duration> [[Topic]] a note`, filed under a `## YYYY-MM` heading. Durations
+read as `1h30m`, `90m` or `1h`. The page logs a new one, and shows hours per
+topic this month and a bar-per-week chart of the last eight weeks.
+
+**Flashcards** is the review session, ported from before: cards are regions
+of your notes written in Obsidian Spaced Repetition's syntax, graded with the
+keyboard or a tap, and the schedule is written back in the plugin's own
+comment, so a card reviewed here is due correctly in Obsidian too.
+
+**Reading list** shows resources — courses, books, articles, videos — grouped
+by status, inferred from the note when it says nothing itself. Moving one
+between groups writes a single `status:` line into its frontmatter.
+
+## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — which folders and tag belong to it, and which widgets each of
-its tabs shows — so editing it here or in Obsidian is the same edit. The "Edit
-definition" link on a workspace's page goes straight to that file for exactly
-this reason; there is deliberately no settings form that would rewrite it
-behind your back.
+definition — its name, colour, tag, folders and deal stages — so editing it
+here or in Obsidian is the same edit. The "edit definition" link on a
+workspace's page goes straight to that file for exactly this reason; there is
+deliberately no settings form that would rewrite it behind your back. Older
+workspace files may still carry a `tabs:` list from before this shape; it is
+read and ignored rather than rejected, because every workspace now gets the
+same sections regardless of what its file used to say.
 
 Folders are comma separated and vault-relative. Notes and tasks inside them
 belong to the workspace, and so does anything tagged `#ws/<slug>` wherever it
 lives in the vault, which is what lets a task belong to a workspace without
-living inside one of its folders. Leaving the field empty is fine — folders
-can be added to the file later.
+living inside one of its folders. The first folder is the workspace's home:
+it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Deals.md` and a `Pages/` folder
+of custom pages all live.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily
@@ -128,32 +220,82 @@ text — in practice only daily notes and the Inbox are ever claimed this way.
 The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
-A tab with no widgets it recognises says so instead of rendering a blank
-space: check the workspace file's `widgets:` list against the catalogue for a
-typo, since that is the only way to reach this state.
+A workspace always has an Overview: next actions, an inbox preview, the
+latest log entry, anything blocked, recent notes, and a link into its meeting
+notebook. Every other tab — Tasks, Inbox, Log, People, Notes, and one per file
+in `Pages/` — hides itself until it has something to show, so a brand new
+workspace opens quiet rather than full of empty panes; visiting one directly
+still works; adding its first card, capture, log line, person or deal is what
+brings the tab back.
 
-A board shows the workspace's cards, in the columns the workspace file names.
-A card is a checkbox line carrying a quadrant, a due date, an id or the
-workspace's tag, or one that lives in the workspace's deck note. The deck is
-the board written down, so every checkbox in it is a card whether or not it
-carries anything else; a line anywhere else in the workspace's notes carrying
-none of those marks is not shown, because it reads as checklist notation
-rather than work. The board says how many it left out and which notes they
-came from, and will show them one note at a time on request. Give a line a
-quadrant and it becomes a card, by the same convention the rest of your vault
-uses. Nothing is promoted for you.
+**Tasks** is the board: a card is a checkbox line carrying a quadrant, a due
+date, an id or the workspace's tag, or one that lives in the workspace's deck
+note. The deck is the board written down, so every checkbox in it is a card
+whether or not it carries anything else; a line anywhere else in the
+workspace's notes carrying none of those marks is not shown, because it reads
+as checklist notation rather than work. The board says how many it left out
+and which notes they came from, and will show them one note at a time on
+request. Give a line a quadrant and it becomes a card, by the same convention
+the rest of your vault uses. Nothing is promoted for you. The same tab also
+offers a flat list, filterable by status, for a quick scan or a phone.
 
-Cards are written to the workspace's deck note, appended one line at a time,
-and the note is created the first time you add one. Anything written in the
-workspace's notes shows here too. The count beside a workspace in the rail is
-its open cards, the same ones Today lists under "From your workspaces".
+**Inbox** is a capture box over `Inbox.md`: a bullet already written as a task
+is ticked in place through the ordinary task rewrite; "make it a task" copies
+any line's words into `Tasks.md` and ticks the inbox line to show it has been
+filed. Nothing is ever deleted, only marked done.
 
-A new project or business workspace starts on five tabs: an Overview of its
-board and its time, then Notes, People, Blocked and Insights, each still
-empty until its notes give it something to show. A tab's own number, beside
-its title, is open cards for Overview, cards waiting on another for Blocked,
-and people in scope for People; a tab with nothing to count shows no number
-at all, and a tab with a genuine zero shows it muted rather than hidden.
+**Log** is `Log.md`, a `## YYYY-MM-DD` heading per session. Sessions are shown
+newest first; the file itself only ever grows downward, because "add an
+update" appends under today's heading and never touches an earlier one.
+
+**People** is the workspace's CRM: everyone its notes mention, the same way
+`people.ts` finds anyone elsewhere, plus a deal pipeline read from
+`Deals.md`. A deal line uses Dataview-style inline fields —
+
+    - Moorfields pilot [[Jane Doe]] stage:: proposal value:: 12000 next:: 2026-10-03
+
+— so it stays readable in Obsidian; a field this app does not know about is
+kept exactly as written. The pipeline's stages default to lead, proposal,
+negotiation, won and lost, or to whatever a workspace's own `stages:` list
+names. Moving a deal writes only its `stage::` value, through the same
+per-line conflict guard a task edit gets.
+
+**Notes** lists the workspace's own notes, most recently changed first,
+read-only, from the folders named in the workspace file.
+
+**Custom pages** are the workspace's own HTML, one file per tab from its
+`Pages/` folder. Each is served through its own endpoint with a strict
+`sandbox` content-security-policy and embedded in an iframe with
+`sandbox="allow-scripts"` and nothing more — never `allow-same-origin` — so a
+page's own script can run but can never reach this origin's cookies, storage
+or anything outside its frame.
+
+## Date
+
+Everything here lives under `Private/`, a folder that is never committed,
+never indexed, never searched and never shown anywhere else: not on Today,
+not in Notes, not in the palette. It is backed up only by the whole-box
+backup the Proxmox host already takes, because syncing it anywhere else would
+be exactly the leak this module exists to prevent.
+
+Log is a day stepper and four counters — likes sent, matches (from your own
+likes, whenever they arrived — liking back an incoming like is not counted as
+one, or the match rate would read higher than it really is), how many of
+those fit your type, and likes received — plus optional notes. The button
+reads "Save as a zero day" when every counter is still zero. Stepping to a day
+that already has a line loads it back; saving never goes past today.
+
+Stats shows totals and rates over the last 7 days, the last 30, and all time,
+a twelve-week trend and the best day of the week for matches, each rate
+defined in the small print beneath it. Insights asks Claude for a short read
+on patterns, on demand: it sends only the ledger and every person's dates
+log, nothing else in the vault, and it only ever answers on screen — it has
+no write of its own.
+
+People are profiles — app, age, place, job, a stage from matched through
+ended — with free notes and a dates log, one line per date. Changing a
+person's stage, or adding a date, touches only that one line or appends one
+new one; nothing already written is rewritten.
 
 ## Sync
 
@@ -165,8 +307,8 @@ Automatic commits only ever stage files this app wrote; anything changed by
 hand in an editor waits on this page for a person to choose, rather than
 being swept up automatically.
 
-The app's own state files, the running timer and the `_hub/.state/` stamps,
-are never committed: they exist to survive a restart, not to be shared. If a
+The app's own state files, the `_hub/.state/` stamps among them, are never
+committed: they exist to survive a restart, not to be shared. If a
 copy of the vault on another device did commit them, the next pull here
 replaces the local untracked copy with the incoming one rather than refusing,
 then takes the files out of tracking, adds them to the vault's `.gitignore`
@@ -183,33 +325,7 @@ versions, copy across whatever is needed, and then either continue the
 rebase or reset to the remote, with `git rebase origin/<branch>` or
 `git reset --hard origin/<branch>`.
 
-## Review
-
-Review is the queue of changes the app has drafted and not made. Nothing here
-has touched a note: the weekly review and the morning briefing both run while
-nobody is watching, so instead of writing on their own they stop and wait for
-a person to look. With the AI layer off, nothing new arrives, but anything
-already waiting can still be accepted or dismissed — turning the layer off
-does not strand a half-reviewed queue. When the queue is empty, that is
-because the briefing writes itself into today's note between its own
-markers on its own schedule, and the weekly review appears here on a Sunday
-evening; there is no button that fills this list on demand.
-
-## Ask
-
-Answers are read-only. Nothing on this page can change a note, whatever the
-answer itself claims to have done — that guarantee lives in code, not in the
-answer's wording. A question scoped to a workspace also carries a short block
-of figures: this week's planned, done and timed minutes day by day, the open
-cards column by column, what is overdue and what is blocked, the week's daily
-blocks, and the ten notes changed most recently. Those figures are computed
-from the index and the daily notes at the moment the question is asked rather
-than retrieved from any note, which is why an answer quotes them as "computed
-from your notes" instead of linking to a file. Past conversations are kept as
-markdown in the vault's own history note, so they sync with everything else
-and no AI-backed feature can edit them after the fact.
-
-## AI settings
+## Settings
 
 There is no mode that writes without you. prosoche never passes
 `--dangerously-skip-permissions` to the CLI, and the CLI is never given the
@@ -221,62 +337,3 @@ sentence explaining that. The ten guardrails listed below are the same story:
 they are code paths, not instructions in a prompt, so they hold regardless of
 whatever the model itself says about what it is about to do.
 
-## Widgets
-
-**Inbox** lists what has not been filed yet, from the quick-capture note and
-from stray notes dropped into the inbox folder. Nothing waiting there is a
-finished state, not a lack of data.
-
-**Pinned** lists anything tagged `#pin`; add that tag to a task to keep it
-pinned here regardless of where else it lives in the vault.
-
-**Blocked** lists cards waiting on another task, using a `⛔ id` /`🆔 id` pair
-to connect the two. Nothing waiting on anything is the widget saying every
-dependency it knows about is already clear.
-
-**Notes** lists a workspace's own notes, most recently touched first, from
-the folders named in the workspace file. A workspace with no folders yet has
-nothing to list until one is added to its `folders:` line.
-
-**People** lists the people a workspace, or the vault, has open threads with.
-A person is a note under the people folder (`People/` by default); mentioning
-someone with a wiki-link, or logging a contact from their own page, is what
-creates that note — nobody has to create it up front. The person page
-mirrors this: visiting someone with no note yet still shows the same
-layout, minus the note itself, and logging a contact there is what brings the
-note into existence.
-
-**Time** compares this week's planned time against what actually happened,
-scaled to the busiest day rather than to a fixed number of hours. Two things
-say work happened. Ticking a timed block counts its planned length as done,
-because the tick is the user's own statement that the block went as planned;
-a timer counts what it measured. A ticked block a timer entry matched counts
-once, as timed, since the timer line is the finer record of the same work.
-Blocks nest, so a short block inside a long one counts once in the day but
-once for each project the two belong to, which is why the per-project split
-can add up to more than the week and says so when it does. Nothing ticked
-and nothing timed is exactly that, and it names both ways of counting rather
-than showing an empty chart.
-
-**Insights** is Ask, scoped to whatever workspace or note it sits on, with
-the same guarantee: it is read-only, and switching the AI layer off in
-settings turns this widget off along with every other AI surface. On a
-workspace it is handed the same computed figures the Ask page is, and the line
-under the box says what they amount to — open cards, overdue, blocked, the
-week's blocks and its hours — before anything is asked or spent.
-
-**Timesheet** renders today's timesheet section exactly as the note has it,
-read-only, because the note is a document shared at work and every route out
-of the card leads to Obsidian or to the read-only note view rather than to an
-editor. Nothing written yet for today still names the last entry that does
-exist, if there is one; no timesheet note at all names the folder prosoche
-looked in, since it only ever reads notes named `TIMESHEET…` and never writes
-one itself.
-
-**GitHub** and **Linear** share one component for their rows, because the
-server modules behind them return the same shape. Nothing open and assigned
-to you is a real answer, not an error. Not connected is the state that ships
-until a token exists: it names the environment variables to set and what each
-is for, and reloading after setting them is what turns the card on — no
-token is ever stored in the vault or the repository, and without one
-prosoche simply never calls out to that provider.

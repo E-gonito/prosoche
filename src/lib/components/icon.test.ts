@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
 import Icon, { ICON_NAMES, type IconName } from './Icon.svelte';
-import { NAV, SETTINGS, TABS } from '$lib/client/nav';
+import { MODULES, SYSTEM, moduleFor } from '$lib/modules';
 
 /**
  * The pairing this file exists to hold is nav item to icon.
@@ -43,22 +43,23 @@ describe('the icon set', () => {
 });
 
 describe('the navigation', () => {
-	it('gives every destination an icon that exists', () => {
-		for (const item of [...NAV, SETTINGS, ...TABS]) {
-			expect(ICON_NAMES, item.label).toContain(item.icon);
+	it('gives every module an icon that exists', () => {
+		for (const item of [...MODULES, ...SYSTEM]) {
+			expect(ICON_NAMES, item.title).toContain(item.icon);
 		}
 	});
 
-	it('puts four destinations and a way to everything else on the phone bar', () => {
-		expect(TABS).toHaveLength(5);
-		expect(TABS.filter((t) => t.href === null)).toHaveLength(1);
-		expect(TABS.map((t) => t.label)).toEqual(['Today', 'Study', 'Notes', 'Search', 'More']);
+	it('puts four modules on the phone bar, leaving room for More', () => {
+		expect(MODULES.filter((m) => m.tab).map((m) => m.title)).toEqual(['Today', 'Meetings', 'Workspaces', 'Notes']);
 	});
 
-	it('only offers the phone destinations the sidebar also has', () => {
-		const sidebar = NAV.map((item) => item.href);
-		for (const tab of TABS) {
-			if (tab.href !== null) expect(sidebar).toContain(tab.href);
-		}
+	it('never puts a private module on the phone bar', () => {
+		expect(MODULES.filter((m) => m.private && m.tab)).toEqual([]);
+	});
+
+	it('knows which module a path belongs to', () => {
+		expect(moduleFor('/')?.id).toBe('today');
+		expect(moduleFor('/w/eye2gene/log')?.id).toBe('w');
+		expect(moduleFor('/api/task')).toBeNull();
 	});
 });

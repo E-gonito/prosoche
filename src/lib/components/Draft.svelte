@@ -2,17 +2,18 @@
 	/**
 	 * A button that drafts a change, and the proposal it produces.
 	 *
-	 * The three drafting features — file this capture, suggest flashcards,
-	 * draft the timesheet — differ in what they read and agree on everything
-	 * after that: a proposal arrives, the guardrails are re-run against the
-	 * note as it is now, the user ticks what they want, and the ticked edits
-	 * are written. That shared half is here, so none of the three surfaces has
-	 * its own slightly different idea of what accepting means.
+	 * The drafting features — file this capture, suggest flashcards, the
+	 * meeting notebook's primer, prep and glossary lookups — differ in what
+	 * they read and agree on everything after that: a proposal arrives, the
+	 * guardrails are re-run against the note as it is now, the user ticks what
+	 * they want, and the ticked edits are written. That shared half is here,
+	 * so none of the surfaces has its own slightly different idea of what
+	 * accepting means.
 	 *
 	 * Nothing happens until the button is pressed, and the proposal is
-	 * discarded when the user rejects it. A draft is not queued: these three
-	 * run with the user watching, and something waiting on the review page
-	 * that they have already seen and dismissed would be noise.
+	 * discarded when the user rejects it. A draft is not queued: these run
+	 * with the user watching, and something waiting on the review page that
+	 * they have already seen and dismissed would be noise.
 	 */
 	import Proposal from '$lib/components/Proposal.svelte';
 	import { applyProposal, checkProposal, draftChange, type Drafted } from '$lib/client/ai';
@@ -90,15 +91,6 @@
 		validation = null;
 		problem = '';
 	}
-
-	async function copy(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			problem = '';
-		} catch {
-			problem = 'The browser would not let the page copy. Select the text and copy it yourself.';
-		}
-	}
 </script>
 
 <div class="draft" class:compact>
@@ -108,17 +100,6 @@
 
 	{#if written.length}
 		<p class="ok" data-testid="draft-written">Written to {written.join(', ')}.</p>
-	{/if}
-
-	{#if drafted?.text}
-		<div class="card text">
-			<div class="head">
-				<b>Draft</b>
-				<button class="btn small copy" onclick={() => copy(drafted?.text ?? '')}>Copy</button>
-			</div>
-			<pre data-testid="draft-text">{drafted.text}</pre>
-			<p class="hint">Paste this into your timesheet yourself. The app never writes that file.</p>
-		</div>
 	{/if}
 
 	{#if drafted?.candidates?.length === 0}
@@ -150,18 +131,6 @@
 	   it is working, and a widget row wants a smaller one than a toolbar. */
 	.go:disabled { cursor: default; opacity: 0.6; }
 	.compact .go { padding: 1px 6px; font-size: var(--t11); }
-	.text { margin-top: 10px; }
-	.head { display: flex; align-items: center; gap: var(--s2); margin-bottom: 6px; font-size: var(--t12); }
-	.copy { margin-left: auto; }
-	pre {
-		margin: 0;
-		padding: 10px;
-		background: var(--soft);
-		border-radius: var(--r-md);
-		font: var(--t12)/1.5 var(--mono);
-		white-space: pre-wrap;
-		overflow-x: auto;
-	}
 	.hint { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--muted); }
 	.ok { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--ok); }
 	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }

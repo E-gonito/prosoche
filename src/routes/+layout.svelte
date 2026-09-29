@@ -1,278 +1,271 @@
 <script lang="ts">
 	/**
-	 * The shell: a header, a way to get anywhere, and the page.
+	 * The shell: a rail of modules and the page.
 	 *
-	 * There are two navigations and one list behind them. On a desktop the
-	 * sidebar shows every destination and collapses to a rail of icons; on a
-	 * phone the sidebar goes away entirely and a bottom bar takes four of them
-	 * plus "More", which opens the palette. A rail of unlabelled icons down the
-	 * side of a phone cost width and hit nothing reliably, which is why it is
-	 * gone rather than narrowed.
+	 * One list, `MODULES`, drawn twice. On a desktop it is a rail down the
+	 * left with the workspaces nested under Workspaces. On a phone it is a
+	 * bottom bar with the four modules marked `tab` and More, which opens a
+	 * sheet with everything else, workspaces included.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
 	import SyncBadge from '$lib/components/SyncBadge.svelte';
-	import Timer from '$lib/components/Timer.svelte';
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { NAV, SETTINGS, TABS } from '$lib/client/nav';
+	import { MODULES, SYSTEM, moduleFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
 
 	let { children, data } = $props();
-	let collapsed = $state(false);
-	// Read after mounting: the label depends on the platform, which the server
-	// cannot know, and a guess would render ⌘ for half the world.
 	let paletteKeys = $state('');
+	let more: HTMLDialogElement | undefined = $state();
 
-	// Remembered per device, as agreed in the mockup review.
-	$effect(() => {
-		collapsed = localStorage.getItem('hub:nav-collapsed') === '1';
-	});
+	// After mounting: the label depends on the platform, which the server
+	// cannot know.
 	$effect(() => {
 		paletteKeys = keyLabel('mod+k');
 	});
-	function toggle() {
-		collapsed = !collapsed;
-		localStorage.setItem('hub:nav-collapsed', collapsed ? '1' : '0');
-	}
 
-	/**
-	 * Today covers the day pages too: the root redirects to a dated URL, so
-	 * matching the href alone would leave the app with nothing highlighted for
-	 * the page it opens on.
-	 */
-	const active = (href: string) =>
-		href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/day/') : page.url.pathname.startsWith(href);
+	// Any navigation closes the More sheet, whichever link was followed.
+	$effect(() => {
+		void page.url.pathname;
+		more?.close();
+	});
+
+	const current = $derived(moduleFor(page.url.pathname));
+	const workspace = $derived(page.url.pathname.match(/^\/w\/([^/]+)/)?.[1] ?? null);
+	const tabs = MODULES.filter((m) => m.tab);
 </script>
 
-<div class="shell" class:collapsed>
-	<header>
-		<button
-			class="btn ghost collapse"
-			onclick={toggle}
-			aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-			aria-expanded={!collapsed}
-			title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-		><Icon name="menu" /></button>
-		<span class="brand">prosoche</span>
+<div class="shell">
+	<nav class="rail" aria-label="Modules">
+		<a class="brand" href="/today">prosoche</a>
 
-		<button class="jump" onclick={() => palette.show()} title="Search or jump to…" data-testid="jump">
+		<button class="jump" onclick={() => palette.show()} data-testid="jump">
 			<Icon name="search" />
-			<span class="say">Search or jump to…</span>
+			<span>Search or jump</span>
 			{#if paletteKeys}<kbd>{paletteKeys}</kbd>{/if}
 		</button>
 
-		<Timer />
+		<div class="modules">
+			{#each MODULES as m (m.id)}
+				<a href={m.href} aria-current={current?.id === m.id && !(m.id === 'w' && workspace) ? 'page' : undefined}>
+					<Icon name={m.icon} /><span>{m.title}</span>
+				</a>
+				{#if m.id === 'w'}
+					<div class="spaces">
+						{#each data.workspaces as w (w.slug)}
+							<a href="/w/{w.slug}" aria-current={workspace === w.slug ? 'page' : undefined}>
+								<i style="--dot: {w.color}"></i><span>{w.name}</span>
+							</a>
+						{/each}
+					</div>
+				{/if}
+			{/each}
+		</div>
+
+		<div class="foot">
+			{#each SYSTEM as m (m.id)}
+				<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
+					<Icon name={m.icon} /><span>{m.title}</span>
+				</a>
+			{/each}
+			<SyncBadge />
+		</div>
+	</nav>
+
+	<header class="top">
+		<a class="brand" href="/today">prosoche</a>
+		<button class="icon-btn" onclick={() => palette.show()} aria-label="Search or jump"><Icon name="search" size={20} /></button>
 		<SyncBadge />
 	</header>
 
-	<nav class="sidebar" aria-label="Sections">
-		<div class="group">
-			{#each NAV as item (item.href)}
-				<a href={item.href} class:active={active(item.href)} title={collapsed ? item.label : undefined}>
-					<span class="ic"><Icon name={item.icon} /></span><span class="lb">{item.label}</span>
-				</a>
-			{/each}
-			<h6>Workspaces</h6>
-			{#each data.workspaces as w (w.slug)}
-				<a href="/w/{w.slug}" class:active={page.url.pathname.startsWith(`/w/${w.slug}`)} title={w.name}>
-					<span class="ic dot" style="--dot: {w.color}"></span><span class="lb">{w.name}</span>
-					{#if w.open}<span class="count" title="{w.open} open, {w.urgent} of them Q1">{w.open}</span>{/if}
-				</a>
-			{/each}
-			<a href="/w/new" class="new" class:active={page.url.pathname === '/w/new'} title={collapsed ? 'New workspace' : undefined}>
-				<span class="ic"><Icon name="plus" /></span><span class="lb">New workspace</span>
-			</a>
-		</div>
-
-		<div class="group bottom">
-			{#if data.t3Url}
-				<!-- Only shown when HUB_T3_URL is set; a new tab, since the paired
-				     WebSocket session belongs to that origin, not this one. -->
-				<a href={data.t3Url} target="_blank" rel="noopener" title={collapsed ? 'T3 Code' : undefined}>
-					<span class="ic"><Icon name="external-link" /></span><span class="lb">T3 Code</span>
-				</a>
-			{/if}
-			<a href={SETTINGS.href} class:active={page.url.pathname.startsWith('/settings')} title={collapsed ? SETTINGS.label : undefined}>
-				<span class="ic"><Icon name={SETTINGS.icon} /></span><span class="lb">{SETTINGS.label}</span>
-			</a>
-		</div>
-	</nav>
-
 	<main>{@render children()}</main>
 
-	<nav class="tabbar" aria-label="Sections" data-testid="tabbar">
-		{#each TABS as tab (tab.label)}
-			{#if tab.href === null}
-				<button onclick={() => palette.show()} data-testid="tab-more">
-					<Icon name={tab.icon} size={20} />
-					<span>{tab.label}</span>
-				</button>
-			{:else}
-				<a href={tab.href} aria-current={active(tab.href) ? 'page' : undefined}>
-					<Icon name={tab.icon} size={20} />
-					<span>{tab.label}</span>
-				</a>
-			{/if}
+	<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
+		{#each tabs as m (m.id)}
+			<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
+				<Icon name={m.icon} size={22} /><span>{m.title}</span>
+			</a>
 		{/each}
+		<button onclick={() => more?.showModal()} data-testid="tab-more">
+			<Icon name="more-horizontal" size={22} /><span>More</span>
+		</button>
 	</nav>
+
+	<dialog class="more" bind:this={more} onclick={(e) => e.target === more && more?.close()}>
+		<div class="sheet-body">
+			<p class="label">Modules</p>
+			<div class="grid">
+				{#each MODULES as m (m.id)}
+					<a href={m.href}><Icon name={m.icon} size={20} /><span>{m.title}</span></a>
+				{/each}
+			</div>
+			{#if data.workspaces.length}
+				<p class="label">Workspaces</p>
+				<div class="list">
+					{#each data.workspaces as w (w.slug)}
+						<a href="/w/{w.slug}"><i style="--dot: {w.color}"></i>{w.name}</a>
+					{/each}
+				</div>
+			{/if}
+			<p class="label">System</p>
+			<div class="list">
+				{#each SYSTEM as m (m.id)}
+					<a href={m.href}><Icon name={m.icon} />{m.title}</a>
+				{/each}
+			</div>
+		</div>
+	</dialog>
 
 	<Palette />
 </div>
 
 <style>
-	.shell {
-		display: grid;
-		grid-template-columns: 220px 1fr;
-		grid-template-rows: var(--header-h) 1fr;
-		height: 100vh;
-	}
-	.shell.collapsed { grid-template-columns: 56px 1fr; }
+	.shell { display: grid; grid-template-columns: var(--rail-w) 1fr; min-height: 100vh; }
 
-	header {
-		grid-column: 1 / 3;
+	.rail {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+		gap: var(--s2);
+		padding: var(--s5) var(--s3) var(--s4);
+		border-right: 1px solid var(--line);
+		overflow-y: auto;
+	}
+	.brand {
+		font: 600 22px/1 var(--serif);
+		color: var(--text);
+		letter-spacing: -0.02em;
+		padding: 0 var(--s2) var(--s3);
+	}
+	.brand:hover { text-decoration: none; }
+
+	.jump {
 		display: flex;
 		align-items: center;
-		gap: var(--s3);
-		padding: 0 var(--s3);
-		background: var(--panel);
-		border-bottom: 1px solid var(--line);
-	}
-	.brand { font-weight: 700; letter-spacing: 0.2px; }
-
-	/* The palette's doorway for people who do not know the chord exists. */
-	.jump {
-		display: inline-flex;
-		align-items: center;
 		gap: var(--s2);
-		min-width: 0;
-		width: 260px;
-		padding: 5px 10px;
+		margin-bottom: var(--s3);
+		padding: 7px 10px;
 		border: 1px solid var(--line);
-		border-radius: var(--r-pill);
-		background: var(--bg);
+		border-radius: var(--r-md);
+		background: var(--panel);
 		color: var(--muted);
 		font: inherit;
 		font-size: var(--t13);
 		cursor: pointer;
 	}
-	.jump:hover { background: var(--soft); border-color: var(--accent); color: var(--text); }
-	.jump .say { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.jump kbd {
-		flex: none;
-		font: var(--t11) var(--mono);
-		color: var(--muted);
-		border: 1px solid var(--line);
-		border-bottom-width: 2px;
-		border-radius: 5px;
-		padding: 0 5px;
-	}
+	.jump:hover { color: var(--text); border-color: var(--accent); }
+	.jump span { flex: 1; text-align: left; }
+	.jump kbd { font: var(--t11) var(--mono); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 
-	nav.sidebar {
-		background: var(--panel);
-		border-right: 1px solid var(--line);
-		padding: var(--s3) 10px;
-		overflow: auto;
-		display: flex;
-		flex-direction: column;
-	}
-	.collapsed nav.sidebar { padding: var(--s3) 6px; }
-	/* Settings sits against the floor, away from the day-to-day list. */
-	.group.bottom { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
-	nav.sidebar a {
+	.rail a {
 		display: flex;
 		align-items: center;
-		gap: var(--s2);
+		gap: 10px;
 		padding: 7px 10px;
 		border-radius: var(--r-md);
 		color: var(--text);
-		text-decoration: none;
+		font-size: var(--t14);
 	}
-	nav.sidebar .new { color: var(--muted); font-size: var(--t13); }
-	.dot::before {
-		content: '';
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background: var(--dot);
-	}
-	/* A count, so body text with the figures lined up rather than monospace. */
-	.count {
-		margin-left: auto;
-		font-size: var(--t11);
-		font-variant-numeric: tabular-nums;
-		color: var(--muted);
-		background: var(--soft);
-		border-radius: var(--r-pill);
-		padding: 1px 6px;
-	}
-	.collapsed nav.sidebar .count { display: none; }
-	nav.sidebar a:hover { background: var(--soft); }
-	nav.sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-	nav.sidebar h6 {
-		margin: 14px var(--s2) 6px;
-		font-size: var(--t11);
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-	}
-	.ic { display: inline-flex; width: var(--s4); justify-content: center; }
-	.collapsed nav.sidebar a { justify-content: center; padding: 8px 0; }
-	.collapsed nav.sidebar .lb,
-	.collapsed nav.sidebar h6 { display: none; }
+	.rail a:hover { background: var(--soft); text-decoration: none; }
+	.rail a[aria-current='page'] { background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+	.rail a :global(svg) { color: var(--muted); flex: none; }
+	.rail a[aria-current='page'] :global(svg) { color: var(--accent); }
 
-	main { overflow: auto; padding: 20px var(--s5); }
+	.modules { display: flex; flex-direction: column; gap: 2px; }
+	.spaces { display: flex; flex-direction: column; gap: 1px; margin: 0 0 var(--s1) 18px; padding-left: var(--s2); border-left: 1px solid var(--line); }
+	.spaces a { font-size: var(--t13); padding: 5px 10px; }
+	.spaces span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
 
-	/* The bottom bar exists on a phone only; see the media query below. */
-	nav.tabbar { display: none; }
+	.foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s3); border-top: 1px solid var(--line); }
+	.foot :global(.sync) { align-self: flex-start; margin: var(--s2) 10px 0; }
+
+	main { min-width: 0; }
+
+	.top, .tabbar { display: none; }
+
+	dialog.more {
+		margin: auto auto 0;
+		width: 100%;
+		max-width: 520px;
+		border: 0;
+		border-radius: 16px 16px 0 0;
+		padding: 0;
+		background: var(--panel);
+		box-shadow: var(--shadow-lg);
+	}
+	dialog.more::backdrop { background: rgba(42, 38, 34, 0.35); }
+	.sheet-body { padding: var(--s5) var(--s5) calc(var(--s5) + env(safe-area-inset-bottom)); }
+	.sheet-body .label:first-child { margin-top: 0; }
+	.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+	.grid a {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		padding: var(--s3) var(--s2);
+		border-radius: var(--r-md);
+		background: var(--bg);
+		color: var(--text);
+		font-size: var(--t13);
+	}
+	.list { display: flex; flex-direction: column; }
+	.list a { display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--text); border-bottom: 1px solid var(--line); }
 
 	@media (max-width: 720px) {
-		/* One column: there is no room beside the page for anything. */
-		.shell,
-		.shell.collapsed { grid-template-columns: 1fr; grid-template-rows: var(--header-h) 1fr; }
-		header { grid-column: 1; }
-		nav.sidebar { display: none; }
-		.collapse { display: none; }
-		.jump { width: auto; padding: 6px; border-radius: var(--r); margin-left: auto; }
-		.jump .say, .jump kbd { display: none; }
+		/* Two rows, header and page; the bar is fixed and out of the flow. */
+		.shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+		.rail { display: none; }
 
-		main { padding: 14px; padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+		.top {
+			display: flex;
+			align-items: center;
+			gap: var(--s2);
+			position: sticky;
+			top: 0;
+			z-index: 30;
+			height: var(--header-h);
+			padding: 0 var(--s4);
+			padding-top: env(safe-area-inset-top);
+			background: color-mix(in srgb, var(--bg) 92%, transparent);
+			backdrop-filter: blur(8px);
+			border-bottom: 1px solid var(--line);
+		}
+		.top .brand { padding: 0; font-size: 20px; margin-right: auto; }
 
-		nav.tabbar {
+		.tabbar {
 			position: fixed;
-			left: 0;
-			right: 0;
-			bottom: 0;
+			inset: auto 0 0 0;
 			z-index: 40;
 			display: grid;
 			grid-auto-flow: column;
 			grid-auto-columns: 1fr;
-			background: var(--panel);
-			border-top: 1px solid var(--line);
-			/* Exactly as tall as `main` reserves, border and safe area included. */
 			height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
 			padding-bottom: env(safe-area-inset-bottom);
+			background: var(--panel);
+			border-top: 1px solid var(--line);
 		}
-		nav.tabbar a,
-		nav.tabbar button {
+		.tabbar a,
+		.tabbar button {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
 			gap: 3px;
-			/* The smallest thing a thumb reliably hits, so not on the scale. */
+			/* The smallest target a thumb reliably hits. */
 			min-height: 44px;
-			height: 100%;
-			padding: 0 2px;
 			border: 0;
 			background: none;
 			font: inherit;
 			color: var(--muted);
-			text-decoration: none;
 			cursor: pointer;
 		}
-		nav.tabbar span { font-size: var(--t11); line-height: 1; }
-		nav.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; }
+		.tabbar a:hover { text-decoration: none; }
+		.tabbar span { font-size: var(--t11); line-height: 1; }
+		.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; }
 	}
 </style>

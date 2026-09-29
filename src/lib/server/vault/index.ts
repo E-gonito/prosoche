@@ -6,6 +6,12 @@
  * hashes used for conflict detection, and the sync provider. Nothing above it
  * knows the vault is a directory on disk, let alone a git repository.
  *
+ * The private folder is a second vault inside the first. Every method takes
+ * a scope, `public` by default: in public scope a private path reads as
+ * missing, lists and trees leave the folder out, and the watcher never
+ * reports it. In private scope only private paths are visible. So a caller
+ * that forgets the scope sees less, never more.
+ *
  * Two deliberate absences of error:
  *  - Reading a note that does not exist returns an empty note with
  *    `exists: false`, because opening tomorrow's daily note is normal.
@@ -18,7 +24,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { config } from '../config';
-import { isIgnored, isMarkdown, toAbsolute, toRelative } from './paths';
+import { isIgnored, isMarkdown, isPrivate, toAbsolute, toRelative } from './paths';
 import { noSync, type SyncProvider } from './sync';
 
 export interface Note {
@@ -47,6 +53,24 @@ export type TreeNode =
 	| { type: 'folder'; name: string; path: string; children: TreeNode[] }
 	| { type: 'note'; name: string; path: string };
 
+/** Which side of the private folder a call may see. */
+export type Scope = 'public' | 'private';
+
+export interface ScopeOption {
+	/** Absent means public. */
+	scope?: Scope;
+}
+
+/** Thrown when a write names a path outside the scope it asked for. */
+export class ScopeError extends Error {
+	constructor(path: string) {
+		super(`Path is outside this scope: ${path}`);
+		this.name = 'ScopeError';
+	}
+}
+
+const inScope = (path: string, scope: Scope = 'public') => isPrivate(path) === (scope === 'private');
+
 export function hashContent(content: string): string {
 	return createHash('sha256').update(content, 'utf8').digest('hex').slice(0, 16);
 }
@@ -62,9 +86,14 @@ export class Vault {
 		readonly sync: SyncProvider = noSync
 	) {}
 
-	/** Read a note. A missing file is an empty note, not an error. */
-	async read(path: string): Promise<Note> {
+	/**
+	 * Read a note. A missing file is an empty note, not an error, and so is a
+	 * file outside the requested scope: to a public caller the private folder
+	 * does not exist.
+	 */
+	async read(path: string, opts: ScopeOption = {}): Promise<Note> {
 		const absolute = toAbsolute(path, this.root);
+		if (!inScope(path, opts.scope)) return { path, content: '', hash: hashContent(''), mtimeMs: 0, exists: false };
 		try {
 			const [content, info] = await Promise.all([readFile(absolute, 'utf8'), stat(absolute)]);
 			return { path, content, hash: hashContent(content), mtimeMs: info.mtimeMs, exists: true };
@@ -79,9 +108,14 @@ export class Vault {
 	 * When `expectedHash` is given and the file on disk no longer matches it,
 	 * nothing is written and the current note is returned alongside the text
 	 * the caller wanted to save, which is everything a merge view needs.
+	 *
+	 * Throws `ScopeError` for a path outside the requested scope, because that
+	 * is a bug in the caller, not a state of the vault. A private write is
+	 * never marked for sync and never announced to subscribers.
 	 */
-	async write(path: string, content: string, expectedHash?: string): Promise<WriteResult> {
-		const current = await this.read(path);
+	async write(path: string, content: string, expectedHash?: string, opts: ScopeOption = {}): Promise<WriteResult> {
+		if (!inScope(path, opts.scope)) throw new ScopeError(path);
+		const current = await this.read(path, opts);
 		if (expectedHash !== undefined && current.exists && current.hash !== expectedHash) {
 			return { ok: false, reason: 'conflict', current, yourContent: content };
 		}
@@ -93,29 +127,55 @@ export class Vault {
 
 		const info = await stat(absolute);
 		const note: Note = { path, content, hash: hashContent(content), mtimeMs: info.mtimeMs, exists: true };
+		if (opts.scope === 'private') return { ok: true, note };
 		this.sync.markDirty(path);
 		this.emit({ path, kind: current.exists ? 'changed' : 'added', self: true });
 		return { ok: true, note };
 	}
 
-	/** Every markdown file in the vault, vault-relative, in directory order. */
-	async list(): Promise<string[]> {
+	/** Every markdown file in the scope, vault-relative, sorted. */
+	async list(opts: ScopeOption = {}): Promise<string[]> {
 		const out: string[] = [];
 		const walk = async (dir: string): Promise<void> => {
-			const entries = await readdir(dir, { withFileTypes: true });
+			const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
 			for (const entry of entries) {
 				const absolute = `${dir}/${entry.name}`;
 				const relative = toRelative(absolute, this.root);
 				if (isIgnored(relative)) continue;
-				if (entry.isDirectory()) await walk(absolute);
-				else if (isMarkdown(relative)) out.push(relative);
+				if (entry.isDirectory()) {
+					if (opts.scope !== 'private' && isPrivate(relative)) continue;
+					await walk(absolute);
+				} else if (isMarkdown(relative) && inScope(relative, opts.scope)) out.push(relative);
 			}
 		};
-		await walk(this.root);
+		await walk(opts.scope === 'private' ? toAbsolute(config.privateFolder, this.root) : this.root);
 		return out.sort();
 	}
 
-	/** The file tree the sidebar renders. Folders with no notes are omitted. */
+	/**
+	 * File names directly inside one folder whose name ends in `.` + `ext`,
+	 * sorted. Public scope only: a workspace's custom pages are meant to be
+	 * embedded read-only, which is a public feature, so there is no reason yet
+	 * to let a private folder's non-markdown files through this door.
+	 *
+	 * Unlike `list`, this never recurses and never returns a markdown file —
+	 * it exists for the handful of formats the vault holds beside markdown,
+	 * such as a workspace's custom HTML pages, named by the caller rather than
+	 * assumed. A folder that does not exist reads as empty, the same as an
+	 * empty one, because "no pages yet" is not an error.
+	 */
+	async files(folder: string, ext: string): Promise<string[]> {
+		if (isPrivate(folder)) return [];
+		const suffix = `.${ext.replace(/^\.+/, '')}`;
+		const absolute = toAbsolute(folder, this.root);
+		const entries = await readdir(absolute, { withFileTypes: true }).catch(() => []);
+		return entries
+			.filter((entry) => entry.isFile() && entry.name.endsWith(suffix) && !isIgnored(`${folder}/${entry.name}`))
+			.map((entry) => entry.name)
+			.sort();
+	}
+
+	/** The public file tree the notes viewer renders. Folders with no notes are omitted. */
 	async tree(): Promise<TreeNode[]> {
 		const paths = await this.list();
 		const root: TreeNode[] = [];
@@ -158,7 +218,7 @@ export class Vault {
 			ignoreInitial: true,
 			ignored: (path: string) => {
 				const relative = toRelative(path, this.root);
-				return relative !== '' && isIgnored(relative);
+				return relative !== '' && (isIgnored(relative) || isPrivate(relative));
 			}
 		});
 		const on = (kind: FileChange['kind']) => (absolute: string) => {

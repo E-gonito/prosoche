@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Vault, hashContent } from './index';
+import { Vault, ScopeError, hashContent } from './index';
+import { noSync } from './sync';
 
 let root: string;
 let vault: Vault;
@@ -107,5 +108,75 @@ describe('subscribe', () => {
 		vault.subscribe((c) => seen.push(c.path));
 		expect((await vault.write('note.md', 'x')).ok).toBe(true);
 		expect(seen).toEqual(['note.md']);
+	});
+});
+
+describe('the private folder', () => {
+	it('does not exist to a public caller', async () => {
+		await vault.write('Private/Dating/Ledger.md', 'secret', undefined, { scope: 'private' });
+		await vault.write('Notes.md', 'public');
+
+		expect((await vault.read('Private/Dating/Ledger.md')).exists).toBe(false);
+		expect(await vault.list()).toEqual(['Notes.md']);
+		expect(JSON.stringify(await vault.tree())).not.toContain('Private');
+	});
+
+	it('is all a private caller sees', async () => {
+		await vault.write('Private/Dating/Ledger.md', 'secret', undefined, { scope: 'private' });
+		await vault.write('Notes.md', 'public');
+
+		expect((await vault.read('Private/Dating/Ledger.md', { scope: 'private' })).content).toBe('secret');
+		expect((await vault.read('Notes.md', { scope: 'private' })).exists).toBe(false);
+		expect(await vault.list({ scope: 'private' })).toEqual(['Private/Dating/Ledger.md']);
+	});
+
+	it('lists as empty before anything private exists', async () => {
+		expect(await vault.list({ scope: 'private' })).toEqual([]);
+	});
+
+	it('refuses a write that names the wrong side', async () => {
+		await expect(vault.write('Private/x.md', 'no')).rejects.toThrow(ScopeError);
+		await expect(vault.write('x.md', 'no', undefined, { scope: 'private' })).rejects.toThrow(ScopeError);
+	});
+
+	it('is never announced to subscribers or marked for sync', async () => {
+		const seen: string[] = [];
+		const marked: string[] = [];
+		const watched = new Vault(root, { ...noSync, markDirty: (p: string) => marked.push(p) });
+		watched.subscribe((c) => seen.push(c.path));
+		await watched.write('Private/a.md', 'x', undefined, { scope: 'private' });
+		await watched.write('b.md', 'y');
+		expect(seen).toEqual(['b.md']);
+		expect(marked).toEqual(['b.md']);
+	});
+});
+
+describe('files', () => {
+	it('lists non-markdown files in a folder by extension, sorted', async () => {
+		await mkdir(join(root, 'Work/Pages'), { recursive: true });
+		await writeFile(join(root, 'Work/Pages/eye.html'), '<p>eye</p>');
+		await writeFile(join(root, 'Work/Pages/atlas.html'), '<p>atlas</p>');
+		await writeFile(join(root, 'Work/Pages/notes.md'), '# not a page');
+		await writeFile(join(root, 'Work/Pages/readme.txt'), 'skip');
+
+		expect(await vault.files('Work/Pages', 'html')).toEqual(['atlas.html', 'eye.html']);
+	});
+
+	it('reads as empty when the folder does not exist', async () => {
+		expect(await vault.files('Nowhere/Pages', 'html')).toEqual([]);
+	});
+
+	it('never recurses into subfolders', async () => {
+		await mkdir(join(root, 'Work/Pages/Sub'), { recursive: true });
+		await writeFile(join(root, 'Work/Pages/Sub/deep.html'), '<p>deep</p>');
+		await writeFile(join(root, 'Work/Pages/top.html'), '<p>top</p>');
+
+		expect(await vault.files('Work/Pages', 'html')).toEqual(['top.html']);
+	});
+
+	it('is public scope only: nothing from the private folder', async () => {
+		await mkdir(join(root, 'Private/Pages'), { recursive: true });
+		await writeFile(join(root, 'Private/Pages/secret.html'), '<p>secret</p>');
+		expect(await vault.files('Private/Pages', 'html')).toEqual([]);
 	});
 });

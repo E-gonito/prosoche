@@ -1,15 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { isDayKey, today } from '$server/daily';
+import { shiftDay, today } from '$server/daily';
 import { fileCapture } from '$server/ai/file-capture';
 import { suggestCards } from '$server/ai/suggest-cards';
-import { draft, draftPath } from '$server/ai/timesheet-draft';
+import { draftLookups, draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
+import { eventsBetween } from '$server/calendar';
 import type { RequestHandler } from './$types';
 
 /**
- * The three features that draft a change and stop.
+ * The features that draft a change and stop.
  *
- * One endpoint rather than three, because they differ only in what they read:
+ * One endpoint rather than one each, because they differ only in what they read:
  * each produces a `Proposal` that goes to the same `/api/ai/proposal` to be
  * validated and applied, and having one door in keeps that true. The
  * `destinations` a caller must pass to apply are returned alongside, since
@@ -26,8 +27,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		path?: string;
 		line?: number;
 		expectedRaw?: string;
-		day?: string;
 		count?: number;
+		/** The meeting features: which workspace, and what about. */
+		slug?: string;
+		title?: string;
+		event?: string;
+		terms?: string[];
 	};
 	const { vault, index, ready, workspaces } = hub();
 	await ready;
@@ -52,10 +57,19 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ ...result, destinations: [body.path] });
 	}
 
-	if (body.feature === 'timesheet') {
-		const day = body.day && isDayKey(body.day) ? body.day : today();
-		const result = await draft(vault, index, day);
-		return json({ ...result, destinations: [draftPath(day)] });
+	// The meeting notebook's three drafts. Each names its one destination.
+	if (body.feature === 'primer-draft' || body.feature === 'meeting-prep' || body.feature === 'glossary-lookup') {
+		const workspace = (await workspaces()).find((w) => w.slug === body.slug);
+		if (!workspace) return json({ error: 'no such workspace' }, { status: 404 });
+		if (body.feature === 'primer-draft') return json(await draftPrimer(vault, workspace));
+		if (body.feature === 'glossary-lookup') {
+			const terms = Array.isArray(body.terms) ? body.terms.filter((t) => typeof t === 'string') : null;
+			return json(await draftLookups(vault, workspace, terms));
+		}
+		const day = today();
+		const calendar = body.event ? await eventsBetween(day, shiftDay(day, 7)) : null;
+		const event = calendar?.ok ? (calendar.events.find((e) => e.id === body.event) ?? null) : null;
+		return json(await draftPrep(vault, workspace, { title: body.title ?? '', today: day, event }));
 	}
 
 	return json({ error: 'unknown feature' }, { status: 400 });

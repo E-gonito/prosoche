@@ -13,7 +13,7 @@ const STAMP: RunStamp = {
 	permission: 'propose',
 	budgetUsd: 0.25,
 	timeoutSeconds: 120,
-	feature: 'weekly-review',
+	feature: 'primer-draft',
 	startedAt: '2026-09-20T18:00:00.000Z',
 	durationMs: 1000,
 	costUsd: 0.05
@@ -21,10 +21,10 @@ const STAMP: RunStamp = {
 
 const make = (id: string, at = STAMP.startedAt): Proposal => ({
 	id,
-	feature: 'weekly-review',
+	feature: 'primer-draft',
 	stamp: { ...STAMP, startedAt: at },
 	summary: `summary of ${id}`,
-	edits: [{ id: `${id}-e1`, kind: 'create', path: 'Journal/Weekly/2026-W38.md', text: 'x\n', reason: 'new note' }],
+	edits: [{ id: `${id}-e1`, kind: 'create', path: 'Work/Atlas/Primer.md', text: 'x\n', reason: 'new note' }],
 	accepted: []
 });
 
@@ -89,7 +89,7 @@ describe('the pending queue', () => {
 	it('is a path no AI feature may write', () => {
 		// The queue decides what gets written, so a model that could edit it
 		// would be able to enqueue work for itself.
-		for (const feature of ['briefing', 'weekly-review', 'capture'] as const) {
+		for (const feature of ['briefing', 'primer-draft', 'capture'] as const) {
 			expect(checkPath(PENDING_PATH, { feature, allow: [PENDING_PATH, '_hub/', 'Journal/'] })).not.toEqual([]);
 		}
 	});

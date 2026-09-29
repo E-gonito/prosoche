@@ -230,7 +230,7 @@
 
 		{#if context && context.block.length}
 			<div class="context">
-				<span class="label">Underneath it, as written</span>
+				<span class="context-label">Underneath it, as written</span>
 				<pre data-testid="drawer-block">{context.block.join('\n')}</pre>
 			</div>
 		{/if}
@@ -276,7 +276,7 @@
 	}
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) 14px; }
 
-	.context .label { font-size: var(--t12); color: var(--muted); }
+	.context-label { display: block; margin-bottom: var(--s1); font-size: var(--t12); color: var(--muted); }
 	pre {
 		margin: 4px 0 0;
 		background: var(--soft);

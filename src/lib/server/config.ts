@@ -17,6 +17,12 @@ export const config = {
 	undoPath: process.env.HUB_UNDO ?? join(homedir(), '.local/state/hub/undo'),
 	/** Folder inside the vault holding workspace definitions and hub settings. */
 	hubFolder: '_hub',
+	/**
+	 * Folder inside the vault that only a private module may read or write.
+	 * It is never indexed, listed, watched, searched or committed; see
+	 * `isPrivate` in `vault/paths.ts`.
+	 */
+	privateFolder: 'Private',
 
 	git: {
 		/** Wait this long after the last save before committing. */
@@ -53,37 +59,11 @@ export const config = {
 	 */
 	peopleFolder: process.env.HUB_PEOPLE_FOLDER ?? 'People',
 
-	/**
-	 * Where the read-only work timesheet lives. One note per month, named
-	 * `TIMESHEET <MONTH>`, though not always exactly — a suffix after the month
-	 * is common — so the hub matches on the prefix and never computes a file
-	 * name from the date.
-	 */
-	timesheet: {
-		folder: process.env.HUB_TIMESHEET_FOLDER ?? 'Work/Atlas',
-		filePrefix: 'TIMESHEET'
-	},
-
-	/**
-	 * Integration credentials, read from the environment so no token is ever
-	 * written into the vault or the repository. Absent is the expected case:
-	 * each integration renders a "not connected" card naming the variable to
-	 * set, and the hub works without either one.
-	 */
-	github: {
-		/** Fine-grained or classic token with read access to issues and pull requests. */
-		token: process.env.HUB_GITHUB_TOKEN ?? '',
-		/** Optional `owner/name` filter, comma separated. Empty means every repo the token can see. */
-		repos: splitList(process.env.HUB_GITHUB_REPOS),
-		/** Overridable so a test can point at a stub instead of github.com. */
-		api: process.env.HUB_GITHUB_API ?? 'https://api.github.com',
-		cacheTtlMs: 2 * 60 * 1000
-	},
-	linear: {
-		/** Personal API key from Linear's settings. Sent as-is, not as a Bearer token. */
-		token: process.env.HUB_LINEAR_TOKEN ?? '',
-		api: process.env.HUB_LINEAR_API ?? 'https://api.linear.app/graphql',
-		cacheTtlMs: 2 * 60 * 1000
+	calendar: {
+		/** Google Calendar "secret address in iCal format". Empty means no calendar. */
+		icsUrl: process.env.HUB_GCAL_ICS ?? '',
+		/** How long a fetched feed is reused before fetching again. */
+		cacheTtlMs: 5 * 60 * 1000
 	},
 
 	/**
@@ -93,11 +73,3 @@ export const config = {
 	 */
 	t3Url: process.env.HUB_T3_URL ?? ''
 } as const;
-
-/** `a, b` to `['a','b']`, with an unset or empty variable meaning no filter. */
-function splitList(value: string | undefined): string[] {
-	return (value ?? '')
-		.split(',')
-		.map((part) => part.trim())
-		.filter(Boolean);
-}

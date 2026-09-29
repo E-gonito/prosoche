@@ -25,7 +25,7 @@ const STAMP = {
 	permission: 'read-only',
 	budgetUsd: 0.25,
 	timeoutSeconds: 90,
-	feature: 'ask',
+	feature: 'briefing',
 	startedAt: '2026-09-21T07:00:00.000Z',
 	durationMs: 0,
 	costUsd: 0
@@ -269,7 +269,7 @@ describe('G4 checkPath', () => {
 	});
 
 	it('fails closed for a feature with no allowlist', () => {
-		expect(checkPath('Inbox/a.md', { feature: 'ask', allow: [] })).not.toEqual([]);
+		expect(checkPath('Inbox/a.md', { feature: 'briefing', allow: [] })).not.toEqual([]);
 	});
 
 	it('refuses anything that is not markdown', () => {
