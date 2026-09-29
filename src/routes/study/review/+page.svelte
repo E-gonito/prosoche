@@ -1,26 +1,26 @@
 <script lang="ts">
-	/** The review session. One card at a time, comfortable on a phone. */
+	/** Everything due, across every subject. One card at a time, comfortable on a phone. */
 	import CardReview from '$lib/components/CardReview.svelte';
-	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let { data } = $props();
 </script>
 
-<svelte:head><title>Review · prosoche</title></svelte:head>
+<svelte:head><title>Review · Study · prosoche</title></svelte:head>
 
 <div class="page">
 	<div class="title">
-		<h1>Study</h1>
+		<a class="crumb" href="/study">Study</a>
+		<h1>Review</h1>
+		<p>Everything due today, from every subject.</p>
 	</div>
-	<StudyTabs tabs={data.tabs} />
 
 	{#if data.cards.length === 0}
 		<div class="empty" data-testid="nothing-due">
 			<p class="tick"><Icon name="check" size={40} /></p>
 			<h2>Nothing due</h2>
 			<p class="muted">
-				{data.total > 0 ? `${data.total} cards in scope, none scheduled for today.` : 'No cards here yet.'}
+				{data.total > 0 ? `${data.total} cards across your subjects, none scheduled for today.` : 'No cards yet.'}
 			</p>
 			<a class="btn" href="/study">Back to study</a>
 		</div>
@@ -35,13 +35,7 @@
 	.empty h2 { margin: var(--s2) 0; font-size: var(--t20); }
 	.empty .muted { margin-bottom: 18px; }
 
-	/*
-	 * On a phone, `.page` is exactly the room `main` leaves between the shell
-	 * header and the tab bar (see the height comment on `.session` in
-	 * `CardReview.svelte`). `flex: 1` on whichever of the two states is
-	 * showing is what turns that room into "the card scrolls, the grades sit
-	 * on the floor" rather than the grades trailing wherever the content ends.
-	 */
+	/* See the same rule in `study/[subject]/review/+page.svelte`. */
 	@media (max-width: 720px) {
 		.page { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 		.empty { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
