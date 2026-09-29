@@ -37,7 +37,6 @@ const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	template: 'project',
 	deck: '',
 	kanbanColumns: [],
-	stages: ['lead', 'proposal', 'won'],
 	path: `_hub/workspaces/${slug}.md`,
 	...over
 });
