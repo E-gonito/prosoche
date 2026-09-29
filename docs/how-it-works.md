@@ -9,8 +9,9 @@ written about prosoche is lost, only moved. A unit test reads this page and
 Every tab is a module listed once in `src/lib/modules/index.ts`. The rail on a
 desktop, the bottom bar and More sheet on a phone, and the command palette's
 Go commands are all drawn from that list, so a new module appears in all of
-them at once. Workspaces are listed under Workspaces in the rail and in the
-More sheet.
+them at once. A module can nest sub-items under itself in the rail: the
+workspaces are listed under Workspaces, and every workspace with a glossary
+under Glossary. The workspaces are also listed in the More sheet.
 
 ## Today
 
@@ -82,10 +83,18 @@ the app rewrites those lines for you.
 
 ## Meetings
 
-Meetings is a notebook per workspace: a card to read before you go in, a
-place to capture what you don't know while you're there, and a glossary for
-the words you had to guess at. Everything it keeps is markdown in the
-workspace's home folder (its first folder):
+Meetings is a notebook per workspace: a card to read before you go in, and a
+place to capture what you don't know while you're there. Everything it keeps
+is markdown in the workspace's home folder (its first folder).
+
+Meetings are opt-in. Only a workspace whose definition in `_hub/workspaces/`
+says `meetings: true` has a notebook; absent, or any other value, means none.
+A workspace without it is not listed on the Meetings page, is never offered
+or suggested when you pick a calendar event's workspace, has no Meetings
+section on its Overview, and its `/meetings/<slug>` answers 404 with a note
+saying which file to add the line to. Its glossary, its pages and everything
+else it has are unaffected. Adding the line is the whole of switching it on:
+the notebook's files are made the first time you use them.
 
 - `Primer.md` is the meeting card. Write it in Obsidian, or press **Draft a
   primer with Claude**; once it exists, **Suggest updates** proposes a
@@ -105,20 +114,16 @@ workspace's home folder (its first folder):
 - "Before you go in" lists every open task line from the workspace's meeting
   notes. Ticking one rewrites that line and nothing else, as ticking a task
   anywhere does.
-- `Glossary.md` holds one `##` heading per term, with `- guess::`,
-  `- status::` (`to-look-up` or `looked-up`), `- category::` and
-  `- source::` lines, then the definition, then a line starting `→` saying
-  why the term matters in this workspace. Terms you captured in a meeting
-  that the glossary lacks wait at the top of the Glossary tab; **Add to
-  glossary** appends an entry for one. **Look up with Claude** drafts the
-  definition and the `→` line from the primer and recent meetings, and marks
-  the entry looked up with `- drafted:: Claude`. **Look up all** does every
-  waiting term in one proposal.
+- A term you capture also goes into the workspace's glossary, `Glossary.md`,
+  as an entry to look up with the meeting as its source, unless the glossary
+  already has it. The meeting note is the record, so the capture counts even
+  if that second write loses to an edit made elsewhere; the term then waits
+  on the Glossary page instead (see Glossary below).
 - `Pages/*.html` are the workspace's own pages. Each gets a tab in the
   notebook.
 
-Every Claude button here (the primer, **Prep with Claude**, the look-ups)
-shows its proposal as a diff first and writes only the file it names, and
+Every Claude button here (the primer and **Prep with Claude**) shows its
+proposal as a diff first and writes only the file it names, and
 only when you accept. **Prep with Claude** adds a `## Talking points`
 section to the meeting under way, drafted from the primer, the last three
 meetings, the open actions and the calendar event. With no meeting under
@@ -140,6 +145,42 @@ then Integrate calendar, copy "Secret address in iCal format", and set it as
 `HUB_GCAL_ICS` in the server's environment. Treat that address like a
 password. Without it the page still works: open a notebook and start a
 meeting by hand. Outlook calendars are not supported yet.
+
+## Glossary
+
+Glossary is a glossary per workspace, for the words you had to guess at. Any
+workspace with a folder can have one, meetings or not. It is one file,
+`Glossary.md` in the workspace's home folder, so it is the same glossary a
+meeting's captured terms go into.
+
+The Glossary page lists each workspace that has one, with how many terms it
+holds and how many are still to look up, and offers **Start a glossary** for
+every other workspace, which writes a `Glossary.md` holding only a
+`# Glossary` title. In the rail each glossary is a sub-item under Glossary.
+The notebook's old address, `/meetings/<slug>/glossary`, redirects to
+`/glossary/<slug>`.
+
+`Glossary.md` holds one `##` heading per term, with `- guess::`,
+`- status::` (`to-look-up` or `looked-up`), `- category::` and `- source::`
+lines, then the definition, then a line starting `→` saying why the term
+matters in this workspace. Text above the first heading is yours and is
+never touched.
+
+A workspace's glossary page has a filter box, a chip per category, **Mine**
+for the terms you guessed at and **To look up** for the ones still waiting.
+Each entry shows your guess beside the definition, its status, where it came
+from and the `→` line. Type a term in (with a guess and a category if you
+like) to append an entry to look up; a term the glossary already has is
+refused rather than written twice. In a workspace with meetings, any term
+captured in a meeting that the glossary still lacks waits at the top, and
+**Add to glossary** appends an entry for it.
+
+**Look up with Claude** drafts the definition and the `→` line, and marks the
+entry looked up with `- drafted:: Claude`; **Look up all** does every waiting
+term in one proposal. The context is the primer and the last three meetings
+when the workspace has a notebook, and its definition file when it does not.
+Like every Claude button, it shows its proposal as a diff first and writes
+only `Glossary.md`, and only when you accept.
 
 ## Notes
 
@@ -195,7 +236,8 @@ between groups writes a single `status:` line into its frontmatter.
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders and deal stages — so editing it
+definition — its name, colour, tag, folders, deal stages and whether it has
+meetings — so editing it
 here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back. Older
@@ -207,8 +249,12 @@ Folders are comma separated and vault-relative. Notes and tasks inside them
 belong to the workspace, and so does anything tagged `#ws/<slug>` wherever it
 lives in the vault, which is what lets a task belong to a workspace without
 living inside one of its folders. The first folder is the workspace's home:
-it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Deals.md` and a `Pages/` folder
-of custom pages all live.
+it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Deals.md`, `Glossary.md` and a
+`Pages/` folder of custom pages all live.
+
+A line `meetings: true` gives the workspace a meeting notebook (see
+Meetings). Without it the workspace has none, which is the default, because
+most workspaces never hold a meeting.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily
@@ -221,8 +267,8 @@ The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
 A workspace always has an Overview: next actions, an inbox preview, the
-latest log entry, anything blocked, recent notes, and a link into its meeting
-notebook. Every other tab — Tasks, Inbox, Log, People, Notes, and one per file
+latest log entry, anything blocked, recent notes, and, for a workspace with
+meetings, a link into its meeting notebook. Every other tab — Tasks, Inbox, Log, People, Notes, and one per file
 in `Pages/` — hides itself until it has something to show, so a brand new
 workspace opens quiet rather than full of empty panes; visiting one directly
 still works; adding its first card, capture, log line, person or deal is what
