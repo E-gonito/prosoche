@@ -65,6 +65,36 @@ describe('write', () => {
 	});
 });
 
+describe('remove', () => {
+	it('deletes one note, marks it for sync and tells listeners', async () => {
+		const marked: string[] = [];
+		const synced = new Vault(root, { ...noSync, markDirty: (p: string) => marked.push(p) });
+		await synced.write('Keep/other.md', 'stays');
+		await synced.write('Keep/gone.md', 'bye');
+		const seen: string[] = [];
+		synced.subscribe((c) => seen.push(`${c.kind}:${c.path}:${c.self}`));
+
+		expect(await synced.remove('Keep/gone.md')).toEqual({ ok: true });
+		expect((await synced.read('Keep/gone.md')).exists).toBe(false);
+		expect((await synced.read('Keep/other.md')).content).toBe('stays');
+		expect(marked).toContain('Keep/gone.md');
+		expect(seen).toEqual(['removed:Keep/gone.md:true']);
+		await synced.close();
+	});
+
+	it('leaves a note that changed since it was read, and reports a missing one', async () => {
+		await vault.write('note.md', 'new text');
+		const result = await vault.remove('note.md', hashContent('old text'));
+		expect(result).toMatchObject({ ok: false, reason: 'conflict' });
+		expect((await vault.read('note.md')).content).toBe('new text');
+		expect(await vault.remove('absent.md')).toEqual({ ok: false, reason: 'missing' });
+	});
+
+	it('refuses a path outside the scope it asked for', async () => {
+		await expect(vault.remove('Private/Dating/Ledger.md')).rejects.toThrow(ScopeError);
+	});
+});
+
 describe('list and tree', () => {
 	beforeEach(async () => {
 		await mkdir(join(root, 'Journal/2026/09'), { recursive: true });

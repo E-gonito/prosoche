@@ -233,6 +233,23 @@ export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise
 }
 
 /**
+ * Delete a workspace: remove its definition file, `_hub/workspaces/<slug>.md`,
+ * and nothing else.
+ *
+ * Its folders, notes, board, inbox, log, glossary and CRM stay exactly where
+ * they are; the workspace simply stops being one, and anything tagged
+ * `#ws/<slug>` goes back to belonging nowhere. The file is committed as a
+ * deletion, so git history still has it. Refuses an unknown slug. Deleting
+ * the last one leaves `_hub/workspaces/` empty, and `seedWorkspaces` writes
+ * the starter set again on the next start.
+ */
+export async function deleteWorkspace(vault: Vault, slug: string): Promise<{ ok: true } | { ok: false; reason: 'not-found' }> {
+	if (!slug || slug.includes('/')) return { ok: false, reason: 'not-found' };
+	const result = await vault.remove(`${WORKSPACE_DIR}/${slug}.md`);
+	return result.ok ? { ok: true } : { ok: false, reason: 'not-found' };
+}
+
+/**
  * The starting set, written once into a vault that has none. They are meant to
  * be edited or deleted: the point is that a new user sees the shape of a
  * workspace file rather than an empty folder. Real workspaces live in the

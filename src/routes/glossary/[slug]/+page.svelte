@@ -122,14 +122,14 @@
 		<input class="field filter" type="search" bind:value={query} placeholder="Filter terms…" aria-label="Filter terms" data-testid="glossary-filter" />
 
 		<div class="tabs cat-tabs" role="tablist" aria-label="Categories" data-testid="glossary-tabs">
-			<button role="tab" aria-selected={tab === 'all'} onclick={() => (tab = 'all')}>All<span class="count">{data.entries.length}</span></button>
+			<button role="tab" aria-selected={tab === 'all'} onclick={() => (tab = 'all')}>All<span class="n">{data.entries.length}</span></button>
 			{#each data.categories as category (category)}
 				<button role="tab" aria-selected={tab === `cat:${category}`} onclick={() => (tab = `cat:${category}`)}>
-					{category}<span class="count">{inCategory(category)}</span>
+					{category}<span class="n">{inCategory(category)}</span>
 				</button>
 			{/each}
 			{#if pending.length}
-				<button role="tab" aria-selected={tab === 'pending'} onclick={() => (tab = 'pending')}>To look up<span class="count">{pending.length}</span></button>
+				<button role="tab" aria-selected={tab === 'pending'} onclick={() => (tab = 'pending')}>To look up<span class="n">{pending.length}</span></button>
 			{/if}
 		</div>
 
@@ -249,6 +249,8 @@
 	}
 	.cat-tabs button:hover { color: var(--text); }
 	.cat-tabs [aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+	/* `.n`, not `.count`: this page's `.count` is the "6 of 17 terms" row. */
+	.cat-tabs .n { color: var(--muted); font-weight: 400; margin-left: 4px; }
 	/* Inside an h3, so the buttons would take its serif; they are controls, not
 	   part of the term. `.remove` rather than `.danger`, which is the global
 	   filled red button and would put red text on red. */

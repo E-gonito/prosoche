@@ -406,6 +406,42 @@ export type Schema =
 	| { type: 'object'; fields: Record<string, Schema>; optional?: string[] };
 
 /**
+ * The same schema as standard JSON Schema, for the CLI's `--json-schema`.
+ *
+ * `Schema` is this module's own compact shape (`fields`, `of`, `min`), which
+ * the CLI's strict validator rejects as unknown keywords, so it is translated
+ * here rather than written twice. Objects list every field as required but
+ * those named `optional`, and forbid extra properties, matching what
+ * `validateModelOutput` refuses. Pure; the output is plain JSON.
+ */
+export function toJsonSchema(schema: Schema): Record<string, unknown> {
+	switch (schema.type) {
+		case 'string':
+			return defined({ type: 'string', minLength: schema.minLength, maxLength: schema.maxLength, enum: schema.enum });
+		case 'number':
+			return defined({ type: schema.integer ? 'integer' : 'number', minimum: schema.min, maximum: schema.max });
+		case 'boolean':
+			return { type: 'boolean' };
+		case 'array':
+			return defined({ type: 'array', items: toJsonSchema(schema.of), maxItems: schema.maxItems });
+		case 'object': {
+			const optional = new Set(schema.optional ?? []);
+			return {
+				type: 'object',
+				properties: Object.fromEntries(Object.entries(schema.fields).map(([key, field]) => [key, toJsonSchema(field)])),
+				required: Object.keys(schema.fields).filter((key) => !optional.has(key)),
+				additionalProperties: false
+			};
+		}
+	}
+}
+
+/** The object without its undefined keys, so the JSON has no `null`s in it. */
+function defined(object: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+}
+
+/**
  * G6, schema validation: model output is checked before it is believed.
  *
  * Prevents a plausible-looking blob from becoming an edit. A model asked for

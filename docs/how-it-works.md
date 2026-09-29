@@ -247,7 +247,10 @@ A workspace is one markdown file under `_hub/workspaces/`. It is the whole
 definition — its name, colour, tag, folders and whether it has meetings — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
-deliberately no settings form that would rewrite it behind your back. Older
+deliberately no settings form that would rewrite it behind your back.
+**Delete** on the Workspaces list removes that one file, after a confirm, and
+nothing else: the workspace's folders, notes, board and glossary stay in the
+vault, and the deletion is committed, so git history still has the file. Older
 workspace files may still carry a `tabs:` list from before this shape; it is
 read and ignored rather than rejected, because every workspace now gets the
 same sections regardless of what its file used to say.

@@ -12,6 +12,7 @@ import {
 	requireHumanAccept,
 	requireSandboxRoot,
 	requireUndoSnapshot,
+	toJsonSchema,
 	toolPolicyFor,
 	validateModelOutput,
 	wrapAsData,
@@ -505,5 +506,44 @@ describe('G10 checkKillSwitch', () => {
 		const out = checkKillSwitch(false);
 		expect(out[0].guardrail).toBe('G10');
 		expect(out[0].message).toContain('Settings');
+	});
+});
+
+describe('toJsonSchema', () => {
+	it('translates every shape into standard JSON Schema the CLI accepts', () => {
+		expect(
+			toJsonSchema({
+				type: 'object',
+				optional: ['relevance'],
+				fields: {
+					entries: {
+						type: 'array',
+						maxItems: 20,
+						of: {
+							type: 'object',
+							fields: { term: { type: 'string', minLength: 1 }, relevance: { type: 'string' }, n: { type: 'number', integer: true, min: 0 }, ok: { type: 'boolean' } }
+						}
+					},
+					relevance: { type: 'string', enum: ['a', 'b'] }
+				}
+			})
+		).toEqual({
+			type: 'object',
+			properties: {
+				entries: {
+					type: 'array',
+					maxItems: 20,
+					items: {
+						type: 'object',
+						properties: { term: { type: 'string', minLength: 1 }, relevance: { type: 'string' }, n: { type: 'integer', minimum: 0 }, ok: { type: 'boolean' } },
+						required: ['term', 'relevance', 'n', 'ok'],
+						additionalProperties: false
+					}
+				},
+				relevance: { type: 'string', enum: ['a', 'b'] }
+			},
+			required: ['entries'],
+			additionalProperties: false
+		});
 	});
 });

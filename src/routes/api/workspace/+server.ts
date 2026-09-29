@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { createWorkspace } from '$server/workspaces';
+import { createWorkspace, deleteWorkspace } from '$server/workspaces';
 import type { RequestHandler } from './$types';
 
 interface Body {
@@ -38,6 +38,19 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const { slug, name, color, tag, folders: chosen, path } = result.workspace;
 	return json({ ok: true, workspace: { slug, name, color, tag, folders: chosen, path } }, { status: 201 });
+};
+
+/**
+ * Delete a workspace's definition file, `{ slug }` in the body. Its notes and
+ * folders are untouched (see `deleteWorkspace`). 404 for an unknown slug.
+ */
+export const DELETE: RequestHandler = async ({ request }) => {
+	const body = (await request.json().catch(() => ({}))) as { slug?: unknown };
+	const { vault, ready } = hub();
+	await ready;
+	const result = await deleteWorkspace(vault, typeof body.slug === 'string' ? body.slug : '');
+	if (!result.ok) return json({ error: 'There is no workspace by that name.' }, { status: 404 });
+	return json({ ok: true });
 };
 
 function folders(value: Body['folders']): string[] {
