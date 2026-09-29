@@ -305,13 +305,14 @@ out of it: "Call landlord fri Q1 #legal" is a card called "Call landlord",
 due next Friday, priority Q1, labelled legal. The due words are today,
 tomorrow, a weekday (the next one, never today), or a date written
 `2026-10-03`. Clicking a card opens it to edit its title, due date, priority,
-labels and notes, each saved as you leave the field. A due date turns red
+labels and notes, each saved as you leave the field; Delete card, asked
+twice, removes the card and its notes. A due date turns red
 once it has passed. Columns are added at the end, and renamed, moved or
 deleted from their own ⋯ menu; only an empty column can be deleted.
 
 This is the one file in the vault where prosoche moves lines. A drag cuts
 the card's own lines — the item and its notes — and splices them in where it
-was dropped, byte for byte; every other edit rewrites only the part of the
+was dropped, byte for byte, and a delete cuts them alone; every other edit rewrites only the part of the
 line it changes, or the card's notes. Nothing else in the file is touched,
 including anything the plugin wrote that the board does not show, such as
 its settings footer or an archive. Ticking a card writes `[x]` and leaves it

@@ -386,6 +386,9 @@
 				opened = current.columns[column].cards.find((c) => c.title === title)?.line ?? null;
 			}
 		}}
+		ondelete={async () => {
+			if (opened !== null && (await run({ kind: 'delete-card', line: opened }))) opened = null;
+		}}
 		onclose={() => (opened = null)}
 	/>
 {/if}

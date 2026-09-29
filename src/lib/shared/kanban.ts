@@ -57,8 +57,12 @@ export interface Board {
  * a span of one line, the lines of one card, or the lines of one column.
  */
 export type BoardOp =
-	/** Append a card; `text` is quick-add text such as "Call landlord fri Q1 #legal". */
-	| { kind: 'add-card'; column: number; text: string }
+	/**
+	 * Append a card. `text` is quick-add text such as "Call landlord fri Q1
+	 * #legal", or, with `literal`, the card's words exactly as written, for a
+	 * caller that composed the line itself and wants no word read as a date.
+	 */
+	| { kind: 'add-card'; column: number; text: string; literal?: boolean }
 	/** Change only the fields given. `notes: ''` removes the notes. */
 	| {
 			kind: 'edit-card';
@@ -70,6 +74,8 @@ export type BoardOp =
 			notes?: string;
 	  }
 	| { kind: 'toggle-card'; line: number; done: boolean }
+	/** Remove the card and its notes. Nothing else in the file moves. */
+	| { kind: 'delete-card'; line: number }
 	/** `index` is the card's position in the target column once it is there. */
 	| { kind: 'move-card'; line: number; column: number; index: number }
 	/** Omit `index` to add the column at the end. */

@@ -45,8 +45,8 @@
  *
  *  - Nothing is re-serialised. A card edit rewrites spans of its first line,
  *    or replaces its own continuation lines; a move cuts a card's lines and
- *    splices them in elsewhere, byte for byte; a column edit touches only its
- *    heading or its own lines. Every other byte of the file is kept, including
+ *    splices them in elsewhere, byte for byte, and a delete only cuts them; a
+ *    column edit touches only its heading or its own lines. Every other byte of the file is kept, including
  *    anything this grammar does not understand, and line endings.
  *  - Every function here is pure. No file access, no clock: the day a
  *    quick-add's "fri" means is passed in.
@@ -129,38 +129,36 @@ export type OpResult =
 	| { ok: false; reason: 'no-card' | 'no-column' | 'not-empty' | 'no-text' | 'bad-date' | 'bad-op'; message: string };
 
 /**
- * The board prosoche writes when there is none: the plugin's own serialiser
- * output for To do, Doing and Done with no cards, byte for byte — frontmatter
- * padded with blank lines, three blank lines under each empty column, the
- * settings footer, and no newline at the end.
+ * An empty board with the given columns, as the plugin's own serialiser
+ * writes one, byte for byte: frontmatter padded with blank lines, three blank
+ * lines under each empty column, the settings footer, and no newline at the
+ * end.
+ *
+ * `complete` names a column to mark `**Complete**`, so a card moved into it
+ * is ticked and a card moved out unticked, as the plugin does. Pure.
  */
-export const DEFAULT_BOARD = [
-	'---',
-	'',
-	'kanban-plugin: board',
-	'',
-	'---',
-	'',
-	'## To do',
-	'',
-	'',
-	'',
-	'## Doing',
-	'',
-	'',
-	'',
-	'## Done',
-	'',
-	'',
-	'',
-	'',
-	'',
-	'%% kanban:settings',
-	'```',
-	'{"kanban-plugin":"board"}',
-	'```',
-	'%%'
-].join('\n');
+export function emptyBoard(titles: readonly string[], complete?: string): string {
+	const columns = titles.flatMap((title) => [`## ${title}`, '', ...(title === complete ? ['**Complete**'] : []), '', '']);
+	return [
+		'---',
+		'',
+		'kanban-plugin: board',
+		'',
+		'---',
+		'',
+		...columns,
+		'',
+		'',
+		'%% kanban:settings',
+		'```',
+		'{"kanban-plugin":"board"}',
+		'```',
+		'%%'
+	].join('\n');
+}
+
+/** The board prosoche writes when there is none: To do, Doing and Done, empty. */
+export const DEFAULT_BOARD = emptyBoard(['To do', 'Doing', 'Done']);
 
 const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+|$)/;
 const CARD = /^( {0,3})([-*+])([ \t]+)\[(.)\]([ \t]*)/;
@@ -324,10 +322,21 @@ export function applyOp(content: string, op: BoardOp, today: string): OpResult {
 		case 'add-card': {
 			const col = board.columns[op.column];
 			if (!col) return missing('no-column');
-			const parsed = parseQuickAdd(op.text, today);
+			// Literal text is the card's words as they are; anything else is
+			// quick-add text, read for a due word, a priority and labels.
+			const parsed = op.literal ? { title: oneLine(op.text), due: null, priority: null, labels: [] } : parseQuickAdd(op.text, today);
 			if (!parsed.title) return refuse('no-text', 'A card needs some words.');
 			const next = [...file.lines];
 			next.splice(insertionPoint(lines, col, col.cards.length), 0, composeCard(parsed, board.settings));
+			return done(next);
+		}
+		case 'delete-card': {
+			const card = cardAt(board, op.line);
+			if (!card) return missing('no-card');
+			// Exactly the lines a move would cut: the blank lines around the
+			// card belong to the column, and stay.
+			const next = [...file.lines];
+			next.splice(card.line, card.end - card.line);
 			return done(next);
 		}
 		case 'edit-card': {
@@ -486,7 +495,9 @@ function wellFormed(op: BoardOp): boolean {
 	const optional = (key: string, type: string) => o[key] === undefined || typeof o[key] === type;
 	switch (op.kind) {
 		case 'add-card':
-			return int('column') && typeof o.text === 'string';
+			return int('column') && typeof o.text === 'string' && optional('literal', 'boolean');
+		case 'delete-card':
+			return int('line');
 		case 'edit-card':
 			return (
 				int('line') &&
