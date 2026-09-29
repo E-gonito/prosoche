@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deckNote, deckTag, htmlToMarkdown, parseAnkiDeck, type AnkiDeckFile } from './anki-import';
+import { cardBlock, deckNote, deckTag, htmlToMarkdown, parseAnkiDeck, type AnkiDeckFile } from './anki-import';
 import { isCardSource, scanCards } from './flashcards';
 import { parseNote } from '../parse/note';
 
@@ -240,5 +240,34 @@ describe('deckTag', () => {
 		['::', 'flashcards']
 	])('tags %s as %s', (deckName, tag) => {
 		expect(deckTag(deckName)).toBe(tag);
+	});
+});
+
+describe('cardBlock', () => {
+	it.each([
+		{ what: 'a one-line card', front: 'What is TCP?', back: 'A transport protocol', markdown: 'What is TCP?::A transport protocol' },
+		{ what: 'a Rust path', front: 'Read a line with?', back: 'std::io::stdin', markdown: 'Read a line with?\n?\nstd::io::stdin' },
+		{ what: 'a side over two lines', front: 'Q', back: 'one\ntwo', markdown: 'Q\n?\none\ntwo' },
+		{ what: 'a blank line typed into the answer', front: 'Q', back: 'one\n\ntwo', markdown: 'Q\n?\none\ntwo' },
+		{ what: 'a heading typed into the answer', front: 'Q', back: '## Big\nsmall', markdown: 'Q\n?\n**Big**\nsmall' },
+		{ what: 'a tag in the question', front: 'What is #TCP?', back: 'A protocol', markdown: 'What is \\#TCP?::A protocol' },
+		{ what: 'a lone ? line', front: 'Q', back: 'a\n?\nb', markdown: 'Q\n?\na\n\\?\nb' },
+		{ what: 'Windows line endings', front: 'Q', back: 'one\r\ntwo', markdown: 'Q\n?\none\ntwo' }
+	])('writes $what so it reads back as itself', ({ front, back, markdown }) => {
+		const block = cardBlock(front, back);
+		expect(block?.markdown).toBe(markdown);
+		const found = scanCards(`#flashcards\n\n${block!.markdown}\n\nAfter::Its own card\n`, 'x.md');
+		expect(found.map((c) => [c.question, c.answer])).toEqual([
+			[block!.card.front, block!.card.back],
+			['After', 'Its own card']
+		]);
+	});
+
+	it.each([
+		['an empty question', '  ', 'A'],
+		['an answer that is only blank lines', 'Q', '\n\n'],
+		['an answer that is only a review comment', 'Q', '<!--SR:!2026-01-01,1,250-->']
+	])('refuses %s', (_, front, back) => {
+		expect(cardBlock(front, back)).toBeNull();
 	});
 });

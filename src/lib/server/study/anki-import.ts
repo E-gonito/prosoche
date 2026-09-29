@@ -176,6 +176,27 @@ export function deckTag(deck: string): string {
 }
 
 /**
+ * A card typed as plain markdown, made safe and written as the paragraph
+ * that holds it: the one door for cards that did not come from a deck, such
+ * as the ones Claude drafts and a person edits on the Make cards page.
+ *
+ * Each side gets exactly the escaping an imported card gets (blank lines
+ * outside code dropped, a heading made bold, a lone `?` and a `#word`
+ * escaped, an unclosed fence closed, review comments removed), and then
+ * the form is chosen as for a deck: inline `front::back` when that reads
+ * back through `scanCards` as this card, the multiline `?` form otherwise.
+ *
+ * Returns the sides as they will read back and the paragraph, or null when
+ * a side is empty once cleaned or no form reads back as this card. Pure.
+ */
+export function cardBlock(front: string, back: string): { card: AnkiCard; markdown: string } | null {
+	const card = { front: side(front.replace(/\r\n?/g, '\n'), false), back: side(back.replace(/\r\n?/g, '\n'), false) };
+	if (!card.front || !card.back) return null;
+	const markdown = cardMarkdown(card);
+	return markdown === null ? null : { card, markdown };
+}
+
+/**
  * A card as the paragraph that holds it, or null when no form reads back as
  * this card. Inline is tried first because it is what a person would write,
  * but only when its `::` is the only one on the line: `a::std::io` reads back
