@@ -272,6 +272,8 @@ folder, the first folder its workspace names: `Goals.md`, `Reading List.md`,
 `Sessions.md` and a `Flashcards/` folder. Its cards come from every folder
 it names, so reference notes kept elsewhere can sit beside the home as
 further folders, and from any note tagged with the workspace's tag.
+Folders, at the foot of a subject's page, adds or removes those (see
+Workspaces).
 
 **The Study page** shows one card per subject — its goals with milestones
 done out of total, this week's hours and the cards due — and the cards due
@@ -440,6 +442,11 @@ which glossary they feed — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back.
+The one exception is **Folders**, at the foot of a workspace's Overview and
+of a study subject's page: it lists the home, which never moves, then each
+reference folder, with × to stop reading one and a field (suggesting the
+vault's folders, but taking any path) to add another. Each change rewrites
+only the `folders:` lines of the file and every other byte stays as it was.
 **Delete** on the Workspaces list removes that one file, after a confirm, and
 nothing else: the workspace's folders, notes and board stay in the vault, as
 does any glossary it pointed at, and the deletion is committed, so git history still has the file. Older

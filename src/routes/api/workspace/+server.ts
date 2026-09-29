@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { createWorkspace, deleteWorkspace } from '$server/workspaces';
+import { createWorkspace, deleteWorkspace, setReferenceFolders } from '$server/workspaces';
 import type { RequestHandler } from './$types';
 
 interface Body {
@@ -38,6 +38,25 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const { slug, name, color, tag, folders: chosen, path } = result.workspace;
 	return json({ ok: true, workspace: { slug, name, color, tag, folders: chosen, path } }, { status: 201 });
+};
+
+/**
+ * Set a workspace's reference folders, `{ slug, folders }` in the body, where
+ * `folders` is every folder wanted after the home (see `setReferenceFolders`).
+ * Answers with the folders as now written: 404 for an unknown slug, 400 for a
+ * path it refuses, 409 when the file changed underneath, each with a sentence.
+ */
+export const PATCH: RequestHandler = async ({ request }) => {
+	const body = (await request.json().catch(() => ({}))) as { slug?: unknown; folders?: unknown };
+	const { vault, ready, workspaces } = hub();
+	await ready;
+	const workspace = (await workspaces()).find((w) => w.slug === body.slug);
+	if (!workspace) return json({ error: 'There is no workspace by that name.' }, { status: 404 });
+	const refs = Array.isArray(body.folders) ? body.folders.filter((f): f is string => typeof f === 'string') : [];
+	const result = await setReferenceFolders(vault, workspace, refs);
+	if (!result.ok) return json({ error: result.message }, { status: result.reason === 'invalid' ? 400 : result.reason === 'conflict' ? 409 : 404 });
+	const now = (await workspaces()).find((w) => w.slug === workspace.slug);
+	return json({ ok: true, folders: now?.folders ?? [] });
 };
 
 /**

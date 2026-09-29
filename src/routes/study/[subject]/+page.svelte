@@ -1,10 +1,12 @@
 <script lang="ts">
 	/**
 	 * A subject at a glance: the cards to review now, this week's time and the
-	 * streak, then each goal with its milestones, hours, reading and cards.
+	 * streak, then each goal with its milestones, hours, reading and cards,
+	 * and last the folders its notes and cards come from.
 	 */
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import FolderEditor from '$lib/components/FolderEditor.svelte';
 	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
@@ -108,6 +110,9 @@
 			{/if}
 		</div>
 	{/if}
+
+	<p class="label">Folders</p>
+	<FolderEditor slug={data.subject.slug} folders={data.folders} options={data.vaultFolders} />
 </div>
 
 <style>

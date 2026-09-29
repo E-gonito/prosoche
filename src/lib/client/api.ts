@@ -110,6 +110,14 @@ export async function updateContact(
 	return post('/api/crm', { workspace, name, expectedHash, ...change }, (body) => ({ hash: body.hash as string }), 'PATCH');
 }
 
+/**
+ * Set every folder a workspace reads after its home, which never changes.
+ * Answers with the workspace's folders as now written, home first.
+ */
+export async function setWorkspaceFolders(slug: string, folders: string[]): Promise<Result<string[]>> {
+	return post('/api/workspace', { slug, folders }, (body) => body.folders as string[], 'PATCH');
+}
+
 /** Save a whole note. A conflict carries the other version. */
 export async function saveNote(
 	path: string,

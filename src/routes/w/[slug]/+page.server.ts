@@ -13,7 +13,8 @@ const LIMIT = 6;
 
 /**
  * A workspace's overview: its board, its master note, what has come in, the
- * latest log entry, and the notes that changed most recently.
+ * latest log entry, the notes that changed most recently, and every folder
+ * in the vault, to offer when pointing the workspace at another.
  *
  * The master note is `<home>/Overview.md`, sent both as its raw bytes, for
  * the editor, and rendered, for reading; a missing one is empty with
@@ -28,11 +29,12 @@ export const load: PageServerLoad = async ({ params }) => {
 	const home = homeFolder(workspace);
 
 	const overviewPath = `${home}/Overview.md`;
-	const [board, overview, inbox, log] = await Promise.all([
+	const [board, overview, inbox, log, vaultFolders] = await Promise.all([
 		readBoard(vault, workspace),
 		vault.read(overviewPath),
 		vault.read(`${home}/Inbox.md`),
-		vault.read(`${home}/Log.md`)
+		vault.read(`${home}/Log.md`),
+		vault.folders()
 	]);
 
 	const inboxPreview = inbox.content
@@ -70,6 +72,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		inboxPreview,
 		latestLog,
 		notes,
+		vaultFolders,
 		// Only a workspace with meetings has a notebook to link to.
 		meetingsHref: workspace.meetings ? `/meetings/${workspace.slug}` : null
 	};
