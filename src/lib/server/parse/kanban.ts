@@ -465,9 +465,9 @@ export function parseQuickAdd(text: string, today: string): QuickAdd {
 			priority = Number(q[1]);
 			continue;
 		}
-		const day = due === null ? dueWord(word, today) : null;
-		if (day) {
-			due = day;
+		const date: string | null = due === null ? dueWord(word, today) : null;
+		if (date) {
+			due = date;
 			continue;
 		}
 		keep.unshift(word);
