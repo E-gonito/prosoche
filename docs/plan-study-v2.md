@@ -87,3 +87,15 @@ studying. `Goals.md` and `Sessions.md` do not exist.
   in rather than hide.
 - The Overview shows each goal with its milestones, this week's hours, reading
   in progress and cards due, all grouped by goal.
+
+## Revision: subjects
+
+After this plan was written the author asked for Study to cover more than
+CS. A subject is any workspace with `template: study`; each has its own
+home folder with the files above, its own pages under `/study/<subject>`
+(review at `/study/<subject>/review`, `?goal=<slug>` for one goal), and
+its cards from all of its folders. `/study` lists the subjects, reviews
+everything due at `/study/review`, and creates a subject homed at
+`Study/<Name>`. Decision 1 now reads "a subject's home folder" wherever it
+says `Study/`, and `studyHome(workspaces, slug)` in `study/subjects.ts` is
+where a subject's files go, the Anki import's included.
