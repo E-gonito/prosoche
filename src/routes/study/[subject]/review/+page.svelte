@@ -34,8 +34,8 @@
 	.empty .muted { margin-bottom: 18px; }
 
 	/*
-	 * On a phone, `.page` is exactly the room `main` leaves between the shell
-	 * header and the tab bar (see the height comment on `.session` in
+	 * On a phone, `.page` is exactly the room `main` leaves under the shell
+	 * header and its tab bar (see the height comment on `.session` in
 	 * `CardReview.svelte`). `flex: 1` on whichever of the two states is
 	 * showing is what turns that room into "the card scrolls, the grades sit
 	 * on the floor" rather than the grades trailing wherever the content ends.

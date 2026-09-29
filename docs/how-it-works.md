@@ -7,7 +7,7 @@ written about prosoche is lost, only moved. A unit test reads this page and
 `src/routes`, so a screen named here and missing there fails `npm test`.
 
 Every tab is a module listed once in `src/lib/modules/index.ts`. The rail on a
-desktop, the bottom bar and More sheet on a phone, and the command palette's
+desktop, the tab bar and More sheet on a phone, and the command palette's
 Go commands are all drawn from that list, so a new module appears in all of
 them at once. A module can nest sub-items under itself in the rail: the
 workspaces are listed under Workspaces, and every glossary under Glossary.

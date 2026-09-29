@@ -390,8 +390,7 @@
 		.options select { min-width: 0; width: 100%; }
 		.options .go { margin-left: 0; }
 		.matches .path { display: none; }
-		/* Above the bottom bar, which is fixed on a phone. */
-		.add { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+		.add { padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom)); }
 		.add .btn { flex: 1; min-height: 44px; }
 	}
 </style>

@@ -5,8 +5,9 @@
 	 * One list, `MODULES`, drawn twice. On a desktop it is a rail down the
 	 * left, with each module's sub-items from the loader nested under it: the
 	 * workspaces under Workspaces, the glossaries under Glossary. On a phone
-	 * it is a bottom bar with the four modules marked `tab` and More, which
-	 * opens a sheet with everything else, workspaces included.
+	 * it is a bar under the header, pinned to the top with it, holding the
+	 * four modules marked `tab` and More, which opens a sheet with everything
+	 * else, workspaces included.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
@@ -78,23 +79,24 @@
 	</nav>
 
 	<header class="top">
-		<a class="brand" href="/today">prosoche</a>
-		<button class="icon-btn" onclick={() => palette.show()} aria-label="Search or jump"><Icon name="search" size={20} /></button>
-		<SyncBadge />
+		<div class="bar">
+			<a class="brand" href="/today">prosoche</a>
+			<button class="icon-btn" onclick={() => palette.show()} aria-label="Search or jump"><Icon name="search" size={20} /></button>
+			<SyncBadge />
+		</div>
+		<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
+			{#each tabs as m (m.id)}
+				<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
+					<Icon name={m.icon} size={20} /><span>{m.title}</span>
+				</a>
+			{/each}
+			<button onclick={() => more?.showModal()} data-testid="tab-more">
+				<Icon name="more-horizontal" size={20} /><span>More</span>
+			</button>
+		</nav>
 	</header>
 
 	<main>{@render children()}</main>
-
-	<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
-		{#each tabs as m (m.id)}
-			<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
-				<Icon name={m.icon} size={22} /><span>{m.title}</span>
-			</a>
-		{/each}
-		<button onclick={() => more?.showModal()} data-testid="tab-more">
-			<Icon name="more-horizontal" size={22} /><span>More</span>
-		</button>
-	</nav>
 
 	<dialog class="more" bind:this={more} onclick={(e) => e.target === more && more?.close()}>
 		<div class="sheet-body">
@@ -189,20 +191,22 @@
 
 	main { min-width: 0; }
 
-	.top, .tabbar { display: none; }
+	.top { display: none; }
 
+	/* A sheet that drops from the top, under the bar that opened it. */
 	dialog.more {
-		margin: auto auto 0;
+		margin: 0 auto auto;
 		width: 100%;
 		max-width: 520px;
+		max-height: 100%;
 		border: 0;
-		border-radius: 16px 16px 0 0;
+		border-radius: 0 0 16px 16px;
 		padding: 0;
 		background: var(--panel);
 		box-shadow: var(--shadow-lg);
 	}
 	dialog.more::backdrop { background: rgba(42, 38, 34, 0.35); }
-	.sheet-body { padding: var(--s5) var(--s5) calc(var(--s5) + env(safe-area-inset-bottom)); }
+	.sheet-body { padding: calc(var(--s5) + env(safe-area-inset-top)) var(--s5) var(--s5); }
 	.sheet-body .label:first-child { margin-top: 0; }
 	.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
 	.grid a {
@@ -220,37 +224,34 @@
 	.list a { display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--text); border-bottom: 1px solid var(--line); }
 
 	@media (max-width: 720px) {
-		/* Two rows, header and page; the bar is fixed and out of the flow. */
+		/* Two rows, header and page; the header carries the modules bar. */
 		.shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 		.rail { display: none; }
 
 		.top {
-			display: flex;
-			align-items: center;
-			gap: var(--s2);
+			display: block;
 			position: sticky;
 			top: 0;
 			z-index: 30;
-			height: var(--header-h);
-			padding: 0 var(--s4);
 			padding-top: env(safe-area-inset-top);
 			background: color-mix(in srgb, var(--bg) 92%, transparent);
 			backdrop-filter: blur(8px);
 			border-bottom: 1px solid var(--line);
 		}
-		.top .brand { padding: 0; font-size: 20px; margin-right: auto; }
+		.bar {
+			display: flex;
+			align-items: center;
+			gap: var(--s2);
+			height: var(--header-h);
+			padding: 0 var(--s4);
+		}
+		.bar .brand { padding: 0; font-size: 20px; margin-right: auto; }
 
 		.tabbar {
-			position: fixed;
-			inset: auto 0 0 0;
-			z-index: 40;
 			display: grid;
 			grid-auto-flow: column;
 			grid-auto-columns: 1fr;
-			height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-			padding-bottom: env(safe-area-inset-bottom);
-			background: var(--panel);
-			border-top: 1px solid var(--line);
+			height: var(--tabbar-h);
 		}
 		.tabbar a,
 		.tabbar button {
@@ -262,6 +263,9 @@
 			/* The smallest target a thumb reliably hits. */
 			min-height: 44px;
 			border: 0;
+			/* The current tab is underlined, flush with the header's own line. */
+			border-bottom: 2px solid transparent;
+			margin-bottom: -1px;
 			background: none;
 			font: inherit;
 			color: var(--muted);
@@ -269,6 +273,6 @@
 		}
 		.tabbar a:hover { text-decoration: none; }
 		.tabbar span { font-size: var(--t11); line-height: 1; }
-		.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; }
+		.tabbar [aria-current='page'] { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
 	}
 </style>

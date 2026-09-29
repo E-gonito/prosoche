@@ -22,7 +22,7 @@ test.describe('the shell', () => {
 		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).not.toHaveAttribute('aria-current', 'page');
 	});
 
-	test('a phone gets a bottom bar of four modules and a More sheet', async ({ page }) => {
+	test('a phone gets a top bar of four modules and a More sheet', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.goto('/notes');
 		const bar = page.getByTestId('tabbar');

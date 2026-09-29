@@ -47,7 +47,7 @@ Spacing on a four-pixel step, radii, elevation and fields:
 The shell's furniture, measured once:
 
 ```css
---rail-w: 232px; --header-h: 52px; --tabbar-h: 60px;
+--rail-w: 232px; --header-h: 52px; --tabbar-h: 52px;
 --read-w: 860px; --page-chrome: calc(var(--s6) * 2);
 ```
 
@@ -58,9 +58,9 @@ A value off these scales is allowed and says why where it is written: the
 
 A media query cannot read a custom property, so two widths are written out:
 
-- **720px**: a phone. The rail becomes a bottom bar of four modules plus
-  More, a slim header carries the brand, search and sync dot, and pages pad
-  for the bar.
+- **720px**: a phone. A slim header carries the brand, search and sync dot,
+  and under it the rail becomes a bar of four modules plus More, pinned to
+  the top with the header. More drops a sheet down from the top.
 - **1100px**: a page's side column (a note's links, a day's week view) drops
   under its main column.
 
