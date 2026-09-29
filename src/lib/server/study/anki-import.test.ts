@@ -102,6 +102,11 @@ describe('parseAnkiDeck', () => {
 		expect(file.problems).toEqual([]);
 	});
 
+	it('reads a first card that starts with # as a card, not a header', () => {
+		const file = parseAnkiDeck('#separator:Tab\n#include <stdio.h>: what for?\tprintf\n', 'Flashcards/x.txt');
+		expect(file.cards).toEqual([{ front: '\\#include <stdio.h>: what for?', back: 'printf' }]);
+	});
+
 	it('reads another separator Anki names', () => {
 		const file = parseAnkiDeck(deck(['Q;A'], ['#separator:Semicolon', '#html:true', '']), 'Flashcards/x.txt');
 		expect(file.cards).toEqual([{ front: 'Q', back: 'A' }]);

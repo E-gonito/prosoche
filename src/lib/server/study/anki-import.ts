@@ -94,10 +94,10 @@ export function parseAnkiDeck(text: string, source: string): AnkiDeckFile {
 	const headers = new Map<string, string>();
 	const lines = text.replace(/\r\n?/g, '\n').split('\n');
 	let at = 0;
-	while (at < lines.length && lines[at].startsWith('#')) {
-		const m = /^#([^:]+):(.*)$/.exec(lines[at]);
-		if (m) headers.set(m[1].trim().toLowerCase(), m[2].trim());
-		at++;
+	// Only `#key:` or `#key column:` is a header, so a first card that starts
+	// `#include <stdio.h>` is still a card.
+	for (let m; at < lines.length && (m = /^#([a-z]+(?: column)?):(.*)$/i.exec(lines[at])); at++) {
+		headers.set(m[1].toLowerCase(), m[2].trim());
 	}
 
 	const problems: string[] = [];
