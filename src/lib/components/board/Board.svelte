@@ -204,7 +204,11 @@
 							onblur={() => saveRename(c)}
 							onkeydown={(e) => {
 								if (e.key === 'Enter') saveRename(c);
-								if (e.key === 'Escape') renaming = null;
+								if (e.key === 'Escape') {
+									// Leaving the field saves it, so put the name back first.
+									rename = column.title;
+									renaming = null;
+								}
 							}}
 						/>
 					{:else}
@@ -284,7 +288,6 @@
 						placeholder="Call landlord fri Q1 #legal"
 						bind:value={draft}
 						use:focus
-						disabled={busy}
 						onblur={() => {
 							if (!draft.trim()) adding = null;
 						}}
