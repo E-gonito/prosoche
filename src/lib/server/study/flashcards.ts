@@ -71,8 +71,13 @@ const HEADING = /^(#{1,6})[ \t]+(.+?)[ \t]*$/;
  * otherwise every line carrying `::` is its own card; otherwise a paragraph
  * containing `==cloze==` is one card per cloze, sharing one comment.
  *
- * Never returns a card whose question or answer is empty, and never looks
- * inside a fenced block or an inline code span.
+ * A fenced block belongs to the paragraph it sits in, blank lines and all,
+ * as it does in the plugin, so a multiline card can hold code. Its lines are
+ * carried in the card's text but never matched: nothing inside a fence is a
+ * separator, a `?` line or a cloze.
+ *
+ * Never returns a card whose question or answer is empty, and never finds a
+ * card inside a fenced block or an inline code span.
  */
 export function scanCards(content: string, path: string): Card[] {
 	const lines = content.split('\n');
@@ -82,7 +87,7 @@ export function scanCards(content: string, path: string): Card[] {
 
 	let fence: string | null = null;
 	let trail: Array<{ level: number; text: string }> = [];
-	let block: Array<{ at: number; raw: string; masked: string }> = [];
+	let block: Line[] = [];
 
 	const flush = () => {
 		if (block.length) {
@@ -94,13 +99,12 @@ export function scanCards(content: string, path: string): Card[] {
 	for (let i = frontmatterEnd(lines); i < lines.length; i++) {
 		const raw = lines[i];
 		const f = FENCE.exec(raw);
-		if (f) {
-			flush();
-			if (fence === null) fence = f[1];
-			else if (f[1] === fence) fence = null;
+		if (f || fence !== null) {
+			if (fence === null) fence = f![1];
+			else if (f?.[1] === fence) fence = null;
+			block.push({ at: i, raw, masked: '', code: true });
 			continue;
 		}
-		if (fence !== null) continue;
 
 		if (raw.trim() === '') {
 			flush();
@@ -112,10 +116,21 @@ export function scanCards(content: string, path: string): Card[] {
 			trail = [...trail.filter((t) => t.level < h[1].length), { level: h[1].length, text: h[2] }];
 			continue;
 		}
-		block.push({ at: i, raw, masked: maskCode(raw) });
+		block.push({ at: i, raw, masked: maskCode(raw), code: false });
 	}
 	flush();
 	return cards;
+}
+
+/**
+ * One line of a paragraph. `masked` has inline code blanked out; a line of a
+ * fenced block is marked `code` and has nothing left to match at all.
+ */
+interface Line {
+	at: number;
+	raw: string;
+	masked: string;
+	code: boolean;
 }
 
 /**
@@ -253,14 +268,14 @@ function byUrgency(a: Card, b: Card): number {
 
 /** The cards in one paragraph of non-blank lines. */
 function cardsInBlock(
-	block: Array<{ at: number; raw: string; masked: string }>,
+	block: Line[],
 	context: string,
 	deck: string
 ): Card[] {
-	const body = block.filter((l) => !isSchedule(l.raw));
+	const body = block.filter((l) => l.code || !isSchedule(l.raw));
 	if (!body.length) return [];
 
-	const separator = body.findIndex((l) => MULTILINE[l.raw.trim()] !== undefined);
+	const separator = body.findIndex((l) => !l.code && MULTILINE[l.raw.trim()] !== undefined);
 	if (separator > 0) {
 		const question = body.slice(0, separator);
 		const answer = body.slice(separator + 1);
@@ -305,7 +320,10 @@ function cardsInBlock(
 	}
 	if (inline.length) return inline;
 
-	const clozes = [...text(body).matchAll(CLOZE)];
+	// Matched with each fenced line's characters swapped for a placeholder that
+	// is neither space nor `=`, so offsets still point into `whole` but no
+	// cloze can start, end or sit inside the code.
+	const clozes = [...text(body.map((l) => (l.code ? { raw: l.raw.replace(/\S/g, '\0') } : l))).matchAll(CLOZE)];
 	if (!clozes.length) return [];
 	const whole = text(body);
 	return clozes.map((cloze, i) =>
