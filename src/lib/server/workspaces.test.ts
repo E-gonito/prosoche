@@ -100,6 +100,16 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
 		expect((await loadWorkspaces(vault))[0].meetings).toBe(expected);
 	});
+
+	it.each([
+		['glossary: Computer Science', 'Computer Science'],
+		['glossary: "  eye2gene "', 'eye2gene'],
+		['glossary:', undefined],
+		['name: Quiet', undefined]
+	])('reads %j as glossary %j', async (line, expected) => {
+		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
+		expect((await loadWorkspaces(vault))[0].glossary).toBe(expected);
+	});
 });
 
 describe('workspaceFor', () => {

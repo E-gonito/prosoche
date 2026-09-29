@@ -7,11 +7,14 @@
 
 export type GlossaryResult = { ok: true; path: string } | { ok: false; message: string };
 
+/** `glossary` is the glossary's slug, as in its URL. */
 export type GlossaryAction =
-	| { action: 'start'; slug: string }
-	| { action: 'add'; slug: string; term: string; category?: string | null; source?: string | null }
-	| { action: 'edit'; slug: string; term: string; change: { term?: string; category?: string; definition?: string; relevance?: string } }
-	| { action: 'delete'; slug: string; term: string };
+	| { action: 'create-glossary'; name: string }
+	| { action: 'rename-glossary'; glossary: string; name: string }
+	| { action: 'delete-glossary'; glossary: string }
+	| { action: 'add'; glossary: string; term: string; category?: string | null; source?: string | null }
+	| { action: 'edit'; glossary: string; term: string; change: { term?: string; category?: string; definition?: string; relevance?: string } }
+	| { action: 'delete'; glossary: string; term: string };
 
 /** Send one glossary write. */
 export async function glossaryAction(body: GlossaryAction): Promise<GlossaryResult> {

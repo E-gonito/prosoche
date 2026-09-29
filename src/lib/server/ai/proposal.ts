@@ -32,6 +32,7 @@
 import { config } from '../config';
 import { dailyNotePath, shiftDay, type DayKey } from '../daily';
 import { rewriteTaskLine } from '../parse/task';
+import { isGlossaryPath } from '../glossary';
 import type { Vault } from '../vault/index';
 import {
 	BRIEFING_MARKER,
@@ -118,14 +119,15 @@ export function policyFor(
 		case 'suggest-flashcards':
 			return wrap(extra, { maxFiles: Math.min(settings.blast.maxFiles, 2) });
 
-		// The meeting features each write one note of one kind, and the
-		// destination names it exactly. The destination arrives back from the
-		// browser, so it is also held to its kind here: a forged one can at
-		// worst name another workspace's primer, glossary or meeting note.
+		// The meeting and glossary features each write one note of one kind,
+		// and the destination names it exactly. The destination arrives back
+		// from the browser, so it is also held to its kind here: a forged one
+		// can at worst name another workspace's primer or meeting note, or
+		// another glossary in `Glossaries/`.
 		case 'primer-draft':
 			return wrap(extra.filter((p) => p.endsWith('/Primer.md')).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
 		case 'glossary-lookup':
-			return wrap(extra.filter((p) => p.endsWith('/Glossary.md')).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
 		case 'meeting-prep':
 			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
 

@@ -32,7 +32,7 @@ export interface Module {
 
 /**
  * An entry the rail nests under a module: one workspace under Workspaces,
- * one workspace's glossary under Glossary, one subject under Study. They
+ * one glossary under Glossary, one subject under Study. They
  * come from the vault, so the root layout's loader supplies them, keyed by
  * module id; this file only says what one looks like and which one a path
  * is on.
@@ -40,7 +40,7 @@ export interface Module {
 export interface SubItem {
 	href: string;
 	title: string;
-	/** The workspace's colour, drawn as a dot before the title. */
+	/** A dot before the title: the workspace's colour, or a glossary's linked workspace's. */
 	color: string;
 }
 

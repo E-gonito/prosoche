@@ -1,26 +1,30 @@
 <script lang="ts">
 	/**
-	 * Every workspace's glossary, and a way to start one for a workspace that
-	 * has none. Starting one is the user's own act, so it writes straight away:
-	 * a `Glossary.md` holding only its title, which the page then opens.
+	 * Every glossary, and a way to start a new one. Creating one is the user's
+	 * own act, so it writes straight away: `Glossaries/<name>.md` holding only
+	 * a title, which the page then opens.
 	 */
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import { glossaryAction } from '$lib/client/glossary';
+	import { slugify } from '$lib/shared/slug';
 
 	let { data } = $props();
 
+	let name = $state('');
 	let problem = $state('');
-	let busy = $state<string | null>(null);
+	let busy = $state(false);
 
-	async function start(slug: string) {
-		busy = slug;
+	async function create(event: SubmitEvent) {
+		event.preventDefault();
+		if (!name.trim()) return;
+		busy = true;
 		problem = '';
-		const result = await glossaryAction({ action: 'start', slug });
-		busy = null;
+		const result = await glossaryAction({ action: 'create-glossary', name });
+		busy = false;
 		if (!result.ok) problem = result.message;
 		// Invalidates the root layout too, so the rail gains the new glossary.
-		else await goto(`/glossary/${slug}`, { invalidateAll: true });
+		else await goto(`/glossary/${slugify(name)}`, { invalidateAll: true });
 	}
 </script>
 
@@ -29,7 +33,7 @@
 <div class="page">
 	<div class="title">
 		<h1>Glossary</h1>
-		<p>The words you had to guess at, one glossary per workspace</p>
+		<p>The words you had to guess at, one glossary per subject</p>
 	</div>
 
 	<div class="sheet rows" data-testid="glossaries">
@@ -38,31 +42,23 @@
 				<i style="--dot: {g.color}"></i>
 				<span class="name">{g.name}</span>
 				<span class="muted small">
-					{g.terms} term{g.terms === 1 ? '' : 's'}{g.pending ? ` · ${g.pending} to look up` : ''}
+					{g.terms} term{g.terms === 1 ? '' : 's'}{g.pending ? ` · ${g.pending} to look up` : ''}{g.linked.length
+						? ` · meetings of ${g.linked.map((w) => w.name).join(', ')}`
+						: ''}
 				</span>
 				<Icon name="chevron-right" />
 			</a>
 		{:else}
-			<p class="none">No glossary yet. Start one below, or capture a term in a meeting.</p>
+			<p class="none">No glossary yet. Start one below.</p>
 		{/each}
 	</div>
 
+	<p class="label">New glossary</p>
+	<form class="new" onsubmit={create} data-testid="new-glossary-form">
+		<input class="field" bind:value={name} placeholder="Name, e.g. Computer Science" aria-label="Glossary name" data-testid="new-glossary-name" />
+		<button class="btn" type="submit" disabled={busy || !name.trim()} data-testid="new-glossary-create">Start a glossary</button>
+	</form>
 	{#if problem}<p class="problem">{problem}</p>{/if}
-
-	{#if data.unstarted.length}
-		<p class="label">No glossary yet</p>
-		<div class="sheet rows" data-testid="unstarted">
-			{#each data.unstarted as g (g.slug)}
-				<div class="glossary">
-					<i style="--dot: {g.color}"></i>
-					<span class="name">{g.name}</span>
-					<button class="btn small" disabled={busy === g.slug} onclick={() => start(g.slug)} data-testid="start-glossary">
-						Start a glossary
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -71,6 +67,8 @@
 	a.glossary:hover { text-decoration: none; }
 	a.glossary:hover .name { color: var(--accent); }
 	.glossary .name { font-weight: 500; }
-	.glossary .muted, .glossary .btn { margin-left: auto; text-align: right; }
+	.glossary .muted { margin-left: auto; text-align: right; }
 	.glossary :global(svg) { color: var(--muted); flex: none; }
+	.new { display: flex; gap: var(--s2); flex-wrap: wrap; }
+	.new .field { flex: 1 1 220px; width: auto; }
 </style>

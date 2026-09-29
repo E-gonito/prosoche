@@ -4,7 +4,7 @@
 	 *
 	 * One list, `MODULES`, drawn twice. On a desktop it is a rail down the
 	 * left, with each module's sub-items from the loader nested under it: the
-	 * workspaces under Workspaces, their glossaries under Glossary. On a phone
+	 * workspaces under Workspaces, the glossaries under Glossary. On a phone
 	 * it is a bottom bar with the four modules marked `tab` and More, which
 	 * opens a sheet with everything else, workspaces included.
 	 */

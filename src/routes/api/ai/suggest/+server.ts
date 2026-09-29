@@ -3,7 +3,9 @@ import { hub } from '$server/hub';
 import { shiftDay, today } from '$server/daily';
 import { fileCapture } from '$server/ai/file-capture';
 import { suggestCards } from '$server/ai/suggest-cards';
-import { draftLookups, draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
+import { draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
+import { draftLookups } from '$server/ai/glossary-drafts';
+import { findGlossary } from '$server/glossary';
 import { eventsBetween } from '$server/calendar';
 import type { RequestHandler } from './$types';
 
@@ -32,6 +34,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		slug?: string;
 		title?: string;
 		event?: string;
+		/** The glossary look-up: which glossary, by slug, and which terms. */
+		glossary?: string;
 		terms?: string[];
 	};
 	const { vault, index, ready, workspaces } = hub();
@@ -57,15 +61,19 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ ...result, destinations: [body.path] });
 	}
 
-	// The meeting notebook's three drafts. Each names its one destination.
-	if (body.feature === 'primer-draft' || body.feature === 'meeting-prep' || body.feature === 'glossary-lookup') {
+	// A glossary's look-up names its one destination, the glossary's file.
+	if (body.feature === 'glossary-lookup') {
+		const glossary = await findGlossary(vault, await workspaces(), String(body.glossary ?? ''));
+		if (!glossary) return json({ error: 'no such glossary' }, { status: 404 });
+		const terms = Array.isArray(body.terms) ? body.terms.filter((t) => typeof t === 'string') : null;
+		return json(await draftLookups(vault, glossary, terms));
+	}
+
+	// The meeting notebook's two drafts. Each names its one destination.
+	if (body.feature === 'primer-draft' || body.feature === 'meeting-prep') {
 		const workspace = (await workspaces()).find((w) => w.slug === body.slug);
 		if (!workspace) return json({ error: 'no such workspace' }, { status: 404 });
 		if (body.feature === 'primer-draft') return json(await draftPrimer(vault, workspace));
-		if (body.feature === 'glossary-lookup') {
-			const terms = Array.isArray(body.terms) ? body.terms.filter((t) => typeof t === 'string') : null;
-			return json(await draftLookups(vault, workspace, terms));
-		}
 		const day = today();
 		const calendar = body.event ? await eventsBetween(day, shiftDay(day, 7)) : null;
 		const event = calendar?.ok ? (calendar.events.find((e) => e.id === body.event) ?? null) : null;

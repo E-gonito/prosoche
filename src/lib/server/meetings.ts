@@ -7,8 +7,9 @@
  * belongs to, and every write the notebook makes on a user's click: starting
  * a meeting, capturing a line, ending it, remembering an event's workspace.
  * Each of those is an insertion or a one-line rewrite through the grammars in
- * `parse/`; none re-serialises a note. The glossary is its own module,
- * `glossary.ts`; a term captured here is handed to it.
+ * `parse/`; none re-serialises a note. Glossaries are their own module,
+ * `glossary.ts`; a term captured here is handed to the glossary the
+ * workspace's `glossary:` names, when it names one.
  *
  * Only a workspace whose definition says `meetings: true` has a notebook.
  * Every function here that is about one workspace's meetings treats any
@@ -41,7 +42,7 @@ import {
 	setEnded,
 	type CaptureInput
 } from './parse/meeting';
-import { addTerm, type CapturedTerm } from './glossary';
+import { addTerm, glossaryOf, type CapturedTerm } from './glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { parseMeetingMap, setMapping, slugForTitle, type MeetingMapping } from './parse/meeting-map';
 import { workspaceFor, type Workspace } from './workspaces';
@@ -181,18 +182,21 @@ export async function startMeeting(vault: Vault, paths: NotebookPaths, input: St
 
 /**
  * Append one captured line under `## Captured` in a meeting note, and file a
- * captured term in the workspace's glossary too.
+ * captured term in the workspace's glossary too, when its definition names
+ * one with `glossary:`.
  *
  * Takes the workspace rather than its notebook paths because a term goes to
- * the glossary, which `glossary.ts` places. Refuses a workspace without a
- * notebook, a path outside its Meetings folder and an empty capture. An
- * append is safe to redo, so a clash with an edit made a moment earlier is
- * retried once against the new text before it is reported.
+ * the workspace's glossary, which `glossary.ts` finds. Refuses a workspace
+ * without a notebook, a path outside its Meetings folder and an empty
+ * capture. An append is safe to redo, so a clash with an edit made a moment
+ * earlier is retried once against the new text before it is reported.
  *
  * The meeting note is the record; the glossary entry is a convenience. So
  * once the line is in the note the capture has succeeded, whatever the
- * glossary says: a term it already has is left alone, and one that could not
- * be written is still offered from the meeting on the glossary page.
+ * glossary says: a workspace with no glossary gets no glossary write, a term
+ * the glossary already has is left alone, and one that could not be written
+ * is still offered from the meeting on the glossary's page. A glossary named
+ * but not there yet is created by its first term.
  */
 export async function captureItem(vault: Vault, workspace: Workspace, path: string, input: CaptureInput): Promise<Written> {
 	const paths = notebookPaths(workspace);
@@ -202,7 +206,8 @@ export async function captureItem(vault: Vault, workspace: Workspace, path: stri
 	const line = formatCaptured(input);
 	const written = await rewrite(vault, path, (content) => appendUnderHeading(content, CAPTURED_HEADING, line).content, 2);
 	if (written.ok && input.kind === 'term') {
-		await addTerm(vault, workspace, { term: input.text, source: `[[${basename(path)}]]` });
+		const glossary = await glossaryOf(vault, workspace);
+		if (glossary) await addTerm(vault, glossary.path, { term: input.text, source: `[[${basename(path)}]]` });
 	}
 	return written;
 }
@@ -218,26 +223,31 @@ export async function endMeeting(vault: Vault, paths: NotebookPaths, path: strin
 }
 
 /**
- * Every term captured in the workspace's meetings, newest meeting first and
- * in capture order within one, each with the meeting it came from. A term
- * captured twice appears twice; `glossary.ts` decides what is still missing.
- * Empty for a workspace without a notebook. Never writes.
+ * Every term captured in the meetings of `workspaces`, newest meeting first
+ * across all of them and in capture order within one, each with the meeting
+ * it came from. A term captured twice appears twice; `glossary.ts` decides
+ * what is still missing. A workspace without a notebook adds nothing. Never
+ * writes.
  */
-export async function capturedTerms(vault: Vault, workspace: Workspace): Promise<CapturedTerm[]> {
-	const paths = notebookPaths(workspace);
-	if (!paths) return [];
+export async function capturedTerms(vault: Vault, workspaces: Workspace[]): Promise<CapturedTerm[]> {
 	const out: CapturedTerm[] = [];
-	for (const meeting of await loadMeetings(vault, paths)) {
-		for (const item of meeting.captured) {
-			if (item.kind !== 'term' || !item.text.trim()) continue;
-			out.push({
-				term: item.text,
-				source: `[[${basename(meeting.path)}]]`,
-				meeting: { path: meeting.path, title: meeting.title, date: meeting.date }
-			});
+	for (const workspace of workspaces) {
+		const paths = notebookPaths(workspace);
+		if (!paths) continue;
+		for (const meeting of await loadMeetings(vault, paths)) {
+			for (const item of meeting.captured) {
+				if (item.kind !== 'term' || !item.text.trim()) continue;
+				out.push({
+					term: item.text,
+					source: `[[${basename(meeting.path)}]]`,
+					meeting: { path: meeting.path, title: meeting.title, date: meeting.date }
+				});
+			}
 		}
 	}
-	return out;
+	// A stable sort, so one meeting's terms keep their capture order and one
+	// workspace's meetings the order `loadMeetings` gave them.
+	return out.sort((a, b) => (b.meeting.date ?? '').localeCompare(a.meeting.date ?? ''));
 }
 
 /** Every event-title mapping in `_hub/meetings.md`. A missing file maps nothing. */

@@ -4,18 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { apply, policyFor, validate } from './proposal';
-import {
-	draftLookups,
-	draftPrep,
-	draftPrimer,
-	lookupPrompt,
-	lookupProposal,
-	prepPrompt,
-	prepProposal,
-	primerPrompt,
-	primerProposal
-} from './meeting-drafts';
-import { parseGlossary } from '../parse/glossary';
+import { draftPrep, draftPrimer, prepPrompt, prepProposal, primerPrompt, primerProposal } from './meeting-drafts';
 import { readMeeting } from '../parse/meeting';
 import type { Workspace } from '../workspaces';
 import type { FeatureId, Proposal, RunStamp } from '$lib/shared/ai';
@@ -46,25 +35,6 @@ const WORK: Workspace = {
 
 const SETTINGS = { enabled: true, blast: { maxFiles: 5, maxLineLoss: 0.3 } };
 const policy = (feature: FeatureId, destinations: string[]) => policyFor(feature, SETTINGS, { today: '2026-09-29', destinations });
-
-const GLOSSARY = `# Glossary
-
-## DVC
-- guess:: data versioning
-- status:: looked-up
-
-Tracks data.
-
-→ For Eye2Gene, traceability.
-
-## Cookie Cutter
-- guess:: something for AI models
-- status:: to-look-up
-- source:: [[2026-09-28 Dev Weekly]]
-
-## MLflow
-- status:: to-look-up
-`;
 
 describe('prompt builders', () => {
 	it('asks for a fresh primer, with the notes as data', () => {
@@ -101,15 +71,6 @@ describe('prompt builders', () => {
 		expect(prompt).toContain('Meeting: T.');
 		expect(prompt).toContain('Attendees: not known.');
 		expect(prompt).toContain('No open actions.');
-	});
-
-	it('lists each term with its guess and asks for workspace relevance', () => {
-		const entries = parseGlossary(GLOSSARY).filter((e) => e.pending);
-		const prompt = lookupPrompt({ workspace: 'Eye2Gene', entries, sources: [] });
-		expect(prompt).toContain('- Cookie Cutter (their guess: something for AI models)');
-		expect(prompt).toContain('- MLflow\n');
-		expect(prompt).not.toContain('- DVC');
-		expect(prompt).toContain('beginning "For Eye2Gene,"');
 	});
 });
 
@@ -148,37 +109,6 @@ describe('proposal builders', () => {
 		expect(readMeeting(text, edit.path)).toMatchObject({ title: 'Dev Weekly', ended: null, date: '2026-09-29' });
 	});
 
-	it('fills in pending entries and marks them looked up', () => {
-		const p = lookupProposal(
-			'Work/Glossary.md',
-			{ content: GLOSSARY, hash: 'g' },
-			[
-				{ term: 'cookie cutter', definition: 'A project template tool.', relevance: 'For Eye2Gene, it scaffolds ML projects.' },
-				{ term: 'DVC', definition: 'Should be ignored, already looked up.', relevance: '' },
-				{ term: 'Unknown', definition: 'Not asked for.', relevance: '' }
-			],
-			stamp('glossary-lookup')
-		)!;
-		expect(p.edits).toHaveLength(1);
-		const edit = p.edits[0];
-		expect(edit).toMatchObject({ kind: 'revise', path: 'Work/Glossary.md', expectedHash: 'g' });
-		const text = 'text' in edit ? edit.text : '';
-		const entries = parseGlossary(text);
-		expect(entries[0].definition).toBe('Tracks data.');
-		expect(entries[1]).toMatchObject({
-			status: 'looked-up',
-			definition: 'A project template tool.',
-			relevance: 'For Eye2Gene, it scaffolds ML projects.',
-			pending: false
-		});
-		expect(entries[1].fields.drafted.value).toBe('Claude');
-		expect(entries[2].pending).toBe(true);
-		expect(p.summary).toBe('Definitions for 1 term in Glossary.');
-	});
-
-	it('proposes nothing when no answer matches a pending entry', () => {
-		expect(lookupProposal('Work/Glossary.md', { content: GLOSSARY, hash: 'g' }, [{ term: 'DVC', definition: 'x', relevance: '' }], stamp('glossary-lookup'))).toBeNull();
-	});
 });
 
 describe('path policies', () => {
@@ -188,9 +118,6 @@ describe('path policies', () => {
 		['primer-draft', ['Work/Primer.md'], 'Study/Primer.md', false],
 		['primer-draft', ['Work/Notes.md'], 'Work/Notes.md', false],
 		['primer-draft', [], 'Work/Primer.md', false],
-		['glossary-lookup', ['Work/Glossary.md'], 'Work/Glossary.md', true],
-		['glossary-lookup', ['Work/Glossary.md'], 'Work/Primer.md', false],
-		['glossary-lookup', ['_hub/ai.md'], '_hub/ai.md', false],
 		['meeting-prep', ['Work/Meetings/2026-09-29 Dev.md'], 'Work/Meetings/2026-09-29 Dev.md', true],
 		['meeting-prep', ['Work/Meetings/2026-09-29 Dev.md'], 'Work/Meetings/2026-09-28 Old.md', false],
 		['meeting-prep', ['Work/Handbook.md'], 'Work/Handbook.md', false],
@@ -218,34 +145,6 @@ describe('validate and apply a meeting proposal', () => {
 		await rm(undo, { recursive: true, force: true });
 	});
 
-	it('writes a revise only after accept, and only to the named note', async () => {
-		await vault.write('Work/Glossary.md', GLOSSARY);
-		const note = await vault.read('Work/Glossary.md');
-		const proposal = lookupProposal('Work/Glossary.md', note, [{ term: 'MLflow', definition: 'ML lifecycle.', relevance: 'For Eye2Gene, versions.' }], stamp('glossary-lookup'))!;
-		const pol = policy('glossary-lookup', ['Work/Glossary.md']);
-
-		const checked = await validate(vault, proposal, pol);
-		expect(checked.ok).toBe(true);
-		expect((await vault.read('Work/Glossary.md')).content).toBe(GLOSSARY);
-
-		const none = await apply(vault, proposal, pol, { accepted: [], vaultPath: dir, undoPath: undo });
-		expect(none.written).toEqual([]);
-		expect((await vault.read('Work/Glossary.md')).content).toBe(GLOSSARY);
-
-		const done = await apply(vault, proposal, pol, { accepted: [proposal.edits[0].id], vaultPath: dir, undoPath: undo });
-		expect(done.written).toEqual(['Work/Glossary.md']);
-		expect(parseGlossary((await vault.read('Work/Glossary.md')).content)[2]).toMatchObject({ status: 'looked-up', definition: 'ML lifecycle.' });
-	});
-
-	it('refuses a revise of a note that changed since the draft', async () => {
-		await vault.write('Work/Glossary.md', GLOSSARY);
-		const note = await vault.read('Work/Glossary.md');
-		const proposal = lookupProposal('Work/Glossary.md', note, [{ term: 'MLflow', definition: 'd', relevance: 'r' }], stamp('glossary-lookup'))!;
-		await vault.write('Work/Glossary.md', `${GLOSSARY}\n## Added in Obsidian\n`);
-		const checked = await validate(vault, proposal, policy('glossary-lookup', ['Work/Glossary.md']));
-		expect(checked.ok).toBe(false);
-		expect(checked.previews[0].refusals[0].guardrail).toBe('G6');
-	});
 
 	it('refuses a revise aimed outside its feature\'s note', async () => {
 		await vault.write('Work/Handbook.md', '# H\n');
@@ -333,34 +232,7 @@ describe('drafting with a stand-in CLI', () => {
 		expect(result.proposal?.edits[0]).toMatchObject({ kind: 'create', path: 'Work/Meetings/2026-09-29 Retro.md' });
 	});
 
-	it('looks up only pending terms, all of them when none are named', async () => {
-		await vault.write('Work/Glossary.md', GLOSSARY);
-		const executable = await fakeCli({
-			entries: [
-				{ term: 'Cookie Cutter', definition: 'Templates.', relevance: 'For Eye2Gene, scaffolding.' },
-				{ term: 'MLflow', definition: 'Lifecycle.', relevance: 'For Eye2Gene, versions.' }
-			]
-		});
-		const result = await draftLookups(vault, WORK, null, { cli: { executable, vaultPath: dir } });
-		expect(result.destinations).toEqual(['Work/Glossary.md']);
-		expect(result.proposal?.summary).toBe('Definitions for 2 terms in Glossary.');
-		expect((await vault.read('Work/Glossary.md')).content).toBe(GLOSSARY);
-	});
-
-	it('looks up a glossary in a workspace without meetings, and drafts it no primer', async () => {
-		await vault.write('Work/Glossary.md', GLOSSARY);
-		const quiet = { ...WORK, meetings: false };
-		const executable = await fakeCli({ entries: [{ term: 'MLflow', definition: 'Lifecycle.', relevance: 'For Eye2Gene, versions.' }] });
-		const result = await draftLookups(vault, quiet, ['MLflow'], { cli: { executable, vaultPath: dir } });
-		expect(result.destinations).toEqual(['Work/Glossary.md']);
-		expect(result.proposal?.edits[0]).toMatchObject({ path: 'Work/Glossary.md' });
-		expect((await draftPrimer(vault, quiet)).problem).toBe('This workspace has no meeting notebook to keep a primer in.');
-	});
-
-		it('says so when nothing is waiting to be looked up', async () => {
-		await vault.write('Work/Glossary.md', GLOSSARY);
-		const result = await draftLookups(vault, WORK, ['DVC']);
-		expect(result.proposal).toBeNull();
-		expect(result.problem).toBe('Nothing is waiting to be looked up.');
+	it('drafts no primer for a workspace without meetings', async () => {
+		expect((await draftPrimer(vault, { ...WORK, meetings: false })).problem).toBe('This workspace has no meeting notebook to keep a primer in.');
 	});
 });

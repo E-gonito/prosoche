@@ -130,10 +130,12 @@ export async function draftChange(request: {
 	expectedRaw?: string;
 	day?: string;
 	count?: number;
-	/** The meeting features: the workspace, the meeting title, event and terms. */
+	/** The meeting features: the workspace, the meeting title and event. */
 	slug?: string;
 	title?: string;
 	event?: string;
+	/** The glossary look-up: the glossary's slug, and the terms to look up. */
+	glossary?: string;
 	terms?: string[];
 }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
