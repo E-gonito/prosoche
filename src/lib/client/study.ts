@@ -12,7 +12,7 @@
  */
 
 import type { Result, Task } from './api';
-import type { Card, CardShift, Graded, ReadingList, ReadingOp, StudyScope } from '$lib/shared/study';
+import type { Card, CardsAdded, CardShift, Graded, NewCard, ReadingList, ReadingOp, StudyScope } from '$lib/shared/study';
 import type { Grade } from '$lib/shared/sm2';
 import type { DeckImport } from '$lib/shared/anki-import';
 
@@ -135,6 +135,16 @@ export function ankiDeckUrl(scope: StudyScope, deck: string): string {
  */
 export async function importAnkiDecks(subject: string, sources: string[]): Promise<Result<DeckImport[]>> {
 	return post('/api/study/import', { subject, sources }, (body) => body.decks as DeckImport[]);
+}
+
+/**
+ * Add the cards the person kept, as they left them, to the subject's card
+ * file for `goal` (null for `From notes.md`). The server picks the file and
+ * checks every card again; a refused card comes back as a message naming it,
+ * and then nothing was written.
+ */
+export async function addCards(subject: string, goal: string | null, cards: NewCard[]): Promise<Result<CardsAdded>> {
+	return post('/api/study/cards', { subject, goal, cards }, (body) => body as CardsAdded);
 }
 
 /**
