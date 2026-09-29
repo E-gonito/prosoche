@@ -28,7 +28,7 @@ const routes = new Set(
 /** Headings whose route directory is not simply the heading in lower case. */
 const ROUTE_FOR: Record<string, string> = {
 	Today: 'day',
-	'Workspaces and boards': 'w'
+	Workspaces: 'w'
 };
 
 const NOT_A_SCREEN = new Set(['Widgets']);
