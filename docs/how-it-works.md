@@ -201,45 +201,104 @@ The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
 heading. A line that is already a task is kept as written; anything else is
 stamped with the time. That file is the only thing the Notes module writes.
 
-Suggest cards drafts flashcards from the open note. The draft is shown as a
-diff and nothing reaches the note until you accept it.
+A note inside a study subject's folders offers Make cards, which drafts
+flashcards from it (see Study). The draft is shown as a diff and nothing
+reaches the note until you accept it.
 
 The private folder, `Private/`, never appears here: not in search, the tree,
 backlinks or recent notes. A link straight to a private note is a 404.
 
 ## Study
 
-Study is scoped to the workspace whose `template:` says `study` — the `Study`
-workspace in a fresh vault — or the whole vault when there is none. Its own
-notes, `Goals.md` and `Sessions.md`, live in that workspace's first folder.
-Its tabs are Overview, Goals, Sessions, Flashcards and Reading list; a tab
-other than Overview hides itself until its note has something in it.
+Study is divided into subjects — CS, Filipino, whatever comes next. A
+subject is a workspace whose file says `template: study`, and there can be
+any number; each is listed under Study in the rail. Nothing is shared
+between two subjects but the code. A subject's own files live in its home
+folder, the first folder its workspace names: `Goals.md`, `Reading List.md`,
+`Sessions.md` and a `Flashcards/` folder. Its cards come from every folder
+it names, so reference notes kept elsewhere can sit beside the home as
+further folders, and from any note tagged with the workspace's tag.
 
-**Overview** shows what to review right now with a button straight into a
-session, each goal's milestones done out of its total and what is next, this
-week's time against a `weekly_hours:` target, the streak of consecutive days
-with a session logged, what you are currently reading, and a compact list of
-your top-level topic folders.
+**The Study page** shows one card per subject — its goals with milestones
+done out of total, this week's hours and the cards due — and the cards due
+across every subject, with Review everything due, which reviews them all in
+one session; Today's flashcards card leads there too. New subject takes a
+name and, optionally, reference folders, and writes the workspace file with
+`template: study`, homed at `Study/<name>`; a name another workspace
+already has is refused, and so is "Review", which that page already is. The
+old single-subject addresses, such as `/study/goals`, open that tab of the
+only subject, or this page when there are several.
 
-**Goals** reads `Goals.md`: a `## ` heading per goal, an optional `target::`
-date, and its milestones as ordinary task lines underneath, due-dated with
-the same `📅` field every task in the vault uses. A milestone is a task, so
-ticking one is the ordinary task rewrite; "Add a goal" appends a heading and
-"Add a milestone" appends a task line under one.
+Every subject has five tabs, always shown, because a new subject should
+invite filling in rather than hide: Overview, Goals, Reading list, Sessions
+and Flashcards.
 
-**Sessions** reads `Sessions.md`: one line per sitting, `- YYYY-MM-DD
-<duration> [[Topic]] a note`, filed under a `## YYYY-MM` heading. Durations
-read as `1h30m`, `90m` or `1h`. The page logs a new one, and shows hours per
-topic this month and a bar-per-week chart of the last eight weeks.
+**Goals are a subject's topics.** A goal is a `## ` heading in `Goals.md`,
+with an optional `target::` date and its milestones as ordinary task lines
+underneath, due-dated with the same `📅` field every task in the vault
+uses. A milestone is a task, so ticking one is the ordinary task rewrite;
+"Add a goal" appends a heading and "Add a milestone" appends a task line
+under one. Reading items, sessions and card files each point at a goal,
+which is how progress rolls up: every goal picker in Study offers the same
+list, the headings of `Goals.md` in order. A goal is matched by its name
+ignoring case and punctuation, and one naming a goal that is no longer in
+`Goals.md` counts as belonging to none.
 
-**Flashcards** is the review session, ported from before: cards are regions
-of your notes written in Obsidian Spaced Repetition's syntax, graded with the
-keyboard or a tap, and the schedule is written back in the plugin's own
-comment, so a card reviewed here is due correctly in Obsidian too.
+**Overview** shows each goal with its milestones done out of its total and
+what is next, the hours logged on it this week, what is in the Reading
+group for it and the cards due in its files, with a link that reviews just
+those; then whatever points at no goal. Above them are the cards due in all,
+this week's time against a `weekly_hours:` target from `Goals.md`'s
+frontmatter, and the streak of consecutive days with a session logged.
 
-**Reading list** shows resources — courses, books, articles, videos — grouped
-by status, inferred from the note when it says nothing itself. Moving one
-between groups writes a single `status:` line into its frontmatter.
+**Reading list** is `Reading List.md`, which prosoche owns as it owns a
+workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's
+format, with columns To read, Reading, Paused and Done, so it opens as a
+board in Obsidian. A subject with no file shows those four, empty, and the
+first change writes it. Done is marked `**Complete**`, so an item moved
+there is ticked. Each item is one card line:
+
+    - [ ] [CS:APP](https://csapp.cs.cmu.edu) [[Goals#Computer Systems]] #book
+
+The title is a link to where it is read (or plain words without one), the
+goal a link to its heading in `Goals.md`, and the kind — book, course,
+video, article, paper or other — the card's tag, with other written as no
+tag. The page shows the columns as grouped lists. Add takes a title, a
+link, a kind, a goal and the group; Edit opens an item in place with the
+same fields; its status menu moves it to another group, its ⋯ menu moves
+it up or down or deletes it, asking twice. Every change is the board's
+own byte-exact edit — a move cuts the card's lines and splices them in
+elsewhere, an edit rewrites only what changed, a delete removes only the
+card — and carries the version of the file it was made against, so an edit
+made in Obsidian meanwhile is refused and the list reloads.
+
+**Sessions** is `Sessions.md`: one line per sitting, `- YYYY-MM-DD
+<duration> [[Goals#<goal>]] a note`, filed under a `## YYYY-MM` heading.
+Durations read as `1h30m`, `90m` or `1h`. The page logs a new one against a
+goal picked from the list, and shows hours per goal this month and a
+bar-per-week chart of the last eight weeks. A session from before goals,
+`[[Topic]]`, still reads, and is shown as it is written rather than folded
+into a goal.
+
+**Flashcards** lists the subject's card files: notes in its folders
+holding cards in Obsidian Spaced Repetition's syntax that carry a
+`#flashcards` tag or already have a review comment. They are grouped by
+the goal their frontmatter names, `goal: <goal>`, which puts every card in
+the file under that goal; each file's picker sets it, rewriting that one
+frontmatter line and nothing else. Review all, or Review beside a goal,
+starts a session: `/study/<subject>/review`, or `?goal=<slug>` for one
+goal. Cards are graded with the keyboard or a tap, and the schedule is
+written back in the plugin's own comment, so a card reviewed here is due
+correctly in Obsidian too. Notes holding cards but no tag are listed
+separately, since neither Obsidian nor Study reviews them until the tag is
+added.
+
+**Make cards**, on any note inside a subject's folders, drafts flashcards
+from that note with Claude. Only cards whose answer the note itself states
+are kept. The draft is shown as a diff to edit or reject, and nothing is
+written until it is accepted; then the cards are appended to the note as
+`question::answer` lines, with a `#flashcards` tag when the note had none,
+so Obsidian and Study both see them.
 
 ## Workspaces
 

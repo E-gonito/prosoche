@@ -107,6 +107,19 @@ test.describe('Board', () => {
 		expect(vaultFile(BOARD)).toContain('- [ ] Draft the proposal @{2000-01-01} `Q2` #client\n\tAsk for the budget first.\n');
 	});
 
+	test('the drawer deletes a card and its notes, asking twice, and nothing else', async ({ page }) => {
+		const before = vaultFile(BOARD);
+		await card(page, 'Draft the proposal').getByTestId('card-open').click();
+		const editor = page.getByTestId('card-editor');
+		await editor.getByTestId('editor-delete').click();
+		await editor.getByTestId('editor-delete-confirm').click();
+
+		const expected = before.replace('- [ ] Draft the proposal @{2000-01-01} `Q2` #client\n\tAsk for the budget first.\n', '');
+		expect(await waitForFile(BOARD, (c) => c === expected)).toBe(true);
+		await expect(editor).toHaveCount(0);
+		await expect(card(page, 'Draft the proposal')).toHaveCount(0);
+	});
+
 	test('ticking a card writes [x] and moves nothing', async ({ page }) => {
 		await card(page, 'Book the venue').getByTestId('card-done').click();
 		expect(await waitForFile(BOARD, (c) => c.includes('- [x] Book the venue'))).toBe(true);
