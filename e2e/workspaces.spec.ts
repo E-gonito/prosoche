@@ -20,6 +20,22 @@ test.describe('Workspaces', () => {
 		expect(vaultFile('Inbox/Capture.md')).not.toContain('Call the printer');
 	});
 
+	test('Overview points the workspace at another folder, and stops again', async ({ page }) => {
+		await page.goto('/w/work');
+		const folders = page.getByTestId('folders');
+		await folders.getByTestId('folder-input').fill('Clients/Acme/');
+		await folders.getByRole('button', { name: 'Add' }).click();
+		await expect(folders.getByText('Clients/Acme/')).toBeVisible();
+		let content = vaultFile('_hub/workspaces/work.md');
+		expect(content).toMatch(/\nfolders:\n  - Work\n  - Clients\/Acme\ntabs:\n/);
+		expect(content).toContain('glossary: Work\n');
+
+		await folders.getByRole('button', { name: 'Stop reading Clients/Acme' }).click();
+		await expect(folders.getByText('Clients/Acme/')).toHaveCount(0);
+		content = vaultFile('_hub/workspaces/work.md');
+		expect(content).toMatch(/\nfolders:\n  - Work\ntabs:\n/);
+	});
+
 	test('adds a log update under today’s heading', async ({ page }) => {
 		await page.goto('/w/work/log');
 		await page.getByTestId('log-text').fill('Shipped the first draft to the client');

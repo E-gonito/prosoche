@@ -110,6 +110,10 @@ describe('list and tree', () => {
 		expect(await vault.list()).toEqual(['Journal/2026/09/21.md', 'Journal/Journal.md']);
 	});
 
+	it('lists every folder that holds a note, at any depth, and no other', async () => {
+		expect(await vault.folders()).toEqual(['Journal', 'Journal/2026', 'Journal/2026/09']);
+	});
+
 	it('builds a tree with folders before notes', async () => {
 		const tree = await vault.tree();
 		expect(tree).toHaveLength(1);

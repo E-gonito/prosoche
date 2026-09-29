@@ -4,11 +4,13 @@
 	 * happened last, and where the notes are.
 	 *
 	 * The board is where the work is done; every other section links to the
-	 * tab that goes deeper, so the rest of the page is a summary.
+	 * tab that goes deeper, so the rest of the page is a summary. Folders is
+	 * the one other thing edited here: which parts of the vault it reads.
 	 */
 	import Board from '$lib/components/board/Board.svelte';
 	import StartMeeting from '$lib/components/StartMeeting.svelte';
 	import MasterNote from '$lib/components/MasterNote.svelte';
+	import FolderEditor from '$lib/components/FolderEditor.svelte';
 	import { noteHref } from '$lib/shared/links';
 
 	let { data } = $props();
@@ -68,6 +70,11 @@
 			<p class="none">No notes in this workspace's folders yet.</p>
 		{/each}
 	</div>
+</section>
+
+<section>
+	<p class="label">Folders</p>
+	<FolderEditor slug={data.workspace.slug} folders={data.workspace.folders} options={data.vaultFolders} />
 </section>
 
 <section>

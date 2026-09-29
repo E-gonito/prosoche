@@ -220,6 +220,20 @@ export class Vault {
 		return out.sort();
 	}
 
+	/**
+	 * Every public folder that holds a note, at any depth, vault-relative and
+	 * sorted: `Journal`, `Journal/2026`, ... A folder with no markdown in or
+	 * under it is left out, as in `tree`; so are ignored and private ones.
+	 */
+	async folders(): Promise<string[]> {
+		const out = new Set<string>();
+		for (const path of await this.list()) {
+			const parts = path.split('/');
+			for (let i = 1; i < parts.length; i++) out.add(parts.slice(0, i).join('/'));
+		}
+		return [...out].sort((a, b) => a.localeCompare(b));
+	}
+
 	/** The public file tree the notes viewer renders. Folders with no notes are omitted. */
 	async tree(): Promise<TreeNode[]> {
 		const paths = await this.list();

@@ -6,7 +6,8 @@ import type { PageServerLoad } from './$types';
 /**
  * A subject at a glance: each goal with its milestones, this week's hours,
  * the reading in progress and the cards due for it; the cards due in all,
- * this week's time against the target, and the streak.
+ * this week's time against the target, and the streak; and the subject's
+ * folders, with every folder in the vault to offer beside them.
  */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { subject } = await parent();
@@ -14,7 +15,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 	await ready;
 
 	const day = today();
-	const summary = await studySummary(vault, index, subject, day);
+	const [summary, vaultFolders] = await Promise.all([studySummary(vault, index, subject, day), vault.folders()]);
 	const card = subjectCard(summary, day);
 	const { goals, unassigned } = progressByGoal(summary, day);
 
@@ -25,6 +26,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 		fresh: summary.cards.fresh,
 		weeklyHours: summary.goals.weeklyHours,
 		weekMinutes: card.weekMinutes,
-		streak: card.streak
+		streak: card.streak,
+		folders: subject.scope.folders ?? [],
+		vaultFolders
 	};
 };
