@@ -33,8 +33,11 @@
 
 	<div class="review-row">
 		<p><b class="num" data-testid="cards-due">{data.due}</b> <span class="muted">due now, of {data.total} {data.total === 1 ? 'card' : 'cards'}</span></p>
-		{#if data.due > 0}<a class="btn primary" href="{base}/review" data-testid="review-all">Review all</a>{/if}
-		<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
+		<div class="buttons">
+			<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
+			{#if data.due > 0}<a class="btn" href="{base}/review" data-testid="review-all">Review all</a>{/if}
+			<a class="btn primary" href="{base}/make" data-testid="make-cards-link">Make cards from notes</a>
+		</div>
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
@@ -76,8 +79,8 @@
 		</div>
 	{:else}
 		<p class="none">
-			No card files here yet. A note in {data.subject.name}'s folders holds cards once it carries <code>#flashcards</code> and a
-			<code>question::answer</code> line; "Make cards" on a note drafts some for you.
+			No card files here yet. <a href="{base}/make">Make cards from your notes</a> with Claude, or write them yourself: a note in
+			{data.subject.name}'s folders holds cards once it carries <code>#flashcards</code> and a <code>question::answer</code> line.
 		</p>
 	{/each}
 
@@ -96,6 +99,7 @@
 	.review-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s2); }
 	.review-row p { margin: 0; }
 	.review-row b { font-size: var(--t20); }
+	.buttons { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
 	.file { display: flex; align-items: center; gap: var(--s3); justify-content: space-between; }
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 	.path { font-family: var(--mono); font-size: var(--t12); overflow-wrap: anywhere; }
@@ -103,6 +107,8 @@
 	.problem { color: var(--bad); margin-bottom: var(--s3); }
 
 	@media (max-width: 720px) {
+		.review-row { flex-direction: column; align-items: stretch; }
+		.buttons { justify-content: flex-start; }
 		.file { flex-wrap: wrap; }
 		.goal { width: 100%; }
 	}

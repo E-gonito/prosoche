@@ -48,8 +48,8 @@
 	{:else}
 		<div class="subjects">
 			{#each data.subjects as subject (subject.slug)}
-				<a class="sheet subject" href="/study/{subject.slug}" data-testid="subject-card">
-					<h2><i style="--dot: {subject.color}"></i>{subject.name}</h2>
+				<div class="sheet subject" data-testid="subject-card">
+					<h2><i style="--dot: {subject.color}"></i><a class="stretch" href="/study/{subject.slug}">{subject.name}</a></h2>
 					{#if subject.goals.length}
 						<ul class="goals">
 							{#each subject.goals.slice(0, 4) as goal (goal.name)}
@@ -65,7 +65,8 @@
 						<span class="num">{subject.due} due</span>
 						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
 					</p>
-				</a>
+					<a class="btn small make" href="/study/{subject.slug}/make" data-testid="subject-make-cards">Make cards</a>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -87,8 +88,14 @@
 	.due .btn { margin-left: auto; }
 
 	.subjects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s4); }
-	.subject { display: flex; flex-direction: column; gap: var(--s2); color: var(--text); }
-	.subject:hover { text-decoration: none; border-color: var(--accent); }
+	/* The whole card opens the subject, through its name's link stretched over
+	   it; Make cards sits above that, so it is a link of its own. */
+	.subject { position: relative; display: flex; flex-direction: column; gap: var(--s2); color: var(--text); }
+	.subject:hover { border-color: var(--accent); }
+	.stretch { color: inherit; }
+	.stretch::after { content: ''; position: absolute; inset: 0; }
+	.stretch:hover { text-decoration: none; }
+	.make { position: relative; align-self: flex-start; }
 	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
 	.subject h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
 	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
