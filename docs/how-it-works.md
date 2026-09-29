@@ -156,6 +156,33 @@ its title, is open cards for Overview, cards waiting on another for Blocked,
 and people in scope for People; a tab with nothing to count shows no number
 at all, and a tab with a genuine zero shows it muted rather than hidden.
 
+## Dating
+
+Everything here lives under `Private/`, a folder that is never committed,
+never indexed, never searched and never shown anywhere else: not on Today,
+not in Notes, not in the palette. It is backed up only by the whole-box
+backup the Proxmox host already takes, because syncing it anywhere else would
+be exactly the leak this module exists to prevent.
+
+Log is a day stepper and four counters — likes sent, matches (from your own
+likes, whenever they arrived — liking back an incoming like is not counted as
+one, or the match rate would read higher than it really is), how many of
+those fit your type, and likes received — plus optional notes. The button
+reads "Save as a zero day" when every counter is still zero. Stepping to a day
+that already has a line loads it back; saving never goes past today.
+
+Stats shows totals and rates over the last 7 days, the last 30, and all time,
+a twelve-week trend and the best day of the week for matches, each rate
+defined in the small print beneath it. Insights asks Claude for a short read
+on patterns, on demand: it sends only the ledger and every person's dates
+log, nothing else in the vault, and it only ever answers on screen — it has
+no write of its own.
+
+People are profiles — app, age, place, job, a stage from matched through
+ended — with free notes and a dates log, one line per date. Changing a
+person's stage, or adding a date, touches only that one line or appends one
+new one; nothing already written is rewritten.
+
 ## Sync
 
 The index — notes, tasks, links, tags — is rebuildable and never
