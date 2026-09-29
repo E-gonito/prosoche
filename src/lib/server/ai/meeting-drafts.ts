@@ -23,6 +23,7 @@ import { basename } from '../parse/note';
 import { findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type GlossaryEntry } from '../parse/glossary';
 import { TALKING_POINTS_HEADING, meetingPath, newMeetingNote } from '../parse/meeting';
 import { currentMeeting, isMeetingNote, loadMeetings, notebookPaths, openActions, type Meeting } from '../meetings';
+import { glossaryPath } from '../glossary';
 import { checkBudget, checkKillSwitch, validateModelOutput, wrapAsData, type Schema } from './guardrails';
 import { newId } from './proposal';
 import { loadSettings } from './settings';
@@ -121,12 +122,13 @@ export function primerProposal(
  */
 export async function draftPrimer(vault: Vault, workspace: Workspace, options: DraftOptions = {}): Promise<DraftResult> {
 	const paths = notebookPaths(workspace);
-	if (!paths) return nothing('This workspace has no folder to keep a primer in.');
+	if (!paths) return nothing('This workspace has no meeting notebook to keep a primer in.');
 	const destinations = [paths.primer];
 
 	const current = await vault.read(paths.primer);
 	const meetings = await loadMeetings(vault, paths);
-	const sources = await gather(vault, [workspace.path, paths.log, paths.glossary]);
+	const glossary = glossaryPath(workspace);
+	const sources = await gather(vault, [workspace.path, paths.log, ...(glossary ? [glossary] : [])]);
 	sources.push(...meetings.slice(0, 5).map(asSource));
 
 	const run = await runDraft<{ primer: string }>(vault, {
@@ -234,7 +236,7 @@ export async function draftPrep(
 	options: DraftOptions = {}
 ): Promise<DraftResult> {
 	const paths = notebookPaths(workspace);
-	if (!paths) return nothing('This workspace has no folder to keep meetings in.');
+	if (!paths) return nothing('This workspace has no meeting notebook.');
 
 	const meetings = await loadMeetings(vault, paths);
 	const current = currentMeeting(meetings, input.today);
@@ -363,9 +365,10 @@ export function lookupProposal(
 
 /**
  * Look up the named terms, or every entry still to look up when `terms` is
- * null, at most `LOOKUP_LIMIT` at a time. Context is the primer and the last
- * three meetings, so the relevance line is about this workspace. Never
- * writes a note.
+ * null, at most `LOOKUP_LIMIT` at a time. Works for any workspace with a
+ * folder, meetings or not. Context is the primer and the last three meetings
+ * when the workspace has a notebook, and its definition file when it does
+ * not, so the relevance line is about this workspace. Never writes a note.
  */
 export async function draftLookups(
 	vault: Vault,
@@ -373,31 +376,31 @@ export async function draftLookups(
 	terms: string[] | null,
 	options: DraftOptions = {}
 ): Promise<DraftResult> {
-	const paths = notebookPaths(workspace);
-	if (!paths) return nothing('This workspace has no folder to keep a glossary in.');
-	const destinations = [paths.glossary];
+	const path = glossaryPath(workspace);
+	if (!path) return nothing('This workspace has no folder to keep a glossary in.');
+	const destinations = [path];
 
-	const glossary = await vault.read(paths.glossary);
+	const glossary = await vault.read(path);
 	const wanted = terms ? new Set(terms.map(normaliseTerm)) : null;
 	const entries = parseGlossary(glossary.content)
 		.filter((e) => e.pending && (!wanted || wanted.has(normaliseTerm(e.term))))
 		.slice(0, LOOKUP_LIMIT);
 	if (entries.length === 0) return { ...nothing('Nothing is waiting to be looked up.'), destinations };
 
-	const meetings = await loadMeetings(vault, paths);
-	const sources = await gather(vault, [paths.primer]);
-	sources.push(...meetings.slice(0, 3).map(asSource));
+	const paths = notebookPaths(workspace);
+	const sources = await gather(vault, paths ? [paths.primer] : [workspace.path]);
+	if (paths) sources.push(...(await loadMeetings(vault, paths)).slice(0, 3).map(asSource));
 
 	const run = await runDraft<{ entries: Lookup[] }>(vault, {
 		feature: 'glossary-lookup',
 		prompt: lookupPrompt({ workspace: workspace.name, entries, sources }),
 		system: 'You define terms for one person\'s glossary. Answer only with JSON: {"entries":[{"term":"…","definition":"…","relevance":"…"}]}.',
 		schema: LOOKUP_SCHEMA,
-		paths: [paths.glossary],
+		paths: [path],
 		cli: options.cli
 	});
 	if (!run.ok) return { ...run.result, destinations };
-	const proposal = lookupProposal(paths.glossary, glossary, run.value.entries, run.stamp);
+	const proposal = lookupProposal(path, glossary, run.value.entries, run.stamp);
 	return { proposal, problem: proposal ? null : 'The answer matched none of the terms asked about.', refusals: [], destinations };
 }
 

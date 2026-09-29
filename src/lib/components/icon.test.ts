@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
 import Icon, { ICON_NAMES, type IconName } from './Icon.svelte';
-import { MODULES, SYSTEM, moduleFor } from '$lib/modules';
+import { MODULES, SYSTEM, moduleFor, subItemFor } from '$lib/modules';
 
 /**
  * The pairing this file exists to hold is nav item to icon.
@@ -61,5 +61,22 @@ describe('the navigation', () => {
 		expect(moduleFor('/')?.id).toBe('today');
 		expect(moduleFor('/w/eye2gene/log')?.id).toBe('w');
 		expect(moduleFor('/api/task')).toBeNull();
+		expect(moduleFor('/glossary/work')?.id).toBe('glossary');
+	});
+
+	it('puts Glossary between Meetings and Workspaces', () => {
+		expect(MODULES.map((m) => m.id).slice(1, 4)).toEqual(['meetings', 'glossary', 'w']);
+	});
+
+	it('knows which sub-item a path is on, and not one it merely starts like', () => {
+		const items = [
+			{ href: '/w/work', title: 'Work', color: '#000' },
+			{ href: '/w/work-two', title: 'Work two', color: '#000' }
+		];
+		expect(subItemFor(items, '/w/work')?.title).toBe('Work');
+		expect(subItemFor(items, '/w/work/log')?.title).toBe('Work');
+		expect(subItemFor(items, '/w/work-two')?.title).toBe('Work two');
+		expect(subItemFor(items, '/w')).toBeNull();
+		expect(subItemFor(items, '/w/new')).toBeNull();
 	});
 });

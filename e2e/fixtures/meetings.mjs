@@ -1,7 +1,8 @@
 /**
- * The Work notebook for the Meetings suite: a primer, a glossary with one
- * entry looked up and one waiting, and a past meeting with an open action
- * and a term the glossary does not have yet.
+ * The Work notebook for the Meetings and Glossary suites: a primer, a
+ * glossary with one entry looked up and one waiting, and a past meeting with
+ * an open action and a term the glossary does not have yet. Work opts in to
+ * meetings in its workspace file, in `make-vault.mjs`.
  */
 
 /** The day before `day`, as `YYYY-MM-DD`. Mirrored in `e2e/meetings.spec.ts`. */

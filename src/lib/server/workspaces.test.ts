@@ -89,6 +89,17 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded.name).toBe('Pipeline');
 		expect(loaded).not.toHaveProperty('stages');
 	});
+
+	it.each([
+		['meetings: true', true],
+		['meetings: false', false],
+		['meetings: "true"', false],
+		['meetings: yes', false],
+		['name: Quiet', false]
+	])('reads %j as meetings %s', async (line, expected) => {
+		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
+		expect((await loadWorkspaces(vault))[0].meetings).toBe(expected);
+	});
 });
 
 describe('workspaceFor', () => {

@@ -4,10 +4,22 @@ test.describe('the shell', () => {
 	test('the rail lists every module and the workspaces under Workspaces', async ({ page }) => {
 		await page.goto('/notes');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
-		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Meetings', 'Workspaces', 'Study', 'Date', 'Notes']);
+		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Meetings', 'Glossary', 'Workspaces', 'Study', 'Date', 'Notes']);
 		// The fixture has a workspace called Study too; it sits under Workspaces.
-		await expect(rail.locator('.spaces a')).toHaveText(['Study', 'Work']);
+		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Study', 'Work']);
+		// Only Work has a Glossary.md, so only Work sits under Glossary.
+		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Work']);
 		await expect(rail.locator('.modules > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
+	});
+
+	test('a sub-item, not its module, is current on its own pages', async ({ page }) => {
+		await page.goto('/glossary/work');
+		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
+		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).toHaveAttribute('aria-current', 'page');
+		await expect(rail.locator('.modules > a', { hasText: 'Glossary' })).not.toHaveAttribute('aria-current', 'page');
+		await page.goto('/w/work/log');
+		await expect(rail.getByTestId('sub-w').getByRole('link', { name: 'Work' })).toHaveAttribute('aria-current', 'page');
+		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).not.toHaveAttribute('aria-current', 'page');
 	});
 
 	test('a phone gets a bottom bar of four modules and a More sheet', async ({ page }) => {

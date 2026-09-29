@@ -3,16 +3,17 @@
 	 * The shell: a rail of modules and the page.
 	 *
 	 * One list, `MODULES`, drawn twice. On a desktop it is a rail down the
-	 * left with the workspaces nested under Workspaces. On a phone it is a
-	 * bottom bar with the four modules marked `tab` and More, which opens a
-	 * sheet with everything else, workspaces included.
+	 * left, with each module's sub-items from the loader nested under it: the
+	 * workspaces under Workspaces, their glossaries under Glossary. On a phone
+	 * it is a bottom bar with the four modules marked `tab` and More, which
+	 * opens a sheet with everything else, workspaces included.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
 	import SyncBadge from '$lib/components/SyncBadge.svelte';
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { MODULES, SYSTEM, moduleFor } from '$lib/modules';
+	import { MODULES, SYSTEM, moduleFor, subItemFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
 
@@ -33,7 +34,6 @@
 	});
 
 	const current = $derived(moduleFor(page.url.pathname));
-	const workspace = $derived(page.url.pathname.match(/^\/w\/([^/]+)/)?.[1] ?? null);
 	const tabs = MODULES.filter((m) => m.tab);
 </script>
 
@@ -49,14 +49,17 @@
 
 		<div class="modules">
 			{#each MODULES as m (m.id)}
-				<a href={m.href} aria-current={current?.id === m.id && !(m.id === 'w' && workspace) ? 'page' : undefined}>
+				{@const subs = data.sub[m.id] ?? []}
+				{@const on = subItemFor(subs, page.url.pathname)}
+				<!-- A module is the current page only when none of its sub-items is. -->
+				<a href={m.href} aria-current={current?.id === m.id && !on ? 'page' : undefined}>
 					<Icon name={m.icon} /><span>{m.title}</span>
 				</a>
-				{#if m.id === 'w'}
-					<div class="spaces">
-						{#each data.workspaces as w (w.slug)}
-							<a href="/w/{w.slug}" aria-current={workspace === w.slug ? 'page' : undefined}>
-								<i style="--dot: {w.color}"></i><span>{w.name}</span>
+				{#if subs.length}
+					<div class="subs" data-testid="sub-{m.id}">
+						{#each subs as item (item.href)}
+							<a href={item.href} aria-current={on === item ? 'page' : undefined}>
+								<i style="--dot: {item.color}"></i><span>{item.title}</span>
 							</a>
 						{/each}
 					</div>
@@ -101,11 +104,11 @@
 					<a href={m.href}><Icon name={m.icon} size={20} /><span>{m.title}</span></a>
 				{/each}
 			</div>
-			{#if data.workspaces.length}
+			{#if data.sub.w?.length}
 				<p class="label">Workspaces</p>
 				<div class="list">
-					{#each data.workspaces as w (w.slug)}
-						<a href="/w/{w.slug}"><i style="--dot: {w.color}"></i>{w.name}</a>
+					{#each data.sub.w as item (item.href)}
+						<a href={item.href}><i style="--dot: {item.color}"></i>{item.title}</a>
 					{/each}
 				</div>
 			{/if}
@@ -176,9 +179,9 @@
 	.rail a[aria-current='page'] :global(svg) { color: var(--accent); }
 
 	.modules { display: flex; flex-direction: column; gap: 2px; }
-	.spaces { display: flex; flex-direction: column; gap: 1px; margin: 0 0 var(--s1) 18px; padding-left: var(--s2); border-left: 1px solid var(--line); }
-	.spaces a { font-size: var(--t13); padding: 5px 10px; }
-	.spaces span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.subs { display: flex; flex-direction: column; gap: 1px; margin: 0 0 var(--s1) 18px; padding-left: var(--s2); border-left: 1px solid var(--line); }
+	.subs a { font-size: var(--t13); padding: 5px 10px; }
+	.subs span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
 
 	.foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s3); border-top: 1px solid var(--line); }

@@ -66,6 +66,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		inboxPreview,
 		latestLog,
 		notes,
-		meetingsHref: `/meetings/${workspace.slug}`
+		// Only a workspace with meetings has a notebook to link to.
+		meetingsHref: workspace.meetings ? `/meetings/${workspace.slug}` : null
 	};
 };

@@ -9,7 +9,9 @@ import type { PageServerLoad } from './$types';
 const DAYS_AHEAD = 7;
 
 /**
- * The week's calendar events with their workspaces, and every notebook.
+ * The week's calendar events with their workspaces, and every notebook. Only
+ * workspaces with `meetings: true` have one, and only they are offered when
+ * an event is given a workspace.
  *
  * A calendar that is not configured or not reachable is a status to show,
  * not an error: the notebooks below work without one.
@@ -44,7 +46,7 @@ export const load: PageServerLoad = async () => {
 		today: day,
 		calendar: calendar.ok ? { ok: true as const } : { ok: false as const, reason: calendar.reason, message: calendar.message },
 		days,
-		workspaces: all.map((w) => ({ slug: w.slug, name: w.name, color: w.color })),
+		workspaces: all.filter((w) => w.meetings).map((w) => ({ slug: w.slug, name: w.name, color: w.color })),
 		notebooks
 	};
 };

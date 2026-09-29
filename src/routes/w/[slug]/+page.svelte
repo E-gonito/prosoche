@@ -86,10 +86,12 @@
 	</div>
 </section>
 
-<section>
-	<p class="label">Meetings</p>
-	<p><a href={data.meetingsHref}>Open {slug}'s meeting notebook</a></p>
-</section>
+{#if data.meetingsHref}
+	<section>
+		<p class="label">Meetings</p>
+		<p><a href={data.meetingsHref}>Open {slug}'s meeting notebook</a></p>
+	</section>
+{/if}
 
 {#if opened}
 	<CardDrawer task={opened} onclose={() => (opened = null)} onchange={(t) => (patched = { ...patched, [`${t.path}:${t.line}`]: t })} />

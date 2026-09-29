@@ -1,7 +1,8 @@
 <script lang="ts">
 	/**
-	 * A workspace's meeting notebook: the card, the notes, the glossary, and
-	 * one tab per custom page, as in the primer artifact it grew from.
+	 * A workspace's meeting notebook: the card, the notes, and one tab per
+	 * custom page, as in the primer artifact it grew from. The glossary it
+	 * once had a tab for is its own module now, at `/glossary/<slug>`.
 	 */
 	import { page } from '$app/state';
 
@@ -10,8 +11,7 @@
 	const base = $derived(`/meetings/${data.workspace.slug}`);
 	const tabs = $derived([
 		{ href: base, label: 'Meeting card' },
-		{ href: `${base}/notes`, label: 'Notes' },
-		{ href: `${base}/glossary`, label: 'Glossary' }
+		{ href: `${base}/notes`, label: 'Notes' }
 	]);
 </script>
 
@@ -35,8 +35,8 @@
 		{@render children()}
 	{:else}
 		<p class="callout">
-			<b>No folder.</b> This workspace has no folder, so there is nowhere to keep a primer, meeting notes or a
-			glossary. Add one to <code>folders</code> in its workspace file.
+			<b>No folder.</b> This workspace has no folder, so there is nowhere to keep a primer or meeting notes. Add
+			one to <code>folders</code> in its workspace file.
 		</p>
 	{/if}
 </div>
