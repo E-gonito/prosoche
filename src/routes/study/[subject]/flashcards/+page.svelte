@@ -34,6 +34,7 @@
 	<div class="review-row">
 		<p><b class="num" data-testid="cards-due">{data.due}</b> <span class="muted">due now, of {data.total} {data.total === 1 ? 'card' : 'cards'}</span></p>
 		{#if data.due > 0}<a class="btn primary" href="{base}/review" data-testid="review-all">Review all</a>{/if}
+		<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}

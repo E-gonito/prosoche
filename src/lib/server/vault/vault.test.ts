@@ -196,12 +196,32 @@ describe('files', () => {
 		expect(await vault.files('Nowhere/Pages', 'html')).toEqual([]);
 	});
 
-	it('never recurses into subfolders', async () => {
+	it('never recurses into subfolders unless asked', async () => {
 		await mkdir(join(root, 'Work/Pages/Sub'), { recursive: true });
 		await writeFile(join(root, 'Work/Pages/Sub/deep.html'), '<p>deep</p>');
 		await writeFile(join(root, 'Work/Pages/top.html'), '<p>top</p>');
 
 		expect(await vault.files('Work/Pages', 'html')).toEqual(['top.html']);
+	});
+
+	it('goes deep when asked, naming each file by its path below the folder', async () => {
+		await mkdir(join(root, 'Flashcards/CS/Networking'), { recursive: true });
+		await mkdir(join(root, 'Flashcards/.git'), { recursive: true });
+		await writeFile(join(root, 'Flashcards/Wisdom.txt'), 'w');
+		await writeFile(join(root, 'Flashcards/CS/Networking/HTTP.txt'), 'h');
+		await writeFile(join(root, 'Flashcards/CS/notes.md'), '# not a deck');
+		await writeFile(join(root, 'Flashcards/.git/HEAD.txt'), 'ignored');
+
+		const found = await vault.files('Flashcards', 'txt', { deep: true });
+		expect(found).toEqual(['CS/Networking/HTTP.txt', 'Wisdom.txt']);
+		expect((await vault.read(`Flashcards/${found[0]}`)).content).toBe('h');
+	});
+
+	it('never goes deep into the private folder from the vault root', async () => {
+		await mkdir(join(root, 'Private'), { recursive: true });
+		await writeFile(join(root, 'Private/secret.txt'), 's');
+		await writeFile(join(root, 'open.txt'), 'o');
+		expect(await vault.files('', 'txt', { deep: true })).toEqual(['open.txt']);
 	});
 
 	it('is public scope only: nothing from the private folder', async () => {

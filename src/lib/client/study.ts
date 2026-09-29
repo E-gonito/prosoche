@@ -14,6 +14,7 @@
 import type { Result, Task } from './api';
 import type { Card, CardShift, Graded, ReadingList, ReadingOp, StudyScope } from '$lib/shared/study';
 import type { Grade } from '$lib/shared/sm2';
+import type { DeckImport } from '$lib/shared/anki-import';
 
 export * from '$lib/shared/study';
 export type { Result, Task };
@@ -125,6 +126,15 @@ export function ankiDeckUrl(scope: StudyScope, deck: string): string {
 	for (const folder of scope.folders ?? []) params.append('folder', folder);
 	for (const tag of scope.tags ?? []) params.append('tag', tag);
 	return `/api/study/card?${params}`;
+}
+
+/**
+ * Import the Anki decks under `Flashcards/`, writing a card file for each deck
+ * that has none yet. Returns every deck with what happened to it; a file that
+ * already existed is reported as `exists` and left exactly as it was.
+ */
+export async function importAnkiDecks(subject: string): Promise<Result<DeckImport[]>> {
+	return post('/api/study/import', { subject }, (body) => body.decks as DeckImport[]);
 }
 
 /**

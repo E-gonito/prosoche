@@ -251,6 +251,34 @@ those; then whatever points at no goal. Above them are the cards due in all,
 this week's time against a `weekly_hours:` target from `Goals.md`'s
 frontmatter, and the streak of consecutive days with a session logged.
 
+A card can hold a fenced code block, blank lines and all, as it can in the
+plugin.
+
+**Import Anki decks**, linked from a subject's Flashcards tab
+(`/study/<subject>/import`), turns the Anki exports under `Flashcards/` into
+card files for that subject. Each `.txt` deck becomes one note at the same
+path under the subject's own `Flashcards/` folder, so
+`Flashcards/CS/Networking/HTTP.txt` becomes
+`Study/Computer Science/Flashcards/CS/Networking/HTTP.md`. The note has `goal:` left empty for
+you to set, `source:` naming the `.txt`, and a `#flashcards/<deck>` tag from
+the Anki deck name (`CS::Networking` is `#flashcards/cs/networking`). Each
+card is written `Q::A` when both sides are one line and a `::` would not be
+ambiguous, and as the multiline `?` form otherwise. HTML becomes markdown:
+line breaks (including the escaped `&lt;br&gt;` these exports use), bold,
+italic, lists, links, images as image links, entities, and `<pre>` as a
+fenced block. Two things the plugin's syntax cannot hold are changed: a blank
+line outside code would end the card, so it is dropped, and a heading would
+too, so it becomes a bold line. A lone `?` line and a `#word` that would
+become a vault tag are escaped. Every card is read back through the same card
+finder review uses before it is written; one that would not read back as the
+same card is left out and listed as a problem. Review history starts fresh.
+
+The page shows every deck first — its target, card count, a sample card and
+any problems — and writes only when you press **Import**, then says what it
+created and what it skipped. It never overwrites a file: a deck whose card
+file is already there is skipped and says so, so running it again only fills
+in what is missing. The `.txt` decks are never modified.
+
 **Reading list** is `Reading List.md`, which prosoche owns as it owns a
 workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's
 format, with columns To read, Reading, Paused and Done, so it opens as a

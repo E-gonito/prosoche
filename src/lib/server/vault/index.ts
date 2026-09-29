@@ -190,21 +190,34 @@ export class Vault {
 	 * embedded read-only, which is a public feature, so there is no reason yet
 	 * to let a private folder's non-markdown files through this door.
 	 *
-	 * Unlike `list`, this never recurses and never returns a markdown file —
-	 * it exists for the handful of formats the vault holds beside markdown,
-	 * such as a workspace's custom HTML pages, named by the caller rather than
-	 * assumed. A folder that does not exist reads as empty, the same as an
-	 * empty one, because "no pages yet" is not an error.
+	 * Unlike `list`, this exists for the handful of formats the vault holds
+	 * beside markdown, such as a workspace's custom HTML pages or the Anki
+	 * decks under `Flashcards/`, named by the caller rather than assumed. A
+	 * folder that does not exist reads as empty, the same as an empty one,
+	 * because "no pages yet" is not an error.
+	 *
+	 * Only the folder itself by default. With `deep`, its subfolders too, each
+	 * file named by its path below `folder` (`Networking/HTTP.txt`), skipping
+	 * ignored and private folders as `list` does. Read one back with `read`,
+	 * which takes any vault-relative path.
 	 */
-	async files(folder: string, ext: string): Promise<string[]> {
+	async files(folder: string, ext: string, opts: { deep?: boolean } = {}): Promise<string[]> {
 		if (isPrivate(folder)) return [];
 		const suffix = `.${ext.replace(/^\.+/, '')}`;
-		const absolute = toAbsolute(folder, this.root);
-		const entries = await readdir(absolute, { withFileTypes: true }).catch(() => []);
-		return entries
-			.filter((entry) => entry.isFile() && entry.name.endsWith(suffix) && !isIgnored(`${folder}/${entry.name}`))
-			.map((entry) => entry.name)
-			.sort();
+		const inVault = (below: string) => (folder && below ? `${folder}/${below}` : folder || below);
+		const out: string[] = [];
+		const walk = async (below: string): Promise<void> => {
+			const entries = await readdir(toAbsolute(inVault(below), this.root), { withFileTypes: true }).catch(() => []);
+			for (const entry of entries) {
+				const name = below ? `${below}/${entry.name}` : entry.name;
+				if (isIgnored(inVault(name)) || isPrivate(inVault(name))) continue;
+				if (entry.isDirectory()) {
+					if (opts.deep) await walk(name);
+				} else if (entry.isFile() && entry.name.endsWith(suffix)) out.push(name);
+			}
+		};
+		await walk('');
+		return out.sort();
 	}
 
 	/** The public file tree the notes viewer renders. Folders with no notes are omitted. */

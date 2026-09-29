@@ -47,6 +47,27 @@ describe('scanCards', () => {
 		expect(card.answer).toBe('`Begin with...`\nOpens the section');
 	});
 
+	it('keeps a fenced block inside a multiline card, blank lines and all', () => {
+		// As the plugin does: a fence belongs to the paragraph it sits in.
+		const note = ['#flashcards', '', 'Print a path', '?', '```rust', 'use std::io;', '', '?', '```', 'Then run it.', ''].join('\n');
+		const [card, ...rest] = scanCards(note, 'CS/x.md');
+		expect(rest).toEqual([]);
+		expect(card).toMatchObject({ kind: 'multiline', question: 'Print a path', line: 2, endLine: 9 });
+		expect(card.answer).toBe('```rust\nuse std::io;\n\n?\n```\nThen run it.');
+	});
+
+	it('never takes a separator from inside a fence', () => {
+		const note = ['#flashcards', '', 'Prose', '```', 'a::b', '?', '==x==', '```', ''].join('\n');
+		expect(scanCards(note, 'CS/x.md')).toEqual([]);
+	});
+
+	it('finds a cloze beside a fence but never inside it', () => {
+		const note = ['#flashcards', '', 'The ==stack== grows down', '```', 'if (a ==b==c) {}', '```', ''].join('\n');
+		const cards = scanCards(note, 'CS/x.md');
+		expect(cards.map((c) => c.answer)).toEqual(['stack']);
+		expect(cards[0].question).toBe('The […] grows down\n```\nif (a ==b==c) {}\n```');
+	});
+
 	it('finds each card in a run of them', () => {
 		const note = ['#flashcards', '', 'A::1', '<!--SR:!2026-01-01,3,250-->', 'B::2', 'C::3', ''].join('\n');
 		const cards = scanCards(note, 'CS/x.md');
