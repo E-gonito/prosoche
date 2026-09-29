@@ -27,6 +27,7 @@ const CS: Subject = {
 	color: '#000',
 	home: 'Study/CS',
 	scope: { folders: ['Study/CS', 'CS'], tags: [] },
+	newPerDay: 20,
 	files: {
 		goals: 'Study/CS/Goals.md',
 		reading: 'Study/CS/Reading List.md',

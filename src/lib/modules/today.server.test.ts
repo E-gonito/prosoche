@@ -118,6 +118,17 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		expect(cards[0].items[0].text).toContain('2 cards');
 	});
 
+	it('counts only each subject’s new cards for today, as Study does', async () => {
+		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n\nWhat is Big Theta::A tight bound\n');
+		await vault.write('_hub/workspaces/cs.md', '---\nname: CS\ntemplate: study\nnew_per_day: 1\nfolders:\n  - "Study"\n---\n');
+		for (const path of await vault.list()) {
+			const note = await vault.read(path);
+			index.put(path, note.content, note.mtimeMs, note.hash);
+		}
+		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
+		expect(cards[0].items[0]).toMatchObject({ text: '1 card ready to review', meta: '1 new today' });
+	});
+
 	it('counts nothing when there is no subject, rather than the whole vault', async () => {
 		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		expect(await todayCards({ day: '2026-09-29', hub: fakeHub() })).toEqual([]);

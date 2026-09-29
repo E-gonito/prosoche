@@ -27,7 +27,7 @@
 			<p class="label">Flashcards</p>
 			<div class="due-row">
 				<span class="count" data-testid="due-count">{data.due}</span>
-				<span class="muted">due now{data.fresh > 0 ? `, ${data.fresh} new` : ''}</span>
+				<span class="muted">due now{data.fresh || data.waiting ? ` · ${data.fresh} new today · ${data.waiting} waiting` : ''}</span>
 				<span class="buttons">
 					{#if data.due > 0}
 						<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>

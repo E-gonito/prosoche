@@ -264,6 +264,18 @@ describe('cardBlock', () => {
 	});
 
 	it.each([
+		{ what: 'a one-line card', front: 'VPC', back: 'A virtual network', markdown: 'VPC\n??\nA virtual network' },
+		{ what: 'a Rust path', front: 'std::io', back: 'Rust’s I/O module', markdown: 'std::io\n??\nRust’s I/O module' },
+		{ what: 'a definition and its relevance line', front: 'CDK', back: 'Infra as code.\n\n→ How eye2gene deploys.', markdown: 'CDK\n??\nInfra as code.\n→ How eye2gene deploys.' },
+		{ what: 'a term that is only ??', front: '??', back: 'Nullish coalescing', markdown: '\\?\\?\n??\nNullish coalescing' }
+	])('writes $what in the reversed form when asked', ({ front, back, markdown }) => {
+		const block = cardBlock(front, back, 'reversed');
+		expect(block?.markdown).toBe(markdown);
+		const found = scanCards(`#flashcards\n\n${block!.markdown}\n`, 'x.md');
+		expect(found.map((c) => [c.kind, c.question, c.answer])).toEqual([['multiline-reversed', block!.card.front, block!.card.back]]);
+	});
+
+	it.each([
 		['an empty question', '  ', 'A'],
 		['an answer that is only blank lines', 'Q', '\n\n'],
 		['an answer that is only a review comment', 'Q', '<!--SR:!2026-01-01,1,250-->']

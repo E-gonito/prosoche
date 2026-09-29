@@ -5,6 +5,8 @@ import { findGlossary, loadGlossary, noteFolders } from '$server/glossary';
 import { capturedTerms } from '$server/meetings';
 import { scanPlan } from '$server/ai/glossary-drafts';
 import { loadSettings } from '$server/ai/settings';
+import { glossaryCardsState } from '$server/study/glossary-cards';
+import { subjectsOf } from '$server/study/subjects';
 import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
@@ -12,14 +14,17 @@ import type { PageServerLoad } from './$types';
  * One glossary: every entry of its file ready to draw, the terms captured in
  * the meetings of every workspace pointing at it that it does not have yet,
  * those workspaces (their notebooks are linked), what a scan for new terms
- * would read now, the vault's folders it may be scanned from, and whether AI
- * is on. Reads every note under the glossary's sources to count them. Only
- * an unknown slug is a 404. Writes nothing.
+ * would read now, the vault's folders it may be scanned from, whether AI
+ * is on, and the study subject its cards go to with how they stand, and the
+ * subjects it could go to. Reads every note under the glossary's sources to
+ * count them, and its card folder. Only an unknown slug is a 404. Writes
+ * nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
 	const { vault, index, ready, workspaces } = hub();
 	await ready;
-	const ref = await findGlossary(vault, await workspaces(), params.slug);
+	const all = await workspaces();
+	const ref = await findGlossary(vault, all, params.slug);
 	if (!ref) error(404, 'No such glossary');
 	const withMeetings = ref.linked.filter((w) => w.meetings);
 
@@ -54,6 +59,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))],
 		folders: await noteFolders(vault),
 		scan: await scanPlan(vault, ref),
-		aiEnabled: (await loadSettings(vault)).enabled
+		aiEnabled: (await loadSettings(vault)).enabled,
+		cards: await glossaryCardsState(vault, all, ref.path),
+		subjects: subjectsOf(all).map((s) => ({ slug: s.slug, name: s.name }))
 	};
 };

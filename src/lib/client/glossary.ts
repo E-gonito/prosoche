@@ -22,7 +22,9 @@ export type GlossaryAction =
 	| { action: 'delete'; glossary: string; term: string }
 	| { action: 'set-sources'; glossary: string; sources: string[] }
 	/** `complete`: the scan read every note it meant to, so the glossary is marked scanned today. */
-	| { action: 'add-scanned'; glossary: string; entries: ScannedEntry[]; complete: boolean };
+	| { action: 'add-scanned'; glossary: string; entries: ScannedEntry[]; complete: boolean }
+	/** `study`: a study subject's slug, or '' to stop keeping cards. */
+	| { action: 'set-study'; glossary: string; study: string };
 
 /** Send one glossary write. */
 export async function glossaryAction(body: GlossaryAction): Promise<GlossaryResult> {

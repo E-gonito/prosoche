@@ -10,6 +10,10 @@
 	 * notes for new terms are Claude's: a look-up arrives as a proposal, a
 	 * scan as a list to tick and edit (`GlossaryScan`), and neither changes
 	 * anything until the user accepts or adds.
+	 *
+	 * The Flashcards line links the glossary to a study subject, whose cards
+	 * the server then keeps in step with every term, and says how they
+	 * stand.
 	 */
 	import { goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
@@ -127,6 +131,19 @@
 		}
 	}
 
+	/** The subject the picker shows: the linked one, the unknown slug, or none. */
+	const study = $derived(data.cards.state === 'linked' ? data.cards.subject.slug : data.cards.state === 'unknown' ? data.cards.study : '');
+	let linking = $state(false);
+
+	async function link(slug: string) {
+		linking = true;
+		problem = '';
+		const result = await glossaryAction({ action: 'set-study', glossary: data.glossary.slug, study: slug });
+		linking = false;
+		if (!result.ok) problem = result.message;
+		await invalidateAll();
+	}
+
 	async function addFresh(event: SubmitEvent) {
 		event.preventDefault();
 		if (!fresh.term.trim()) return;
@@ -175,6 +192,30 @@
 			</p>
 		{/if}
 	</div>
+
+	<div class="cards" data-testid="glossary-cards">
+		<label for="glossary-study">Flashcards</label>
+		<select id="glossary-study" class="field" value={study} disabled={linking} onchange={(e) => link(e.currentTarget.value)} data-testid="glossary-study">
+			<option value="">Not linked</option>
+			{#each data.subjects as subject (subject.slug)}<option value={subject.slug}>{subject.name}</option>{/each}
+			{#if data.cards.state === 'unknown'}<option value={data.cards.study}>{data.cards.study} (not a study subject)</option>{/if}
+		</select>
+		<span class="small" data-testid="glossary-cards-state">
+			{#if data.cards.state === 'linked'}
+				<a href="/study/{data.cards.subject.slug}/flashcards">{data.cards.cards} {data.cards.cards === 1 ? 'card' : 'cards'} in {data.cards.subject.name}</a>
+				<span class="muted">· {data.cards.pending ? `${data.cards.pending} ${data.cards.pending === 1 ? 'file' : 'files'} to update` : 'up to date'}</span>
+			{:else if data.cards.state === 'unknown'}
+				<span class="muted">Not linked: “{data.cards.study}” is not a study subject, so no cards are kept.</span>
+			{:else}
+				<span class="muted">Not linked. Pick a study subject to make every term a card there.</span>
+			{/if}
+		</span>
+	</div>
+	{#if data.cards.state === 'linked' && data.cards.problems.length}
+		<ul class="hint card-problems" data-testid="glossary-cards-problems">
+			{#each data.cards.problems as p (p)}<li>{p}</li>{/each}
+		</ul>
+	{/if}
 
 	<form class="add" onsubmit={addFresh} data-testid="add-term-form">
 		<input class="field" bind:value={fresh.term} placeholder="New term" aria-label="Term" data-testid="new-term" />
@@ -305,6 +346,10 @@
 	h1 { display: flex; align-items: center; gap: 10px; }
 	h1 i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
 	code { font: var(--t13) var(--mono); }
+	.cards { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
+	.cards label { font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+	.cards .field { width: auto; flex: 0 1 220px; font-size: var(--t13); }
+	.card-problems { margin: 0 0 var(--s3); padding-left: var(--s4); }
 	.add { display: flex; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s4); }
 	.add .field { flex: 1 1 140px; width: auto; }
 	.add .field:first-child { flex-basis: 180px; }

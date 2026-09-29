@@ -21,12 +21,20 @@ import type { Vault } from '../vault/index';
 /** The `template:` value that makes a workspace a subject. */
 export const STUDY_TEMPLATE = 'study';
 
+/**
+ * How many never-reviewed cards join a subject's reviews each day when its
+ * workspace file does not say, with `new_per_day:`.
+ */
+export const NEW_PER_DAY = 20;
+
 /** The folder new subjects are homed under: `Study/<Name>`. */
 const STUDY_ROOT = 'Study';
 
 /** A subject, with where its files are and which notes it covers. */
 export interface Subject extends SubjectRef {
 	scope: StudyScope;
+	/** Cards never reviewed that may join its reviews each day; 0 for none. */
+	newPerDay: number;
 	files: {
 		goals: string;
 		reading: string;
@@ -116,6 +124,7 @@ function toSubject(workspace: Workspace): Subject {
 		color: workspace.color,
 		home,
 		scope: scopeOf(workspace),
+		newPerDay: workspace.newPerDay ?? NEW_PER_DAY,
 		files: {
 			goals: `${home}/Goals.md`,
 			reading: `${home}/Reading List.md`,

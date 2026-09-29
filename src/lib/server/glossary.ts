@@ -31,6 +31,11 @@
  *     scanned: "2026-09-29"
  *     ---
  *
+ * A glossary may also name the study subject its terms become flashcards in,
+ * `study: <subject slug>`, set here by `setGlossaryStudy` the same way. The
+ * cards themselves are `study/glossary-cards.ts`'s business; this module
+ * only reads and writes the link.
+ *
  * Nothing here writes on a model's behalf. Look-ups are proposals and a scan
  * is a list of candidates, both drafted in `ai/glossary-drafts.ts`; the
  * candidates a person keeps come back through `addScannedTerms`, which is
@@ -46,6 +51,7 @@ import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { slugify } from '$lib/shared/slug';
+import { subjectsOf } from './study/subjects';
 import type { Workspace } from './workspaces';
 import { hashContent, type Vault } from './vault/index';
 
@@ -236,6 +242,34 @@ export function scanSettings(content: string): { sources: string[]; scanned: str
 	const s = fm.scanned;
 	const day = s instanceof Date && !Number.isNaN(s.getTime()) ? s.toISOString().slice(0, 10) : typeof s === 'string' ? s.trim() : '';
 	return { sources, scanned: isDayKey(day) ? day : null };
+}
+
+/**
+ * The study subject a glossary's terms become cards in: its frontmatter's
+ * `study:`, trimmed, or null when there is none or it is not a string. It is
+ * a subject's slug, but this does not check that the subject exists. Pure.
+ */
+export function studyLink(content: string): string | null {
+	const study = parseNote(content).frontmatter.study;
+	return typeof study === 'string' && study.trim() ? study.trim() : null;
+}
+
+/**
+ * Link a glossary to the study subject `slug`, or unlink it with `''`, by
+ * setting its frontmatter's `study:` through `setFrontmatterField`: only that
+ * key's line changes, and a glossary without frontmatter gains a minimal
+ * block. Unlinking leaves an empty `study:` in place and the cards where
+ * they are.
+ *
+ * Refuses anything but a string, and a slug that is not a study subject's
+ * among `workspaces`. A clash with an edit made a moment earlier is retried
+ * once. Never touches the glossary's body or its cards.
+ */
+export async function setGlossaryStudy(vault: Vault, glossary: GlossaryRef, workspaces: Workspace[], slug: unknown): Promise<Written> {
+	if (typeof slug !== 'string') return invalid('Send the study subject as its slug.');
+	const wanted = slug.trim();
+	if (wanted && !subjectsOf(workspaces).some((s) => s.slug === wanted)) return invalid(`There is no study subject “${wanted}”.`);
+	return rewrite(vault, glossary.path, (content) => setFrontmatterField(content, 'study', wanted), 2);
 }
 
 /**

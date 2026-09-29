@@ -276,6 +276,70 @@ that found nothing offers **Mark these notes scanned**, which sets only
 
 Look-ups and scans use the Glossary look-up's model settings.
 
+**Flashcards.** A glossary can be linked to a study subject, and then every
+term with a definition is a flashcard there, kept in step with the
+glossary; no model is involved. The **Flashcards** line under the title has
+a picker of the study subjects and Not linked, and says how the cards
+stand: "226 cards in CS study · up to date", linking to that subject's
+Flashcards tab, or how many card files are still to update. Picking a
+subject writes `study: <subject slug>` into the glossary's frontmatter, as a
+span edit of that one line; Not linked empties it, which stops the syncing
+and leaves the cards where they are. A `study:` naming no study subject
+reads as unlinked, and the page says so.
+
+Each term is one card, reviewed both ways: the term, a `??` line, then the
+definition and the `→` line (the definition alone when there is none). A
+term still to look up has no card until it has a definition. The cards go
+in one file per category,
+`<subject home>/Flashcards/Glossary/<Glossary name>/<Category>.md`, and a
+term with no category in `Uncategorised.md`; the glossary's name is in the
+path, so two glossaries linked to one subject never share a file. A new file
+starts
+
+    ---
+    goal:
+    glossary: Computer Science
+    category: Cloud
+    ---
+
+    #flashcards
+
+    Made from [[Computer Science]] (Cloud). Edit the terms there; this file is
+    kept in step with the glossary.
+
+    VPC
+    ??
+    An isolated virtual network within a cloud provider…
+    → Where eye2gene's endpoints live.
+    <!--SR:!2026-10-02,3,250!2026-10-01,1,230-->
+
+These files are prosoche's, as a workspace's `Board.md` is: their cards
+follow the glossary. A card is matched to its term by its front, ignoring
+case and spacing. An edited definition or `→` line rewrites that card's
+lines in place and keeps the review comment under them; a term moved to
+another category moves its card, comment and all, to the end of that
+category's file; a new term's card goes at the end of its file, which is
+made when it is not there. Deleting a term leaves its card, for you to
+delete; renaming one makes a new card and leaves the old. `goal:`, which the
+Flashcards tab sets, any other frontmatter, every review comment and any
+card you add by hand are always kept. Each card gets the Anki import's
+escaping, and each file must read back through the card finder as exactly
+the cards it should hold, or it is left as it is and the glossary page and
+the server log say why. Nothing outside the glossary's own folder of cards is touched.
+
+The cards are brought in step after every write the app makes to a linked
+glossary (adding, editing or deleting a term, Add N terms after a scan,
+linking it), before the page reloads; on any change to a linked glossary
+from outside, such as an edit in Obsidian or a git pull, a second after the
+last change; and for every linked glossary when the hub starts. One
+glossary is synced at a time, a file is written only when it differs, and
+each write is pinned to the file as it was read, so a card file edited
+meanwhile is left alone until the next change. A card moving between two
+files is written into its new file before it is cut from the old one.
+Renaming a glossary here moves its folder of cards to the new name, review
+history and all; a rename made in Obsidian starts a new folder and leaves
+the old one.
+
 Glossaries used to be `Glossary.md` in a workspace's folder. At start the
 hub moves any such file it finds, once: for each folder of each workspace, a
 `Glossary.md` in it moves to `Glossaries/<folder's name>.md`, the name being
@@ -428,7 +492,25 @@ goal. Cards are graded with the keyboard or a tap, and the schedule is
 written back in the plugin's own comment, so a card reviewed here is due
 correctly in Obsidian too. Notes holding cards but no tag are listed
 separately, since neither Obsidian nor Study reviews them until the tag is
-added.
+added. A glossary linked to the subject keeps its cards under
+`Flashcards/Glossary/<Glossary name>/`, one file per category, and they
+show here like any card file, grouped by goal with the same picker (see
+Glossary).
+
+**New cards a day.** Cards never reviewed join a subject's reviews twenty a
+day; the rest wait. A subject's workspace file can set another number with
+`new_per_day:`, and 0 lets none in. Today's new cards are the first ones
+never reviewed in the subject's folders, by file path and then position in
+the file, less those already reviewed for the first time today, so the
+choice is stable through the day and the next ones follow tomorrow. The
+subject's review, a goal's review, each file's count, Review everything and
+Today's flashcards card all use this rule, so they offer the same cards;
+Review everything lets in each subject's own new cards. The Flashcards tab
+and the subject's page say "20 new today · 206 waiting". A card's first
+review is counted per subject and day in `_hub/.state/new-cards.json`,
+which is never committed and holds only today; the review comments cannot
+tell a first review from a later one, so the count is kept rather than
+worked out. A card first reviewed in Obsidian is not counted here.
 
 **Make cards** (`/study/<subject>/make`) drafts flashcards from your notes
 with Claude, and you choose which to keep. It is the primary button on the
@@ -490,8 +572,9 @@ With AI off, the page says so and links to Settings.
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders, whether it has meetings and
-which glossary they feed — so
+definition — its name, colour, tag, folders, whether it has meetings,
+which glossary they feed, and for a study subject how many new cards a day
+join its reviews — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back.
@@ -530,6 +613,11 @@ ignoring case; the first captured term creates it if it is not there. It
 is optional: without it a captured term stays in the meeting note alone.
 Several workspaces may name the same glossary, and renaming a glossary
 rewrites this line in each of them.
+
+A study subject (`template: study`) may say `new_per_day: <number>`: how
+many cards never reviewed join its reviews each day. It is 20 without the
+line, and 0 lets none in; anything but a whole number reads as 20 (see
+Study).
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily

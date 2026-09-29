@@ -107,7 +107,7 @@ export interface CardFile {
 	goal: string | null;
 	/** Every card in the file. */
 	cards: number;
-	/** Cards ready to review today: due, overdue, or never reviewed. */
+	/** Cards ready to review today: due, overdue, or new today. */
 	due: number;
 }
 
@@ -117,8 +117,10 @@ export interface CardQueue {
 	cards: Card[];
 	/** Cards already due or overdue, among `cards`. */
 	due: number;
-	/** Cards never reviewed, among `cards`. */
+	/** Cards never reviewed that join today, among `cards`: today's new cards. */
 	fresh: number;
+	/** Cards never reviewed that are not among today's new cards: they wait for a later day. */
+	waiting: number;
 	/** Total cards in scope, reviewed or not. */
 	total: number;
 	/** Every card source in scope, in path order, whatever the goal asked for. */

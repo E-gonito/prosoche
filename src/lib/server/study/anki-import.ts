@@ -186,13 +186,17 @@ export function deckTag(deck: string): string {
  * the form is chosen as for a deck: inline `front::back` when that reads
  * back through `scanCards` as this card, the multiline `?` form otherwise.
  *
+ * `form: 'reversed'` asks for Spaced Repetition's multi-line reversed form
+ * instead, `front`, a `??` line, then `back`, which is reviewed both ways:
+ * the one form a glossary's cards are written in. The escaping is the same.
+ *
  * Returns the sides as they will read back and the paragraph, or null when
  * a side is empty once cleaned or no form reads back as this card. Pure.
  */
-export function cardBlock(front: string, back: string): { card: AnkiCard; markdown: string } | null {
+export function cardBlock(front: string, back: string, form: 'any' | 'reversed' = 'any'): { card: AnkiCard; markdown: string } | null {
 	const card = { front: side(front.replace(/\r\n?/g, '\n'), false), back: side(back.replace(/\r\n?/g, '\n'), false) };
 	if (!card.front || !card.back) return null;
-	const markdown = cardMarkdown(card);
+	const markdown = cardMarkdown(card, form);
 	return markdown === null ? null : { card, markdown };
 }
 
@@ -200,14 +204,15 @@ export function cardBlock(front: string, back: string): { card: AnkiCard; markdo
  * A card as the paragraph that holds it, or null when no form reads back as
  * this card. Inline is tried first because it is what a person would write,
  * but only when its `::` is the only one on the line: `a::std::io` reads back
- * correctly, and still leaves a person, or another reader, guessing.
+ * correctly, and still leaves a person, or another reader, guessing. A
+ * reversed card has the one form.
  */
-function cardMarkdown(card: AnkiCard): string | null {
+function cardMarkdown(card: AnkiCard, form: 'any' | 'reversed' = 'any'): string | null {
 	const inline = `${card.front}::${card.back}`;
-	const forms: Array<[string, CardKind]> = [
-		...(inline.split('::').length === 2 ? [[inline, 'inline'] as [string, CardKind]] : []),
-		[`${card.front}\n?\n${card.back}`, 'multiline']
-	];
+	const forms: Array<[string, CardKind]> =
+		form === 'reversed'
+			? [[`${card.front}\n??\n${card.back}`, 'multiline-reversed']]
+			: [...(inline.split('::').length === 2 ? [[inline, 'inline'] as [string, CardKind]] : []), [`${card.front}\n?\n${card.back}`, 'multiline']];
 	return forms.find(([block, kind]) => readsBackAs(block, kind, card))?.[0] ?? null;
 }
 

@@ -165,6 +165,15 @@ export interface DueQuery {
 	 * so case and punctuation do not matter. Absent means every card.
 	 */
 	goal?: string;
+	/**
+	 * How many cards never reviewed may join today, per part of the scope:
+	 * each quota lets in the first `allowance` unseen cards in its scope, in
+	 * the queue's stable order, and a card any quota lets in is ready. A
+	 * study subject's quota is its new cards per day less those already
+	 * begun today (see `new-cards.ts`). Absent means every unseen card is
+	 * ready, as for the Anki export.
+	 */
+	newCards?: Array<{ scope: StudyScope; allowance: number }>;
 }
 
 /**
@@ -186,6 +195,11 @@ export function fileGoal(frontmatter: Record<string, unknown>): string | null {
  * the vault. Deliberately deterministic where the plugin shuffles, so a review
  * session can be resumed and a test can name a card.
  *
+ * A card never reviewed is ready only when a quota in `newCards` lets it in
+ * today; the others are counted as `waiting`. The quotas are applied to the
+ * whole scope before `goal` narrows it, so one goal's review offers the same
+ * new cards the subject's does, and a file's `due` counts the same ones.
+ *
  * Reads every markdown file in scope, because review state lives in the
  * markdown and the index holds no card table. That is a few hundred small
  * files for this vault, and it is the price of the state being in the notes.
@@ -197,22 +211,15 @@ export function fileGoal(frontmatter: Record<string, unknown>): string | null {
  * Never writes. Never throws: a note that cannot be read contributes nothing.
  */
 export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery): Promise<CardQueue> {
-	const cards: Card[] = [];
-	const files: CardFile[] = [];
+	const sources: Array<{ path: string; title: string; goal: string | null; tags: string[]; cards: Card[] }> = [];
 	const invisible: CardQueue['invisible'] = [];
 	const wanted = query.goal === undefined ? null : slugify(query.goal);
-	let total = 0;
 
 	for (const { path, content, parsed } of await scopedNotes(vault, query.scope)) {
 		const found = scanCards(content, path);
 		if (!found.length) continue;
 		if (isCardSource(parsed.tags, content)) {
-			const goal = fileGoal(parsed.frontmatter);
-			const title = index.noteTitle(path) ?? parsed.title;
-			files.push({ path, title, goal, cards: found.length, due: found.filter((c) => isDue(c.schedule, query.on)).length });
-			if (wanted !== null && (goal === null || slugify(goal) !== wanted)) continue;
-			total += found.length;
-			cards.push(...found);
+			sources.push({ path, title: index.noteTitle(path) ?? parsed.title, goal: fileGoal(parsed.frontmatter), tags: parsed.tags, cards: found });
 		} else {
 			// Only cards the user clearly wrote as cards. A `==highlight==` in an
 			// untagged note is emphasis: this vault has a speech transcript with
@@ -223,16 +230,44 @@ export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery):
 		}
 	}
 
-	const ready = cards.filter((c) => isDue(c.schedule, query.on));
+	const released = releaseNew(sources, query.newCards);
+	const isReady = (c: Card) => (c.schedule === null ? released === null || released.has(c) : isDue(c.schedule, query.on));
+	const files: CardFile[] = sources.map((s) => ({ path: s.path, title: s.title, goal: s.goal, cards: s.cards.length, due: s.cards.filter(isReady).length }));
+	const cards = sources.filter((s) => wanted === null || (s.goal !== null && slugify(s.goal) === wanted)).flatMap((s) => s.cards);
+
+	const ready = cards.filter(isReady);
 	ready.sort(byUrgency);
 	return {
 		cards: ready.slice(0, query.limit ?? 200),
 		due: ready.filter((c) => c.schedule !== null).length,
 		fresh: ready.filter((c) => c.schedule === null).length,
-		total,
+		waiting: cards.filter((c) => c.schedule === null && !isReady(c)).length,
+		total: cards.length,
 		files: files.sort((a, b) => a.path.localeCompare(b.path)),
 		invisible: invisible.sort((a, b) => b.cards - a.cards)
 	};
+}
+
+/**
+ * The unseen cards the quotas let in today: for each quota, the first
+ * `allowance` cards never reviewed in its scope, in queue order (by path,
+ * then line). Null when there are no quotas, meaning every one.
+ */
+function releaseNew(sources: Array<{ tags: string[]; cards: Card[] }>, quotas: DueQuery['newCards']): Set<Card> | null {
+	if (!quotas) return null;
+	const unseen = sources.flatMap((s) => s.cards.filter((c) => c.schedule === null).map((card) => ({ card, tags: s.tags })));
+	unseen.sort((a, b) => byUrgency(a.card, b.card));
+	const out = new Set<Card>();
+	for (const quota of quotas) {
+		let left = quota.allowance;
+		for (const { card, tags } of unseen) {
+			if (left <= 0) break;
+			if (!inScope(card.path, tags, quota.scope)) continue;
+			out.add(card);
+			left--;
+		}
+	}
+	return out;
 }
 
 export type GoalSet = { ok: true } | { ok: false; reason: 'no-note' | 'not-cards' | 'conflict' };

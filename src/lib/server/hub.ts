@@ -12,6 +12,7 @@ import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { migrateGlossaries } from './glossary-migration';
+import { followGlossaryCards, syncAllGlossaryCards } from './study/glossary-cards';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -116,6 +117,14 @@ function start(): Hub {
 			} catch (e) {
 				console.error('[hub] glossary migration failed', e);
 			}
+			// Glossaries' cards follow every change to a glossary from here on,
+			// and catch up with any made while the hub was down. The catch-up
+			// runs behind `ready`, so a large first link does not hold up the
+			// first page; syncs queue one at a time either way.
+			followGlossaryCards(vault, () => loadWorkspaces(vault));
+			void loadWorkspaces(vault)
+				.then((ws) => syncAllGlossaryCards(vault, ws))
+				.catch((e) => console.error('[hub] syncing glossary cards failed', e));
 			vault.watch();
 			sync.start();
 		},

@@ -6,6 +6,7 @@ import { Vault } from '../vault/index';
 import { NoteIndex } from '../index/index';
 import { subjectsOf } from './subjects';
 import { dueEverywhere, filesByGoal, progressByGoal, studySummary, subjectCard } from './summary';
+import { NEW_CARDS_PATH, newCardQuotas, recordIntroduced } from './new-cards';
 import type { Workspace } from '../workspaces';
 
 const TODAY = '2026-09-29'; // a Tuesday; the week starts on the 28th
@@ -131,5 +132,45 @@ describe('a subject’s summary', () => {
 		const all = await dueEverywhere(vault, index, subjectsOf(WORKSPACES), TODAY);
 		expect(all.cards.map((c) => c.question).sort()).toEqual(['A', 'Aso', 'C']);
 		expect((await dueEverywhere(vault, index, [], TODAY)).total).toBe(0);
+	});
+
+	it('lets in a subject’s new cards a day at a time, the same in its review, its files and everywhere', async () => {
+		// One new card a day for CS; Filipino keeps the default.
+		const [cs, fil] = subjectsOf([{ ...WORKSPACES[0], newPerDay: 1 }, WORKSPACES[1]]);
+		const summary = await studySummary(vault, index, cs, TODAY);
+		// `Computer Science/Unfiled.md` comes before `Study/CS/…` by path.
+		expect(summary.cards.cards.map((c) => c.question)).toEqual(['C']);
+		expect(summary.cards).toMatchObject({ fresh: 1, waiting: 1 });
+		expect(subjectCard(summary, TODAY).due).toBe(1);
+		expect(progressByGoal(summary, TODAY).goals[0].due).toBe(0);
+
+		const all = await dueEverywhere(vault, index, [cs, fil], TODAY);
+		expect(all.cards.map((c) => c.question).sort()).toEqual(['Aso', 'C']);
+		expect(all).toMatchObject({ fresh: 2, waiting: 1 });
+
+		// Once C has had its first review, CS has let in its one for today.
+		await recordIntroduced(vault, [cs, fil], 'Computer Science/Unfiled.md', '#flashcards\n\nC::3\n', TODAY);
+		await vault.write('Computer Science/Unfiled.md', '#flashcards\n\nC::3\n<!--SR:!2026-10-02,3,250-->\n');
+		const later = await studySummary(vault, index, cs, TODAY);
+		expect(later.cards).toMatchObject({ fresh: 0, waiting: 1, due: 0 });
+		// Tomorrow is another day.
+		expect((await studySummary(vault, index, cs, '2026-09-30')).cards.cards.map((c) => c.question)).toEqual(['A']);
+	});
+
+	it('counts a card’s first review for each subject that holds it, and only today', async () => {
+		const [cs, fil] = subjectsOf(WORKSPACES);
+		await recordIntroduced(vault, [cs, fil], 'Study/CS/Flashcards/Nets.md', '#flashcards\n', TODAY);
+		await recordIntroduced(vault, [cs, fil], 'Study/CS/Flashcards/Nets.md', '#flashcards\n', TODAY);
+		await recordIntroduced(vault, [cs, fil], 'Elsewhere/Tagged.md', '#flashcards #ws/fil\n', TODAY);
+		await recordIntroduced(vault, [cs, fil], 'Work/Cards.md', '#flashcards\n', TODAY);
+		expect(JSON.parse((await vault.read(NEW_CARDS_PATH)).content)).toEqual({ day: TODAY, introduced: { cs: 2, fil: 1 } });
+		expect((await newCardQuotas(vault, [cs, fil], TODAY)).map((q) => q.allowance)).toEqual([18, 19]);
+		expect((await newCardQuotas(vault, [cs, fil], '2026-09-30')).map((q) => q.allowance)).toEqual([20, 20]);
+		// A new day starts the count again rather than adding to yesterday's.
+		await recordIntroduced(vault, [cs], 'Study/CS/x.md', '', '2026-09-30');
+		expect(JSON.parse((await vault.read(NEW_CARDS_PATH)).content)).toEqual({ day: '2026-09-30', introduced: { cs: 1 } });
+		// A file this cannot read counts as nothing begun.
+		await vault.write(NEW_CARDS_PATH, 'not json');
+		expect((await newCardQuotas(vault, [cs], TODAY)).map((q) => q.allowance)).toEqual([20]);
 	});
 });

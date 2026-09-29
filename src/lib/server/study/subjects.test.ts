@@ -37,6 +37,13 @@ describe('subjectsOf', () => {
 		expect(bare.home).toBe('Inbox');
 	});
 
+	it('lets twenty new cards a day join a subject’s reviews unless its file says otherwise', () => {
+		const [cs] = subjectsOf(all);
+		expect(cs.newPerDay).toBe(20);
+		const [quiet] = subjectsOf([{ ...workspace('quiet', ['Q'], 'study'), newPerDay: 0 }]);
+		expect(quiet.newPerDay).toBe(0);
+	});
+
 	it('finds the subject a note is in, by folder or tag', () => {
 		expect(subjectFor(all, 'Computer Science/Networks/TCP.md', [])?.slug).toBe('cs-study');
 		expect(subjectFor(all, 'Inbox/x.md', ['ws/cs-study'])?.slug).toBe('cs-study');

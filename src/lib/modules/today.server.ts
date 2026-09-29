@@ -35,7 +35,9 @@ export interface TodayCardContext {
 const SHOWN = 3;
 
 /**
- * Flashcards due for review today, across every study subject.
+ * Flashcards due for review today, across every study subject: those due
+ * and each subject's new cards for today, by the same rule as Study's
+ * counts and its review (`dueEverywhere`).
  *
  * Inputs: the viewed day and the hub. Output: a card linking to the review
  * of everything due, or null once there is nothing due — a permanent "0 due"
@@ -55,7 +57,7 @@ async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCa
 		items: [
 			{
 				text: `${dueCount} card${dueCount === 1 ? '' : 's'} ready to review`,
-				meta: queue.fresh ? `${queue.fresh} new` : undefined,
+				meta: queue.fresh ? `${queue.fresh} new today` : undefined,
 				href: '/study/review'
 			}
 		]
