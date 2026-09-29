@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { resetVault, vaultFile } from './helpers';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { resetVault, VAULT, vaultFile } from './helpers';
 
 /** The day before today, as the Meetings fixture computes it. */
 const PAST = (() => {
@@ -214,6 +216,40 @@ test.describe('Glossary', () => {
 		await page.getByTestId('edit-save').click();
 		await expect(page.locator('.problem')).toHaveText('Another term already has that name.');
 		expect(vaultFile('Glossaries/Work.md')).toBe(after);
+	});
+
+	test('linked to a study subject, every defined term is a card there, kept in step with the glossary', async ({ page }) => {
+		const CARDS = 'Study/Flashcards/Glossary/Work/ML.md';
+		const header =
+			'---\ngoal:\nglossary: Work\ncategory: ML\n---\n\n#flashcards\n\nMade from [[Work]] (ML). Edit the terms there; this file is\nkept in step with the glossary.\n';
+		const dvcCard = (definition: string) => `DVC\n??\n${definition}\n→ For Work, it makes training data traceable.\n`;
+		const before = vaultFile('Glossaries/Work.md');
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('glossary-cards-state')).toContainText('Not linked');
+
+		await page.getByTestId('glossary-study').selectOption('study');
+		const state = page.getByTestId('glossary-cards-state');
+		await expect(state).toContainText('1 card in Study · up to date');
+		await expect(state.getByRole('link')).toHaveAttribute('href', '/study/study/flashcards');
+		expect(vaultFile('Glossaries/Work.md')).toBe(`---\nstudy: study\n---\n\n${before}`);
+		// DVC has a definition; MLflow, still to look up, has no card yet.
+		expect(vaultFile(CARDS)).toBe(`${header}\n${dvcCard('An open-source tool that versions datasets and models alongside git.')}`);
+
+		// A review comment written in Obsidian stays when the definition changes.
+		const comment = '<!--SR:!2030-01-01,3,250!2030-01-02,1,230-->';
+		writeFileSync(join(VAULT, CARDS), `${vaultFile(CARDS)}${comment}\n`);
+		const dvc = page.getByTestId('glossary-entry').filter({ hasText: 'DVC' });
+		await dvc.getByTestId('edit-term-open').click();
+		await page.getByTestId('edit-definition').fill('Version control for data and models.');
+		await page.getByTestId('edit-save').click();
+		await expect(dvc).toContainText('Version control for data and models.');
+		expect(vaultFile(CARDS)).toBe(`${header}\n${dvcCard('Version control for data and models.')}${comment}\n`);
+
+		// Unlinking stops the syncing and leaves the cards.
+		await page.getByTestId('glossary-study').selectOption('');
+		await expect(page.getByTestId('glossary-cards-state')).toContainText('Not linked');
+		expect(vaultFile('Glossaries/Work.md').startsWith('---\nstudy:\n---\n')).toBe(true);
+		expect(vaultFile(CARDS)).toContain('Version control for data and models.');
 	});
 
 	test('a term is deleted after a confirm, and nothing else changes', async ({ page }) => {

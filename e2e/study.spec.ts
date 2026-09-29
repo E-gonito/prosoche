@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-import { lineWith, resetVault, TODAY, vaultFile, waitForFile } from './helpers';
+import { rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { lineWith, resetVault, TODAY, VAULT, vaultFile, waitForFile } from './helpers';
 
 /**
  * Study, against `fixtures/study.mjs`: one subject, the base vault's `study`
@@ -291,6 +293,21 @@ test.describe('Flashcards', () => {
 		// Three days late at interval 4, ease 270: (4 + 3/2) * 2.7 = 14.85 -> 15.
 		expect(await waitForFile(CARDS, (c) => c.includes(`<!--SR:!${shift(TODAY, 15)},15,270-->`))).toBe(true);
 		await expect(page.getByTestId('review-done')).toContainText('Done for today');
+	});
+
+	test('says how many new cards join today and how many wait, as a subject lets in twenty a day', async ({ page }) => {
+		const cards = Array.from({ length: 25 }, (_, i) => `Card ${String(i + 1).padStart(2, '0')}::Answer ${i + 1}`).join('\n\n');
+		writeFileSync(join(VAULT, 'Study/Many.md'), `#flashcards\n\n${cards}\n`);
+		// Today's count of first reviews is transient state a reset leaves behind.
+		rmSync(join(VAULT, '_hub/.state/new-cards.json'), { force: true });
+		const counts = page.getByTestId('cards-new');
+		// The page reads the vault once the watcher has seen the new note.
+		await expect(async () => {
+			await page.goto(`${BASE}/flashcards`);
+			await expect(counts).toHaveText(/^20 new today · \d+ waiting$/, { timeout: 1000 });
+		}).toPass();
+		const waiting = Number((await counts.textContent())!.match(/(\d+) waiting/)![1]);
+		expect(waiting).toBeGreaterThanOrEqual(5);
 	});
 
 	test('a goal with no cards has nothing to review', async ({ page }) => {
