@@ -17,7 +17,8 @@
  */
 
 import { shiftDay, today, type DayKey } from './daily';
-import { newDateLine, rewriteStageLine, scanDates, type DateEntry } from './parse/dating-person';
+import { newDateLine, scanDates, type DateEntry } from './parse/dating-person';
+import { setFrontmatterField } from './parse/frontmatter';
 import { newLedgerLine, saveLedgerDay, scanLedger, ZERO_COUNTS, type LedgerCounts, type LedgerLine } from './parse/ledger';
 import { basename, parseNote } from './parse/note';
 import { personName } from './people';
@@ -317,7 +318,7 @@ export async function setStage(vault: Vault, rawName: string, stage: Stage): Pro
 	const note = await vault.read(path, { scope: 'private' });
 	if (!note.exists) return { ok: false, reason: 'no-note' };
 
-	const result = await vault.write(path, rewriteStageLine(note.content, stage), note.hash, { scope: 'private' });
+	const result = await vault.write(path, setFrontmatterField(note.content, 'stage', stage), note.hash, { scope: 'private' });
 	if (!result.ok) return { ok: false, reason: 'conflict' };
 	return { ok: true };
 }

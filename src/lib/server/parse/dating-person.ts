@@ -14,8 +14,8 @@
  * date is always appended with `appendUnderHeading`, so this file only needs
  * to parse the lines that are already there and to build the text of a new
  * one. `stage:` is different: it is one frontmatter field that changes in
- * place as a relationship moves along, so it gets a span rewrite the same
- * shape as a ledger field, scoped to that one line.
+ * place as a relationship moves along, so it is rewritten through
+ * `frontmatter.ts`'s span edit, which every frontmatter field shares.
  */
 
 import type { DayKey } from '../daily';
@@ -88,40 +88,4 @@ export function newDateLine(
 	const notes = (fields.notes ?? '').replace(/\s+/g, ' ').trim();
 	if (notes) parts.push(`notes:: ${notes}`);
 	return parts.join(' ');
-}
-
-/**
- * Rewrite the frontmatter `stage:` line alone, byte for byte otherwise.
- *
- * A note that already has the field gets only its value replaced, keeping
- * whatever spacing follows the colon. One with frontmatter but no `stage:`
- * line gets one inserted just before the closing `---`. A note with no
- * frontmatter block at all — not expected once `addDatingPerson` has run,
- * but never assumed — gets a minimal one added at the top, so this never
- * throws on a note the user has hand-edited.
- */
-export function rewriteStageLine(content: string, stage: string): string {
-	const open = /^---\r?\n/.exec(content);
-	if (!open) return `---\nstage: ${stage}\n---\n\n${content}`;
-
-	const blockStart = open[0].length;
-	const close = /\r?\n---(?:\r?\n|$)/.exec(content.slice(blockStart));
-	if (!close) return `---\nstage: ${stage}\n---\n\n${content}`;
-
-	const block = content.slice(blockStart, blockStart + close.index);
-	const existing = /^stage:([ \t]*)(.*)$/m.exec(block);
-
-	if (existing) {
-		const lineStart = blockStart + existing.index;
-		const valueStart = lineStart + 'stage:'.length + existing[1].length;
-		const valueEnd = lineStart + existing[0].length;
-		return content.slice(0, valueStart) + stage + content.slice(valueEnd);
-	}
-
-	// `content.slice(blockEnd)` starts with the newline that leads into the
-	// closing `---`, which is the only line break this insertion needs after
-	// it; adding another here would leave a blank line behind.
-	const blockEnd = blockStart + block.length;
-	const sep = block === '' || block.endsWith('\n') ? '' : '\n';
-	return content.slice(0, blockEnd) + `${sep}stage: ${stage}` + content.slice(blockEnd);
 }
