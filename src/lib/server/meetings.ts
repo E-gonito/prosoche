@@ -9,6 +9,10 @@
  * an event's workspace. Each of those is an insertion or a one-line rewrite
  * through the grammars in `parse/`; none re-serialises a note.
  *
+ * Only a workspace whose definition says `meetings: true` has a notebook.
+ * Every function here that is about one workspace's meetings treats any
+ * other workspace as having none, so a caller never has to check the flag.
+ *
  * A workspace's home is its first folder:
  *
  *     <home>/Primer.md        the meeting card, free markdown
@@ -69,12 +73,13 @@ export interface NotebookPaths {
 }
 
 /**
- * The notebook's files for a workspace, or null for a workspace with no
- * folder, which has nowhere to keep them.
+ * The notebook's files for a workspace, or null for a workspace that has no
+ * notebook: one whose definition does not opt in with `meetings: true`, or
+ * one with no folder, which has nowhere to keep them. Pure.
  */
 export function notebookPaths(workspace: Workspace): NotebookPaths | null {
-	const home = workspace.folders[0]?.replace(/^\/+|\/+$/g, '');
-	if (!home) return null;
+	const home = homeOf(workspace);
+	if (!home || !workspace.meetings) return null;
 	return {
 		home,
 		primer: `${home}/Primer.md`,
@@ -261,11 +266,11 @@ export async function loadAssignments(vault: Vault): Promise<MeetingMapping[]> {
 /**
  * Remember that events called `title` belong to workspace `slug`. Rewrites
  * only that title's line, or appends one; creates the file when needed.
- * Refuses a slug that names no workspace.
+ * Refuses a slug that names no workspace, or one without meetings.
  */
 export async function assignTitle(vault: Vault, workspaces: Workspace[], title: string, slug: string): Promise<Written> {
 	if (!title.trim()) return invalid('An event needs a title to be remembered by.');
-	if (!workspaces.some((w) => w.slug === slug)) return invalid('No such workspace.');
+	if (!workspaces.some((w) => w.slug === slug && w.meetings)) return invalid('No such workspace with meetings.');
 	return rewrite(vault, MEETING_MAP_PATH, (content) => setMapping(content, title, slug), 2, { create: true });
 }
 
@@ -274,14 +279,16 @@ export async function assignTitle(vault: Vault, workspaces: Workspace[], title: 
  *
  * An assigned title shows its workspace. An unassigned one whose words name a
  * workspace alias carries that workspace as a suggestion only: nothing is
- * assigned until the user clicks. A mapping to a workspace that no longer
- * exists counts as unassigned.
+ * assigned until the user clicks. Only workspaces with meetings take part,
+ * so a mapping to a workspace that no longer exists or has since dropped
+ * `meetings: true` counts as unassigned, and no other workspace is suggested.
  */
 export function planEvents(
 	events: CalendarEvent[],
 	mappings: MeetingMapping[],
-	workspaces: Workspace[]
+	all: Workspace[]
 ): Array<{ day: string; events: EventRow[] }> {
+	const workspaces = all.filter((w) => w.meetings);
 	const days = new Map<string, EventRow[]>();
 	for (const event of events) {
 		const mapped = slugForTitle(mappings, event.title);
@@ -407,12 +414,12 @@ export interface CustomPage {
 
 /**
  * The workspace's `<home>/Pages/*.html`, each a tab served by the Workspaces
- * module at `/w/<slug>/pages/<file>`.
+ * module at `/w/<slug>/pages/<file>`. Empty for a workspace with no folder.
  */
 export async function customPages(vault: Vault, workspace: Workspace): Promise<CustomPage[]> {
-	const paths = notebookPaths(workspace);
-	if (!paths) return [];
-	const files = await vault.files(`${paths.home}/Pages`, 'html');
+	const home = homeOf(workspace);
+	if (!home) return [];
+	const files = await vault.files(`${home}/Pages`, 'html');
 	return files.map((file) => ({ file, title: pageTitle(file), href: `/w/${workspace.slug}/pages/${encodeURIComponent(file)}` }));
 }
 
@@ -423,6 +430,11 @@ export function pageTitle(file: string): string {
 }
 
 /* ------------------------------------------------------------- plumbing -- */
+
+/** The first folder without stray slashes, or null for a workspace with none. */
+function homeOf(workspace: Workspace): string | null {
+	return workspace.folders[0]?.replace(/^\/+|\/+$/g, '') || null;
+}
 
 /**
  * Read, change, write with the hash just read, and retry on a clash.

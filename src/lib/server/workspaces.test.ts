@@ -91,6 +91,17 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded.find((w) => w.slug === 'pipeline')!.stages).toEqual(['new', 'qualifying', 'won']);
 		expect(loaded.find((w) => w.slug === 'default-stages')!.stages).toEqual(DEFAULT_STAGES);
 	});
+
+	it.each([
+		['meetings: true', true],
+		['meetings: false', false],
+		['meetings: "true"', false],
+		['meetings: yes', false],
+		['name: Quiet', false]
+	])('reads %j as meetings %s', async (line, expected) => {
+		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
+		expect((await loadWorkspaces(vault))[0].meetings).toBe(expected);
+	});
 });
 
 describe('workspaceFor', () => {

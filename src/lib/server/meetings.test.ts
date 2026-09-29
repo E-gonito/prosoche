@@ -35,6 +35,7 @@ const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	aliases: [],
 	folders: [slug[0].toUpperCase() + slug.slice(1)],
 	template: 'project',
+	meetings: true,
 	deck: '',
 	kanbanColumns: [],
 	stages: ['lead', 'proposal', 'won'],
@@ -65,6 +66,11 @@ describe('notebookPaths', () => {
 			meetings: 'Work/Eye2Gene/Meetings'
 		});
 		expect(notebookPaths(ws('none', { folders: [] }))).toBeNull();
+	});
+
+	it('has no notebook for a workspace that has not opted in to meetings', () => {
+		expect(notebookPaths(ws('quiet', { meetings: false }))).toBeNull();
+		expect(notebookPaths(ws('quiet', { meetings: undefined }))).toBeNull();
 	});
 
 	it.each([
@@ -105,6 +111,19 @@ describe('planEvents', () => {
 	it('ignores a mapping to a workspace that is gone', () => {
 		const [day] = planEvents([event({})], [{ title: 'Dev Weekly Meeting', slug: 'deleted', line: 0 }], workspaces);
 		expect(day.events[0].workspace).toBeNull();
+	});
+
+	it('leaves out a workspace without meetings, as a mapping and as a suggestion', () => {
+		const quiet = [ws('work', { aliases: ['eye2gene'], meetings: false })];
+		const [day] = planEvents(
+			[event({}), event({ id: 'e2', title: 'Eye2Gene sync' })],
+			[{ title: 'Dev Weekly Meeting', slug: 'work', line: 0 }],
+			quiet
+		);
+		expect(day.events.map((e) => [e.workspace, e.suggestion])).toEqual([
+			[null, null],
+			[null, null]
+		]);
 	});
 });
 
@@ -320,6 +339,7 @@ date: 2026-09-28
 			['Reading group', 'study']
 		]);
 		expect(await assignTitle(vault, workspaces, 'X', 'nope')).toMatchObject({ ok: false, reason: 'invalid' });
+		expect(await assignTitle(vault, [ws('quiet', { meetings: false })], 'X', 'quiet')).toMatchObject({ ok: false, reason: 'invalid' });
 	});
 
 	it('lists the workspace\'s custom pages as tabs served by Workspaces', async () => {
@@ -328,5 +348,7 @@ date: 2026-09-28
 		expect(await customPages(vault, work)).toEqual([
 			{ file: 'eye-3d.html', title: 'Eye 3d', href: `/w/${work.slug}/pages/eye-3d.html` }
 		]);
+		// Pages belong to the workspace, not its notebook, so they do not wait on meetings.
+		expect(await customPages(vault, { ...work, meetings: false })).toHaveLength(1);
 	});
 });

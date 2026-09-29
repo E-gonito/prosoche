@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { TODAY, resetVault, vaultFile, waitForFile } from './helpers';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { TODAY, VAULT, resetVault, vaultFile, waitForFile } from './helpers';
 
 /** The day before today, as the fixture computes it. */
 const PAST = (() => {
@@ -24,6 +26,28 @@ test.describe('Meetings', () => {
 		await expect(notebooks.getByRole('link', { name: /Study/ })).toContainText('no primer');
 		await notebooks.getByRole('link', { name: /Work/ }).click();
 		await expect(page).toHaveURL(/\/meetings\/work$/);
+	});
+
+	test('a workspace without meetings: true has no notebook', async ({ page }) => {
+		// Written by the test rather than the fixture, so no other suite sees a
+		// third workspace; the next reset cleans it away.
+		mkdirSync(join(VAULT, 'Garden'), { recursive: true });
+		writeFileSync(join(VAULT, 'Garden/Plan.md'), '# Plan\n');
+		writeFileSync(join(VAULT, '_hub/workspaces/garden.md'), '---\nname: Garden\ncolor: "#16a34a"\nfolders:\n  - "Garden"\n---\n');
+
+		await page.goto('/meetings');
+		const notebooks = page.getByTestId('notebooks');
+		await expect(notebooks.getByRole('link', { name: /Work/ })).toBeVisible();
+		await expect(notebooks.getByRole('link', { name: /Garden/ })).toHaveCount(0);
+
+		const response = await page.goto('/meetings/garden');
+		expect(response?.status()).toBe(404);
+		await expect(page.locator('body')).toContainText('Add "meetings: true" to _hub/workspaces/garden.md');
+
+		await page.goto('/w/garden');
+		await expect(page.locator('.label', { hasText: 'Meetings' })).toHaveCount(0);
+		await page.goto('/w/work');
+		await expect(page.getByRole('link', { name: /meeting notebook/ })).toHaveAttribute('href', '/meetings/work');
 	});
 
 	test('the card renders the primer in the artifact\'s shape', async ({ page }) => {

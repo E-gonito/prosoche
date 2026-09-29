@@ -121,7 +121,7 @@ export function primerProposal(
  */
 export async function draftPrimer(vault: Vault, workspace: Workspace, options: DraftOptions = {}): Promise<DraftResult> {
 	const paths = notebookPaths(workspace);
-	if (!paths) return nothing('This workspace has no folder to keep a primer in.');
+	if (!paths) return nothing('This workspace has no meeting notebook to keep a primer in.');
 	const destinations = [paths.primer];
 
 	const current = await vault.read(paths.primer);
@@ -234,7 +234,7 @@ export async function draftPrep(
 	options: DraftOptions = {}
 ): Promise<DraftResult> {
 	const paths = notebookPaths(workspace);
-	if (!paths) return nothing('This workspace has no folder to keep meetings in.');
+	if (!paths) return nothing('This workspace has no meeting notebook.');
 
 	const meetings = await loadMeetings(vault, paths);
 	const current = currentMeeting(meetings, input.today);

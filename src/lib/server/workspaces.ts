@@ -13,6 +13,10 @@
  * Inbox, Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
  * longer read. A file that still has one from before is parsed the same as
  * any other frontmatter the hub does not recognise: harmlessly ignored.
+ *
+ * Meetings are opt-in: only a file that says `meetings: true` gets a meeting
+ * notebook, a place on the Meetings page and a slot when a calendar event is
+ * mapped to a workspace.
  */
 
 import { parseNote } from './parse/note';
@@ -45,6 +49,14 @@ export interface Workspace {
 	 * reads. Absent for an ordinary project.
 	 */
 	template?: string;
+	/**
+	 * True only when the file says `meetings: true`, which gives the
+	 * workspace a meeting notebook. Absent or any other value means none:
+	 * most workspaces never hold a meeting, and a notebook nobody asked for
+	 * is clutter on the Meetings page. Optional so a workspace built in code
+	 * without it reads as having no meetings, as a file without it does.
+	 */
+	meetings?: boolean;
 	/** Note new cards are appended to when the board has nowhere better. */
 	deck: string;
 	/** Board column titles. Empty means the five task statuses. */
@@ -168,6 +180,7 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
 		folders,
 		template: str(fm.template) ?? undefined,
+		meetings: fm.meetings === true,
 		deck: str(fm.deck) ?? `${folders[0] ?? 'Inbox'}/Tasks.md`,
 		kanbanColumns: strList(fm.kanban_columns),
 		stages: stages.length ? stages : [...DEFAULT_STAGES],
@@ -188,7 +201,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'stages'> {
+interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'stages' | 'meetings'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];

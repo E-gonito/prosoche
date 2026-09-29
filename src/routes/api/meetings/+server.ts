@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const workspace = all.find((w) => w.slug === body.slug);
 	const paths = workspace ? notebookPaths(workspace) : null;
-	if (!paths) return json({ ok: false, reason: 'not-found', message: 'No such workspace, or it has no folder.' }, { status: 404 });
+	if (!paths) return json({ ok: false, reason: 'not-found', message: 'No such workspace, or it has no meetings notebook.' }, { status: 404 });
 
 	switch (body.action) {
 		case 'start': {
