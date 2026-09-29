@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { displayText, matchKey, taskMinutes, isOpen, type Task } from './task';
+import { compareTasks, displayText, matchKey, taskMinutes, isOpen, type Task } from './task';
 
 const task = (over: Partial<Task> = {}): Task => ({
 	path: 'a.md',
@@ -88,5 +88,24 @@ describe('matchKey', () => {
 
 	it('leaves a card\'s key inside the block that plans it', () => {
 		expect(matchKey('Finish chapter 3 [[Study/Algorithms]] `Q2`')).toContain(matchKey('Finish chapter 3'));
+	});
+});
+
+describe('compareTasks', () => {
+	it('orders by quadrant, then due date, then position in the vault', () => {
+		const tasks = [
+			task({ path: 'b.md', line: 2 }),
+			task({ quadrant: 2, due: '2026-10-01' }),
+			task({ quadrant: 1 }),
+			task({ quadrant: 2, due: '2026-09-01' }),
+			task({ path: 'b.md', line: 1 })
+		];
+		expect([...tasks].sort(compareTasks).map((t) => [t.quadrant, t.due, t.path, t.line])).toEqual([
+			[1, null, 'a.md', 0],
+			[2, '2026-09-01', 'a.md', 0],
+			[2, '2026-10-01', 'a.md', 0],
+			[null, null, 'b.md', 1],
+			[null, null, 'b.md', 2]
+		]);
 	});
 });

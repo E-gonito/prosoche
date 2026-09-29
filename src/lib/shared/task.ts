@@ -56,6 +56,21 @@ export const isDone = (task: Task): boolean => task.status === 'done' || task.st
 
 export const isOpen = (task: Task): boolean => !isDone(task);
 
+/**
+ * Order of work on a screen: most urgent quadrant first, then the soonest due
+ * date, then where the line lives, so the order is stable between loads.
+ * Tasks without a quadrant or a due date sort last within their group.
+ *
+ * Display order only. Nothing here reorders a file.
+ */
+export function compareTasks(a: Task, b: Task): number {
+	const byQuadrant = (a.quadrant ?? 9) - (b.quadrant ?? 9);
+	if (byQuadrant !== 0) return byQuadrant;
+	const byDue = (a.due ?? '~').localeCompare(b.due ?? '~');
+	if (byDue !== 0) return byDue;
+	return a.path === b.path ? a.line - b.line : a.path.localeCompare(b.path);
+}
+
 /** Minutes a block occupies, treating a backwards range as crossing midnight. */
 export function taskMinutes(task: Task): number {
 	if (task.startMin === null || task.endMin === null) return 0;

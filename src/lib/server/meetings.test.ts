@@ -35,8 +35,6 @@ const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	aliases: [],
 	folders: [slug[0].toUpperCase() + slug.slice(1)],
 	template: 'project',
-	deck: '',
-	kanbanColumns: [],
 	stages: ['lead', 'proposal', 'won'],
 	path: `_hub/workspaces/${slug}.md`,
 	...over

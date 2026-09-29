@@ -14,8 +14,6 @@ function workspace(fields: Partial<Workspace> = {}): Workspace {
 		tag: 'ws/work',
 		aliases: [],
 		folders: ['Work'],
-		deck: 'Work/Tasks.md',
-		kanbanColumns: [],
 		stages: DEFAULT_STAGES,
 		path: '_hub/workspaces/work.md',
 		...fields

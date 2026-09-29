@@ -101,8 +101,6 @@ describe('workspaceFor', () => {
 		tag,
 		aliases,
 		folders,
-		deck: 'Inbox/Tasks.md',
-		kanbanColumns: [],
 		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});
@@ -135,8 +133,6 @@ describe('workspaceFor, by alias', () => {
 		tag: `ws/${slug}`,
 		aliases,
 		folders,
-		deck: 'Inbox/Tasks.md',
-		kanbanColumns: [],
 		stages: DEFAULT_STAGES,
 		path: `_hub/workspaces/${slug}.md`
 	});

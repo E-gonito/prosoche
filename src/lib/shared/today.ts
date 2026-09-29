@@ -10,6 +10,7 @@
  */
 
 import type { Task } from './task';
+import type { OpenCard } from './kanban';
 
 export interface Owner {
 	slug: string;
@@ -39,16 +40,16 @@ export interface WeekDay {
 	events: TodayEvent[];
 	/** Open tasks in that day's own daily note, when it exists. */
 	openTasks: Task[];
-	/** Open workspace cards due that day, from anywhere in the vault. */
-	dueTasks: Task[];
+	/** Open cards on any workspace's board due that day. */
+	dueCards: OpenCard[];
 }
 
 export interface WorkspaceGroup {
 	slug: string;
 	name: string;
 	color: string;
-	/** The workspace's most urgent open cards, board order, already capped. */
-	cards: Task[];
+	/** The open cards on the workspace's board, most urgent first, already capped. */
+	cards: OpenCard[];
 	/** How many more open cards the workspace has beyond those shown. */
 	more: number;
 	/** Open lines in `<home>/Inbox.md`. */
@@ -91,9 +92,11 @@ export interface TodayData {
 	aiEnabled: boolean;
 	/** The note's own briefing region, read like any other text. */
 	briefingText: string | null;
-	/** Open tasks overdue as of the real today, from anywhere but a daily note. */
+	/** Open tasks overdue as of the real today, from anywhere but a daily note or a board. */
 	overdue: Task[];
 	overdueOwners: Record<string, Owner>;
+	/** Open board cards overdue as of the real today, soonest first. */
+	overdueCards: OpenCard[];
 	week: WeekDay[];
 	workspaces: WorkspaceGroup[];
 	cards: TodayCard[];

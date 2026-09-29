@@ -9,8 +9,8 @@
  * belong to this workspace?
  *
  * Earlier versions let a workspace file list `tabs:` of named widgets. The
- * rebuild gives every workspace the same sections instead — Overview, Tasks,
- * Inbox, Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
+ * rebuild gives every workspace the same sections instead — Overview, Inbox,
+ * Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
  * longer read. A file that still has one from before is parsed the same as
  * any other frontmatter the hub does not recognise: harmlessly ignored.
  */
@@ -45,10 +45,6 @@ export interface Workspace {
 	 * reads. Absent for an ordinary project.
 	 */
 	template?: string;
-	/** Note new cards are appended to when the board has nowhere better. */
-	deck: string;
-	/** Board column titles. Empty means the five task statuses. */
-	kanbanColumns: string[];
 	/** Deal pipeline stages, in order. `DEFAULT_STAGES` unless the file sets its own. */
 	stages: string[];
 	path: string;
@@ -168,8 +164,6 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
 		folders,
 		template: str(fm.template) ?? undefined,
-		deck: str(fm.deck) ?? `${folders[0] ?? 'Inbox'}/Tasks.md`,
-		kanbanColumns: strList(fm.kanban_columns),
 		stages: stages.length ? stages : [...DEFAULT_STAGES],
 		path
 	};
@@ -188,7 +182,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'stages'> {
+interface Seed extends Omit<Workspace, 'path' | 'aliases' | 'stages'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];
