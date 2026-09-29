@@ -5,11 +5,14 @@ import { run } from '$server/ai/briefing';
 import type { RequestHandler } from './$types';
 
 /**
- * Regenerate the briefing for a day.
+ * Draft the briefing for a day.
  *
- * POST rather than GET because it writes: the marker region of that day's
- * note is replaced under G1's exception. The page load reads the region out
- * of the note like any other text, so there is no GET here to duplicate it.
+ * POST because it spends a run of the model, not because it writes: nothing
+ * here touches the vault. It returns a proposal for the browser to run
+ * through `/api/ai/proposal`, the same as any other drafting feature, and
+ * `destinations` names the one note that proposal is allowed to touch, for
+ * the path policy. The page load reads the region out of the note like any
+ * other text, so there is no GET here to duplicate it.
  *
  * Responds 200 with whatever the run produced, including its problem, because
  * "the model was over budget" is an answer the card shows rather than an
@@ -20,5 +23,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	const when = day && isDayKey(day) ? day : today();
 	const { vault, index, ready } = hub();
 	await ready;
-	return json({ briefing: await run({ vault, index }, when, { regenerate: true }) });
+	const briefing = await run({ vault, index }, when, { regenerate: true });
+	return json({ briefing, destinations: briefing.proposal?.edits.map((e) => e.path) ?? [] });
 };

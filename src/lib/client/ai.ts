@@ -90,15 +90,20 @@ async function post<T>(url: string, body: unknown, pick: (body: any) => T): Prom
 	}
 }
 
+/** A drafted briefing, with the paths `applyProposal` must be told about. */
+export interface DraftedBriefing {
+	briefing: BriefingRun;
+	destinations: string[];
+}
+
 /**
- * Regenerate today's briefing and get back what the note now says.
- *
- * Writes, under G1's one exception, so this is a POST. A run that could not
- * produce a sentence is still a success carrying a `problem`, because the
- * lists were written either way and the card shows both.
+ * Draft today's briefing. Read-only: nothing is written until the proposal
+ * this returns is accepted through `applyProposal`. A run that could not
+ * produce an opening sentence is still a success, with the facts proposed
+ * and no sentence at the top.
  */
-export async function regenerateBriefing(day: string): Promise<AiResult<BriefingRun>> {
-	return post('/api/ai/briefing', { day }, (body) => body.briefing as BriefingRun);
+export async function draftBriefing(day: string): Promise<AiResult<DraftedBriefing>> {
+	return post('/api/ai/briefing', { day }, (body) => body as DraftedBriefing);
 }
 
 /**
