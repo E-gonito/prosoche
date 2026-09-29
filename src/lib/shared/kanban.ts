@@ -92,6 +92,28 @@ export interface OpenCard extends BoardCard {
 }
 
 /**
+ * A due date as a chip reads it, from `today`'s point of view: "Today",
+ * "Tomorrow", "Yesterday", a weekday name within the coming week ("Fri"),
+ * and otherwise "3 Oct", with the year only when it is not this one. Both
+ * arguments are `YYYY-MM-DD`; nothing here reads a clock.
+ */
+export function dueLabel(due: string, today: string): string {
+	const days = Math.round((utc(due) - utc(today)) / 86_400_000);
+	if (days === 0) return 'Today';
+	if (days === 1) return 'Tomorrow';
+	if (days === -1) return 'Yesterday';
+	const date = new Date(utc(due));
+	if (days > 1 && days < 7) return date.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+	const sameYear = due.slice(0, 4) === today.slice(0, 4);
+	return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }), timeZone: 'UTC' });
+}
+
+function utc(day: string): number {
+	const [y, m, d] = day.split('-').map(Number);
+	return Date.UTC(y, m - 1, d);
+}
+
+/**
  * Most urgent first: priority Q1 to Q4, then the soonest due date, then where
  * the card sits, so the order is stable between loads. A card with no
  * priority or no due date sorts after those that have one.
