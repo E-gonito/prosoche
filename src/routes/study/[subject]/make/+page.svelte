@@ -35,7 +35,6 @@
 	let notes = $state<string[]>(initial().notes);
 	let folders = $state<string[]>([]);
 	let query = $state('');
-	let folderChoice = $state('');
 
 	const matches = $derived.by(() => {
 		const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -57,9 +56,9 @@
 		toggleNote(path);
 		query = '';
 	}
-	function addFolder() {
-		if (folderChoice && !folders.includes(folderChoice)) folders = [...folders, folderChoice];
-		folderChoice = '';
+	function addFolder(select: HTMLSelectElement) {
+		if (select.value && !folders.includes(select.value)) folders = [...folders, select.value];
+		select.value = '';
 		restart();
 	}
 	function removeFolder(folder: string) {
@@ -220,7 +219,7 @@
 		{/if}
 
 		<div class="folder">
-			<select class="field" bind:value={folderChoice} onchange={addFolder} aria-label="Add a folder" data-testid="source-folder">
+			<select class="field" onchange={(e) => addFolder(e.currentTarget)} aria-label="Add a folder" data-testid="source-folder">
 				<option value="">Add a whole folder…</option>
 				{#each data.folders as folder (folder)}
 					<option value={folder} disabled={folders.includes(folder)}>{folder}</option>
@@ -263,7 +262,7 @@
 			{drafting ? 'Drafting…' : 'Draft cards'}
 		</button>
 	</div>
-	<p class="hint">Cards go to <span class="path">{short(destination)}</span>, under a heading for each note, never into the notes.</p>
+	<p class="hint" data-testid="make-destination">Cards go to <span class="path">{short(destination)}</span>, under a heading for each note, never into the notes.</p>
 
 	{#if batch}
 		<p class="hint batch" data-testid="make-batch">
