@@ -96,7 +96,7 @@ export function cardsPrompt(input: { subject: string; goal: string | null; count
 		'- question: one question, in plain words',
 		'- answer: short, in the words of the note',
 		'- source: the path of the note it came from, exactly as given in its path attribute',
-		'- quote: one sentence copied word for word from that note, containing every word of the answer',
+		'- quote: one sentence copied word for word from that note, typos and all, that holds the answer',
 		'',
 		wrapAsData(input.sources)
 	].join('\n');
@@ -105,24 +105,80 @@ export function cardsPrompt(input: { subject: string; goal: string | null; count
 /**
  * Split suggestions into those the notes support and those they do not.
  *
- * Support means the card's `source` is one of the notes sent, its quote is
- * found in that note's text as sent, and its answer is found in the quote,
- * all compared on words (see `words`), so punctuation and line wrapping do
- * not fail a good card. Pure. Exported because this is the rule the feature
- * exists to enforce.
+ * A card is supported when all three hold, compared on words (see `words`)
+ * so punctuation, markdown and line wrapping never fail a good card:
+ *
+ *  - its `source` is one of the notes sent;
+ *  - its quote is in that note: word for word, or, for a quote of five
+ *    words or more, nearly, with at least four in five of its word pairs
+ *    found in the note, so a model that quietly fixes a typo while copying
+ *    does not lose the card;
+ *  - its answer is in its quote: every word of the answer that carries
+ *    meaning is in the quote, bar one in an answer of five such words or
+ *    more. Words like "a", "the" and "and" do not count, so "A method of
+ *    refining the results" is supported by "Method of refining the
+ *    results"; "not", "no" and "never" always count, so a negation cannot
+ *    be invented.
+ *
+ * Pure. Exported because this is the rule the feature exists to enforce.
  */
 export function groundCards(cards: Suggestion[], sources: Source[]): { supported: Suggestion[]; dropped: Suggestion[] } {
-	const text = new Map(sources.map((s) => [s.path, words(s.text)]));
+	const notes = new Map(sources.map((s) => [s.path, { text: words(s.text), pairs: pairsOf(s.text) }]));
 	const supported: Suggestion[] = [];
 	const dropped: Suggestion[] = [];
 	for (const card of cards) {
-		const note = text.get(card.source.trim());
-		const quote = words(card.quote);
-		const answer = words(card.answer);
-		const ok = Boolean(note) && quote.trim() !== '' && answer.trim() !== '' && note!.includes(quote) && quote.includes(answer);
+		const note = notes.get(card.source.trim());
+		const ok = Boolean(note) && quoted(card.quote, note!) && answered(card.answer, card.quote);
 		(ok ? supported : dropped).push(card);
 	}
 	return { supported, dropped };
+}
+
+/** Words that carry no meaning of their own in an answer. "not", "no" and "never" are deliberately absent. */
+const FILLER = new Set(
+	'a an the and or but of to in on at for with by from as is are was were be been being it its this that these those which what who whom when where why how into onto than then so such also can could will would should may might must do does did has have had their there they them you your we our he she his her if via per'.split(' ')
+);
+
+/** Whether `quote` is in the note, word for word or nearly (see `groundCards`). */
+function quoted(quote: string, note: { text: string; pairs: Set<string> }): boolean {
+	const q = words(quote);
+	if (q.trim() === '') return false;
+	if (note.text.includes(q)) return true;
+	const list = q.trim().split(' ');
+	if (list.length < 5) return false;
+	const pairs = list.slice(1).map((w, i) => `${list[i]} ${w}`);
+	return pairs.filter((p) => note.pairs.has(p)).length >= 0.8 * pairs.length;
+}
+
+/**
+ * Whether every word of `answer` that carries meaning is in `quote`, bar
+ * one in a long answer that is not a negation. Every way of saying no
+ * ("not", "no", "never", "isn't") reads as "not" on both sides, so "No"
+ * is answered by "POST is not idempotent".
+ */
+function answered(answer: string, quote: string): boolean {
+	const said = new Set(meaningOf(quote));
+	const meaning = [...new Set(meaningOf(answer))];
+	if (meaning.length === 0) return false;
+	const missing = meaning.filter((w) => !said.has(w));
+	return missing.length === 0 || (meaning.length >= 5 && missing.length === 1 && missing[0] !== 'not');
+}
+
+const NEGATIONS = new Set(['not', 'no', 'never', 'none', 'nothing', 'cannot', 'without']);
+
+/** The words of `text` that carry meaning, each negation as "not". */
+function meaningOf(text: string): string[] {
+	return words(text.replace(/n['’]t\b/gi, ' not'))
+		.trim()
+		.split(' ')
+		.map((w) => (NEGATIONS.has(w) ? 'not' : w))
+		.filter((w) => w && !FILLER.has(w) && !/^[a-z]$/.test(w));
+}
+
+/** Every pair of neighbouring words in `text`, after `words`. */
+function pairsOf(text: string): Set<string> {
+	const list = words(text).trim().split(' ');
+	return new Set(list.slice(1).map((w, i) => `${list[i]} ${w}`));
 }
 
 /**

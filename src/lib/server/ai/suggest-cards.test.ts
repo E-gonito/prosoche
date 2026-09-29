@@ -54,13 +54,107 @@ describe('groundCards', () => {
 		{ what: 'a quote from another note than the one named', card: card({ source: 'CS/UDP.md' }), kept: false },
 		{ what: 'a note that was not sent', card: card({ source: 'CS/Elsewhere.md' }), kept: false },
 		{ what: 'an empty quote', card: card({ quote: '   ' }), kept: false },
-		{ what: 'an answer with no words', card: card({ answer: '—' }), kept: false }
+		{ what: 'an answer with no words', card: card({ answer: '—' }), kept: false },
+		{ what: 'an answer of only filler words', card: card({ answer: 'the' }), kept: false }
 	];
 
 	it.each(cases)('$what: kept $kept', ({ card: c, kept }) => {
 		const { supported, dropped } = groundCards([c], SOURCES);
 		expect(supported).toEqual(kept ? [c] : []);
 		expect(dropped).toEqual(kept ? [] : [c]);
+	});
+});
+
+/**
+ * Cards like the ones a real run drafted from the author's notes on HTTP
+ * methods and Postman, where the first rule (the answer's words, in order,
+ * inside the quote) dropped four good cards of five.
+ */
+describe('groundCards on real notes', () => {
+	const METHODS = [
+		'**idempotent** - Request is **idempotent** if intended effect on the server is identical for a single or several of the same request. ',
+		'## POST',
+		'submits an entity to a specified resource, often resulting in the _creation_ of a new subordinate resource. POST is **not** idempotent.',
+		'## DELETE',
+		'Deletes the specified resource, DELETE is idempotent',
+		'## PUT',
+		'Creates a new resource or replaces a representation at the target location, PUT is idempotent. Create or replace the URI with the exact data PUT provides',
+		''
+	].join('\n');
+	const POSTMAN = [
+		'**Query Parameters** = Method of refining the results within the url request.',
+		'',
+		'With a POST request, you must make the three assertions:',
+		'- **Asset Status Code** - Always check the HTTP status code response, for POST it should return `201`',
+		'- **Assert Response Body Structure** - The server\'s response should be the newly created object in the right format ',
+		'- **Assert Response Body Content** - assert that the data in the response matches the data sent. '
+	].join('\n');
+	const sources = [
+		{ path: 'Net/HTTP request methods.md', text: METHODS },
+		{ path: 'Net/APIs and Postman.md', text: POSTMAN }
+	];
+	const methods = (over: Partial<Suggestion>) => card({ source: 'Net/HTTP request methods.md', ...over });
+	const postman = (over: Partial<Suggestion>) => card({ source: 'Net/APIs and Postman.md', ...over });
+
+	const cases: Array<{ what: string; card: Suggestion; kept: boolean }> = [
+		{
+			what: 'an answer with an article the note leaves out',
+			card: postman({ answer: 'A method of refining the results within the url request', quote: 'Query Parameters = Method of refining the results within the url request.' }),
+			kept: true
+		},
+		{
+			what: 'a list answer whose quote fixed the note’s typo',
+			card: postman({
+				answer: 'Assert Status Code, Assert Response Body Structure, and Assert Response Body Content',
+				quote: 'With a POST request, you must make the three assertions: Assert Status Code - Always check the HTTP status code response, for POST it should return 201 - Assert Response Body Structure - The server\'s response should be the newly created object in the right format - Assert Response Body Content'
+			}),
+			kept: true
+		},
+		{
+			what: 'a long answer with one word of its own',
+			card: methods({
+				answer: 'PUT creates a new resource or replaces a representation at the target location, using the exact data PUT provides',
+				quote: 'Creates a new resource or replaces a representation at the target location, PUT is idempotent. Create or replace the URI with the exact data PUT provides'
+			}),
+			kept: true
+		},
+		{
+			what: 'a "No" the quote says as "not"',
+			card: methods({ question: 'Is POST idempotent?', answer: 'No', quote: 'POST is not idempotent.' }),
+			kept: true
+		},
+		{
+			what: 'an answer drawn from lines the quote does not hold',
+			card: methods({ answer: 'DELETE and PUT are idempotent; POST is not', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a negation the note does not make',
+			card: methods({ answer: 'DELETE is not idempotent', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a long answer whose one extra word is a negation',
+			card: methods({
+				answer: 'PUT never creates a new resource at the target location',
+				quote: 'Creates a new resource or replaces a representation at the target location, PUT is idempotent.'
+			}),
+			kept: false
+		},
+		{
+			what: 'a short answer with a word of its own',
+			card: methods({ answer: 'DELETE removes the resource', quote: 'Deletes the specified resource, DELETE is idempotent' }),
+			kept: false
+		},
+		{
+			what: 'a quote rewritten rather than copied',
+			card: methods({ answer: 'idempotent', quote: 'A request is idempotent when repeating it has the same effect as sending it once.' }),
+			kept: false
+		}
+	];
+
+	it.each(cases)('$what: kept $kept', ({ card: c, kept }) => {
+		expect(groundCards([c], sources).supported).toEqual(kept ? [c] : []);
 	});
 });
 
