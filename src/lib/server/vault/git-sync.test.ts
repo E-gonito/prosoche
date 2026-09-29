@@ -84,3 +84,38 @@ describe('GitSync against a real remote', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 });
+
+describe('an explicit commit', () => {
+	it('never stages transient state, even when the caller names it', async () => {
+		const root = await mkdtemp(join(tmpdir(), 'prosoche-sync-'));
+		const remote = join(root, 'remote.git');
+		const ours = join(root, 'ours');
+		const git = (dir: string, ...args: string[]) =>
+			execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { stdio: 'pipe' })
+				.toString()
+				.trim();
+		execFileSync('git', ['init', '-q', '--bare', '-b', 'master', remote]);
+		execFileSync('git', ['init', '-q', '-b', 'master', ours]);
+		git(ours, 'config', 'user.name', 't');
+		git(ours, 'config', 'user.email', 't@t');
+		git(ours, 'remote', 'add', 'origin', remote);
+		await writeFile(join(ours, 'Notes.md'), '# Notes\n');
+		git(ours, 'add', '-A');
+		git(ours, 'commit', '-q', '-m', 'seed');
+		git(ours, 'push', '-q', '-u', 'origin', 'master');
+		await mkdir(join(ours, '_hub/.state'), { recursive: true });
+		await writeFile(join(ours, '_hub/.state/schedule.json'), '{}\n');
+		await writeFile(join(ours, '_hub/timer.json'), '{}\n');
+		await writeFile(join(ours, 'Notes.md'), '# Notes\n\nMore.\n');
+
+		const sync = new GitSync(ours);
+		const pending = await sync.pending();
+		expect(pending.map((p) => p.path)).toEqual(['Notes.md']);
+		const status = await sync.commit(['Notes.md', '_hub/.state/schedule.json', '_hub/timer.json'], '');
+		expect(status.error).toBeNull();
+		expect(git(remote, 'ls-tree', '-r', '--name-only', 'master').split('\n')).toEqual(['Notes.md']);
+		expect(git(remote, 'log', '-1', '--format=%s', 'master')).toBe('hub: 1 file (Notes.md)');
+
+		await rm(root, { recursive: true, force: true });
+	});
+});

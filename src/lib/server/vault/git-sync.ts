@@ -149,6 +149,8 @@ export class GitSync implements SyncProvider {
 			const s = await this.git.status();
 			const seen = new Map<string, PendingFile>();
 			const add = (path: string, status: PendingFile['status']) => {
+				// Never offered for commit: see `isTransient`.
+				if (isTransient(path)) return;
 				if (!seen.has(path)) seen.set(path, { path, status, byApp: this.dirty.has(path) });
 			};
 			for (const path of s.deleted) add(path, 'deleted');
@@ -181,9 +183,14 @@ export class GitSync implements SyncProvider {
 		}
 	}
 
-	/** Commit and push exactly these paths. */
+	/**
+	 * Commit and push exactly these paths. Transient state is dropped from the
+	 * list even when named outright: the Sync page once listed it as pending,
+	 * a person committed everything, and every other device then fought over
+	 * a file that means nothing off the machine that wrote it.
+	 */
 	async commit(paths: string[], subject: string): Promise<SyncStatus> {
-		const safe = paths.filter((p) => this.isInsideVault(p));
+		const safe = paths.filter((p) => this.isInsideVault(p) && !isTransient(p));
 		if (!safe.length) return this.status();
 		return this.push(subject || commitSubject(safe), safe);
 	}
