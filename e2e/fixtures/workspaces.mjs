@@ -3,7 +3,7 @@
  * a card in its own Tasks.md (via the deck rule, no tag needed), and a custom
  * HTML page so the sandboxed-iframe tab has something to embed.
  *
- * Inbox, Log and Deals start empty on purpose: the suite creates them by
+ * Inbox and Log start empty on purpose: the suite creates them by
  * using the app, which is the behaviour worth proving.
  */
 export default () => ({

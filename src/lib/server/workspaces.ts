@@ -10,7 +10,7 @@
  *
  * Earlier versions let a workspace file list `tabs:` of named widgets. The
  * rebuild gives every workspace the same sections instead — Overview, Tasks,
- * Inbox, Log, People, Notes, and a tab per file in `Pages/` — so `tabs:` is no
+ * CRM, Inbox, Log, Notes, and a tab per file in `Pages/` — so `tabs:` is no
  * longer read. A file that still has one from before is parsed the same as
  * any other frontmatter the hub does not recognise: harmlessly ignored.
  */
