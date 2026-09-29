@@ -13,8 +13,20 @@
 
 import type { NoteIndex } from './index/index';
 import type { Vault } from './vault/index';
-import type { Workspace, WorkspaceTab } from './workspaces';
+import type { Workspace } from './workspaces';
 import { WIDGETS, type LoadedWidget } from '$lib/shared/widgets';
+
+/**
+ * A tab's list of widgets, as the old workspace file format named them.
+ *
+ * Workspace files no longer carry `tabs:` (see `workspaces.ts`); this shape
+ * is now purely the widget catalogue's own, kept here rather than imported so
+ * that module can drop the concept entirely.
+ */
+export interface WorkspaceTab {
+	title: string;
+	widgets: string[];
+}
 
 export type { LoadedWidget };
 

@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const defs = await workspaces();
 	const asked = url.searchParams.get('ws');
-	const workspace = asked ? (defs.find((w) => w.slug === asked) ?? null) : (defs.find((w) => w.template === 'study') ?? null);
+	const workspace = asked ? (defs.find((w) => w.slug === asked) ?? null) : (defs.find((w) => w.slug === 'study') ?? null);
 
 	const day = today();
 	const queue = await dueCards(vault, index, { on: day, scope: scopeOf(workspace), limit: 120 });

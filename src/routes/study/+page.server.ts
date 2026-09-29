@@ -10,8 +10,8 @@ const TABS = ['flashcards-due', 'currently-learning', 'queue', 'habits', 'topic-
  * The study dashboard.
  *
  * Its scope is a workspace, because the widgets are the workspace widgets:
- * `?ws=<slug>` picks one, otherwise the first workspace built from the study
- * template, otherwise the whole vault. So this page is a view of a workspace
+ * `?ws=<slug>` picks one, otherwise the workspace slugged `study`, otherwise
+ * the whole vault. So this page is a view of a workspace
  * rather than a second, parallel notion of "study" that could disagree with
  * one.
  */
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const defs = await workspaces();
 	const asked = url.searchParams.get('ws');
-	const workspace = asked ? (defs.find((w) => w.slug === asked) ?? null) : (defs.find((w) => w.template === 'study') ?? null);
+	const workspace = asked ? (defs.find((w) => w.slug === asked) ?? null) : (defs.find((w) => w.slug === 'study') ?? null);
 
 	const day = today();
 	const widgets = await loadWidgets(TABS, { vault, index, workspace, workspaces: defs, today: day });

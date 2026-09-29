@@ -250,10 +250,9 @@ describe('weekly', () => {
 		tag,
 		aliases: [],
 		folders: [],
-		template: 'project',
-		tabs: [],
 		deck: '',
 		kanbanColumns: [],
+		stages: [],
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const workspaces = [ws('work', 'ws/work', '#2f6fed'), ws('personal', 'ws/personal', '#16a34a')];
@@ -385,10 +384,9 @@ describe('doneSpans', () => {
 		tag,
 		aliases,
 		folders,
-		template: 'project',
-		tabs: [],
 		deck: '',
 		kanbanColumns: [],
+		stages: [],
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const workspaces = [ws('work', 'ws/work', [], ['Work']), ws('kaya', 'ws/kaya', ['Kaya'], ['Kaya Thai'])];
@@ -442,10 +440,9 @@ describe('dayByWorkspace', () => {
 		tag: `ws/${slug}`,
 		aliases,
 		folders: [],
-		template: 'project',
-		tabs: [],
 		deck: '',
 		kanbanColumns: [],
+		stages: [],
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const workspaces = [ws('client', ['Client project']), ws('wellbeing', ['Morning stretch'])];
@@ -625,10 +622,9 @@ describe('against a vault', () => {
 			tag: 'ws/work',
 			aliases: [],
 			folders: ['Work'],
-			template: 'project',
-			tabs: [],
 			deck: '',
 			kanbanColumns: [],
+			stages: [],
 			path: '_hub/workspaces/work.md'
 		};
 
@@ -859,10 +855,9 @@ describe('against a vault', () => {
 					tag: 'ws/work',
 					aliases: [],
 					folders: ['Work'],
-					template: 'project',
-					tabs: [],
 					deck: '',
 					kanbanColumns: [],
+					stages: [],
 					path: '_hub/workspaces/work.md'
 				}
 			];
@@ -881,10 +876,9 @@ describe('against a vault', () => {
 				tag: 'ws/kaya',
 				aliases: ['Kaya'],
 				folders: ['Kaya Thai'],
-				template: 'project',
-				tabs: [],
 				deck: '',
 				kanbanColumns: [],
+				stages: [],
 				path: '_hub/workspaces/kaya.md'
 			};
 			await vault.write(PATH, '# Tasks\n- [ ] 10:30 - 18:00 Work on Kaya `Q1`\n');

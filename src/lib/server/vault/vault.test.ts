@@ -150,3 +150,33 @@ describe('the private folder', () => {
 		expect(marked).toEqual(['b.md']);
 	});
 });
+
+describe('files', () => {
+	it('lists non-markdown files in a folder by extension, sorted', async () => {
+		await mkdir(join(root, 'Work/Pages'), { recursive: true });
+		await writeFile(join(root, 'Work/Pages/eye.html'), '<p>eye</p>');
+		await writeFile(join(root, 'Work/Pages/atlas.html'), '<p>atlas</p>');
+		await writeFile(join(root, 'Work/Pages/notes.md'), '# not a page');
+		await writeFile(join(root, 'Work/Pages/readme.txt'), 'skip');
+
+		expect(await vault.files('Work/Pages', 'html')).toEqual(['atlas.html', 'eye.html']);
+	});
+
+	it('reads as empty when the folder does not exist', async () => {
+		expect(await vault.files('Nowhere/Pages', 'html')).toEqual([]);
+	});
+
+	it('never recurses into subfolders', async () => {
+		await mkdir(join(root, 'Work/Pages/Sub'), { recursive: true });
+		await writeFile(join(root, 'Work/Pages/Sub/deep.html'), '<p>deep</p>');
+		await writeFile(join(root, 'Work/Pages/top.html'), '<p>top</p>');
+
+		expect(await vault.files('Work/Pages', 'html')).toEqual(['top.html']);
+	});
+
+	it('is public scope only: nothing from the private folder', async () => {
+		await mkdir(join(root, 'Private/Pages'), { recursive: true });
+		await writeFile(join(root, 'Private/Pages/secret.html'), '<p>secret</p>');
+		expect(await vault.files('Private/Pages', 'html')).toEqual([]);
+	});
+});

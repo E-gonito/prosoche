@@ -87,10 +87,9 @@ const STUDY: Workspace = {
 	tag: 'ws/study',
 	aliases: [],
 	folders: ['Study'],
-	template: 'study',
-	tabs: [],
 	deck: 'Study/Tasks.md',
 	kanbanColumns: [],
+	stages: [],
 	path: '_hub/workspaces/study.md'
 };
 const ERRANDS: Workspace = { ...STUDY, slug: 'errands', name: 'Errands', tag: 'ws/errands', folders: ['Errands'], deck: 'Errands/Tasks.md', path: '_hub/workspaces/errands.md' };
