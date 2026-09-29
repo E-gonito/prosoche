@@ -57,7 +57,7 @@ test.describe('Meetings', () => {
 		const definition = '---\nname: Garden\ncolor: "#16a34a"\nfolders:\n  - "Garden"\n---\n';
 		writeFileSync(join(VAULT, '_hub/workspaces/garden.md'), definition);
 
-		await page.goto('/glossary/garden');
+		await page.goto('/w/garden');
 		await page.getByTestId('start-a-meeting').click();
 		await expect(page).toHaveURL(/\/meetings\/garden\/notes$/);
 		await expect(page.getByTestId('start-meeting')).toBeVisible();
@@ -67,6 +67,21 @@ test.describe('Meetings', () => {
 		await page.goto('/w/garden');
 		await page.getByTestId('start-a-meeting').click();
 		await expect(page).toHaveURL(/\/meetings\/garden\/notes$/);
+		expect(vaultFile('_hub/workspaces/garden.md')).toBe(definition.replace('  - "Garden"\n---', '  - "Garden"\nmeetings: true\n---'));
+	});
+
+	test('a term captured in a workspace with no glossary stays in the meeting note', async ({ page }) => {
+		const path = `Study/Meetings/${TODAY} Reading group.md`;
+		await page.goto('/meetings/study/notes');
+		await page.getByTestId('meeting-title').fill('Reading group');
+		await page.getByTestId('start-meeting').click();
+		await page.getByTestId('capture-kind-term').click();
+		await page.getByTestId('capture-text').fill('Amortised cost');
+		await page.getByTestId('capture-add').click();
+		await expect(page.getByTestId('current-meeting')).toContainText('Amortised cost');
+		expect(vaultFile(path)).toContain('- term:: Amortised cost\n');
+		expect(vaultFile('Glossaries/Study.md')).toBe('');
+		expect(vaultFile('Study/Glossary.md')).toBe('');
 	});
 
 	test('the card renders the primer in the artifact\'s shape', async ({ page }) => {
@@ -105,7 +120,7 @@ test.describe('Meetings', () => {
 
 	test('start a meeting, capture into it and end it', async ({ page }) => {
 		const path = `Work/Meetings/${TODAY} Design review.md`;
-		const glossary = vaultFile('Work/Glossary.md');
+		const glossary = vaultFile('Glossaries/Work.md');
 		await page.goto('/meetings/work/notes');
 		await expect(page.getByRole('button', { name: 'Prep with Claude' })).toBeVisible();
 		await page.getByTestId('meeting-title').fill('Design review');
@@ -135,8 +150,8 @@ test.describe('Meetings', () => {
 			'- decision:: Deploy to ECS, not Beanstalk\n' +
 			'- [ ] action:: Write up the decision\n';
 		expect(vaultFile(path)).toBe(captured);
-		// The term went into the workspace's glossary as well, appended and nothing more.
-		expect(vaultFile('Work/Glossary.md')).toBe(
+		// The term went into the glossary Work names, appended and nothing more.
+		expect(vaultFile('Glossaries/Work.md')).toBe(
 			`${glossary}\n## Cookie Cutter\n- status:: to-look-up\n- source:: [[${TODAY} Design review]]\n`
 		);
 		// The new action is open, so it is waiting under Before you go in too.

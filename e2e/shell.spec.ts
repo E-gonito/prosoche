@@ -7,7 +7,7 @@ test.describe('the shell', () => {
 		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Meetings', 'Glossary', 'Workspaces', 'Study', 'Date', 'Notes']);
 		// The fixture has a workspace called Study too; it sits under Workspaces.
 		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Study', 'Work']);
-		// Only Work has a Glossary.md, so only Work sits under Glossary.
+		// The one glossary is Glossaries/Work.md, so it alone sits under Glossary.
 		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Work']);
 		await expect(rail.locator('.modules > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
 	});
