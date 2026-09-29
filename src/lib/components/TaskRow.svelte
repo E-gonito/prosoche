@@ -3,7 +3,6 @@
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { editTask } from '$lib/client/api';
 	import { startDrag, drag } from '$lib/client/drag.svelte';
-	import { timer } from '$lib/client/timer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let {
@@ -39,9 +38,6 @@
 	let adding = $state(false);
 	const done = $derived(isDone(task));
 	const dragging = $derived(drag.task?.path === task.path && drag.task?.line === task.line);
-	// Starting a timer stops whatever was running, so the button on the row
-	// that is already being timed is a stop button rather than a no-op.
-	const timing = $derived(timer.task?.path === task.path && timer.task?.line === task.line);
 
 	async function add() {
 		if (adding) return;
@@ -110,18 +106,6 @@
 			title="Add to today, with no time yet"
 		><Icon name="plus" size={12} /></button>
 	{/if}
-	{#if !done}
-		<button
-			class="run"
-			class:timing
-			data-testid="task-timer"
-			onclick={() => (timing ? timer.stop() : timer.start(task.path, task.line))}
-			disabled={timer.busy}
-			aria-pressed={timing}
-			aria-label={timing ? `Stop timing "${displayText(task.text)}"` : `Start timing "${displayText(task.text)}"`}
-			title={timing ? 'Stop and log the time' : 'Start timing this'}
-		><Icon name={timing ? 'square' : 'play'} size={11} /></button>
-	{/if}
 	{#if task.due}<span class="due num" class:overdue data-testid="task-due">{task.due}</span>{/if}
 	{#if task.quadrant}<span class="q q{task.quadrant}">Q{task.quadrant}</span>{/if}
 	{#if showPath}<span class="path">{task.path.split('/').pop()?.replace(/\.md$/, '')}</span>{/if}
@@ -168,12 +152,9 @@
 	.done .text { text-decoration: line-through; color: var(--muted); }
 	/* A time is a number, so body text with the figures lined up. */
 	.time { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); flex: none; }
-	/*
-	 * Kept out of the way until the row is under the pointer, because most
-	 * rows are read rather than timed, and always visible once a timer is
-	 * running on this one so it can be stopped from where it was started.
-	 */
-	.run, .add {
+	/* Kept out of the way until the row is under the pointer, because most
+	   rows are read rather than acted on. */
+	.add {
 		flex: none;
 		align-self: center;
 		display: grid;
@@ -186,18 +167,16 @@
 		cursor: pointer;
 		opacity: 0;
 	}
-	.task:hover .run, .task:hover .add, .run:focus-visible, .add:focus-visible, .run.timing { opacity: 1; }
+	.task:hover .add, .add:focus-visible { opacity: 1; }
 	/*
 	 * There is no hover on a phone, so "appears when you point at it" means
 	 * "does not exist". Shown faintly instead: present enough to find, quiet
 	 * enough that a list of tasks still reads as a list of tasks.
 	 */
 	@media (hover: none) {
-		.run, .add { opacity: 0.55; }
-		.run.timing { opacity: 1; }
+		.add { opacity: 0.55; }
 	}
-	.run:hover, .add:hover { color: var(--accent); }
-	.run.timing { color: var(--q1); }
+	.add:hover { color: var(--accent); }
 	.text { flex: 1; min-width: 0; }
 	/*
 	 * The text itself is the control, so the row still reads as a row: no

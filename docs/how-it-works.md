@@ -307,8 +307,8 @@ Automatic commits only ever stage files this app wrote; anything changed by
 hand in an editor waits on this page for a person to choose, rather than
 being swept up automatically.
 
-The app's own state files, the running timer and the `_hub/.state/` stamps,
-are never committed: they exist to survive a restart, not to be shared. If a
+The app's own state files, the `_hub/.state/` stamps among them, are never
+committed: they exist to survive a restart, not to be shared. If a
 copy of the vault on another device did commit them, the next pull here
 replaces the local untracked copy with the incoming one rather than refusing,
 then takes the files out of tracking, adds them to the vault's `.gitignore`

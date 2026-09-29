@@ -9,9 +9,9 @@ you are actually doing, as against what you meant to do. That is the whole
 premise. The plan you wrote this morning and the day you actually had are the
 same file.
 
-> Working, and in daily use by its author. The planner, boards, time tracking,
-> study and the AI layer are all in. It has no login and is meant to run on a
-> private network.
+> Working, and in daily use by its author. Six modules — Today, Meetings,
+> Workspaces, Study, Dating and Notes — plus the AI layer are all in. It has
+> no login and is meant to run on a private network.
 
 ## Why
 
@@ -64,11 +64,34 @@ tag on a line puts that one task in a workspace, wherever the line lives.
 Everything else is ordinary Obsidian: wikilinks, tags, frontmatter.
 
 Workspaces are markdown too. One file per workspace under `_hub/workspaces/`
-declares where its notes live and which widgets appear on which tab, so the
-layout is editable in Obsidian and travels with the vault. An `aliases:` list
-in that file names the words you already use for the project — `aliases:
-[eye2gene, e2g]` — so a daily block reading "Work on eye2gene" is counted
-against it without your having to tag anything.
+names it, colours it and says where its notes live, so that travels with the
+vault and is editable in Obsidian. Every workspace gets the same sections —
+tasks or board, inbox, log, contacts and deals, meetings, notes — and a
+section with nothing in it is simply hidden. An `aliases:` list in that file
+names the words you already use for the project — `aliases: [eye2gene, e2g]`
+— so a daily block reading "Work on eye2gene" is counted against it without
+your having to tag anything.
+
+## Modules
+
+Six tabs, drawn from one registry (`src/lib/modules/index.ts`) so a new one
+is a route folder and a line:
+
+- **Today** — the day and the week around it: scheduled blocks, overdue and
+  blocked cards, calendar events, and a briefing button that drafts a
+  paragraph you save yourself.
+- **Meetings** — one card per workspace: a primer, live notes with a capture
+  box, prep talking points, and a glossary, each with a Claude draft you
+  accept or throw away.
+- **Workspaces** — tasks or a board, an inbox, a dated log, contacts and a
+  deal pipeline, past meetings, and read-only notes.
+- **Study** — topics, a reading list, flashcard review, goals with
+  milestones, and a session log.
+- **Dating** — a daily counter ledger, stats and history, and person
+  profiles. Everything here lives under a gitignored `Private/` folder:
+  never indexed, searched, shown on Today, or committed to git.
+- **Notes** — a read-only Obsidian viewer, with search, backlinks and a
+  quick capture box.
 
 ## Running it
 
@@ -85,14 +108,13 @@ HUB_VAULT=~/vault npm run dev      # http://localhost:5173
 | `HUB_DB` | `~/.local/state/hub/index.db` | Index cache; safe to delete |
 | `HUB_UNDO` | `~/.local/state/hub/undo` | Snapshots taken before any AI write |
 | `HUB_PEOPLE_FOLDER` | `People` | Where a person note is created |
-| `HUB_TIMESHEET_FOLDER` | — | Folder holding `TIMESHEET <MONTH>` notes, if you keep one |
-| `HUB_GITHUB_TOKEN`, `HUB_GITHUB_REPOS` | — | Read access for the GitHub card. Absent means "not connected" |
-| `HUB_LINEAR_TOKEN` | — | Personal API key for the Linear card |
+| `HUB_GCAL_ICS` | — | Google Calendar's secret address in iCal format. Absent means no calendar events on Today or Meetings |
 | `HUB_T3_URL` | — | Base URL of a T3 Code web client on this machine. Absent means no "T3 Code" entry in the nav or palette |
 | `PORT`, `HOST` | `3000`, `0.0.0.0` | For the built server |
 
-No token is ever written into the vault or this repository; the cards render a
-"not connected" state naming the variable to set, which is what it ships as.
+No secret is ever written into the vault or this repository; a feature that
+needs one and does not have it renders a "not connected" state naming the
+variable to set, which is what it ships as.
 
 Production is a single Node process:
 
@@ -108,7 +130,7 @@ to be used.
 ## Tests
 
 ```bash
-npm test                              # 951 unit tests, no vault needed
+npm test                              # 1100+ unit tests, no vault needed
 VAULT_PATH=~/vault npm test           # adds a conformance pass over your vault
 npm run build && npm run e2e          # browser tests against a throwaway vault
 ```
@@ -140,10 +162,11 @@ search, `chokidar` to watch the vault, `simple-git` for sync.
 | `src/lib/server/vault/` | Every filesystem call, path safety, hashes, the watcher, the sync provider. |
 | `src/lib/server/index/` | The database. The only SQL in the codebase. |
 | `src/lib/server/workspaces.ts` | Workspace definitions and membership. |
-| `src/lib/server/timelog.ts` | The `## Time log` section, and the one running timer. |
-| `src/lib/server/study/` | Flashcards, resources, topics and habits, all read out of notes. |
+| `src/lib/server/study/` | Flashcards, resources, topics, goals and the session log, all read out of notes. |
+| `src/lib/server/dating.ts` | The ledger, person profiles and the `Private/` scope, read by one module only. |
 | `src/lib/server/ai/` | The ten guardrails, the CLI bridge, and every feature that drafts a change. |
 | `src/lib/server/hub.ts` | Wires those into one running instance. |
+| `src/lib/modules/` | The module registry the shell draws its navigation from. |
 | `src/routes/` | Pages and JSON API. Handlers translate HTTP and nothing else. |
 
 Sync sits behind a `SyncProvider` interface with a git implementation: saves
@@ -183,14 +206,17 @@ ships — every surface still loads and says so.
 ## Roadmap
 
 - [x] Vault reading, full-text index, file tree, rendered notes, git sync, daily note view
-- [x] Live-preview editor, ticking tasks, drag-and-drop timeline, conflict resolver
-- [x] Kanban boards, workspace widgets, task dependencies
-- [x] Time tracking, contacts and follow-ups
+- [x] Ticking tasks, drag-and-drop timeline, conflict resolver
+- [x] Six modules: Today, Meetings, Workspaces, Study, Dating, Notes
+- [x] Kanban boards, contacts and a deal pipeline, task dependencies
 - [x] LLM assistance over the vault, behind an accept-or-reject proposal flow
       so nothing is written without confirmation
-- [x] Study tracker: resource queue, topic coverage, spaced repetition
-- [x] GitHub and Linear cards, command palette, installable on a phone
+- [x] Study tracker: resource queue, topic coverage, spaced repetition, goals
+      and a session log
+- [x] A private, gitignored Dating module with its own ledger and profiles
+- [x] Command palette, phone and desktop, installable via add-to-home-screen
 - [ ] Multi-vault, and a second sync provider to prove the interface
+- [ ] Outlook calendars, deferred behind Google's ICS feed
 
 ## Licence
 

@@ -18,7 +18,7 @@ afterEach(async () => {
 
 const entry = (over: Partial<AuditEntry> = {}): AuditEntry => ({
 	at: '2026-09-21T09:15:00.000Z',
-	feature: 'ask',
+	feature: 'dating-insights',
 	model: 'claude-sonnet-5',
 	effort: 'medium',
 	permission: 'read-only',

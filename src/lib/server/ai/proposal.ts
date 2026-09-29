@@ -104,20 +104,11 @@ export function policyFor(
 	});
 
 	switch (feature) {
-		// Read-only features. An empty allowlist denies everything, which is
-		// what makes "Ask cannot write" a property of the code and not a habit.
-		case 'ask':
-		case 'insights':
-			return wrap([]);
-
 		// The briefing is G1's exception, so its policy is the tightest here:
 		// one file, one day, no renames. The overlap with the writable-days
 		// list is deliberate - a date bug has to get past both.
 		case 'briefing':
 			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today], renamableUnder: [] });
-
-		case 'weekly-review':
-			return wrap([`${config.dailyNote.folder}/Weekly/`], { maxFiles: 1, renamableUnder: [] });
 
 		// Capture files one thing into the inbox and, at most, one destination
 		// it names when it proposes.
@@ -125,7 +116,6 @@ export function policyFor(
 			return wrap(['Inbox/', ...extra], { maxFiles: 2 });
 
 		case 'suggest-flashcards':
-		case 'timesheet':
 			return wrap(extra, { maxFiles: Math.min(settings.blast.maxFiles, 2) });
 
 		// The meeting features each write one note of one kind, and the

@@ -21,7 +21,6 @@
 	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
-	import { timer } from '$lib/client/timer.svelte';
 
 	/**
 	 * A calendar event, drawn on the grid beside the tasks. Deliberately not a
@@ -546,13 +545,12 @@
 						aria-label="{event.title}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}, on your calendar"
 					>
 						<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
-						<div class="label">{event.title}</div>
+						<div class="block-label">{event.title}</div>
 					</a>
 				{:else}
 				{@const task = p.item.task}
 				{@const done = isDone(task)}
 				{@const owner = ownerOf(task)}
-				{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
 				<div
 					class="block q{task.quadrant ?? 0}"
 					data-testid="block"
@@ -585,25 +583,8 @@
 							style="--dot: {owner.color}"
 							title={owner.name}
 						></span>{/if}</div>
-					<div class="label">{displayText(task.text)}</div>
-					{#if task.quadrant}<span class="q q{task.quadrant} badge">Q{task.quadrant}</span>{/if}
-					{#if !done}
-						<button
-							class="run"
-							class:timing
-							data-testid="block-timer"
-							title={timing ? 'Stop and log the time' : 'Start timing this block'}
-							aria-pressed={timing}
-							aria-label={timing
-								? `Stop timing "${displayText(task.text)}"`
-								: `Start timing "${displayText(task.text)}"`}
-							onpointerdown={(e) => e.stopPropagation()}
-							onclick={(e) => {
-								e.stopPropagation();
-								void (timing ? timer.stop() : timer.start(task.path, task.line));
-							}}
-						><Icon name={timing ? 'square' : 'play'} size={11} /></button>
-					{/if}
+					<div class="block-label">{displayText(task.text)}</div>
+					{#if task.quadrant}<span class="q q{task.quadrant} q-badge">Q{task.quadrant}</span>{/if}
 					<button
 						class="clear"
 						data-testid="clear-time"
@@ -726,7 +707,7 @@
 	.block.active { z-index: 4; box-shadow: var(--shadow); cursor: grabbing; }
 	.block.busy { opacity: 0.55; }
 	.block.done { opacity: 0.6; }
-	.block.done .label { text-decoration: line-through; }
+	.block.done .block-label { text-decoration: line-through; }
 	.block.q1 { border-left-color: var(--q1); }
 	.block.q2 { border-left-color: var(--q2); }
 	.block.q3 { border-left-color: var(--q3); }
@@ -764,7 +745,7 @@
 	 * half by `overflow: hidden`, which looks like a bug rather than like text
 	 * continuing.
 	 */
-	.label {
+	.block-label {
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: var(--label-lines, 2);
@@ -774,7 +755,7 @@
 		text-overflow: ellipsis;
 	}
 	/* Clear of the ✕ button, which appears in the same corner on hover. */
-	.badge { position: absolute; top: 5px; right: 26px; }
+	.q-badge { position: absolute; top: 5px; right: 26px; }
 
 	/*
 	 * A ten-minute block is eighteen pixels tall, so the compact row is built
@@ -787,10 +768,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--s2);
-		/* The right padding is the room the ▶ and ✕ occupy on hover. They are
+		/* The right padding is the room the ✕ occupies on hover. It is
 		   absolutely positioned, so only this keeps the text from running
-		   underneath them. The taller blocks reserve it on the badge instead. */
-		padding: 0 44px 0 9px;
+		   underneath it. The taller blocks reserve it on the badge instead. */
+		padding: 0 26px 0 9px;
 		white-space: nowrap;
 		line-height: 1.2;
 	}
@@ -799,14 +780,14 @@
 	   to the text rather than out at the edge. `min-width: 0` is what lets the
 	   ellipsis happen at all: without it a flex child will not shrink below
 	   its content, so a long label overflowed instead of truncating. */
-	.block.compact .label {
+	.block.compact .block-label {
 		display: block;
 		flex: 0 1 auto;
 		min-width: 0;
 		font-size: var(--t12);
 		line-height: inherit;
 	}
-	.block.compact .badge { position: static; flex: none; }
+	.block.compact .q-badge { position: static; flex: none; }
 
 	.handle { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
 
@@ -833,29 +814,4 @@
 	.block:focus-within .clear { opacity: 1; }
 	.clear:hover { background: var(--soft); color: var(--bad); }
 	.block.compact .clear { top: 50%; right: 2px; width: 16px; height: 16px; transform: translateY(-50%); }
-
-	/* Sits beside the ✕, and stays visible while this block is the one running. */
-	.run {
-		position: absolute;
-		top: 3px;
-		right: 23px;
-		width: 18px;
-		height: 18px;
-		padding: 0;
-		border: 0;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--muted);
-		line-height: 1;
-		cursor: pointer;
-		opacity: 0;
-		display: grid;
-		place-items: center;
-	}
-	.block:hover .run,
-	.block:focus-within .run,
-	.run.timing { opacity: 1; }
-	.run:hover { background: var(--soft); color: var(--accent); }
-	.run.timing { color: var(--q1); }
-	.block.compact .run { top: 50%; right: 20px; width: 16px; height: 16px; transform: translateY(-50%); }
 </style>

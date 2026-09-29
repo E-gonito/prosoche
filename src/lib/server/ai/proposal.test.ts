@@ -279,7 +279,7 @@ describe('replaceRegion', () => {
 	});
 
 	it('will not match a marker belonging to something else', () => {
-		const other = '<!-- hub:timesheet start -->\nx\n<!-- hub:timesheet end -->';
+		const other = '<!-- hub:other start -->\nx\n<!-- hub:other end -->';
 		expect(replaceRegion(other, 'hub:briefing', 'y')).toBeNull();
 	});
 
@@ -306,11 +306,6 @@ describe('policyFor', () => {
 	const caps = { enabled: true, blast: { maxFiles: 5, maxLineLoss: 0.3 } };
 	const ctx = { today: '2026-09-21' };
 
-	it('lets the read-only features write nothing at all', () => {
-		expect(policyFor('ask', caps, ctx).path.allow).toEqual([]);
-		expect(policyFor('insights', caps, ctx).path.allow).toEqual([]);
-	});
-
 	it('holds the briefing to today\'s note alone', () => {
 		const policy = policyFor('briefing', caps, ctx);
 		expect(policy.path.allow).toEqual(['Journal/2026/09/21.md']);
@@ -329,10 +324,11 @@ describe('policyFor', () => {
 	});
 
 	it('carries the kill switch through, so one flag reaches every check', () => {
-		expect(policyFor('ask', { ...caps, enabled: false }, ctx).enabled).toBe(false);
+		expect(policyFor('capture', { ...caps, enabled: false }, ctx).enabled).toBe(false);
 	});
 
 	it('gives a feature it has never heard of nothing', () => {
 		expect(policyFor('not-a-feature' as never, caps, ctx).path.allow).toEqual([]);
+		expect(policyFor('dating-insights', caps, ctx).path.allow).toEqual([]);
 	});
 });

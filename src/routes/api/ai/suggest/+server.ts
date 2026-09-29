@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { isDayKey, shiftDay, today } from '$server/daily';
+import { shiftDay, today } from '$server/daily';
 import { fileCapture } from '$server/ai/file-capture';
 import { suggestCards } from '$server/ai/suggest-cards';
-import { draft, draftPath } from '$server/ai/timesheet-draft';
 import { draftLookups, draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
 import { eventsBetween } from '$server/calendar';
 import type { RequestHandler } from './$types';
@@ -28,7 +27,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		path?: string;
 		line?: number;
 		expectedRaw?: string;
-		day?: string;
 		count?: number;
 		/** The meeting features: which workspace, and what about. */
 		slug?: string;
@@ -57,12 +55,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!body.path) return json({ error: 'path is required' }, { status: 400 });
 		const result = await suggestCards(vault, body.path, { count: body.count });
 		return json({ ...result, destinations: [body.path] });
-	}
-
-	if (body.feature === 'timesheet') {
-		const day = body.day && isDayKey(body.day) ? body.day : today();
-		const result = await draft(vault, index, day);
-		return json({ ...result, destinations: [draftPath(day)] });
 	}
 
 	// The meeting notebook's three drafts. Each names its one destination.

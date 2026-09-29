@@ -42,7 +42,7 @@ export function minutesThisWeek(sessions: Session[], today: string): number {
  *
  * Today is never counted as a miss: a day not yet studied is a day not yet
  * over, so the streak simply starts counting from yesterday instead of
- * breaking. This mirrors `habits.ts`'s own streak, for the same reason.
+ * breaking.
  */
 export function streak(sessions: Session[], today: string): number {
 	const days = new Set(sessions.map((s) => s.day));
