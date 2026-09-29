@@ -1,17 +1,20 @@
 import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { renderMarkdown } from '$server/render';
-import { findGlossary, loadGlossary } from '$server/glossary';
+import { findGlossary, loadGlossary, noteFolders } from '$server/glossary';
 import { capturedTerms } from '$server/meetings';
-import { noteFolders } from '$server/ai/glossary-drafts';
+import { scanPlan } from '$server/ai/glossary-drafts';
+import { loadSettings } from '$server/ai/settings';
 import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /**
  * One glossary: every entry of its file ready to draw, the terms captured in
  * the meetings of every workspace pointing at it that it does not have yet,
- * those workspaces (for Start a meeting), and the vault's folders, offered
- * when finding terms in notes. Only an unknown slug is a 404.
+ * those workspaces (for Start a meeting), what a scan for new terms would
+ * read now, the vault's folders it may be scanned from, and whether AI is
+ * on. Reads every note under the glossary's sources to count them. Only an
+ * unknown slug is a 404. Writes nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
 	const { vault, index, ready, workspaces } = hub();
@@ -49,6 +52,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		entries,
 		captured: glossary.captured,
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))],
-		folders: await noteFolders(vault)
+		folders: await noteFolders(vault),
+		scan: await scanPlan(vault, ref),
+		aiEnabled: (await loadSettings(vault)).enabled
 	};
 };

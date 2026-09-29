@@ -1,43 +1,45 @@
 /**
  * What Claude drafts for a glossary: definitions for the terms waiting to be
- * looked up, and new entries for terms found in a folder of notes.
+ * looked up, and new entries for terms found in the notes it is scanned from.
  *
- * Each draft is a proposal and nothing more, with one destination: the
- * glossary's own file in `Glossaries/`. The model is given the notes as data
- * (G8), answers in a fixed JSON shape (G6), and the bytes it would change are
- * computed here from that answer and the glossary as it stands, through the
- * grammar in `parse/glossary.ts`. Nothing in this file writes to the vault;
- * `proposal.apply` does, after a human accepts. Both drafts run with the
- * glossary look-up's model settings and path policy (`glossary-lookup`).
+ * Nothing in this file writes to the vault. A look-up is a proposal with one
+ * destination, the glossary's own file in `Glossaries/`, which
+ * `proposal.apply` writes after a human accepts. A scan is a list of
+ * candidates for a person to tick and edit, which `addScannedTerms` in
+ * `glossary.ts` writes when they press Add. The model is given the notes as
+ * data (G8) and answers in a fixed JSON shape (G6). Both run with the
+ * glossary look-up's model settings (`glossary-lookup`).
  *
- * ## Finding terms, and the rule that shapes it
+ * ## Scanning, and the rule that shapes it
  *
- * "Find terms in my notes" reads the markdown notes under a folder the user
- * picks, in path order, until `FIND_CHARS` of text is gathered (each note at
- * most `FIND_NOTE_CHARS`), and says how far it got, so a big folder is read
- * in batches the user steps through, or narrowed. The model proposes
- * entries, each naming the note it came from and quoting a sentence of it.
- * As in `suggest-cards.ts`, an entry is kept only when its quote is found in
- * that note and the term is found in its quote; everything else is dropped
- * before it becomes an edit, because a prompt is a request and this is a
- * rule. Terms the glossary already has are skipped the same way, whatever
- * the model was told.
+ * A glossary names the folders it is scanned from in its frontmatter
+ * (`sources:`, see `glossary.ts`). `scanPlan` lists the notes under them,
+ * every one or only those changed since the last full scan, and splits them
+ * into batches of at most `FIND_CHARS` of text (each note at most
+ * `FIND_NOTE_CHARS`); the page runs `draftScan` on each batch in turn. The
+ * model proposes entries, each naming the note it came from and quoting a
+ * sentence of it. As in `suggest-cards.ts`, an entry is kept only when its
+ * quote is found in that note and the term is found in its quote; the rest
+ * are left out, because a prompt is a request and this is a rule. Terms the
+ * glossary already has, or that an earlier batch found, are skipped the same
+ * way, whatever the model was told.
  *
- * The prompt builders and proposal builders are pure and exported, because
- * they are the part worth testing.
+ * The prompt builders, proposal builder and batching are pure and exported,
+ * because they are the part worth testing.
  */
 
-import { config } from '../config';
 import type { Vault } from '../vault/index';
 import { basename } from '../parse/note';
-import { appendEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type GlossaryEntry } from '../parse/glossary';
-import { GLOSSARY_FOLDER, type GlossaryRef } from '../glossary';
+import { findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type GlossaryEntry } from '../parse/glossary';
+import { scanNotes, scanSettings, type GlossaryRef } from '../glossary';
+import { today } from '../daily';
 import { loadMeetings, notebookPaths } from '../meetings';
 import { wrapAsData, type Schema } from './guardrails';
 import { asSource, gather, nothing, runDraft, type DraftOptions, type DraftResult, type Source } from './meeting-drafts';
 import { newId } from './proposal';
 import { words } from './suggest-cards';
-import type { Proposal, RunStamp } from '$lib/shared/ai';
+import type { Proposal, Refusal, RunStamp } from '$lib/shared/ai';
+import { ENTRY_LIMITS, type ScanBatches, type ScanCandidate, type ScanDraft, type ScanPlan } from '$lib/shared/glossary';
 
 /** Terms looked up in one run; more is a second press. */
 export const LOOKUP_LIMIT = 20;
@@ -177,14 +179,16 @@ export async function draftLookups(vault: Vault, glossary: GlossaryRef, terms: s
 	return { proposal, problem: proposal ? null : 'The answer matched none of the terms asked about.', refusals: [], destinations };
 }
 
-/* --------------------------------------------------------- find terms -- */
+/* --------------------------------------------------------------- scan -- */
 
-/** How much note text one "find terms" run reads, in characters. */
+/** How much note text one batch of a scan reads, in characters. */
 export const FIND_CHARS = 60_000;
 /** How much of any one note it reads. */
 export const FIND_NOTE_CHARS = 12_000;
-/** New entries one run may propose. */
+/** New entries one batch may propose. */
 export const FIND_LIMIT = 25;
+/** Terms found by earlier batches that one batch is told about; more are still checked. */
+const FOUND_LIMIT = 1000;
 
 const FIND_SCHEMA: Schema = {
 	type: 'object',
@@ -195,10 +199,10 @@ const FIND_SCHEMA: Schema = {
 			of: {
 				type: 'object',
 				fields: {
-					term: { type: 'string', minLength: 1, maxLength: 120 },
-					category: { type: 'string', maxLength: 60 },
-					definition: { type: 'string', minLength: 1, maxLength: 1500 },
-					relevance: { type: 'string', maxLength: 600 },
+					term: { type: 'string', minLength: 1, maxLength: ENTRY_LIMITS.term },
+					category: { type: 'string', maxLength: ENTRY_LIMITS.category },
+					definition: { type: 'string', minLength: 1, maxLength: ENTRY_LIMITS.definition },
+					relevance: { type: 'string', maxLength: ENTRY_LIMITS.relevance },
 					/** The path of the note it came from, as the prompt gave it. */
 					source: { type: 'string', minLength: 1, maxLength: 400 },
 					/** A sentence of that note that uses or defines the term. */
@@ -219,66 +223,71 @@ export interface FoundTerm {
 	quote: string;
 }
 
-/** How much of a folder one run read. */
-export interface FindBatch {
-	/** The folder asked for, vault-relative; '' is the whole vault. */
-	folder: string;
-	/** Index of the first note read, in path order. */
-	from: number;
-	/** Notes read this run, empty ones included. */
-	read: number;
-	/** Notes under the folder altogether. */
-	total: number;
-	/** Characters of note text sent. */
-	chars: number;
-	/** Where the next batch starts, or null when this one reached the end. */
-	next: number | null;
-}
-
-/** A "find terms" draft: a proposal or why not, how far it read, and what it dropped. */
-export interface FindResult extends DraftResult {
-	batch: FindBatch | null;
-	/** Terms dropped because the note they named does not support them. */
-	dropped: string[];
+/** One batch's draft, with the guardrails that stopped it, if any. */
+export interface ScanResult extends ScanDraft {
+	refusals: Refusal[];
 }
 
 /**
- * The markdown notes a "find terms" run may read under `folder`, sorted by
- * path: public notes only (never the private folder), leaving out the hub's
- * own files and the glossaries themselves. `folder` is vault-relative with
- * or without slashes at either end; '' is the whole vault. Reads the listing
- * only.
+ * Split notes into the batches a scan reads them in, keeping their order:
+ * each batch holds at most `FIND_CHARS` of text, counting each note as at
+ * most `FIND_NOTE_CHARS`, except that a batch always takes at least one
+ * note. `chars` is how much text a note has; a note with none is left out.
+ * Pure.
  */
-export async function notesUnder(vault: Vault, folder: string): Promise<string[]> {
-	const root = cleanFolder(folder);
-	return (await vault.list()).filter((p) => (!root || p.startsWith(`${root}/`)) && !skipped(p));
-}
-
-/**
- * Every folder that holds a note a "find terms" run could read, directly or
- * below, sorted: the suggestions for its folder field. Reads the listing
- * only.
- */
-export async function noteFolders(vault: Vault): Promise<string[]> {
-	const out = new Set<string>();
-	for (const path of await vault.list()) {
-		if (skipped(path)) continue;
-		const parts = path.split('/').slice(0, -1);
-		for (let i = 1; i <= parts.length; i++) out.add(parts.slice(0, i).join('/'));
+export function batchNotes(notes: Array<{ path: string; chars: number }>): string[][] {
+	const batches: string[][] = [];
+	let current: string[] = [];
+	let chars = 0;
+	for (const note of notes) {
+		const size = Math.min(note.chars, FIND_NOTE_CHARS);
+		if (size <= 0) continue;
+		if (current.length && chars + size > FIND_CHARS) {
+			batches.push(current);
+			current = [];
+			chars = 0;
+		}
+		current.push(note.path);
+		chars += size;
 	}
-	return [...out].sort((a, b) => a.localeCompare(b));
+	if (current.length) batches.push(current);
+	return batches;
 }
 
 /**
- * The prompt for finding terms. Pure. The terms the glossary has are listed
- * so the model does not spend its answer on them, and its categories so new
- * entries reuse them; both are checked again afterwards regardless.
+ * What a scan of this glossary would read now: its `sources:` and
+ * `scanned:`, and the notes under the sources in batches (see `batchNotes`),
+ * both every note and only those changed since the last full scan.
+ *
+ * A note counts as changed when the local day of its modified time is
+ * `scanned` or later: the day is a label, so a note edited on the day of a
+ * scan is read again rather than missed. With no `scanned`, every note is
+ * changed. Reads each note under the sources; never writes, never runs a
+ * model.
+ */
+export async function scanPlan(vault: Vault, glossary: GlossaryRef): Promise<ScanPlan> {
+	const { sources, scanned } = scanSettings((await vault.read(glossary.path)).content);
+	const notes: Array<{ path: string; chars: number; day: string }> = [];
+	for (const path of await scanNotes(vault, sources)) {
+		const note = await vault.read(path);
+		notes.push({ path, chars: note.content.trim() ? note.content.length : 0, day: today(new Date(note.mtimeMs)) });
+	}
+	const batches = (list: typeof notes): ScanBatches => ({ notes: list.filter((n) => n.chars > 0).length, batches: batchNotes(list) });
+	const all = batches(notes);
+	return { sources, scanned, all, changed: scanned ? batches(notes.filter((n) => n.day >= scanned)) : all };
+}
+
+/**
+ * The prompt for finding terms. Pure. `known` is the terms the glossary has
+ * and those earlier batches found, listed so the model does not spend its
+ * answer on them, and the categories so new entries reuse them; both are
+ * checked again afterwards regardless.
  */
 export function findPrompt(input: { glossary: string; known: string[]; categories: string[]; sources: Source[] }): string {
 	return [
 		`Find technical terms in the notes below for the user's "${input.glossary}" glossary.`,
 		'A term is worth an entry when a note defines it, or uses it as a term of art a reader would need explained.',
-		'Skip everyday words, names of people, and every term the glossary already has:',
+		'Skip everyday words, names of people, and every term the glossary already has or that was already found:',
 		input.known.length ? input.known.join('; ') : '(none yet)',
 		'',
 		'For each term give:',
@@ -341,117 +350,79 @@ function names(quote: string, term: string): boolean {
 }
 
 /**
- * The found terms as one proposal: each appended as a new entry, status
- * looked-up, with its category, `source:: [[<note>]]` and `drafted:: Claude`,
- * then its definition and `→` line. Pure. Every byte already in the glossary
- * stays; the entries go at the end. A term the glossary already has, or one
- * whose heading would not read back as that term, is skipped. A `revise`
- * pinned to the hash read, or a `create` when the file is not there. Null
- * when nothing is left to add.
- */
-export function findProposal(
-	path: string,
-	glossary: { content: string; hash: string; exists: boolean },
-	found: FoundTerm[],
-	stamp: RunStamp
-): Proposal | null {
-	let text = glossary.content;
-	let added = 0;
-	for (const f of found) {
-		if (findEntry(text, f.term)) continue;
-		const appended = appendEntry(text, { term: f.term, status: 'looked-up', category: f.category, source: `[[${basename(f.source)}]]` });
-		const heading = findEntry(appended, f.term);
-		if (!heading) continue;
-		const drafted = setField(appended, heading.term, 'drafted', 'Claude');
-		const defined = drafted && insertDefinition(drafted, heading.term, f.definition, f.relevance);
-		if (!defined) continue;
-		text = defined;
-		added++;
-	}
-	if (added === 0) return null;
-	const reason = 'New entries, each defined from the note named as its source. Edit the text before accepting to drop any.';
-	return {
-		id: newId('terms'),
-		feature: 'glossary-lookup',
-		stamp,
-		summary: `${added} new term${added === 1 ? '' : 's'} for ${basename(path)}.`,
-		edits: [
-			glossary.exists
-				? { id: newId('edit'), kind: 'revise', path, text, expectedHash: glossary.hash, reason }
-				: { id: newId('edit'), kind: 'create', path, text, reason }
-		],
-		accepted: []
-	};
-}
-
-/**
- * Find terms for one glossary in the notes under `folder`, starting at the
- * `from`th note in path order: read up to `FIND_CHARS` of them, ask Claude,
- * and propose the entries the notes support (see `groundTerms`).
+ * Draft one batch of a scan: read the notes `paths` names, ask Claude for
+ * new terms in them, and return the candidates the notes support (see
+ * `groundTerms`) and those left out.
  *
- * Returns the batch read, so the caller can offer the next one, and the
- * terms dropped. A folder with no notes, or only empty ones, is a problem to
- * show, not an error. Side effects: reads notes, spawns the CLI read-only,
- * appends to the audit log. Never writes a note, and never proposes a
- * change to anything but the glossary's own file.
+ * Only a note under the glossary's `sources:` as the file says now is read,
+ * whatever the page sent; others and repeats are ignored, and so is an empty
+ * note. The notes are read in the order given, each at most
+ * `FIND_NOTE_CHARS`, until `FIND_CHARS` is reached. `found` is the terms
+ * earlier batches turned up, as the page holds them: they are named to the
+ * model (the first thousand) and left out of the answer like the glossary's
+ * own terms (all of them). A glossary that is gone, or that names no
+ * folders, or paths none of which it may read, is a problem to show, not an
+ * error; so is a model that refused or was over budget.
+ *
+ * Side effects: reads the glossary and the notes, spawns the CLI read-only,
+ * appends to the audit log. Never writes a note, and proposes no edit: the
+ * candidates go to a person, and `addScannedTerms` writes the ones they keep.
  */
-export async function draftFoundTerms(
-	vault: Vault,
-	glossary: GlossaryRef,
-	input: { folder: string; from?: number },
-	options: DraftOptions = {}
-): Promise<FindResult> {
-	const destinations = [glossary.path];
-	const folder = cleanFolder(input.folder);
-	const where = folder ? `under ${folder}` : 'in the vault';
-	const paths = await notesUnder(vault, folder);
-	if (paths.length === 0) return { ...nothing(`There are no notes ${where}.`), destinations, batch: null, dropped: [] };
-
-	const from = Math.min(Math.max(0, Math.floor(input.from ?? 0)), paths.length - 1);
-	const sources: Source[] = [];
-	let chars = 0;
-	let i = from;
-	while (i < paths.length) {
-		const text = (await vault.read(paths[i])).content.slice(0, FIND_NOTE_CHARS);
-		if (sources.length && chars + text.length > FIND_CHARS) break;
-		i++;
-		if (!text.trim()) continue;
-		sources.push({ path: paths[i - 1], text });
-		chars += text.length;
-	}
-	const batch: FindBatch = { folder, from, read: i - from, total: paths.length, chars, next: i < paths.length ? i : null };
-	if (sources.length === 0) return { ...nothing(`The notes ${where} are empty.`), destinations, batch, dropped: [] };
+export async function draftScan(vault: Vault, glossary: GlossaryRef, input: { paths: unknown; found: unknown }, options: DraftOptions = {}): Promise<ScanResult> {
+	const none = (problem: string | null, refusals: Refusal[] = [], read: string[] = []): ScanResult => ({ candidates: [], leftOut: [], read, problem, refusals });
+	const strings = (value: unknown) => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
 
 	const current = await vault.read(glossary.path);
+	if (!current.exists) return none('That glossary is not there any more.');
+	const { sources: folders } = scanSettings(current.content);
+	if (folders.length === 0) return none('Add a folder for this glossary to be scanned from first.');
+	const allowed = new Set(await scanNotes(vault, folders));
+	const paths = [...new Set(strings(input.paths))].filter((p) => allowed.has(p));
+	if (paths.length === 0) return none('None of these notes is under the folders this glossary is scanned from.');
+
+	const sources: Source[] = [];
+	let chars = 0;
+	for (const path of paths) {
+		const text = (await vault.read(path)).content.slice(0, FIND_NOTE_CHARS);
+		if (!text.trim()) continue;
+		if (sources.length && chars + text.length > FIND_CHARS) break;
+		sources.push({ path, text });
+		chars += text.length;
+	}
+	const read = sources.map((s) => s.path);
+	if (sources.length === 0) return none(null);
+
 	const entries = parseGlossary(current.content);
 	const known = entries.map((e) => e.term);
+	const found = strings(input.found);
 	const categories = [...new Set(entries.map((e) => e.category).filter((c): c is string => Boolean(c)))];
 
 	const run = await runDraft<{ entries: FoundTerm[] }>(vault, {
 		feature: 'glossary-lookup',
-		prompt: findPrompt({ glossary: glossary.name, known, categories, sources }),
+		prompt: findPrompt({ glossary: glossary.name, known: [...known, ...found.slice(0, FOUND_LIMIT)], categories, sources }),
 		system:
 			'You find technical terms in one person\'s notes for their glossary. Answer only with JSON: ' +
 			'{"entries":[{"term":"…","category":"…","definition":"…","relevance":"…","source":"<path>","quote":"<sentence from that note>"}]}. ' +
 			'Every entry must come from a note given; if the notes do not support an entry, do not write it.',
 		schema: FIND_SCHEMA,
-		paths: [glossary.path, ...sources.map((s) => s.path)],
+		paths: [glossary.path, ...read],
 		cli: options.cli
 	});
-	if (!run.ok) return { ...run.result, destinations, batch, dropped: [] };
+	if (!run.ok) return none(run.result.problem ?? 'Claude did not answer.', run.result.refusals, read);
 
-	const { supported, dropped } = groundTerms(run.value.entries, sources, known);
-	const proposal = findProposal(glossary.path, current, supported, run.stamp);
-	// With some dropped, the page says so; that is the whole answer then.
-	const problem = proposal || dropped.length ? null : 'No new terms turned up in these notes.';
-	return { proposal, problem, refusals: [], destinations, batch, dropped: dropped.map((d) => d.term) };
+	const { supported, dropped } = groundTerms(run.value.entries, sources, [...known, ...found]);
+	const candidate = (f: FoundTerm): ScanCandidate => {
+		const source = f.source.trim();
+		return {
+			term: f.term.trim(),
+			category: (f.category ?? '').trim(),
+			definition: f.definition.trim(),
+			relevance: (f.relevance ?? '').trim(),
+			source,
+			note: basename(source),
+			quote: f.quote.trim()
+		};
+	};
+	return { candidates: supported.map(candidate), leftOut: dropped.map(candidate), read, problem: null, refusals: [] };
 }
 
-function cleanFolder(folder: string): string {
-	return folder.trim().replace(/^\/+|\/+$/g, '');
-}
-
-/** The hub's own files and the glossaries, which are not notes to mine. */
-function skipped(path: string): boolean {
-	return path.startsWith(`${config.hubFolder}/`) || path.startsWith(`${GLOSSARY_FOLDER}/`);
-}
