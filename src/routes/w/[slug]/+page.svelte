@@ -21,7 +21,7 @@
 </script>
 
 <section>
-	<p class="label">Next actions <span class="right"><a href="tasks">Tasks</a></span></p>
+	<p class="label">Next actions <span class="right"><a href="/w/{slug}/tasks">Tasks</a></span></p>
 	<div class="sheet rows">
 		{#each nextActions as task (`${task.path}:${task.line}`)}
 			<TaskRow {task} onopen={(t) => (opened = t)} onchange={(t) => (patched = { ...patched, [`${t.path}:${t.line}`]: t })} />
@@ -47,7 +47,7 @@
 
 <div class="split">
 	<section>
-		<p class="label">Inbox <span class="right"><a href="inbox">Inbox</a></span></p>
+		<p class="label">Inbox <span class="right"><a href="/w/{slug}/inbox">Inbox</a></span></p>
 		<div class="sheet rows">
 			{#each data.inboxPreview as line (line)}
 				<p class="capture">{line.replace(/^[ \t]*[-*+][ \t]+/, '')}</p>
@@ -58,7 +58,7 @@
 	</section>
 
 	<section>
-		<p class="label">Log <span class="right"><a href="log">Log</a></span></p>
+		<p class="label">Log <span class="right"><a href="/w/{slug}/log">Log</a></span></p>
 		{#if data.latestLog}
 			<div class="sheet rows">
 				<p class="day">{data.latestLog.day}</p>
@@ -73,7 +73,7 @@
 </div>
 
 <section>
-	<p class="label">Recent notes <span class="right"><a href="notes">Notes</a></span></p>
+	<p class="label">Recent notes <span class="right"><a href="/w/{slug}/notes">Notes</a></span></p>
 	<div class="sheet rows">
 		{#each data.notes as note (note.path)}
 			<a class="row" href={noteHref(note.path)}>
