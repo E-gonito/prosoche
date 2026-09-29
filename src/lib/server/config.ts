@@ -91,6 +91,12 @@ export const config = {
 		api: process.env.HUB_LINEAR_API ?? 'https://api.linear.app/graphql',
 		cacheTtlMs: 2 * 60 * 1000
 	},
+	calendar: {
+		/** Google Calendar "secret address in iCal format". Empty means no calendar. */
+		icsUrl: process.env.HUB_GCAL_ICS ?? '',
+		/** How long a fetched feed is reused before fetching again. */
+		cacheTtlMs: 5 * 60 * 1000
+	},
 
 	/**
 	 * Base URL of a T3 Code web client running on this machine, e.g. a
