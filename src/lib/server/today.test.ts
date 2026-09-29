@@ -55,12 +55,12 @@ const STUDY: Workspace = {
 	aliases: [],
 	folders: ['Study'],
 	template: 'study',
-	tabs: [],
+	stages: ['lead', 'proposal', 'won'],
 	deck: 'Study/Tasks.md',
 	kanbanColumns: [],
 	path: '_hub/workspaces/study.md'
 };
-const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], deck: 'Work/Tasks.md', path: '_hub/workspaces/work.md' };
+const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], template: undefined, deck: 'Work/Tasks.md', path: '_hub/workspaces/work.md' };
 const WORKSPACES = [STUDY, WORK];
 
 const DAY = '2026-09-29';
