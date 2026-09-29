@@ -23,6 +23,11 @@ export const config = {
 	 * `isPrivate` in `vault/paths.ts`.
 	 */
 	privateFolder: 'Private',
+	/**
+	 * Folder at the vault root holding the glossaries, one file each, the file
+	 * name being the glossary's name: `Glossaries/Computer Science.md`.
+	 */
+	glossaryFolder: 'Glossaries',
 
 	git: {
 		/** Wait this long after the last save before committing. */

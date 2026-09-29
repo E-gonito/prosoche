@@ -10,8 +10,8 @@ Every tab is a module listed once in `src/lib/modules/index.ts`. The rail on a
 desktop, the bottom bar and More sheet on a phone, and the command palette's
 Go commands are all drawn from that list, so a new module appears in all of
 them at once. A module can nest sub-items under itself in the rail: the
-workspaces are listed under Workspaces, and every workspace with a glossary
-under Glossary. The workspaces are also listed in the More sheet.
+workspaces are listed under Workspaces, and every glossary under Glossary.
+The workspaces are also listed in the More sheet.
 
 ## Today
 
@@ -93,9 +93,9 @@ says `meetings: true` has a notebook; absent, or any other value, means none.
 A workspace without it is not listed on the Meetings page, is never offered
 or suggested when you pick a calendar event's workspace, has no Meetings
 section on its Overview, and its `/meetings/<slug>` answers 404 with a note
-saying which file to add the line to. Its glossary, its pages and everything
-else it has are unaffected. Adding the line is the whole of switching it on:
-the notebook's files are made the first time you use them.
+saying which file to add the line to. Its pages and everything else it has
+are unaffected. Adding the line is the whole of switching it on: the
+notebook's files are made the first time you use them.
 
 - `Primer.md` is the meeting card. Write it in Obsidian, or press **Draft a
   primer with Claude**; once it exists, **Suggest updates** proposes a
@@ -115,11 +115,15 @@ the notebook's files are made the first time you use them.
 - "Before you go in" lists every open task line from the workspace's meeting
   notes. Ticking one rewrites that line and nothing else, as ticking a task
   anywhere does.
-- A term you capture also goes into the workspace's glossary, `Glossary.md`,
-  as an entry to look up with the meeting as its source, unless the glossary
-  already has it. The meeting note is the record, so the capture counts even
-  if that second write loses to an edit made elsewhere; the term then waits
-  on the Glossary page instead (see Glossary below).
+- A term you capture always goes into the meeting note. When the
+  workspace's definition names a glossary with `glossary: <name>`, it also
+  goes into that glossary, `Glossaries/<name>.md`, as an entry to look up
+  with the meeting as its source, unless the glossary already has it; the
+  first term creates the glossary if it is not there yet. A workspace
+  without `glossary:` makes no glossary write at all. The meeting note is
+  the record, so the capture counts even if that second write loses to an
+  edit made elsewhere; the term then waits on the glossary's page instead
+  (see Glossary below).
 - `Pages/*.html` are the workspace's own pages. Each gets a tab in the
   notebook.
 
@@ -149,26 +153,31 @@ meeting by hand. Outlook calendars are not supported yet.
 
 ## Glossary
 
-Glossary is a glossary per workspace: each term, what it means, and why it
-matters there. Any
-workspace with a folder can have one, meetings or not. It is one file,
-`Glossary.md` in the workspace's home folder, so it is the same glossary a
-meeting's captured terms go into.
+Glossary keeps glossaries: each term, what it means, and why it matters.
+A glossary belongs to no workspace. Each is one file in `Glossaries/` at the
+vault root, and the file name is its name: `Glossaries/Computer Science.md`
+is the glossary called Computer Science, at `/glossary/computer-science`. A
+workspace with meetings can point at one (see Meetings and Workspaces), and
+several workspaces can point at the same one.
 
-The Glossary page lists each workspace that has one, with how many terms it
-holds and how many are still to look up, and offers **Start a glossary** for
-every other workspace, which writes a `Glossary.md` holding only a
-`# Glossary` title. In the rail each glossary is a sub-item under Glossary.
-The notebook's old address, `/meetings/<slug>/glossary`, redirects to
-`/glossary/<slug>`.
+The Glossary page lists every glossary with how many terms it holds, how
+many are still to look up, and which workspaces' meetings feed it. **Start a
+glossary** under it takes a name and writes `Glossaries/<name>.md` holding
+only a `# Glossary` title. A name is refused when another glossary has it
+(ignoring case, as Obsidian's links do), when it would give the same address
+as another, when it has no letter or digit, or when it cannot be a file name
+or a link: a slash, a colon, `#`, `^`, brackets, a leading or trailing dot.
+In the rail each glossary is a sub-item under Glossary. The notebook's old
+address, `/meetings/<slug>/glossary`, goes to the glossary that workspace
+points at, or to the list.
 
-`Glossary.md` holds one `##` heading per term, with `- status::` (`to-look-up` or `looked-up`), `- category::` and `- source::`
-lines, then the definition, then a line starting `→` saying why the term
-matters in this workspace. Text above the first heading is yours and is
-never touched.
+A glossary's file holds one `##` heading per term, with `- status::`
+(`to-look-up` or `looked-up`), `- category::` and `- source::` lines, then
+the definition, then a line starting `→` saying why the term matters. Text
+above the first heading is yours and is never touched.
 
-A workspace's glossary page has a filter box and a row of tabs: **All**, one
-per category with its count, and **To look up** while any are still waiting.
+A glossary's page has a filter box and a row of tabs: **All**, one per
+category with its count, and **To look up** while any are still waiting.
 Each entry shows its category, the definition, where it came from and the `→`
 line. There is no "my guess": a `- guess::` line written by an older version
 is left in the file and not shown. Type a term in (with a category if you
@@ -177,18 +186,63 @@ refused rather than written twice. **Edit** on an entry opens its name,
 category, definition and `→` line in place; saving rewrites only that entry's
 lines, keeps its other fields (source, drafted), and marks a term still to
 look up as looked up once it has a definition. A rename onto a term the
-glossary already has is refused. **Delete** asks first, then removes the
-entry's heading and every line under it, and nothing else. In a workspace with meetings, any term
-captured in a meeting that the glossary still lacks waits at the top, and
-**Add to glossary** appends an entry for it. **Start a meeting**, beside the
-title, goes to the workspace's meeting notes (see Meetings).
+glossary already has is refused. **Delete** on an entry asks first, then
+removes the entry's heading and every line under it, and nothing else.
+
+Any term captured in the meetings of a workspace that points at the glossary,
+and that the glossary still lacks, waits at the top under **Captured in
+meetings**, and **Add to glossary** appends an entry for it. When one
+workspace with meetings points here, **Start a meeting** beside the title
+goes to its meeting notes; with several, there is one button for each; with
+none, there is no button.
+
+**Rename**, beside the title, renames the file: the glossary's bytes are
+written unchanged under the new name, the old file is removed, and every
+workspace whose `glossary:` named it is changed to the new name, one line
+each. A name another glossary has is refused, so nothing is overwritten.
+**Delete** asks "Delete this glossary?" in place, then removes the one file;
+the deletion is committed, so git history still has it. A workspace still
+pointing at a deleted glossary keeps its `glossary:` line, and the next term
+captured in its meetings starts the glossary again.
 
 **Look up with Claude** drafts the definition and the `→` line, and marks the
 entry looked up with `- drafted:: Claude`; **Look up all** does every waiting
-term in one proposal. The context is the primer and the last three meetings
-when the workspace has a notebook, and its definition file when it does not.
-Like every Claude button, it shows its proposal as a diff first and writes
-only `Glossary.md`, and only when you accept.
+term in one proposal, twenty at most. The context is what the workspaces
+pointing at the glossary have: the primer of each with a notebook and the
+last three meetings across them. A glossary no workspace points at is
+looked up from its terms alone.
+
+**Find terms in my notes** asks Claude for new entries from a folder of your
+notes. Pick a folder (the field suggests the vault's folders; empty means the
+whole vault). Claude reads the markdown notes under it, in path order,
+read-only and as quoted data, never the private folder, `_hub/` or the
+glossaries themselves, and proposes entries for the technical terms they
+define or use: each with a category, a definition, a `→` line, `source::`
+linking the note it came from, status looked-up and `- drafted:: Claude`.
+Terms the glossary already has are left out. A run reads at most 60,000
+characters (12,000 of any one note) and says how far it got, "Read notes
+1–5 of 40 under Study"; press it again for the next batch, or pick a
+narrower folder. Every entry must quote a sentence of the note it names, and
+it is kept only if that sentence is in the note and the term is in that
+sentence; the rest are dropped before the proposal is made, and the page
+says which.
+
+Both use the Glossary look-up's model settings. Like every Claude button,
+they show their proposal as a diff first and write only the glossary's own
+file, and only when you accept.
+
+Glossaries used to be `Glossary.md` in a workspace's folder. At start the
+hub moves any such file it finds, once: for each folder of each workspace, a
+`Glossary.md` in it moves to `Glossaries/<folder's name>.md`, the name being
+the last part of the folder's path rather than the workspace's name, so
+`Computer Science/Glossary.md` becomes `Glossaries/Computer Science.md`
+whatever its workspace is called. The bytes are copied unchanged and the old
+file removed, so git history keeps it. A workspace with `meetings: true`
+whose first folder held the file, and which names no glossary yet, gains
+`glossary: <that name>`, since its meetings were capturing into it. A file
+already in `Glossaries/` by that name is never overwritten: the old one is
+left where it is and the start-up log says so. Once no old file is left,
+this does nothing.
 
 ## Notes
 
@@ -331,13 +385,14 @@ so Obsidian and Study both see them.
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders and whether it has meetings — so
+definition — its name, colour, tag, folders, whether it has meetings and
+which glossary they feed — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back.
 **Delete** on the Workspaces list removes that one file, after a confirm, and
-nothing else: the workspace's folders, notes, board and glossary stay in the
-vault, and the deletion is committed, so git history still has the file. Older
+nothing else: the workspace's folders, notes and board stay in the vault, as
+does any glossary it pointed at, and the deletion is committed, so git history still has the file. Older
 workspace files may still carry a `tabs:` list from before this shape; it is
 read and ignored rather than rejected, because every workspace now gets the
 same sections regardless of what its file used to say.
@@ -349,14 +404,22 @@ and counts a time block as that workspace's time. Belonging is not the same
 as being on the board: the board is `Board.md` and nothing else, so a tagged
 task elsewhere stays in its note, untouched, and is not a card. The first
 folder is the workspace's home: it is where `Board.md`, `Overview.md`,
-`Inbox.md`, `Log.md`, `Glossary.md`, a `CRM/` folder and a `Pages/` folder of
-custom pages all live.
+`Inbox.md`, `Log.md`, a `CRM/` folder and a `Pages/` folder of custom pages
+all live. Glossaries are not kept here; they have their own folder (see
+Glossary).
 
 A line `meetings: true` gives the workspace a meeting notebook (see
 Meetings). Without it the workspace has none, which is the default, because
 most workspaces never hold a meeting. **Start a meeting**, on every
-workspace's Overview and glossary, adds that line for you the first time and
-then opens the meeting notes, where you name the meeting and start it.
+workspace's Overview, adds that line for you the first time and then opens
+the meeting notes, where you name the meeting and start it.
+
+A line `glossary: <name>` sends the terms captured in the workspace's
+meetings to the glossary of that name, `Glossaries/<name>.md`, matched
+ignoring case; the first captured term creates it if it is not there. It
+is optional: without it a captured term stays in the meeting note alone.
+Several workspaces may name the same glossary, and renaming a glossary
+rewrites this line in each of them.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily

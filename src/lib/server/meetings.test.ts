@@ -223,7 +223,7 @@ describe('the notebook on disk', () => {
 	let dir: string;
 	let vault: Vault;
 	let paths: NotebookPaths;
-	const work = ws('work');
+	const work = ws('work', { glossary: 'Work' });
 
 	beforeEach(async () => {
 		dir = await mkdtemp(join(tmpdir(), 'meetings-'));
@@ -276,7 +276,7 @@ date: 2026-09-28
 			'---\ntype: meeting\ndate: 2026-09-29\nattendees: [Ana]\n---\n# Dev Weekly\n\n## Captured\n- term:: DVC\n- [ ] action:: Ask Ben\n'
 		);
 		// The term went into the glossary too, with no guess, and nothing else did.
-		expect((await vault.read('Work/Glossary.md')).content).toBe(
+		expect((await vault.read('Glossaries/Work.md')).content).toBe(
 			'# Glossary\n\n## DVC\n- status:: to-look-up\n- source:: [[2026-09-29 Dev Weekly]]\n'
 		);
 
@@ -318,12 +318,12 @@ date: 2026-09-28
 
 	it('keeps a captured term that is already in the glossary out of it, and still captures it', async () => {
 		const glossary = '# Glossary\n\n## DVC\n- status:: looked-up\n';
-		await vault.write('Work/Glossary.md', glossary);
+		await vault.write('Glossaries/Work.md', glossary);
 		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
 		await startMeeting(vault, paths, { type: 'meeting', title: 'Dev Weekly', date: '2026-09-29' });
 		expect(await captureItem(vault, work, path, { kind: 'term', text: 'dvc' })).toEqual({ ok: true, path });
 		expect((await vault.read(path)).content).toContain('- term:: dvc\n');
-		expect((await vault.read('Work/Glossary.md')).content).toBe(glossary);
+		expect((await vault.read('Glossaries/Work.md')).content).toBe(glossary);
 	});
 
 	it('refuses to capture for a workspace without meetings', async () => {
@@ -332,18 +332,44 @@ date: 2026-09-28
 			ok: false,
 			reason: 'not-found'
 		});
-		expect((await vault.read('Work/Glossary.md')).exists).toBe(false);
+		expect((await vault.read('Glossaries/Work.md')).exists).toBe(false);
+	});
+
+	it('captures a term into the meeting note alone for a workspace with no glossary', async () => {
+		const plain = ws('work');
+		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
+		await startMeeting(vault, paths, { type: 'meeting', title: 'Dev Weekly', date: '2026-09-29' });
+		expect(await captureItem(vault, plain, path, { kind: 'term', text: 'DVC' })).toEqual({ ok: true, path });
+		expect((await vault.read(path)).content).toContain('- term:: DVC\n');
+		expect(await vault.list()).toEqual([path]);
+	});
+
+	it('captures into the existing glossary the workspace names, whatever its case', async () => {
+		await vault.write('Glossaries/work.md', '# Glossary\n');
+		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
+		await startMeeting(vault, paths, { type: 'meeting', title: 'Dev Weekly', date: '2026-09-29' });
+		await captureItem(vault, work, path, { kind: 'term', text: 'DVC' });
+		expect((await vault.read('Glossaries/work.md')).content).toBe('# Glossary\n\n## DVC\n- status:: to-look-up\n- source:: [[2026-09-29 Dev Weekly]]\n');
+		expect((await vault.read('Glossaries/Work.md')).exists).toBe(false);
 	});
 
 	it('lists every captured term, newest meeting first, with its source', async () => {
 		await vault.write('Work/Meetings/2026-09-28 Dev Weekly.md', PAST.replace('- decision', '- term:: DVC\n- decision'));
 		await vault.write('Work/Meetings/2026-09-29 Standup.md', '# Standup\n\n## Captured\n- term:: DVC guess:: again\n');
-		expect((await capturedTerms(vault, work)).map((t) => [t.term, t.source, t.meeting.date])).toEqual([
+		expect((await capturedTerms(vault, [work])).map((t) => [t.term, t.source, t.meeting.date])).toEqual([
 			['DVC', '[[2026-09-29 Standup]]', '2026-09-29'],
 			['Cookie Cutter', '[[2026-09-28 Dev Weekly]]', '2026-09-28'],
 			['DVC', '[[2026-09-28 Dev Weekly]]', '2026-09-28']
 		]);
-		expect(await capturedTerms(vault, { ...work, meetings: false })).toEqual([]);
+		expect(await capturedTerms(vault, [{ ...work, meetings: false }])).toEqual([]);
+	});
+
+	it('merges the captured terms of several workspaces, newest meeting first', async () => {
+		const lab = ws('lab', { glossary: 'Work' });
+		await vault.write('Work/Meetings/2026-09-27 Old.md', '# Old\n\n## Captured\n- term:: A\n');
+		await vault.write('Lab/Meetings/2026-09-28 Lab.md', '# Lab\n\n## Captured\n- term:: B\n- term:: C\n');
+		await vault.write('Work/Meetings/2026-09-29 New.md', '# New\n\n## Captured\n- term:: D\n');
+		expect((await capturedTerms(vault, [work, lab])).map((t) => t.term)).toEqual(['D', 'B', 'C', 'A']);
 	});
 
 	it('remembers an event title, rewriting only its line on a change', async () => {

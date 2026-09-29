@@ -1,13 +1,14 @@
 /**
- * What Claude drafts for a meeting notebook: the primer, talking points for
- * a meeting, and glossary definitions.
+ * What Claude drafts for a meeting notebook: the primer and talking points
+ * for a meeting. Glossary drafts are in `glossary-drafts.ts`, and share the
+ * plumbing at the foot of this file.
  *
  * Each draft is a proposal and nothing more. The model is given the
  * workspace's notes as data (G8), answers in a fixed JSON shape (G6), and the
  * bytes it would change are computed here from that answer and the note as
  * it stands. Nothing in this file writes to the vault; `proposal.apply` does,
  * after a human accepts, under the path policy `policyFor` gives each
- * feature: exactly one primer, one meeting note, or one glossary.
+ * feature: exactly one primer or one meeting note.
  *
  * The prompt builders and proposal builders are pure and exported, because
  * they are the part worth testing: what the model is told, and what an
@@ -19,11 +20,9 @@ import type { Workspace } from '../workspaces';
 import type { CalendarEvent } from '../calendar';
 import { appendUnderHeading } from '../sections';
 import { formatMinutes } from '../daily';
-import { basename } from '../parse/note';
-import { findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type GlossaryEntry } from '../parse/glossary';
 import { TALKING_POINTS_HEADING, meetingPath, newMeetingNote } from '../parse/meeting';
 import { currentMeeting, isMeetingNote, loadMeetings, notebookPaths, openActions, type Meeting } from '../meetings';
-import { glossaryPath } from '../glossary';
+import { glossaryOf } from '../glossary';
 import { checkBudget, checkKillSwitch, validateModelOutput, wrapAsData, type Schema } from './guardrails';
 import { newId } from './proposal';
 import { loadSettings } from './settings';
@@ -51,9 +50,7 @@ export interface Source {
 }
 
 /** How much of any one note goes into a prompt. */
-const NOTE_CHARS = 8000;
-/** Terms looked up in one run; more is a second press. */
-export const LOOKUP_LIMIT = 20;
+export const NOTE_CHARS = 8000;
 
 /* ------------------------------------------------------------- primer -- */
 
@@ -127,8 +124,8 @@ export async function draftPrimer(vault: Vault, workspace: Workspace, options: D
 
 	const current = await vault.read(paths.primer);
 	const meetings = await loadMeetings(vault, paths);
-	const glossary = glossaryPath(workspace);
-	const sources = await gather(vault, [workspace.path, paths.log, ...(glossary ? [glossary] : [])]);
+	const glossary = await glossaryOf(vault, workspace);
+	const sources = await gather(vault, [workspace.path, paths.log, ...(glossary ? [glossary.path] : [])]);
 	sources.push(...meetings.slice(0, 5).map(asSource));
 
 	const run = await runDraft<{ primer: string }>(vault, {
@@ -271,142 +268,10 @@ export async function draftPrep(
 	return { proposal: prepProposal({ path, note, meeting }, run.value.points, run.stamp), problem: null, refusals: [], destinations };
 }
 
-/* ------------------------------------------------------------- lookup -- */
-
-const LOOKUP_SCHEMA: Schema = {
-	type: 'object',
-	fields: {
-		entries: {
-			type: 'array',
-			maxItems: LOOKUP_LIMIT,
-			of: {
-				type: 'object',
-				fields: {
-					term: { type: 'string', minLength: 1, maxLength: 200 },
-					definition: { type: 'string', minLength: 1, maxLength: 1500 },
-					relevance: { type: 'string', maxLength: 600 }
-				}
-			}
-		}
-	}
-};
-
-export interface Lookup {
-	term: string;
-	definition: string;
-	relevance: string;
-}
-
-/**
- * The prompt for glossary look-ups. Pure. The user's guess is passed along,
- * because a definition that says where the guess was right or wrong is worth
- * more than one that ignores it.
- */
-export function lookupPrompt(input: { workspace: string; entries: GlossaryEntry[]; sources: Source[] }): string {
-	const terms = input.entries.map((e) => {
-		const extra = [e.guess ? `their guess: ${e.guess}` : null, e.category ? `category: ${e.category}` : null].filter(Boolean);
-		return `- ${e.term}${extra.length ? ` (${extra.join('; ')})` : ''}`;
-	});
-	return [
-		`Look up these terms for the user's glossary in the "${input.workspace}" workspace:`,
-		...terms,
-		'',
-		'For each, write a definition of two or three plain sentences saying what it is, and a relevance of one',
-		`sentence beginning "For ${input.workspace}," saying why it matters here, grounded in the primer and notes below.`,
-		'If the notes say nothing about it, say how it would plausibly come up, and hedge. Return each term exactly as given.',
-		'',
-		wrapAsData(input.sources)
-	].join('\n');
-}
-
-/**
- * The look-ups as one proposal: each definition and relevance inserted under
- * its entry, its status set to looked-up, and `drafted:: Claude` recorded.
- * Pure. An answer for a term that is not a pending entry is dropped. Returns
- * null when nothing is left to change.
- */
-export function lookupProposal(
-	path: string,
-	glossary: { content: string; hash: string },
-	lookups: Lookup[],
-	stamp: RunStamp
-): Proposal | null {
-	let text = glossary.content;
-	const done: string[] = [];
-	for (const lookup of lookups) {
-		const entry = findEntry(text, lookup.term);
-		if (!entry || !entry.pending || done.includes(normaliseTerm(entry.term))) continue;
-		const withDefinition = insertDefinition(text, entry.term, lookup.definition, lookup.relevance);
-		const looked = withDefinition && setField(withDefinition, entry.term, 'status', 'looked-up');
-		const drafted = looked && setField(looked, entry.term, 'drafted', 'Claude');
-		if (!drafted) continue;
-		text = drafted;
-		done.push(normaliseTerm(entry.term));
-	}
-	if (done.length === 0) return null;
-	return {
-		id: newId('lookup'),
-		feature: 'glossary-lookup',
-		stamp,
-		summary: `Definitions for ${done.length} term${done.length === 1 ? '' : 's'} in ${basename(path)}.`,
-		edits: [
-			{
-				id: newId('edit'),
-				kind: 'revise',
-				path,
-				text,
-				expectedHash: glossary.hash,
-				reason: 'Each definition and its "why it matters here" line go under the term, and its status becomes looked-up.'
-			}
-		],
-		accepted: []
-	};
-}
-
-/**
- * Look up the named terms, or every entry still to look up when `terms` is
- * null, at most `LOOKUP_LIMIT` at a time. Works for any workspace with a
- * folder, meetings or not. Context is the primer and the last three meetings
- * when the workspace has a notebook, and its definition file when it does
- * not, so the relevance line is about this workspace. Never writes a note.
- */
-export async function draftLookups(
-	vault: Vault,
-	workspace: Workspace,
-	terms: string[] | null,
-	options: DraftOptions = {}
-): Promise<DraftResult> {
-	const path = glossaryPath(workspace);
-	if (!path) return nothing('This workspace has no folder to keep a glossary in.');
-	const destinations = [path];
-
-	const glossary = await vault.read(path);
-	const wanted = terms ? new Set(terms.map(normaliseTerm)) : null;
-	const entries = parseGlossary(glossary.content)
-		.filter((e) => e.pending && (!wanted || wanted.has(normaliseTerm(e.term))))
-		.slice(0, LOOKUP_LIMIT);
-	if (entries.length === 0) return { ...nothing('Nothing is waiting to be looked up.'), destinations };
-
-	const paths = notebookPaths(workspace);
-	const sources = await gather(vault, paths ? [paths.primer] : [workspace.path]);
-	if (paths) sources.push(...(await loadMeetings(vault, paths)).slice(0, 3).map(asSource));
-
-	const run = await runDraft<{ entries: Lookup[] }>(vault, {
-		feature: 'glossary-lookup',
-		prompt: lookupPrompt({ workspace: workspace.name, entries, sources }),
-		system: 'You define terms for one person\'s glossary. Answer only with JSON: {"entries":[{"term":"…","definition":"…","relevance":"…"}]}.',
-		schema: LOOKUP_SCHEMA,
-		paths: [path],
-		cli: options.cli
-	});
-	if (!run.ok) return { ...run.result, destinations };
-	const proposal = lookupProposal(path, glossary, run.value.entries, run.stamp);
-	return { proposal, problem: proposal ? null : 'The answer matched none of the terms asked about.', refusals: [], destinations };
-}
-
 /* ------------------------------------------------------------- plumbing -- */
 
-function nothing(problem: string | null): DraftResult {
+/** A draft result with no proposal, saying why (or null for "nothing to do"). Pure. */
+export function nothing(problem: string | null): DraftResult {
 	return { proposal: null, problem, refusals: [], destinations: [] };
 }
 
@@ -414,12 +279,16 @@ function hasHeading(content: string, heading: string): boolean {
 	return content.split('\n').some((l) => l.trim().toLowerCase() === heading.toLowerCase());
 }
 
-function asSource(meeting: Meeting): Source {
+/** A meeting note as a prompt passage, its first `NOTE_CHARS`. Pure. */
+export function asSource(meeting: Meeting): Source {
 	return { path: meeting.path, text: meeting.content.slice(0, NOTE_CHARS) };
 }
 
-/** The notes that exist among `paths`, trimmed for a prompt. */
-async function gather(vault: Vault, paths: string[]): Promise<Source[]> {
+/**
+ * The notes that exist and are not blank among `paths`, each trimmed to its
+ * last `NOTE_CHARS` for a prompt. Reads only; a missing note is skipped.
+ */
+export async function gather(vault: Vault, paths: string[]): Promise<Source[]> {
 	const out: Source[] = [];
 	for (const path of paths) {
 		const note = await vault.read(path);
@@ -431,9 +300,11 @@ async function gather(vault: Vault, paths: string[]): Promise<Source[]> {
 /**
  * One read-only CLI run, checked and logged: kill switch (G10), budget (G7),
  * schema (G6). Returns the validated answer and the stamp, or the draft
- * result to hand back when there is none.
+ * result to hand back when there is none. Side effects: spawns the CLI with
+ * the feature's model settings, appends to the audit log. Never writes a
+ * note.
  */
-async function runDraft<T>(
+export async function runDraft<T>(
 	vault: Vault,
 	input: { feature: FeatureId; prompt: string; system: string; schema: Schema; paths: string[]; cli?: Partial<CliDeps> }
 ): Promise<{ ok: true; value: T; stamp: RunStamp } | { ok: false; result: DraftResult }> {

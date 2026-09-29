@@ -1,8 +1,10 @@
 /**
- * The Work notebook for the Meetings and Glossary suites: a primer, a
- * glossary with one entry looked up and one waiting, and a past meeting with
- * an open action and a term the glossary does not have yet. Work opts in to
- * meetings in its workspace file, in `make-vault.mjs`.
+ * The Work notebook for the Meetings and Glossary suites: a primer, the
+ * glossary `Glossaries/Work.md` with one entry looked up and one waiting, and
+ * a past meeting with an open action and a term the glossary does not have
+ * yet. Work opts in to meetings and names that glossary (`glossary: Work`)
+ * in its workspace file, in `make-vault.mjs`; Study has meetings and no
+ * glossary.
  */
 
 /** The day before `day`, as `YYYY-MM-DD`. Mirrored in `e2e/meetings.spec.ts`. */
@@ -38,7 +40,7 @@ From the paper everyone quotes.
 2. **Visible or silent failure**
    Silent wrongness is the expensive category.
 `,
-		'Work/Glossary.md': `# Glossary
+		'Glossaries/Work.md': `# Glossary
 
 ## DVC
 - guess:: Data version control

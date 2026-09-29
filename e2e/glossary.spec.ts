@@ -10,29 +10,78 @@ const PAST = (() => {
 })();
 
 /*
- * The glossary fixture is Work's, from `fixtures/meetings.mjs`: DVC looked
- * up, MLflow waiting, and Cookie Cutter captured in a past meeting but not
- * yet added. Study has no Glossary.md.
+ * The one glossary is `Glossaries/Work.md`, from `fixtures/meetings.mjs`: DVC
+ * looked up, MLflow waiting, and Cookie Cutter captured in a past Work
+ * meeting but not yet added. The Work workspace names it with
+ * `glossary: Work`; Study has meetings and names no glossary.
  */
 test.describe('Glossary', () => {
 	test.beforeEach(async ({ request }) => {
 		await resetVault(request);
 	});
 
-	test('lists each glossary with its size, and starts one for a workspace without', async ({ page }) => {
+	test('lists each glossary with its size, and starts a new one by name', async ({ page }) => {
 		await page.goto('/glossary');
 		const glossaries = page.getByTestId('glossaries');
-		await expect(glossaries.getByRole('link', { name: /Work/ })).toContainText('2 terms · 1 to look up');
-		await expect(glossaries.getByRole('link', { name: /Study/ })).toHaveCount(0);
+		await expect(glossaries.getByRole('link')).toHaveCount(1);
+		await expect(glossaries.getByRole('link', { name: /Work/ })).toContainText('2 terms · 1 to look up · meetings of Work');
 
-		const unstarted = page.getByTestId('unstarted');
-		await expect(unstarted).toContainText('Study');
-		await unstarted.getByTestId('start-glossary').click();
-		await expect(page).toHaveURL(/\/glossary\/study$/);
-		expect(vaultFile('Study/Glossary.md')).toBe('# Glossary\n');
+		// A name another glossary has, ignoring case, is refused.
+		await page.getByTestId('new-glossary-name').fill('work');
+		await page.getByTestId('new-glossary-create').click();
+		await expect(page.locator('.problem')).toHaveText('There is already a glossary with that name.');
+
+		await page.getByTestId('new-glossary-name').fill('Computer Science');
+		await page.getByTestId('new-glossary-create').click();
+		await expect(page).toHaveURL(/\/glossary\/computer-science$/);
+		expect(vaultFile('Glossaries/Computer Science.md')).toBe('# Glossary\n');
+		// No workspace points at it, so there is no meeting to start from here.
+		await expect(page.getByTestId('start-a-meeting')).toHaveCount(0);
 		// The rail picks the new glossary up at once.
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
-		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Study', 'Work']);
+		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Computer Science', 'Work']);
+	});
+
+	test('a glossary is renamed in place, and the workspace pointing at it follows', async ({ page }) => {
+		const content = vaultFile('Glossaries/Work.md');
+		const definition = vaultFile('_hub/workspaces/work.md');
+		await page.goto('/glossary/work');
+		await page.getByTestId('rename-glossary').click();
+		await page.getByTestId('rename-name').fill('Eye2Gene');
+		await page.getByTestId('rename-save').click();
+		await expect(page).toHaveURL(/\/glossary\/eye2gene$/);
+		await expect(page.locator('h1')).toHaveText('Eye2Gene');
+		expect(vaultFile('Glossaries/Eye2Gene.md')).toBe(content);
+		expect(vaultFile('Glossaries/Work.md')).toBe('');
+		expect(vaultFile('_hub/workspaces/work.md')).toBe(definition.replace('glossary: Work', 'glossary: Eye2Gene'));
+		// Still fed by Work's meetings.
+		await expect(page.getByTestId('captured-terms')).toContainText('Cookie Cutter');
+	});
+
+	test('a glossary is deleted after asking in place', async ({ page }) => {
+		await page.goto('/glossary/work');
+		await page.getByTestId('delete-glossary').click();
+		await expect(page.getByTestId('delete-glossary-ask')).toContainText('Delete this glossary and its 2 terms?');
+		await page.getByTestId('delete-glossary-confirm').click();
+		await expect(page).toHaveURL(/\/glossary$/);
+		expect(vaultFile('Glossaries/Work.md')).toBe('');
+		await expect(page.getByTestId('glossaries')).toContainText('No glossary yet.');
+	});
+
+	test('Start a meeting goes to the notebook of the workspace pointing here', async ({ page }) => {
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('start-a-meeting')).toHaveText('Start a meeting');
+		await page.getByTestId('start-a-meeting').click();
+		await expect(page).toHaveURL(/\/meetings\/work\/notes$/);
+	});
+
+	test('Find terms in my notes offers the vault\'s folders and reads nothing until pressed', async ({ page }) => {
+		await page.goto('/glossary/work');
+		await page.getByTestId('find-terms-open').click();
+		await expect(page.getByTestId('find-folder')).toHaveValue('');
+		await expect(page.locator('#note-folders option[value="Study"]')).toHaveCount(1);
+		await expect(page.locator('#note-folders option[value="Glossaries"]')).toHaveCount(0);
+		await expect(page.getByTestId('find-terms').getByTestId('draft-run')).toHaveText('Find terms');
 	});
 
 	test('filters by text and by category tab', async ({ page }) => {
@@ -65,7 +114,7 @@ test.describe('Glossary', () => {
 	});
 
 	test('Add to glossary appends the captured term as a new entry', async ({ page }) => {
-		const before = vaultFile('Work/Glossary.md');
+		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
 		const captured = page.getByTestId('captured-terms');
 		// DVC was captured too, but the glossary already has it.
@@ -73,33 +122,33 @@ test.describe('Glossary', () => {
 		await expect(captured).not.toContainText('DVC');
 		await captured.getByTestId('add-term').click();
 		await expect(page.getByTestId('captured-terms')).toHaveCount(0);
-		expect(vaultFile('Work/Glossary.md')).toBe(
+		expect(vaultFile('Glossaries/Work.md')).toBe(
 			`${before}\n## Cookie Cutter\n- status:: to-look-up\n- source:: [[${PAST} Dev Weekly]]\n`
 		);
 		await expect(page.getByTestId('glossary-count')).toHaveText('3 of 3 terms');
 	});
 
 	test('a term typed in is appended, to look up', async ({ page }) => {
-		const before = vaultFile('Work/Glossary.md');
+		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
 		await page.getByTestId('new-term').fill('RPE');
 		await page.getByTestId('new-category').fill('ML');
 		await page.getByTestId('new-add').click();
 		await expect(page.getByTestId('glossary-count')).toHaveText('3 of 3 terms');
 		await expect(page.getByTestId('new-term')).toHaveValue('');
-		expect(vaultFile('Work/Glossary.md')).toBe(`${before}\n## RPE\n- status:: to-look-up\n- category:: ML\n`);
+		expect(vaultFile('Glossaries/Work.md')).toBe(`${before}\n## RPE\n- status:: to-look-up\n- category:: ML\n`);
 		await expect(page.getByTestId('glossary-entry').filter({ hasText: 'RPE' }).locator('.badge')).toHaveText(['To look up']);
 
 		// A term the glossary already has is refused, and the file is left alone.
-		const after = vaultFile('Work/Glossary.md');
+		const after = vaultFile('Glossaries/Work.md');
 		await page.getByTestId('new-term').fill('dvc');
 		await page.getByTestId('new-add').click();
 		await expect(page.locator('.problem')).toHaveText('That term is already in the glossary.');
-		expect(vaultFile('Work/Glossary.md')).toBe(after);
+		expect(vaultFile('Glossaries/Work.md')).toBe(after);
 	});
 
 	test('a term is edited in place, and a pending one becomes looked up', async ({ page }) => {
-		const before = vaultFile('Work/Glossary.md');
+		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
 		const mlflow = page.getByTestId('glossary-entry').filter({ hasText: 'MLflow' });
 		await mlflow.getByTestId('edit-term-open').click();
@@ -114,7 +163,7 @@ test.describe('Glossary', () => {
 		await expect(edited).toContainText('Records runs, parameters and metrics.');
 		await expect(edited).toContainText('→ How we compare model versions.');
 		await expect(edited.locator('.badge')).toHaveCount(0);
-		expect(vaultFile('Work/Glossary.md')).toBe(
+		expect(vaultFile('Glossaries/Work.md')).toBe(
 			before.replace(
 				'## MLflow\n- status:: to-look-up\n- category:: Tooling\n',
 				'## MLflow Tracking\n- status:: looked-up\n- category:: Tooling\n\nRecords runs, parameters and metrics.\n\n→ How we compare model versions.\n'
@@ -122,27 +171,29 @@ test.describe('Glossary', () => {
 		);
 
 		// Renaming onto another term is refused, and the file is left alone.
-		const after = vaultFile('Work/Glossary.md');
+		const after = vaultFile('Glossaries/Work.md');
 		await edited.getByTestId('edit-term-open').click();
 		await page.getByTestId('edit-term').fill('dvc');
 		await page.getByTestId('edit-save').click();
 		await expect(page.locator('.problem')).toHaveText('Another term already has that name.');
-		expect(vaultFile('Work/Glossary.md')).toBe(after);
+		expect(vaultFile('Glossaries/Work.md')).toBe(after);
 	});
 
 	test('a term is deleted after a confirm, and nothing else changes', async ({ page }) => {
-		const before = vaultFile('Work/Glossary.md');
+		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
 		page.once('dialog', (dialog) => dialog.accept());
 		await page.getByTestId('glossary-entry').filter({ hasText: 'MLflow' }).getByTestId('delete-term').click();
 		await expect(page.getByTestId('glossary-count')).toHaveText('1 of 1 terms');
-		expect(vaultFile('Work/Glossary.md')).toBe(before.replace(/\n## MLflow\n[\s\S]*$/, ''));
+		expect(vaultFile('Glossaries/Work.md')).toBe(before.replace(/\n## MLflow\n[\s\S]*$/, ''));
 	});
 
-	test('the notebook\'s old glossary address goes to the new one', async ({ page }) => {
+	test('the notebook\'s old glossary address goes to the glossary the workspace names, or the list', async ({ page }) => {
 		await page.goto('/meetings/work/glossary');
 		await expect(page).toHaveURL(/\/glossary\/work$/);
 		await expect(page.getByTestId('glossary-count')).toHaveText('2 of 2 terms');
+		await page.goto('/meetings/study/glossary');
+		await expect(page).toHaveURL(/\/glossary$/);
 	});
 
 	test('a phone gets the glossary in one column', async ({ page }) => {

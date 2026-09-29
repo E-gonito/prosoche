@@ -224,8 +224,13 @@ export function partition(
 	return { supported, unsupported };
 }
 
-/** Text reduced to single-spaced lowercase words, for a comparison that holds. */
-function words(text: string): string {
+/**
+ * Text reduced to single-spaced lowercase words with a space at either end,
+ * so `words(a).includes(words(b))` asks whether b's words run in order
+ * inside a's, whatever the punctuation and line wrapping. The grounding
+ * check for anything a model says a note supports. Pure.
+ */
+export function words(text: string): string {
 	return ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
 }
 

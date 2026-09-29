@@ -114,6 +114,10 @@ export interface Drafted {
 	candidates?: string[];
 	/** Set by suggest-flashcards: cards the note did not support. */
 	unsupported?: Array<{ question: string; answer: string; quote: string }>;
+	/** Set by glossary-find: how much of the folder was read. */
+	batch?: { folder: string; from: number; read: number; total: number; chars: number; next: number | null } | null;
+	/** Set by glossary-find: terms dropped because their note does not support them. */
+	dropped?: string[];
 }
 
 /**
@@ -124,17 +128,21 @@ export interface Drafted {
  * must be passed through to that call, because the path policy is per-run.
  */
 export async function draftChange(request: {
-	feature: 'capture' | 'suggest-flashcards' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup';
+	feature: 'capture' | 'suggest-flashcards' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup' | 'glossary-find';
 	path?: string;
 	line?: number;
 	expectedRaw?: string;
 	day?: string;
 	count?: number;
-	/** The meeting features: the workspace, the meeting title, event and terms. */
+	/** The meeting features: the workspace, the meeting title and event. */
 	slug?: string;
 	title?: string;
 	event?: string;
+	/** The glossary features: the glossary's slug, the terms to look up, or the folder to read from its `from`th note. */
+	glossary?: string;
 	terms?: string[];
+	folder?: string;
+	from?: number;
 }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
 }
