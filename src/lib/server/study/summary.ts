@@ -61,8 +61,10 @@ export type { StudyTab };
 export function studyTabs(summary: StudySummary): StudyTab[] {
 	return [
 		{ title: 'Overview', href: '/study', visible: true },
-		{ title: 'Goals', href: '/study/goals', visible: summary.goals.goals.length > 0 },
-		{ title: 'Sessions', href: '/study/sessions', visible: summary.sessions.length > 0 },
+		// Always shown: each is where its first entry is written, so hiding it
+		// while empty would leave no way to start.
+		{ title: 'Goals', href: '/study/goals', visible: true },
+		{ title: 'Sessions', href: '/study/sessions', visible: true },
 		{ title: 'Flashcards', href: '/study/review', visible: summary.cards.total > 0 },
 		{ title: 'Reading list', href: '/study/resources', visible: summary.resources.length > 0 }
 	];

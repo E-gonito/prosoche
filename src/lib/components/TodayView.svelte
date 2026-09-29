@@ -82,8 +82,11 @@
 	 */
 	type Segment = 'timeline' | 'list';
 	let segment = $state<Segment>('timeline');
+	// A remembered choice wins. Without one, a day with nothing on the clock
+	// opens on the list, because an empty timeline is a screenful of nothing.
 	$effect(() => {
-		if (localStorage.getItem('hub:today-segment') === 'list') segment = 'list';
+		const stored = localStorage.getItem('hub:today-segment');
+		if (stored === 'list' || (stored === null && data.scheduled.length === 0 && data.events.length === 0)) segment = 'list';
 	});
 	function show(next: Segment) {
 		segment = next;
