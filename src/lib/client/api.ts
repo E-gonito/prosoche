@@ -8,8 +8,9 @@
  */
 
 import type { Task, TaskStatus } from '$lib/shared/task';
+import type { Board, BoardOp } from '$lib/shared/kanban';
 
-export type { Task, TaskStatus };
+export type { Task, TaskStatus, Board, BoardOp };
 
 export type Result<T> =
 	| { ok: true; value: T }
@@ -104,6 +105,33 @@ export async function saveNote(
 		return { ok: false, kind: 'error', message: body.error ?? `Save failed (${res.status})` };
 	} catch {
 		return { ok: false, kind: 'offline', message: 'No connection. Your text is still here.' };
+	}
+}
+
+/**
+ * Apply one operation to a workspace's board. `hash` is the board's hash as
+ * the page has it. Every answer but a lost connection carries the board as
+ * it now is, so the caller replaces what it shows with that and never has to
+ * guess: after a success, a conflict (someone else changed the file first,
+ * nothing written) or a refusal (the op made no sense, nothing written).
+ */
+export async function changeBoard(
+	workspace: string,
+	hash: string,
+	op: BoardOp
+): Promise<Result<Board> | { ok: false; kind: 'conflict' | 'error'; message: string; board: Board }> {
+	try {
+		const res = await fetch('/api/board', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ workspace, hash, op })
+		});
+		const body = await res.json().catch(() => ({}));
+		if (res.ok) return { ok: true, value: body.board };
+		if (body.board) return { ok: false, kind: res.status === 409 ? 'conflict' : 'error', message: body.error ?? 'That did not work.', board: body.board };
+		return { ok: false, kind: 'error', message: body.error ?? `Request failed (${res.status})` };
+	} catch {
+		return { ok: false, kind: 'offline', message: 'No connection. Nothing was changed.' };
 	}
 }
 
