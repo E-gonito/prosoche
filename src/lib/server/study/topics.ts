@@ -216,6 +216,35 @@ export function scopeOf(workspace: { folders: string[]; tag: string } | null): S
 	return { folders: workspace.folders, tags: workspace.tag ? [workspace.tag] : [] };
 }
 
+/**
+ * The folder study's own notes — `Goals.md`, `Sessions.md` — are filed in:
+ * the first folder the scope names, or the vault root when the page has no
+ * workspace to anchor it. A workspace may name several folders; the first is
+ * home, which is what the rest of the study section calls "study home".
+ */
+export function studyHome(scope: StudyScope): string {
+	return scope.folders?.[0] ?? '';
+}
+
+/** `<home>/<name>`, or just `<name>` at the vault root. */
+export function studyPath(home: string, name: string): string {
+	return home ? `${home}/${name}` : name;
+}
+
+/**
+ * The study section's scope and home folder, decided the same way the
+ * pre-rebuild study page decided it: the first workspace whose `template:`
+ * says `study`, or the whole vault when there is none. One place for the
+ * rule, so every page under `/study` reads the same notes for it.
+ */
+export async function studyContext(
+	workspaces: () => Promise<Array<{ template: string; folders: string[]; tag: string }>>
+): Promise<{ scope: StudyScope; home: string }> {
+	const workspace = (await workspaces()).find((w) => w.template === 'study') ?? null;
+	const scope = scopeOf(workspace);
+	return { scope, home: studyHome(scope) };
+}
+
 /** One note, read and parsed once, as the study modules want it. */
 export interface ScopedNote {
 	path: string;
