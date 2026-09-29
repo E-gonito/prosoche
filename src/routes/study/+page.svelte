@@ -1,17 +1,31 @@
 <script lang="ts">
 	/**
-	 * Study at a glance: what to review right now, the goals under way, this
-	 * week's time, the streak, and what is currently being read.
+	 * The Study index: every subject as a card, everything due across them,
+	 * and a form for a new subject.
 	 */
-	import StudyTabs from '$lib/components/StudyTabs.svelte';
+	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
-	import { noteHref } from '$lib/shared/links';
+	import { createSubject } from '$lib/client/study';
 	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
 
-	const weekTarget = $derived(data.weeklyHours ? data.weeklyHours * 60 : null);
-	const weekPct = $derived(weekTarget ? Math.min(100, Math.round((data.weekMinutes / weekTarget) * 100)) : null);
+	let name = $state('');
+	let folders = $state('');
+	let saving = $state(false);
+	let problem = $state('');
+
+	async function create(event: Event) {
+		event.preventDefault();
+		if (!name.trim() || saving) return;
+		saving = true;
+		problem = '';
+		const extra = folders.split(',').map((f) => f.trim()).filter(Boolean);
+		const result = await createSubject(name.trim(), extra);
+		saving = false;
+		if (result.ok) await goto(`/study/${result.value}`, { invalidateAll: true });
+		else problem = result.message;
+	}
 </script>
 
 <svelte:head><title>Study · prosoche</title></svelte:head>
@@ -19,119 +33,72 @@
 <div class="page">
 	<div class="title">
 		<h1>Study</h1>
-		<p>Goals, sessions and cards — all read straight from the vault.</p>
+		<p>One subject per thing you are learning, each with its own goals, reading, sessions and cards.</p>
 	</div>
 
-	<StudyTabs tabs={data.tabs} />
+	<div class="due sheet">
+		<span class="count num" data-testid="due-count">{data.due}</span>
+		<span class="muted">{data.due === 1 ? 'card' : 'cards'} due across every subject</span>
+		{#if data.due > 0}<a class="btn primary" href="/study/review" data-testid="review-everything">Review everything due</a>{/if}
+	</div>
 
-	<div class="grid">
-		<section class="sheet">
-			<p class="label">Flashcards</p>
-			<div class="due-row">
-				<span class="count" data-testid="due-count">{data.due}</span>
-				<span class="muted">
-					due now{data.fresh > 0 ? `, ${data.fresh} new` : ''}
-				</span>
-				{#if data.due > 0}
-					<a class="btn primary" href="/study/review" data-testid="review-link">Review</a>
-				{/if}
-			</div>
-			{#if data.due === 0}<p class="none">Nothing due right now.</p>{/if}
-		</section>
-
-		<section class="sheet">
-			<p class="label">
-				This week
-				<span class="right num" data-testid="week-time">
-					{formatDuration(data.weekMinutes, ' ')}{weekTarget ? ` of ${formatDuration(weekTarget, ' ')}` : ''}
-				</span>
-			</p>
-			{#if weekPct !== null}
-				<div class="bar"><i style="width: {weekPct}%"></i></div>
-			{/if}
-			<p class="streak" data-testid="streak">
-				<Icon name="flame" size={15} label="Streak" />
-				<b class="num">{data.streak}</b> {data.streak === 1 ? 'day' : 'days'} in a row
-			</p>
-		</section>
-
-		<section class="sheet goals" data-testid="goals-summary">
-			<p class="label">Goals<span class="right"><a href="/study/goals">Open</a></span></p>
-			{#if data.goals.length === 0}
-				<p class="none">No goals yet. <a href="/study/goals">Add one</a>.</p>
-			{:else}
-				<div class="rows">
-					{#each data.goals as goal (goal.title)}
-						<div class="goal" data-testid="goal">
-							<div class="head">
-								<span class="name">{goal.title}</span>
-								<span class="muted small num">{goal.done} of {goal.total}</span>
-							</div>
-							<div class="bar small"><i style="width: {goal.total ? Math.round((goal.done / goal.total) * 100) : 0}%"></i></div>
-							{#if goal.next}
-								<p class="next muted small">Next: {goal.next.text}{goal.next.due ? ` · 📅 ${goal.next.due}` : ''}</p>
-							{:else if goal.total > 0}
-								<p class="next muted small">All milestones done.</p>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-
-		{#if data.currentlyReading}
-			<section class="sheet">
-				<p class="label">Currently reading</p>
-				<a class="reading" href={noteHref(data.currentlyReading.path)} data-testid="currently-reading">
-					<span class="name">{data.currentlyReading.title}</span>
-					<span class="muted small">{data.currentlyReading.kind}</span>
+	<p class="label">Subjects</p>
+	{#if data.subjects.length === 0}
+		<p class="none">No subjects yet. Start one below.</p>
+	{:else}
+		<div class="subjects">
+			{#each data.subjects as subject (subject.slug)}
+				<a class="sheet subject" href="/study/{subject.slug}" data-testid="subject-card">
+					<h2><i style="--dot: {subject.color}"></i>{subject.name}</h2>
+					{#if subject.goals.length}
+						<ul class="goals">
+							{#each subject.goals.slice(0, 4) as goal (goal.name)}
+								<li><span>{goal.name}</span><span class="num muted">{goal.done}/{goal.total}</span></li>
+							{/each}
+							{#if subject.goals.length > 4}<li class="muted">and {subject.goals.length - 4} more</li>{/if}
+						</ul>
+					{:else}
+						<p class="muted small">No goals yet.</p>
+					{/if}
+					<p class="facts small">
+						<span class="num">{formatDuration(subject.weekMinutes, ' ')} this week</span>
+						<span class="num">{subject.due} due</span>
+						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
+					</p>
 				</a>
-			</section>
-		{/if}
+			{/each}
+		</div>
+	{/if}
 
-		{#if data.topics.length > 0}
-			<section class="sheet">
-				<p class="label">Topics</p>
-				<p class="chips">
-					{#each data.topics as topic (topic.name)}
-						<span class="chip quiet">{topic.name} <span class="num muted">{topic.notes}</span></span>
-					{/each}
-				</p>
-			</section>
-		{/if}
-	</div>
+	<p class="label">New subject</p>
+	<form class="row" onsubmit={create} data-testid="new-subject">
+		<input class="field name" bind:value={name} placeholder="Filipino" aria-label="Subject name" data-testid="subject-name" />
+		<input class="field folders" bind:value={folders} placeholder="Reference folders, comma separated (optional)" aria-label="Reference folders" data-testid="subject-folders" />
+		<button class="btn primary" disabled={!name.trim() || saving} data-testid="create-subject">{saving ? 'Creating…' : 'Create'}</button>
+	</form>
+	<p class="hint">Its own files go in <code>Study/{name.trim() || '<name>'}</code>; cards come from there and from any reference folders.</p>
+	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 </div>
 
 <style>
-	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); align-items: start; }
-	.goals { grid-column: 1 / -1; }
+	.due { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+	/* The one figure on the page meant to be read at a glance. */
+	.count { font-size: 34px; line-height: 1; font-weight: 600; }
+	.due .btn { margin-left: auto; }
 
-	.due-row { display: flex; align-items: center; gap: var(--s3); }
-	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
-	.none { margin-top: var(--s2); }
+	.subjects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s4); }
+	.subject { display: flex; flex-direction: column; gap: var(--s2); color: var(--text); }
+	.subject:hover { text-decoration: none; border-color: var(--accent); }
+	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
+	.subject h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
+	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
+	.goals li { display: flex; justify-content: space-between; gap: var(--s2); }
+	.facts { display: flex; gap: var(--s3); flex-wrap: wrap; margin: 0; color: var(--muted); }
+	.facts span { display: inline-flex; align-items: center; gap: 3px; }
 
-	.bar { height: 6px; border-radius: var(--r-pill); background: var(--soft); overflow: hidden; margin-top: var(--s2); }
-	.bar i { display: block; height: 100%; background: var(--accent); }
-	.bar.small { height: 4px; margin-top: 6px; }
-
-	.streak { display: flex; align-items: center; gap: 6px; margin: var(--s3) 0 0; color: var(--muted); font-size: var(--t13); }
-	.streak :global(svg) { color: var(--sand-edge); }
-	.streak b { color: var(--text); font-size: var(--t14); }
-
-	.goal + .goal { margin-top: var(--s3); }
-	.goal .head { display: flex; justify-content: space-between; gap: var(--s2); }
-	.goal .name { font-weight: 500; }
-	.goal .next { margin: 6px 0 0; }
-
-	.reading { display: flex; flex-direction: column; gap: 2px; color: var(--text); }
-	.reading:hover { text-decoration: none; }
-	.reading .name { font-weight: 500; }
-	.reading:hover .name { color: var(--accent); }
-
-	.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-
-	@media (max-width: 1100px) {
-		.grid { grid-template-columns: 1fr; }
-		.goals { grid-column: auto; }
-	}
+	.row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+	.row .name { flex: 1; min-width: 160px; }
+	.row .folders { flex: 2; min-width: 200px; }
+	.hint { margin-top: var(--s2); }
+	.problem { color: var(--bad); }
 </style>

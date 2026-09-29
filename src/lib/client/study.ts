@@ -5,10 +5,14 @@
  * something the page renders rather than something it catches. The shapes
  * these calls carry are in `$lib/shared/study`, and re-exported here so a
  * component needs one import rather than two.
+ *
+ * A call names its subject by slug and never by path: the server knows where
+ * a subject's files are, and a page should not be choosing which file to
+ * write.
  */
 
 import type { Result, Task } from './api';
-import type { Card, CardShift, Graded, Resource, ResourceStatus, StudyScope } from '$lib/shared/study';
+import type { Card, CardShift, Graded, ReadingList, ReadingOp, StudyScope } from '$lib/shared/study';
 import type { Grade } from '$lib/shared/sm2';
 
 export * from '$lib/shared/study';
@@ -54,44 +58,65 @@ export function applyShift(cards: Card[], shift: CardShift | null): Card[] {
 }
 
 /**
- * Add a goal, appending its `## ` heading (and `target::` line, if given) to
- * `Goals.md`. Creates the note when this is its first goal.
+ * Add a goal to a subject, appending its `## ` heading (and `target::` line,
+ * if given) to its `Goals.md`. Creates the note when this is its first goal.
  */
-export async function addGoal(path: string, title: string, target: string | null): Promise<Result<void>> {
-	return post('/api/study/goal', { path, title, target }, () => undefined);
+export async function addGoal(subject: string, title: string, target: string | null): Promise<Result<void>> {
+	return post('/api/study/goal', { subject, title, target }, () => undefined);
 }
 
 /**
  * Add a milestone under an existing goal, as a task line with the vault's own
  * `📅` due-date field. Returns the task, ready to be ticked like any other.
  */
-export async function addMilestone(
-	path: string,
-	heading: string,
-	text: string,
-	due: string | null
-): Promise<Result<Task>> {
-	return post('/api/study/milestone', { path, heading, text, due }, (body) => body.task as Task);
-}
-
-/** Log a study session, appended under its `## YYYY-MM` heading in `Sessions.md`. */
-export async function logSession(
-	path: string,
-	entry: { day: string; minutes: number; topic: string | null; note: string }
-): Promise<Result<void>> {
-	return post('/api/study/session', { path, ...entry }, () => undefined);
+export async function addMilestone(subject: string, heading: string, text: string, due: string | null): Promise<Result<Task>> {
+	return post('/api/study/milestone', { subject, heading, text, due }, (body) => body.task as Task);
 }
 
 /**
- * Set a resource's status, writing `status:` into its frontmatter.
- *
- * The only thing the hub ever writes to a resource note, and it writes one
- * line: an existing `status:` is replaced in place, a missing one is inserted
- * into the frontmatter block, and a note with no frontmatter gains one. The
- * body is never touched.
+ * Log a study session in a subject's `Sessions.md`, under its `## YYYY-MM`
+ * heading, linked to `goal` when there is one.
  */
-export async function setResourceStatus(path: string, status: ResourceStatus): Promise<Result<Resource>> {
-	return post('/api/study/resource', { path, status }, (body) => body.resource as Resource);
+export async function logSession(
+	subject: string,
+	entry: { day: string; minutes: number; goal: string | null; note: string }
+): Promise<Result<void>> {
+	return post('/api/study/session', { subject, ...entry }, () => undefined);
+}
+
+/**
+ * Apply one op to a subject's reading list. `hash` is the list's hash as the
+ * page has it. Every answer but a lost connection carries the list as it now
+ * is, so the page replaces what it shows with that and never has to guess.
+ */
+export async function changeReading(
+	subject: string,
+	hash: string,
+	op: ReadingOp
+): Promise<Result<ReadingList> | { ok: false; kind: 'conflict' | 'error'; message: string; list: ReadingList }> {
+	try {
+		const res = await fetch('/api/study/reading', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ subject, hash, op })
+		});
+		const body = await res.json().catch(() => ({}));
+		if (res.ok) return { ok: true, value: body.list };
+		if (body.list) return { ok: false, kind: res.status === 409 ? 'conflict' : 'error', message: body.error ?? 'That did not work.', list: body.list };
+		return { ok: false, kind: 'error', message: body.error ?? `Request failed (${res.status})` };
+	} catch {
+		return { ok: false, kind: 'offline', message: 'No connection. Nothing was changed.' };
+	}
+}
+
+/** Put a card file under a goal, or under none for null: one `goal:` line in its frontmatter. */
+export async function setCardFileGoal(subject: string, path: string, goal: string | null): Promise<Result<void>> {
+	return post('/api/study/card-file', { subject, path, goal }, () => undefined);
+}
+
+/** Create a subject homed at `Study/<name>`. Returns its slug, for the redirect. */
+export async function createSubject(name: string, folders: string[]): Promise<Result<string>> {
+	return post('/api/study/subject', { name, folders }, (body) => body.slug as string);
 }
 
 /** Where to point a link so the browser downloads an Anki deck of `cards`. */
@@ -123,7 +148,7 @@ async function post<T>(url: string, body: unknown, pick: (body: any) => T): Prom
 		const parsed = await res.json().catch(() => ({}));
 		if (res.ok) return { ok: true, value: pick(parsed) };
 		if (res.status === 409) {
-			return { ok: false, kind: 'conflict', message: 'That card changed in Obsidian. Reloading.' };
+			return { ok: false, kind: 'conflict', message: 'That changed in Obsidian or on another device.' };
 		}
 		return { ok: false, kind: 'error', message: parsed.error ?? `Request failed (${res.status})` };
 	} catch {

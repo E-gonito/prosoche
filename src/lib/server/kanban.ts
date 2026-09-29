@@ -1,12 +1,15 @@
 /**
- * Workspace boards: reading one, changing one, and gathering the open cards
- * from all of them.
+ * Boards: reading one, changing one, and gathering the open cards from every
+ * workspace's.
  *
- * A board is `<home>/Board.md`, in the format `parse/kanban.ts` owns. This
- * module is what connects that grammar to the vault: it decides where the file
- * is, what a missing one reads as, and how a change is guarded against an
- * edit made somewhere else in the meantime. Routes and Today talk to this and
- * never to the grammar or the file.
+ * A board is a file in the format `parse/kanban.ts` owns. This module is what
+ * connects that grammar to the vault: it decides what a missing file reads
+ * as, and how a change is guarded against an edit made somewhere else in the
+ * meantime. A workspace's board is `<home>/Board.md`; the study reading list
+ * is another board in the same format, which is why the file-level half,
+ * `readBoardFile` and `changeBoardFile`, takes a path rather than a
+ * workspace. Routes, Today and Study talk to this and never to the grammar or
+ * the file.
  *
  * Two interfaces were considered. One function per operation (`addCard`,
  * `moveCard`, `renameColumn` …) reads well at a call site but repeats the
@@ -24,12 +27,74 @@ import type { Vault } from './vault/index';
 
 export type { Board, BoardOp, OpenCard };
 
+/** A board file as read: where it is, the hash to send back with a change, and what it holds. */
+export interface BoardFile {
+	path: string;
+	hash: string;
+	/** False for a missing or blank file, which reads as the fallback board. */
+	exists: boolean;
+	board: KanbanBoard;
+}
+
+/** Why a change was not written, when it was not. */
+export type BoardRefusal = Exclude<OpResult, { ok: true }>['reason'];
+
+export type BoardFileChange =
+	| { ok: true; file: BoardFile }
+	/** The file changed since `hash` was read. Nothing was written; `file` is what is there now. */
+	| { ok: false; reason: 'conflict'; file: BoardFile }
+	/** The op made no sense against this board. Nothing was written. */
+	| { ok: false; reason: BoardRefusal; message: string; file: BoardFile };
+
 export type BoardChange =
 	| { ok: true; board: Board }
-	/** The file changed since `hash` was read. Nothing was written; `board` is what is there now. */
 	| { ok: false; reason: 'conflict'; board: Board }
-	/** The op made no sense against this board. Nothing was written. */
-	| { ok: false; reason: Exclude<OpResult, { ok: true }>['reason']; message: string; board: Board };
+	| { ok: false; reason: BoardRefusal; message: string; board: Board };
+
+/**
+ * A board file, read from the vault.
+ *
+ * A missing or blank file reads as `fallback` — an empty board in the
+ * plugin's format, To do, Doing and Done unless the caller names its own —
+ * with `exists: false`, so there is a board to add to without anything being
+ * written. Never writes and never throws.
+ */
+export async function readBoardFile(vault: Vault, path: string, fallback = DEFAULT_BOARD): Promise<BoardFile> {
+	const note = await vault.read(path);
+	return toFile(path, note.hash, note, fallback);
+}
+
+/**
+ * Apply one operation to a board file, as the caller saw it.
+ *
+ * `hash` is the `BoardFile.hash` the op was computed against. When the file
+ * has changed since — here, in Obsidian, on another device — nothing is
+ * written and the current file comes back as a conflict, because a line
+ * number from an older read could name a different card now. The first change
+ * to a missing file writes `fallback` with that change applied.
+ *
+ * Side effects: at most one write, of `path` alone. Never rewrites any part
+ * of the file the op does not concern (see `parse/kanban.ts`), and never
+ * touches another note.
+ */
+export async function changeBoardFile(
+	vault: Vault,
+	path: string,
+	hash: string,
+	op: BoardOp,
+	{ fallback = DEFAULT_BOARD, day = todayKey() }: { fallback?: string; day?: DayKey } = {}
+): Promise<BoardFileChange> {
+	const note = await vault.read(path);
+	const current = toFile(path, note.hash, note, fallback);
+	if (note.hash !== hash) return { ok: false, reason: 'conflict', file: current };
+
+	const applied = applyOp(effective(note, fallback), op, day);
+	if (!applied.ok) return { ok: false, reason: applied.reason, message: applied.message, file: current };
+
+	const written = await vault.write(path, applied.content, note.hash);
+	if (!written.ok) return { ok: false, reason: 'conflict', file: toFile(path, written.current.hash, written.current, fallback) };
+	return { ok: true, file: toFile(path, written.note.hash, written.note, fallback) };
+}
 
 /** Vault-relative path of a workspace's board: `<home>/Board.md`. */
 export function boardPath(workspace: Workspace): string {
@@ -37,29 +102,17 @@ export function boardPath(workspace: Workspace): string {
 }
 
 /**
- * A workspace's board, read from the vault.
- *
- * A missing or blank file reads as the default board — To do, Doing, Done,
- * no cards — with `exists: false`, so a new workspace has a board to add to
- * without anything being written. Never writes and never throws.
+ * A workspace's board, as the browser sees it. A missing board is To do,
+ * Doing and Done with no cards and `exists: false`. Never writes and never
+ * throws.
  */
 export async function readBoard(vault: Vault, workspace: Workspace): Promise<Board> {
-	const note = await vault.read(boardPath(workspace));
-	return toBoard(workspace, note.hash, note.exists && note.content.trim() !== '', effective(note));
+	return toBoard(workspace, await readBoardFile(vault, boardPath(workspace)));
 }
 
 /**
- * Apply one operation to a workspace's board, as the caller saw it.
- *
- * `hash` is the `Board.hash` the op was computed against. When the file has
- * changed since — here, in Obsidian, on another device — nothing is written
- * and the current board comes back as a conflict, because a line number from
- * an older read could name a different card now. The first change to a
- * missing board writes the default board with that change applied.
- *
- * Side effects: at most one write, of `Board.md` alone. Never rewrites any
- * part of the file the op does not concern (see `parse/kanban.ts`), and never
- * touches another note.
+ * Apply one operation to a workspace's board: `changeBoardFile` on
+ * `<home>/Board.md`, answered as the browser's `Board`.
  */
 export async function changeBoard(
 	vault: Vault,
@@ -68,19 +121,11 @@ export async function changeBoard(
 	op: BoardOp,
 	day: DayKey = todayKey()
 ): Promise<BoardChange> {
-	const path = boardPath(workspace);
-	const note = await vault.read(path);
-	const current = () => toBoard(workspace, note.hash, note.exists && note.content.trim() !== '', effective(note));
-	if (note.hash !== hash) return { ok: false, reason: 'conflict', board: current() };
-
-	const applied = applyOp(effective(note), op, day);
-	if (!applied.ok) return { ok: false, reason: applied.reason, message: applied.message, board: current() };
-
-	const written = await vault.write(path, applied.content, note.hash);
-	if (!written.ok) {
-		return { ok: false, reason: 'conflict', board: toBoard(workspace, written.current.hash, true, written.current.content) };
-	}
-	return { ok: true, board: toBoard(workspace, written.note.hash, true, written.note.content) };
+	const result = await changeBoardFile(vault, boardPath(workspace), hash, op, { day });
+	const board = toBoard(workspace, result.file);
+	if (result.ok) return { ok: true, board };
+	if (result.reason === 'conflict') return { ok: false, reason: 'conflict', board };
+	return { ok: false, reason: result.reason, message: result.message, board };
 }
 
 /**
@@ -109,19 +154,22 @@ export async function openCards(vault: Vault, workspaces: Workspace[]): Promise<
 	});
 }
 
-/** What the grammar reads: the file, or the default board in place of a missing or blank one. */
-function effective(note: { exists: boolean; content: string }): string {
-	return note.exists && note.content.trim() !== '' ? note.content : DEFAULT_BOARD;
+/** What the grammar reads: the file, or the fallback in place of a missing or blank one. */
+function effective(note: { exists: boolean; content: string }, fallback: string): string {
+	return note.exists && note.content.trim() !== '' ? note.content : fallback;
 }
 
-function toBoard(workspace: Workspace, hash: string, exists: boolean, content: string): Board {
-	const parsed: KanbanBoard = parseBoard(content);
+function toFile(path: string, hash: string, note: { exists: boolean; content: string }, fallback: string): BoardFile {
+	return { path, hash, exists: note.exists && note.content.trim() !== '', board: parseBoard(effective(note, fallback)) };
+}
+
+function toBoard(workspace: Workspace, file: BoardFile): Board {
 	return {
 		workspace: workspace.slug,
-		path: boardPath(workspace),
-		hash,
-		exists,
-		columns: parsed.columns.map((column) => ({
+		path: file.path,
+		hash: file.hash,
+		exists: file.exists,
+		columns: file.board.columns.map((column) => ({
 			title: column.title,
 			limit: column.limit,
 			complete: column.complete,

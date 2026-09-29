@@ -1,7 +1,9 @@
 <script lang="ts">
 	/**
-	 * Goals and their milestones. A milestone is an ordinary task, so ticking
-	 * one is the same rewrite `/api/task` does everywhere else in the hub.
+	 * A subject's goals and their milestones. Goals are the subject's topics:
+	 * reading, sessions and card files point at one. A milestone is an
+	 * ordinary task, so ticking one is the same rewrite `/api/task` does
+	 * everywhere else in the hub.
 	 */
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import { editTask, type Task } from '$lib/client/api';
@@ -39,7 +41,7 @@
 		const title = goalTitle.trim();
 		if (!title || addingGoal) return;
 		addingGoal = true;
-		const result = await addGoal(data.goalsPath, title, goalTarget.trim() || null);
+		const result = await addGoal(data.subject.slug, title, goalTarget.trim() || null);
 		addingGoal = false;
 		if (result.ok) {
 			goalTitle = '';
@@ -64,7 +66,7 @@
 		const text = milestoneText.trim();
 		if (!text || !milestoneGoal || addingMilestone) return;
 		addingMilestone = true;
-		const result = await addMilestone(data.goalsPath, milestoneGoal, text, milestoneDue.trim() || null);
+		const result = await addMilestone(data.subject.slug, milestoneGoal, text, milestoneDue.trim() || null);
 		addingMilestone = false;
 		if (result.ok) {
 			milestoneText = '';
@@ -76,15 +78,13 @@
 	}
 </script>
 
-<svelte:head><title>Goals · Study · prosoche</title></svelte:head>
+<svelte:head><title>Goals · {data.subject.name} · prosoche</title></svelte:head>
 
 <div class="page">
-	<div class="title">
-		<h1>Study</h1>
-		<p>{data.weeklyHours ? `A target of ${data.weeklyHours}h a week.` : 'Goals and the milestones on the way.'}</p>
-	</div>
-
-	<StudyTabs tabs={data.tabs} />
+	<StudyTabs
+		subject={data.subject}
+		lede={data.weeklyHours ? `Goals and the milestones on the way. A target of ${data.weeklyHours}h a week.` : 'Goals and the milestones on the way.'}
+	/>
 
 	{#if problem}<p class="problem">{problem}</p>{/if}
 

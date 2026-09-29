@@ -114,6 +114,8 @@ with `.num`, which lines figures up without changing the typeface.
   sideways; below 560px of board width one column takes most of the width
   and they snap. Its drawer is **`board/CardEditor`**, and a card shown
   away from its board (on Today) is **`board/CardRow`**.
+- **`StudyTabs`**: a study subject's heading, a crumb back to Study, and its
+  five tabs, all always shown.
 - **`MasterNote`**: a note read as `.prose` with an Edit button that swaps in
   a textarea of the raw file, Save and Cancel below it.
 
@@ -128,5 +130,14 @@ with `.num`, which lines figures up without changing the typeface.
 - **A menu inside a scroller is fixed.** A popover in a sideways scroller
   would be clipped, so it is drawn once at the top level, fixed to the
   viewport at its button, and closed on any scroll or resize.
+- **A delete asks twice, in place.** Delete turns into "Delete this? Delete
+  · Keep" where it was, rather than opening a dialog over a drawer that is
+  already one. The word is red text on no fill (a `.remove` class, not
+  `.danger`, which is the filled red button). The board's card drawer and
+  the reading list do this.
+- **A board can be shown as lists.** A file in the kanban grammar need not
+  be drawn as a board: the study reading list shows its columns as grouped
+  `.sheet.rows`, with a status select to move an item between groups and a
+  ⋯ menu for Move up, Move down, Edit and Delete.
 - **A due date is red once it is late.** `--bad` for a due date that has
   passed on something still open; muted otherwise.

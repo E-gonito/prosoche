@@ -27,6 +27,8 @@
 import { parseNote } from '../parse/note';
 import { FIELD, parseTaskLine, toTask } from '../parse/task';
 import { appendUnderHeading } from '../sections';
+import { slugify } from '$lib/shared/slug';
+import type { GoalRef } from '$lib/shared/study';
 import type { Task } from '$lib/shared/task';
 import type { Vault } from '../vault/index';
 
@@ -120,6 +122,73 @@ export function withNewMilestone(
 	const words = text.trim();
 	const raw = due ? `- [ ] ${words} ${FIELD.due} ${due}` : `- [ ] ${words}`;
 	return appendUnderHeading(content, `## ${heading}`, raw);
+}
+
+/**
+ * The goals as every picker offers them, in file order: name, slug and the
+ * wikilink that points at one. Pure.
+ *
+ * Two goals whose names differ only in case or punctuation share a slug; the
+ * first keeps it and the next gets `-2`, so a `?goal=` URL always names one.
+ */
+export function goalRefs(note: GoalsNote): GoalRef[] {
+	const seen = new Map<string, number>();
+	return note.goals.map(({ title }) => {
+		const base = slugify(title) || 'goal';
+		const n = (seen.get(base) ?? 0) + 1;
+		seen.set(base, n);
+		return { name: title, slug: n === 1 ? base : `${base}-${n}`, link: goalLink(title) };
+	});
+}
+
+/**
+ * The link a reading item or a session writes to point at a goal:
+ * `[[Goals#<name>]]`, a heading link into the subject's `Goals.md`.
+ *
+ * The note is named bare rather than by path. The files that carry these
+ * links sit in the same folder as their `Goals.md`, which is where Obsidian
+ * looks first when several notes share a name, so a second subject's
+ * `Goals.md` does not capture them; and a bare name reads far better on a
+ * card than `Study/Computer Science/Goals`.
+ */
+export function goalLink(name: string): string {
+	return `[[${goalTarget(name)}]]`;
+}
+
+/**
+ * What goes inside `goalLink`'s brackets: `Goals#<name>`. Brackets and `|`
+ * are dropped from the name, since either would end the link early.
+ */
+export function goalTarget(name: string): string {
+	return `Goals#${name.replace(/[[\]|]/g, '').replace(/\s+/g, ' ').trim()}`;
+}
+
+/**
+ * The goal a wikilink target points at, or null when it points elsewhere.
+ * Pure. `target` is what sits inside `[[ ]]`: `Goals#Computer Systems`, or
+ * with a path, a `.md` or an alias, `Study/CS/Goals.md#Computer Systems|CS`.
+ * Any note called `Goals` counts; the caller already knows which subject's
+ * file it is reading.
+ */
+export function goalOf(target: string | null): string | null {
+	const m = /^(?:[^#|]*\/)?Goals(?:\.md)?#([^|]+?)\s*(?:\|.*)?$/i.exec(target?.trim() ?? '');
+	return m ? m[1].trim() : null;
+}
+
+/**
+ * Which of `goals` a written goal names, by slug, so `computer systems` and
+ * `Computer Systems` are the same goal. Null for no goal or one that is not
+ * in the list. Pure.
+ */
+export function findGoal(goals: GoalRef[], written: string | null): GoalRef | null {
+	if (!written) return null;
+	const wanted = slugify(written);
+	return goals.find((g) => slugify(g.name) === wanted) ?? null;
+}
+
+/** Read and parse a `Goals.md`. A missing note is simply no goals. Never writes. */
+export async function readGoals(vault: Vault, path: string): Promise<GoalsNote> {
+	return parseGoals((await vault.read(path)).content, path);
 }
 
 export type GoalWrite = { ok: true } | { ok: false; reason: 'conflict' };

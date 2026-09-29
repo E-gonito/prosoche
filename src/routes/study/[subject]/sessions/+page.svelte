@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** The session log: recent entries, hours per topic, and the last 8 weeks. */
+	/** A subject's session log: log a sitting against a goal, hours per goal, and the last 8 weeks. */
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import WeekBars from '$lib/components/WeekBars.svelte';
@@ -8,7 +8,7 @@
 
 	let { data } = $props();
 
-	let topic = $state('');
+	let goal = $state('');
 	let minutes = $state('');
 	let note = $state('');
 	let saving = $state(false);
@@ -20,10 +20,10 @@
 		if (!mins || mins <= 0 || saving) return;
 		saving = true;
 		problem = '';
-		const result = await logSession(data.sessionsPath, { day: data.today, minutes: mins, topic: topic || null, note: note.trim() });
+		const result = await logSession(data.subject.slug, { day: data.today, minutes: mins, goal: goal || null, note: note.trim() });
 		saving = false;
 		if (result.ok) {
-			topic = '';
+			goal = '';
 			minutes = '';
 			note = '';
 			await invalidateAll();
@@ -33,24 +33,19 @@
 	}
 </script>
 
-<svelte:head><title>Sessions · Study · prosoche</title></svelte:head>
+<svelte:head><title>Sessions · {data.subject.name} · prosoche</title></svelte:head>
 
 <div class="page">
-	<div class="title">
-		<h1>Study</h1>
-		<p>The session log — one line per sitting, with what it was for.</p>
-	</div>
-
-	<StudyTabs tabs={data.tabs} />
+	<StudyTabs subject={data.subject} lede="The session log: one line per sitting, with the goal it was for." />
 
 	{#if problem}<p class="problem">{problem}</p>{/if}
 
 	<p class="label">Log a session</p>
 	<form class="row" onsubmit={submit}>
-		<select class="field topic" bind:value={topic} aria-label="Topic" data-testid="session-topic">
-			<option value="">No topic</option>
-			{#each data.topics as name (name)}
-				<option value={name}>{name}</option>
+		<select class="field goal" bind:value={goal} aria-label="Goal" data-testid="session-goal">
+			<option value="">No goal</option>
+			{#each data.goals as g (g.slug)}
+				<option value={g.name}>{g.name}</option>
 			{/each}
 		</select>
 		<input class="field minutes" type="number" min="1" step="1" bind:value={minutes} placeholder="Minutes" aria-label="Minutes" data-testid="session-minutes" />
@@ -59,19 +54,22 @@
 			{saving ? 'Saving…' : 'Log it'}
 		</button>
 	</form>
+	{#if data.goals.length === 0}
+		<p class="hint">Sessions roll up by goal. <a href="/study/{data.subject.slug}/goals">Add a goal</a> to log time against it.</p>
+	{/if}
 
 	<p class="label">Last 8 weeks</p>
 	<div class="sheet">
 		<WeekBars weeks={data.weeks} />
 	</div>
 
-	{#if data.topicHours.length > 0}
-		<p class="label">This month, by topic</p>
-		<div class="sheet rows" data-testid="topic-hours">
-			{#each data.topicHours as t (t.topic)}
-				<div class="topic-row">
-					<span>{t.topic}</span>
-					<span class="num muted">{formatDuration(t.minutes, ' ')}</span>
+	{#if data.goalHours.length > 0}
+		<p class="label">This month, by goal</p>
+		<div class="sheet rows" data-testid="goal-hours">
+			{#each data.goalHours as g (`${g.goal}:${g.label}`)}
+				<div class="goal-row">
+					<span class:muted={!g.goal}>{g.goal ? g.label : g.label === 'Untracked' ? 'No goal' : `[[${g.label}]]`}</span>
+					<span class="num muted">{formatDuration(g.minutes, ' ')}</span>
 				</div>
 			{/each}
 		</div>
@@ -86,7 +84,7 @@
 				<div class="session-row">
 					<span class="day muted small num">{s.day}</span>
 					<span class="minutes num">{formatDuration(s.minutes, ' ')}</span>
-					{#if s.topic}<span class="chip quiet">{s.topic}</span>{/if}
+					{#if s.goal}<span class="chip quiet">{s.goal}</span>{:else if s.topic}<span class="chip quiet">[[{s.topic}]]</span>{/if}
 					{#if s.note}<span class="note">{s.note}</span>{/if}
 				</div>
 			{/each}
@@ -96,20 +94,21 @@
 
 <style>
 	.row { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s4); }
-	.row .topic { flex: 1; min-width: 140px; }
+	.row .goal { flex: 1; min-width: 140px; }
 	.row .minutes { flex: none; width: 100px; }
 	.row .note { flex: 2; min-width: 180px; }
+	.hint { margin: calc(var(--s2) * -1) 0 var(--s4); }
 
 	.problem { color: var(--bad); margin-bottom: var(--s3); }
 	.none { margin: 0 0 var(--s3); }
 
-	.topic-row { display: flex; justify-content: space-between; align-items: center; }
+	.goal-row { display: flex; justify-content: space-between; align-items: center; }
 
 	.session-row { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 	.session-row .minutes { flex: none; }
 	.session-row .note { color: var(--muted); font-size: var(--t13); overflow-wrap: anywhere; }
 
 	@media (max-width: 720px) {
-		.row .topic, .row .minutes, .row .note { flex-basis: 100%; width: auto; }
+		.row .goal, .row .minutes, .row .note { flex-basis: 100%; width: auto; }
 	}
 </style>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOp, DEFAULT_BOARD, parseBoard, parseCardLine, parseQuickAdd } from './kanban';
+import { applyOp, DEFAULT_BOARD, emptyBoard, parseBoard, parseCardLine, parseQuickAdd } from './kanban';
 import type { BoardOp } from '$lib/shared/kanban';
 
 /** The spec's example, as a person might have it after using the plugin. */
@@ -58,9 +58,11 @@ function diff(before: string, after: string): { removed: string[]; added: string
  * `src/parsers/formats/list.ts` and `src/parsers/common.ts`, so the default
  * board is checked against the serialiser rather than against itself.
  */
-function pluginBoardToMd(lanes: string[]): string {
+function pluginBoardToMd(lanes: string[], complete?: string): string {
 	const frontmatter = ['---', '', 'kanban-plugin: board\n', '---', '', ''].join('\n');
-	const laneMd = lanes.map((title) => [`## ${title}`, '', '', '', ''].join('\n')).join('');
+	const laneMd = lanes
+		.map((title) => [`## ${title}`, '', ...(title === complete ? ['**Complete**'] : []), '', '', ''].join('\n'))
+		.join('');
 	const settings = ['', '', '%% kanban:settings', '```', JSON.stringify({ 'kanban-plugin': 'board' }), '```', '%%'].join('\n');
 	return frontmatter + laneMd + settings;
 }
@@ -68,6 +70,11 @@ function pluginBoardToMd(lanes: string[]): string {
 describe('DEFAULT_BOARD', () => {
 	it('is exactly what the plugin writes for To do, Doing and Done', () => {
 		expect(DEFAULT_BOARD).toBe(pluginBoardToMd(['To do', 'Doing', 'Done']));
+	});
+
+	it('is what emptyBoard writes for any columns, a **Complete** one included', () => {
+		expect(emptyBoard(['To read', 'Reading', 'Done'], 'Done')).toBe(pluginBoardToMd(['To read', 'Reading', 'Done'], 'Done'));
+		expect(parseBoard(emptyBoard(['A', 'Done'], 'Done')).columns.map((c) => c.complete)).toEqual([false, true]);
 	});
 
 	it('reads as three empty columns', () => {
@@ -267,8 +274,15 @@ describe('applyOp: add-card', () => {
 		expect(apply('## Done\n\n**Complete**\n\n\n', { kind: 'add-card', column: 0, text: 'y' })).toBe('## Done\n\n**Complete**\n- [ ] y\n\n\n');
 	});
 
+	it('writes literal text as it is, reading no word as a date, priority or label', () => {
+		const next = apply(BOARD, { kind: 'add-card', column: 1, text: ' [Read](https://x.io)  today Q1 #book ', literal: true });
+		expect(diff(BOARD, next)).toEqual({ removed: [], added: ['- [ ] [Read](https://x.io) today Q1 #book'] });
+		expect(parseBoard(next).columns[1].cards[1]).toMatchObject({ labels: ['book'], due: null, priority: null });
+	});
+
 	it('refuses a card with no words', () => {
 		expect(applyOp(BOARD, { kind: 'add-card', column: 0, text: 'Q1 #tag' }, TODAY)).toMatchObject({ ok: false, reason: 'no-text' });
+		expect(applyOp(BOARD, { kind: 'add-card', column: 0, text: '  ', literal: true }, TODAY)).toMatchObject({ ok: false, reason: 'no-text' });
 		expect(applyOp(BOARD, { kind: 'add-card', column: 9, text: 'x' }, TODAY)).toMatchObject({ ok: false, reason: 'no-column' });
 	});
 });
@@ -306,6 +320,28 @@ describe('applyOp: move-card', () => {
 
 	it('refuses a line that is not a card', () => {
 		expect(applyOp(BOARD, { kind: 'move-card', line: 6, column: 1, index: 0 }, TODAY)).toMatchObject({ ok: false, reason: 'no-card' });
+	});
+});
+
+describe('applyOp: delete-card', () => {
+	it.each([
+		['a card and its notes', 8, ['- [ ] Order menu printing @{2026-10-03} `Q1` #print', '\tTwo quotes so far; ask Print Co for a third.']],
+		['the last card of a column', 10, ['- [ ] Call the landlord']],
+		['the only card of a column', 14, ['- [ ] Supplier price sheet @{2026-10-01}']],
+		['a ticked card', 18, ['- [x] Register business name']]
+	])('removes %s and nothing else', (_name, line, removed) => {
+		const next = apply(BOARD, { kind: 'delete-card', line });
+		expect(diff(BOARD, next)).toEqual({ removed, added: [] });
+	});
+
+	it('keeps CRLF line endings', () => {
+		const crlf = BOARD.replace(/\n/g, '\r\n');
+		expect(apply(crlf, { kind: 'delete-card', line: 8 })).toBe(apply(BOARD, { kind: 'delete-card', line: 8 }).replace(/\n/g, '\r\n'));
+	});
+
+	it('refuses a line that is not a card', () => {
+		expect(applyOp(BOARD, { kind: 'delete-card', line: 9 }, TODAY)).toMatchObject({ ok: false, reason: 'no-card' });
+		expect(applyOp(BOARD, { kind: 'delete-card', line: 99 }, TODAY)).toMatchObject({ ok: false, reason: 'no-card' });
 	});
 });
 
@@ -355,6 +391,8 @@ describe('applyOp: a malformed op', () => {
 		[{ kind: 'move-card', line: 8, column: 1, index: -1 }],
 		[{ kind: 'toggle-card', line: 8 }],
 		[{ kind: 'edit-card', line: 8, labels: 'print' }],
+		[{ kind: 'delete-card', line: '8' }],
+		[{ kind: 'add-card', column: 0, text: 'x', literal: 'yes' }],
 		[null]
 	])('refuses %j and changes nothing', (op) => {
 		expect(applyOp(BOARD, op as unknown as BoardOp, TODAY)).toMatchObject({ ok: false, reason: 'bad-op' });
@@ -507,6 +545,19 @@ describe('round trip', () => {
 					expect(apply(moved, { kind: 'move-column', column: to, index: c })).toBe(content);
 				}
 			}
+		}
+	});
+
+	it('adds a card to every column and deletes it again without changing a byte', () => {
+		const random = rng(11);
+		for (let n = 0; n < 40; n++) {
+			const content = randomBoard(random);
+			parseBoard(content).columns.forEach((col, c) => {
+				const added = apply(content, { kind: 'add-card', column: c, text: 'Extra card', literal: true });
+				const card = parseBoard(added).columns[c].cards[col.cards.length];
+				expect(card.title).toBe('Extra card');
+				expect(apply(added, { kind: 'delete-card', line: card.line })).toBe(content);
+			});
 		}
 	});
 

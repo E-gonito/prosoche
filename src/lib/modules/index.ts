@@ -32,9 +32,10 @@ export interface Module {
 
 /**
  * An entry the rail nests under a module: one workspace under Workspaces,
- * one workspace's glossary under Glossary. They come from the vault, so the
- * root layout's loader supplies them, keyed by module id; this file only
- * says what one looks like and which one a path is on.
+ * one workspace's glossary under Glossary, one subject under Study. They
+ * come from the vault, so the root layout's loader supplies them, keyed by
+ * module id; this file only says what one looks like and which one a path
+ * is on.
  */
 export interface SubItem {
 	href: string;

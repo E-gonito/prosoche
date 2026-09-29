@@ -23,12 +23,19 @@
  *    `total == 0` becomes a flashcard.
  *  - The plugin finds an inline card's comment only when it starts at column
  *    zero on the next line, so that is where a new comment goes.
+ *
+ * A card file belongs to a goal through its frontmatter, `goal: <name>`, so
+ * every card in it counts towards that goal; setting it is the one other
+ * write this module makes, one frontmatter line.
  */
 
 import { basename, parseNote } from '../parse/note';
-import { scopedNotes } from './topics';
+import { setFrontmatterField } from '../parse/frontmatter';
+import { goalOf } from './goals';
+import { inScope, scopedNotes } from './scope';
 import { isDue, schedule as nextSchedule, type Grade, type Schedule } from '$lib/shared/sm2';
-import type { Card, CardKind, CardQueue, StudyScope } from '$lib/shared/study';
+import { slugify } from '$lib/shared/slug';
+import type { Card, CardFile, CardKind, CardQueue, StudyScope } from '$lib/shared/study';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 
@@ -138,6 +145,23 @@ export interface DueQuery {
 	on: string;
 	/** How many cards to return. The counts describe everything found. */
 	limit?: number;
+	/**
+	 * Only cards from files whose `goal:` names this goal, compared as slugs,
+	 * so case and punctuation do not matter. Absent means every card.
+	 */
+	goal?: string;
+}
+
+/**
+ * The goal a card file's frontmatter puts its cards under: `goal:` as a
+ * name, or as a `[[Goals#…]]` link, which is read for its heading. A list
+ * gives its first entry. Null when there is none. Pure.
+ */
+export function fileGoal(frontmatter: Record<string, unknown>): string | null {
+	const raw = Array.isArray(frontmatter.goal) ? frontmatter.goal[0] : frontmatter.goal;
+	if (typeof raw !== 'string' || !raw.trim()) return null;
+	const link = /^\[\[([^[\]]+)\]\]$/.exec(raw.trim());
+	return link ? (goalOf(link[1]) ?? link[1].trim()) : raw.trim();
 }
 
 /**
@@ -151,17 +175,27 @@ export interface DueQuery {
  * markdown and the index holds no card table. That is a few hundred small
  * files for this vault, and it is the price of the state being in the notes.
  *
+ * `files` lists every card source in scope, with its goal and counts,
+ * whichever goal was asked for, so one call gives the Flashcards tab both its
+ * list and its queue.
+ *
  * Never writes. Never throws: a note that cannot be read contributes nothing.
  */
 export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery): Promise<CardQueue> {
 	const cards: Card[] = [];
+	const files: CardFile[] = [];
 	const invisible: CardQueue['invisible'] = [];
+	const wanted = query.goal === undefined ? null : slugify(query.goal);
 	let total = 0;
 
 	for (const { path, content, parsed } of await scopedNotes(vault, query.scope)) {
 		const found = scanCards(content, path);
 		if (!found.length) continue;
 		if (isCardSource(parsed.tags, content)) {
+			const goal = fileGoal(parsed.frontmatter);
+			const title = index.noteTitle(path) ?? parsed.title;
+			files.push({ path, title, goal, cards: found.length, due: found.filter((c) => isDue(c.schedule, query.on)).length });
+			if (wanted !== null && (goal === null || slugify(goal) !== wanted)) continue;
 			total += found.length;
 			cards.push(...found);
 		} else {
@@ -181,8 +215,33 @@ export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery):
 		due: ready.filter((c) => c.schedule !== null).length,
 		fresh: ready.filter((c) => c.schedule === null).length,
 		total,
+		files: files.sort((a, b) => a.path.localeCompare(b.path)),
 		invisible: invisible.sort((a, b) => b.cards - a.cards)
 	};
+}
+
+export type GoalSet = { ok: true } | { ok: false; reason: 'no-note' | 'not-cards' | 'conflict' };
+
+/**
+ * Put a card file's cards under `goal`, or under none for null, by setting
+ * `goal:` in its frontmatter.
+ *
+ * One frontmatter line changes, through `setFrontmatterField`; the rest of
+ * the note, cards and schedules included, is untouched, and a note with no
+ * frontmatter gains a two-line block at the top. Refuses a note outside
+ * `scope` or one that holds no cards Study reviews, so this can never become
+ * a way to write to any note in the vault. Clearing leaves an empty `goal:`
+ * key in place for the next time.
+ */
+export async function setCardFileGoal(vault: Vault, scope: StudyScope, path: string, goal: string | null): Promise<GoalSet> {
+	const note = await vault.read(path);
+	if (!note.exists) return { ok: false, reason: 'no-note' };
+	const { tags } = parseNote(note.content, path);
+	if (!inScope(path, tags, scope) || !isCardSource(tags, note.content) || !scanCards(note.content, path).length) {
+		return { ok: false, reason: 'not-cards' };
+	}
+	const written = await vault.write(path, setFrontmatterField(note.content, 'goal', goal ?? ''), note.hash);
+	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
 }
 
 export type Reviewed =

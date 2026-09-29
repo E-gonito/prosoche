@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault, hashContent } from './vault/index';
-import { boardPath, changeBoard, openCards, readBoard } from './kanban';
-import { DEFAULT_BOARD } from './parse/kanban';
+import { boardPath, changeBoard, changeBoardFile, openCards, readBoard, readBoardFile } from './kanban';
+import { DEFAULT_BOARD, emptyBoard } from './parse/kanban';
 import type { Workspace } from './workspaces';
 
 const WORK: Workspace = {
@@ -116,6 +116,30 @@ describe('changeBoard', () => {
 			['Call the landlord', 'Paint the hall']
 		]);
 		expect(result.board.hash).toBe((await vault.read('Work/Board.md')).hash);
+	});
+});
+
+describe('changeBoardFile', () => {
+	const FALLBACK = emptyBoard(['To read', 'Done'], 'Done');
+
+	it('reads a missing file at any path as its own fallback, and writes it with the first change', async () => {
+		const seen = await readBoardFile(vault, 'Study/Reading List.md', FALLBACK);
+		expect(seen).toMatchObject({ path: 'Study/Reading List.md', exists: false });
+		expect(seen.board.columns.map((c) => c.title)).toEqual(['To read', 'Done']);
+
+		const result = await changeBoardFile(vault, seen.path, seen.hash, { kind: 'add-card', column: 1, text: 'SICP fri', literal: true }, { fallback: FALLBACK });
+		expect(result.ok).toBe(true);
+		expect((await vault.read(seen.path)).content).toBe(FALLBACK.replace('**Complete**\n', '**Complete**\n- [ ] SICP fri\n'));
+	});
+
+	it('deletes a card, and refuses a stale hash', async () => {
+		await vault.write('Work/Board.md', BOARD);
+		const seen = await readBoardFile(vault, 'Work/Board.md');
+		const deleted = await changeBoardFile(vault, seen.path, seen.hash, { kind: 'delete-card', line: 9 });
+		expect(deleted.ok).toBe(true);
+		expect((await vault.read('Work/Board.md')).content).toBe(BOARD.replace('- [x] Pay the deposit\n', ''));
+		const stale = await changeBoardFile(vault, seen.path, seen.hash, { kind: 'delete-card', line: 8 });
+		expect(stale).toMatchObject({ ok: false, reason: 'conflict' });
 	});
 });
 

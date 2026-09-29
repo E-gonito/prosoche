@@ -23,6 +23,7 @@
 		onsave,
 		ontoggle,
 		onmove,
+		ondelete,
 		onclose
 	}: {
 		card: BoardCard;
@@ -34,6 +35,8 @@
 		onsave: (fields: Fields) => void;
 		ontoggle: (done: boolean) => void;
 		onmove: (column: number) => void;
+		/** Remove the card and its notes; asked twice, since it cannot be undone here. */
+		ondelete: () => void;
 		onclose: () => void;
 	} = $props();
 
@@ -43,6 +46,7 @@
 	let title = $state(untrack(() => card.title));
 	let labels = $state(untrack(() => card.labels.map((l) => `#${l}`).join(' ')));
 	let notes = $state(untrack(() => card.notes));
+	let confirming = $state(false);
 	let dialog: HTMLDialogElement | undefined = $state();
 	let field: HTMLInputElement | undefined = $state();
 
@@ -156,7 +160,18 @@
 			<span>Notes</span>
 			<textarea class="field" bind:value={notes} data-testid="editor-notes" rows="6" placeholder="Anything else about it" onblur={saveNotes}></textarea>
 		</label>
-		<p class="hint">Saved as you leave each field.</p>
+		<footer>
+			<p class="hint">Saved as you leave each field.</p>
+			{#if confirming}
+				<span class="confirm">
+					Delete this card?
+					<button class="btn ghost small remove" data-testid="editor-delete-confirm" disabled={busy} onclick={ondelete}>Delete</button>
+					<button class="btn ghost small" onclick={() => (confirming = false)}>Keep</button>
+				</span>
+			{:else}
+				<button class="btn ghost small remove" data-testid="editor-delete" disabled={busy} onclick={() => (confirming = true)}>Delete card</button>
+			{/if}
+		</footer>
 	</div>
 </dialog>
 
@@ -209,6 +224,11 @@
 	.notes { display: flex; flex-direction: column; gap: var(--s1); }
 	.notes textarea { resize: vertical; font-size: var(--t14); line-height: 1.5; }
 	.hint { margin: 0; font-size: var(--t12); }
+	footer { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+	.confirm { display: flex; align-items: center; gap: var(--s1); font-size: var(--t13); }
+	/* `.remove`, not `.danger`, which is the global filled red button. */
+	.remove { color: var(--bad); }
+	.remove:hover { background: var(--soft); color: var(--bad); }
 	.problem { margin: 0; }
 
 	@media (max-width: 720px) {

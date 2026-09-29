@@ -1,6 +1,6 @@
 /**
- * The vocabulary of the study section: what a card, a resource and a topic
- * are.
+ * The vocabulary of the study section: what a subject, a goal, a card, a card
+ * file and a reading-list item are.
  *
  * These shapes are the contract between the server modules that read them out
  * of the markdown, the API routes that serialise them and the screens that
@@ -19,18 +19,42 @@ import type { Grade, Schedule } from './sm2';
 export type { Grade, Schedule };
 
 /**
- * Which part of the vault a study query covers.
- *
- * Empty means the whole vault, which is what the global study page wants. A
- * workspace tab passes its own folders and tag, which is what lets the same
- * widget sit on the CS study page and on the Personal dashboard and show
- * different things without knowing that either page exists.
+ * Which part of the vault a study query covers: a subject's folders and tag.
+ * Empty means the whole vault.
  */
 export interface StudyScope {
 	/** Vault-relative folders. A note under one of them is in scope. */
 	folders?: string[];
 	/** Tags on the note, without `#`. A note carrying one is in scope. */
 	tags?: string[];
+}
+
+/**
+ * A subject: one workspace whose `template:` says `study`, as the screens
+ * need it. Its own files live in `home`; its cards come from every folder
+ * its workspace names.
+ */
+export interface SubjectRef {
+	/** The workspace's slug, and the `/study/<slug>` segment. */
+	slug: string;
+	name: string;
+	color: string;
+	/** Home folder: where `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/` live. */
+	home: string;
+}
+
+/**
+ * A goal, as every goal picker offers it. A goal is a `## ` heading in the
+ * subject's `Goals.md`, and it is the subject's unit of progress: reading
+ * items, sessions and card files point at one.
+ */
+export interface GoalRef {
+	/** The heading's text, verbatim. */
+	name: string;
+	/** For a URL such as `/study/<subject>/review?goal=<slug>`. */
+	slug: string;
+	/** The wikilink written into a reading item or a session: `[[Goals#<name>]]`. */
+	link: string;
 }
 
 /** How a card is written in the markdown, in Spaced Repetition's terms. */
@@ -72,6 +96,21 @@ export interface Card {
 	expectedRaw: string;
 }
 
+/**
+ * A note holding cards, and the goal its frontmatter's `goal:` puts them
+ * under. The Flashcards tab lists these, grouped by goal.
+ */
+export interface CardFile {
+	path: string;
+	title: string;
+	/** `goal:` as the note names it, or null when it names none. */
+	goal: string | null;
+	/** Every card in the file. */
+	cards: number;
+	/** Cards ready to review today: due, overdue, or never reviewed. */
+	due: number;
+}
+
 /** What a due-card query answers. */
 export interface CardQueue {
 	/** Cards to review, most overdue first, then new ones. */
@@ -82,79 +121,14 @@ export interface CardQueue {
 	fresh: number;
 	/** Total cards in scope, reviewed or not. */
 	total: number;
+	/** Every card source in scope, in path order, whatever the goal asked for. */
+	files: CardFile[];
 	/**
 	 * Notes holding cards that Obsidian cannot see, because the note carries no
 	 * flashcard tag. Surfaced rather than silently included, so the fix is one
 	 * the user can make in Obsidian.
 	 */
 	invisible: Array<{ path: string; title: string; cards: number }>;
-}
-
-export type ResourceStatus = 'queued' | 'learning' | 'paused' | 'done';
-export type ResourceKind = 'course' | 'book' | 'article' | 'video' | 'lab' | 'paper' | 'note';
-
-/** Something the user is reading, watching or working through. */
-export interface Resource {
-	path: string;
-	title: string;
-	kind: ResourceKind;
-	url: string | null;
-	status: ResourceStatus;
-	/** True when `status` came from the note rather than being inferred. */
-	stated: boolean;
-	/** 0..100, from `progress:` or from the note's own task list. */
-	progress: number;
-	/** Topic ids from `topics:`, plus the folders the note lives in. */
-	topics: string[];
-	/** `added:` if stated, else null. */
-	added: string | null;
-	/** Last modification, for ordering when nothing better is available. */
-	updatedMs: number;
-	tasksDone: number;
-	tasksTotal: number;
-}
-
-/** A node of the topic map. */
-export interface Topic {
-	/** Stable slug, unique within a scope. */
-	id: string;
-	name: string;
-	/** Parent topic id, or null at the root of the map. */
-	parent: string | null;
-	/** The folder or note this topic came from, for a link. */
-	path: string | null;
-	/**
-	 * Where the topic was found: a folder in the scope, a heading in a syllabus
-	 * note, or a note declaring `type: topic` in its frontmatter.
-	 */
-	kind: 'folder' | 'heading' | 'declared';
-	/** Notes filed under it. */
-	notes: number;
-	/** Checklist items under a syllabus heading, and how many are ticked. */
-	done: number;
-	total: number;
-}
-
-/** A topic with what is covering it, which is the point of the map. */
-export interface TopicCoverage extends Topic {
-	resources: number;
-	/** Resources under way or finished, as opposed to merely queued. */
-	started: number;
-	cards: number;
-	cardsDue: number;
-	/**
-	 * `covered` has resources and cards, `started` has one of the two, `gap`
-	 * has neither and is what the map exists to show.
-	 */
-	state: 'covered' | 'started' | 'gap';
-}
-
-/** One tab of the study section's own tab bar. */
-export interface StudyTab {
-	title: string;
-	href: string;
-	/** Overview is always visible; every other tab hides until it has data. */
-	visible: boolean;
 }
 
 /** Lines inserted into a note, which moves every card below them. */
@@ -169,3 +143,73 @@ export interface Graded {
 	/** Set when the write inserted a line, so a held queue can be corrected. */
 	shift: CardShift | null;
 }
+
+/** What a reading-list item is, written as its `#tag`; `other` is written as no tag. */
+export const READING_KINDS = ['book', 'course', 'video', 'article', 'paper', 'other'] as const;
+export type ReadingKind = (typeof READING_KINDS)[number];
+
+/** The columns of a reading list that has never been written, in order. */
+export const READING_COLUMNS = ['To read', 'Reading', 'Paused', 'Done'] as const;
+
+/** An item's own fields: what the add and edit forms send. */
+export interface ReadingFields {
+	title: string;
+	/** Where to read it, or null. */
+	url: string | null;
+	kind: ReadingKind;
+	/** The goal's name, or null for none. */
+	goal: string | null;
+}
+
+/** One item on the reading list: a card on its board. */
+export interface ReadingItem extends ReadingFields {
+	/** 0-based line of its `- [ ]` line in `Reading List.md`. */
+	line: number;
+	done: boolean;
+}
+
+/** A column of the reading list, shown as a group. */
+export interface ReadingGroup {
+	title: string;
+	items: ReadingItem[];
+}
+
+export interface ReadingList {
+	/** The subject's slug. */
+	subject: string;
+	path: string;
+	/** Hash of the bytes this list was read from; send it back with an op. */
+	hash: string;
+	/** False for a list that has never been written: the default columns. */
+	exists: boolean;
+	groups: ReadingGroup[];
+}
+
+/**
+ * Everything the reading list can be asked to do. Items are addressed by
+ * line and groups by index, and each op travels with the hash of the file it
+ * was computed against, exactly as a workspace board's ops do.
+ */
+export type ReadingOp =
+	| { kind: 'add'; group: number; item: ReadingFields }
+	/** Only what differs from the item as it is is rewritten. */
+	| { kind: 'edit'; line: number; item: ReadingFields }
+	/** `index` is the item's position in the target group once it is there. */
+	| { kind: 'move'; line: number; group: number; index: number }
+	| { kind: 'delete'; line: number };
+
+/** One tab of a subject's own tab bar. Every one always shows. */
+export interface StudyTab {
+	title: string;
+	/** The path under `/study/<subject>`: '' for Overview. */
+	path: string;
+}
+
+/** A subject's tabs, in order. A fresh subject shows all of them, to be filled in. */
+export const STUDY_TABS: StudyTab[] = [
+	{ title: 'Overview', path: '' },
+	{ title: 'Goals', path: '/goals' },
+	{ title: 'Reading list', path: '/reading' },
+	{ title: 'Sessions', path: '/sessions' },
+	{ title: 'Flashcards', path: '/flashcards' }
+];

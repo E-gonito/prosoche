@@ -26,7 +26,8 @@
  * for.
  */
 
-import { basename } from '../parse/note';
+import { basename, parseNote } from '../parse/note';
+import { FLASHCARD_TAG, isCardSource } from '../study/flashcards';
 import type { Vault } from '../vault/index';
 import { checkBudget, checkKillSwitch, validateModelOutput, wrapAsData, type Schema } from './guardrails';
 import { newId } from './proposal';
@@ -159,7 +160,10 @@ export async function suggestCards(
 		return { proposal: null, unsupported, problem: null, refusals: [] };
 	}
 
-	const proposal = propose(path, supported, stamp);
+	// A note Obsidian does not already review gets the tag with its first
+	// cards, or they would be cards neither Obsidian nor Study ever shows.
+	const tag = !isCardSource(parseNote(note.content, path).tags, note.content);
+	const proposal = propose(path, supported, stamp, { tag });
 	await log('proposed', proposal.summary);
 	return { proposal, unsupported, problem: null, refusals: [] };
 }
@@ -167,12 +171,14 @@ export async function suggestCards(
 /**
  * The cards as one append edit.
  *
- * Pure. The block carries the heading only when the note has none, because
- * appending a second `## Flashcards` to a note that already has one is how
- * the plugin ends up with two places to look.
+ * Pure. With `tag`, the block opens with a `#flashcards` line, for a note
+ * that is not yet a card source: without it the plugin, and Study, would
+ * never offer the cards. A note that already carries the tag, or already
+ * holds reviewed cards, does not get a second one.
  */
-export function propose(path: string, cards: Suggestion[], stamp: RunStamp): Proposal {
+export function propose(path: string, cards: Suggestion[], stamp: RunStamp, { tag = false }: { tag?: boolean } = {}): Proposal {
 	const lines = cards.map((c) => `${c.question.replace(/\s+/g, ' ').trim()}::${c.answer.replace(/\s+/g, ' ').trim()}`);
+	if (tag) lines.unshift(`#${FLASHCARD_TAG}`);
 	return {
 		id: newId('cards'),
 		feature: 'suggest-flashcards',

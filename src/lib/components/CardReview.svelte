@@ -15,7 +15,18 @@
 	import { applyShift, gradeCard, type Card } from '$lib/client/study';
 	import Icon from '$lib/components/Icon.svelte';
 
-	let { cards, today, onfinish }: { cards: Card[]; today: string; onfinish?: () => void } = $props();
+	let {
+		cards,
+		today,
+		back = '/study',
+		onfinish
+	}: {
+		cards: Card[];
+		today: string;
+		/** Where "Back to study" goes once the session is done. */
+		back?: string;
+		onfinish?: () => void;
+	} = $props();
 
 	let queue = $state<Card[]>([]);
 	let started = $state(false);
@@ -140,7 +151,7 @@
 		<p class="tick"><Icon name="check" size={40} /></p>
 		<h2>Done for today</h2>
 		<p class="muted">{graded} {graded === 1 ? 'answer' : 'answers'}{again > 0 ? `, ${again} to see again` : ''}.</p>
-		<a class="btn primary" href="/study">Back to study</a>
+		<a class="btn primary" href={back}>Back to study</a>
 	</div>
 {/if}
 
@@ -212,7 +223,7 @@
 	/*
 	 * The phone's whole session is exactly the space `+layout.svelte` leaves
 	 * between the shell header and the tab bar: `.session` is a flex column
-	 * filling that (see `.page` in `study/review/+page.svelte`, which grants
+	 * filling that (see `.page` in the review pages under `study/`, which grant
 	 * it `flex: 1`), the card takes what is left after the fixed-size chrome
 	 * around it and scrolls its own overflow, and the grades therefore end up
 	 * sitting on the floor of that space — pinned above the tab bar without

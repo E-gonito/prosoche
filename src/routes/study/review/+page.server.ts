@@ -1,23 +1,19 @@
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { studySummary, studyTabs } from '$server/study/summary';
+import { subjectsOf } from '$server/study/subjects';
+import { dueEverywhere } from '$server/study/summary';
 import type { PageServerLoad } from './$types';
 
 /**
- * The cards for one review session, fixed at page load: grading a card must
- * not reshuffle the queue under the user's thumb.
+ * One review session over everything due in every subject: where Today's
+ * flashcards card and the Study index's "Review everything due" lead. The
+ * queue is fixed at page load.
  */
 export const load: PageServerLoad = async () => {
 	const { vault, index, ready, workspaces } = hub();
 	await ready;
 
 	const day = today();
-	const summary = await studySummary(vault, index, workspaces, day);
-
-	return {
-		today: day,
-		tabs: studyTabs(summary),
-		cards: summary.cards.cards,
-		total: summary.cards.total
-	};
+	const queue = await dueEverywhere(vault, index, subjectsOf(await workspaces()), day);
+	return { today: day, cards: queue.cards, total: queue.total };
 };

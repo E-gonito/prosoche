@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { addGoal, addMilestone, parseGoals, withNewGoal, withNewMilestone } from './goals';
+import { addGoal, addMilestone, findGoal, goalLink, goalOf, goalRefs, goalTarget, parseGoals, withNewGoal, withNewMilestone } from './goals';
 
 const NOTE = [
 	'---',
@@ -70,6 +70,51 @@ describe('parseGoals', () => {
 		const goals = parseGoals(note);
 		expect(goals.goals[0].milestones.map((m) => m.text)).toEqual(['One']);
 		expect(goals.goals[1].milestones.map((m) => m.text)).toEqual(['Two']);
+	});
+});
+
+describe('goalRefs', () => {
+	it('names each goal with a slug and the link that points at it', () => {
+		expect(goalRefs(parseGoals(NOTE))).toEqual([
+			{ name: 'Pass AWS Solutions Architect', slug: 'pass-aws-solutions-architect', link: '[[Goals#Pass AWS Solutions Architect]]' },
+			{ name: 'Read three papers a month', slug: 'read-three-papers-a-month', link: '[[Goals#Read three papers a month]]' }
+		]);
+	});
+
+	it('keeps slugs unique when two names reduce to the same one', () => {
+		expect(goalRefs(parseGoals('## C++\n## C#\n## !!!\n')).map((g) => g.slug)).toEqual(['c', 'c-2', 'goal']);
+	});
+});
+
+describe('goalOf', () => {
+	it.each([
+		['Goals#Computer Systems', 'Computer Systems'],
+		['goals#Computer Systems', 'Computer Systems'],
+		['Study/CS/Goals#Computer Systems', 'Computer Systems'],
+		['Goals.md#Computer Systems|CS', 'Computer Systems'],
+		['Goals#C++ ', 'C++'],
+		['Algorithms', null],
+		['Goals', null],
+		['My Goals#X', null],
+		['Old Goals/Notes#X', null],
+		[null, null]
+	])('reads %j as %j', (target, goal) => {
+		expect(goalOf(target)).toBe(goal);
+	});
+
+	it('reads back what goalLink writes', () => {
+		expect(goalLink('Tagalog verbs')).toBe('[[Goals#Tagalog verbs]]');
+		expect(goalOf(goalTarget('Tagalog verbs'))).toBe('Tagalog verbs');
+	});
+});
+
+describe('findGoal', () => {
+	const goals = goalRefs(parseGoals(NOTE));
+
+	it('matches a written goal by slug, ignoring case and punctuation', () => {
+		expect(findGoal(goals, 'read three papers a month')?.name).toBe('Read three papers a month');
+		expect(findGoal(goals, 'Nothing like it')).toBeNull();
+		expect(findGoal(goals, null)).toBeNull();
 	});
 });
 

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { parseSessions } from '../parse/session';
-import { logSession, minutesByTopic, minutesInWeek, minutesThisWeek, readSessions, streak, weekStart, weeklyMinutes } from './sessions';
+import { logSession, minutesByGoal, minutesInWeek, minutesThisWeek, monthRange, readSessions, streak, weekStart, weeklyMinutes, type StudySession } from './sessions';
 import type { Session } from '../parse/session';
 
 const make = (day: string, minutes: number, topic: string | null = 'Algorithms'): Session => ({
@@ -74,21 +74,38 @@ describe('streak', () => {
 	});
 });
 
-describe('minutesByTopic', () => {
-	it('sums minutes per topic within the given month, most first', () => {
-		const sessions = [make('2026-09-01', 30, 'Algorithms'), make('2026-09-02', 90, 'Networking'), make('2026-09-03', 15, 'Algorithms')];
-		expect(minutesByTopic(sessions, '2026-09-15')).toEqual([
-			{ topic: 'Networking', minutes: 90 },
-			{ topic: 'Algorithms', minutes: 45 }
+describe('minutesByGoal', () => {
+	const goal = (day: string, minutes: number, name: string): StudySession => ({ ...make(day, minutes, `Goals#${name}`), goal: name });
+	const { from, to } = monthRange('2026-09-15');
+
+	it('sums minutes per goal within the range, most first', () => {
+		const sessions = [goal('2026-09-01', 30, 'Algorithms'), goal('2026-09-02', 90, 'Networking'), goal('2026-09-30', 15, 'Algorithms')];
+		expect(minutesByGoal(sessions, from, to)).toEqual([
+			{ label: 'Networking', goal: true, minutes: 90 },
+			{ label: 'Algorithms', goal: true, minutes: 45 }
 		]);
 	});
 
-	it('groups a topic-less session under Untracked', () => {
-		expect(minutesByTopic([make('2026-09-01', 30, null)], '2026-09-15')).toEqual([{ topic: 'Untracked', minutes: 30 }]);
+	it('keeps an old topic link apart from a goal of the same name, and a bare session under Untracked', () => {
+		const sessions = [goal('2026-09-01', 30, 'Algorithms'), { ...make('2026-09-02', 20), goal: null }, { ...make('2026-09-03', 10, null), goal: null }];
+		expect(minutesByGoal(sessions, from, to)).toEqual([
+			{ label: 'Algorithms', goal: true, minutes: 30 },
+			{ label: 'Algorithms', goal: false, minutes: 20 },
+			{ label: 'Untracked', goal: false, minutes: 10 }
+		]);
 	});
 
-	it('excludes a different month entirely', () => {
-		expect(minutesByTopic([make('2026-08-01', 30)], '2026-09-15')).toEqual([]);
+	it('excludes days outside the range', () => {
+		expect(minutesByGoal([goal('2026-08-31', 30, 'A'), goal('2026-10-01', 30, 'A')], from, to)).toEqual([]);
+	});
+});
+
+describe('monthRange', () => {
+	it.each([
+		['2026-09-15', '2026-09-01', '2026-10-01'],
+		['2026-12-31', '2026-12-01', '2027-01-01']
+	])('%s is %s to %s', (day, from, to) => {
+		expect(monthRange(day)).toEqual({ from, to });
 	});
 });
 
@@ -122,26 +139,33 @@ describe('reading and writing the vault', () => {
 	});
 
 	it('creates the note and its month heading on the first session', async () => {
-		const result = await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, topic: 'Algorithms', note: 'first' });
+		const result = await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, goal: 'Algorithms', note: 'first' });
 		expect(result.ok).toBe(true);
-		expect((await vault.read(PATH)).content).toBe('## 2026-09\n- 2026-09-29 45m [[Algorithms]] first\n');
+		expect((await vault.read(PATH)).content).toBe('## 2026-09\n- 2026-09-29 45m [[Goals#Algorithms]] first\n');
 	});
 
 	it('files a session under its own month, leaving other months alone', async () => {
 		await vault.write(PATH, '## 2026-08\n- 2026-08-05 30m older\n');
-		await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, topic: null, note: 'newer' });
+		await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, goal: null, note: 'newer' });
 		expect((await vault.read(PATH)).content).toBe('## 2026-08\n- 2026-08-05 30m older\n\n## 2026-09\n- 2026-09-29 45m newer\n');
 	});
 
 	it('appends a second session after the first, in the same month', async () => {
 		await vault.write(PATH, '## 2026-09\n- 2026-09-01 30m one\n');
-		await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, topic: null, note: 'two' });
+		await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, goal: null, note: 'two' });
 		expect((await vault.read(PATH)).content).toBe('## 2026-09\n- 2026-09-01 30m one\n- 2026-09-29 45m two\n');
 	});
 
-	it('reads back what it wrote', async () => {
-		await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, topic: 'Algorithms', note: 'note' });
-		expect(await readSessions(vault, PATH)).toEqual(parseSessions((await vault.read(PATH)).content));
+	it('reads back what it wrote, with the goal its link points at', async () => {
+		const logged = await logSession(vault, PATH, { day: '2026-09-29', minutes: 45, goal: 'Algorithms', note: 'note' });
+		const read = await readSessions(vault, PATH);
+		expect(read).toEqual(parseSessions((await vault.read(PATH)).content).map((s) => ({ ...s, goal: 'Algorithms' })));
+		expect(logged.ok && logged.entry).toEqual(read[0]);
+	});
+
+	it('reads an old topic link as no goal, keeping the topic as written', async () => {
+		await vault.write(PATH, '## 2026-09\n- 2026-09-01 30m [[Algorithms]] old\n');
+		expect(await readSessions(vault, PATH)).toMatchObject([{ topic: 'Algorithms', goal: null }]);
 	});
 
 	it('is an empty list for a note that does not exist', async () => {
