@@ -6,14 +6,15 @@
 	 * Terms captured in the meetings of workspaces pointing here, but not yet
 	 * in the glossary, wait at the top. Adding one, typing a new one in,
 	 * editing or deleting one, and renaming or deleting the glossary, are the
-	 * user's own acts and write straight away. Looking a term up and finding
-	 * terms in notes are Claude's, so they arrive as proposals and change
-	 * nothing until accepted.
+	 * user's own acts and write straight away. Looking a term up and scanning
+	 * notes for new terms are Claude's: a look-up arrives as a proposal, a
+	 * scan as a list to tick and edit (`GlossaryScan`), and neither changes
+	 * anything until the user accepts or adds.
 	 */
 	import { goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
+	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { glossaryAction } from '$lib/client/glossary';
-	import type { Drafted } from '$lib/client/ai';
 	import { noteHref } from '$lib/shared/links';
 	import { slugify } from '$lib/shared/slug';
 
@@ -51,20 +52,12 @@
 		await goto('/glossary', { invalidateAll: true, replaceState: true });
 	}
 
-	/** Find terms in notes: the folder to read, and where its next batch starts. */
-	let finding = $state(false);
-	let folder = $state('');
-	let from = $state(0);
-	function drafted(result: Drafted) {
-		from = result.batch?.next ?? 0;
-	}
 	// The page is reused when the rail moves to another glossary; its own
 	// half-done asks do not carry over.
 	$effect(() => {
 		void slug;
 		renaming = null;
 		confirmingDelete = false;
-		from = 0;
 	});
 
 	let query = $state('');
@@ -192,6 +185,19 @@
 		<button class="btn" type="submit" disabled={!fresh.term.trim() || adding !== null} data-testid="new-add">Add term</button>
 	</form>
 
+	<!-- Keyed, so moving to another glossary stops a scan and drops its list. -->
+	{#key slug}
+		<GlossaryScan
+			{slug}
+			path={data.glossary.path}
+			plan={data.scan}
+			folders={data.folders}
+			categories={data.categories}
+			terms={data.entries.map((e) => e.term)}
+			aiEnabled={data.aiEnabled}
+		/>
+	{/key}
+
 	<input class="field filter" type="search" bind:value={query} placeholder="Filter terms…" aria-label="Filter terms" data-testid="glossary-filter" />
 
 	<div class="tabs cat-tabs" role="tablist" aria-label="Categories" data-testid="glossary-tabs">
@@ -216,32 +222,7 @@
 				ondone={() => invalidateAll()}
 			/>
 		{/if}
-		<button class="btn ghost small" aria-expanded={finding} onclick={() => (finding = !finding)} data-testid="find-terms-open">Find terms in my notes</button>
 	</div>
-
-	{#if finding}
-		<div class="find" data-testid="find-terms">
-			<input
-				class="field"
-				bind:value={folder}
-				oninput={() => (from = 0)}
-				list="note-folders"
-				placeholder="A folder to read, e.g. Study/Computer Science; empty reads the whole vault"
-				aria-label="Folder to read"
-				data-testid="find-folder"
-			/>
-			<datalist id="note-folders">
-				{#each data.folders as f (f)}<option value={f}></option>{/each}
-			</datalist>
-			<Draft
-				label={from ? 'Find terms: next batch' : 'Find terms'}
-				title="Claude reads the notes under this folder and proposes new entries, each from a note it quotes. Nothing is written until you accept."
-				request={{ feature: 'glossary-find', glossary: slug, folder, from }}
-				ondrafted={drafted}
-				ondone={() => invalidateAll()}
-			/>
-		</div>
-	{/if}
 
 	{#if problem}<p class="problem">{problem}</p>{/if}
 
@@ -314,7 +295,7 @@
 		</div>
 	{:else}
 		<p class="none">
-			No terms yet. Add one above, find some in your notes{notebooks.length ? ', or capture one in a meeting' : ''}; they go in
+			No terms yet. Add one above, scan your notes for some{notebooks.length ? ', or capture one in a meeting' : ''}; they go in
 			<code>{data.glossary.path}</code>.
 		</p>
 	{/if}
@@ -338,7 +319,6 @@
 	.ask { font-size: var(--t13); display: inline-flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
 	.rename { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin: var(--s1) 0 var(--s2); }
 	.rename .field { flex: 1 1 220px; width: auto; font: var(--t20) var(--serif); }
-	.find { display: flex; flex-direction: column; gap: var(--s2); margin: 0 0 var(--s4); }
 	.cat-tabs { margin-bottom: var(--s2); }
 	.cat-tabs button {
 		padding: var(--s2) var(--s3);

@@ -74,13 +74,51 @@ test.describe('Glossary', () => {
 		await expect(page.getByRole('link', { name: 'Work meetings' })).toHaveAttribute('href', '/meetings/work');
 	});
 
-	test('Find terms in my notes offers the vault\'s folders and reads nothing until pressed', async ({ page }) => {
+	test('a glossary asks for a folder before it scans, and remembers the folders in its frontmatter', async ({ page }) => {
+		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
-		await page.getByTestId('find-terms-open').click();
-		await expect(page.getByTestId('find-folder')).toHaveValue('');
-		await expect(page.locator('#note-folders option[value="Study"]')).toHaveCount(1);
-		await expect(page.locator('#note-folders option[value="Glossaries"]')).toHaveCount(0);
-		await expect(page.getByTestId('find-terms').getByTestId('draft-run')).toHaveText('Find terms');
+		const scan = page.getByTestId('glossary-scan');
+		await expect(scan.getByTestId('scan-needs-folder')).toBeVisible();
+		await expect(scan.getByTestId('scan-run')).toHaveCount(0);
+		await expect(page.locator('#scan-folders option[value="Study"]')).toHaveCount(1);
+		await expect(page.locator('#scan-folders option[value="Glossaries"]')).toHaveCount(0);
+
+		await scan.getByTestId('scan-folder').fill('Study');
+		await scan.getByTestId('scan-folder-add').click();
+		await expect(scan.getByTestId('scan-sources')).toContainText('Study/');
+		// Nothing is read until pressed: the button only counts the notes.
+		await expect(scan.getByTestId('scan-run')).toHaveText(/^Scan all \d+ notes?$/);
+		expect(vaultFile('Glossaries/Work.md')).toBe(`---\nsources:\n  - Study\n---\n\n${before}`);
+
+		await scan.getByRole('button', { name: 'Stop scanning Study' }).click();
+		await expect(scan.getByTestId('scan-needs-folder')).toBeVisible();
+		expect(vaultFile('Glossaries/Work.md')).toBe(`---\nsources:\n---\n\n${before}`);
+	});
+
+	test('terms kept from a scan are checked again, appended, and mark the glossary scanned', async ({ page, request }) => {
+		await request.post('/api/glossary', { data: { action: 'set-sources', glossary: 'work', sources: ['Study'] } });
+		const sourced = vaultFile('Glossaries/Work.md');
+		const term = { term: 'Binary search', category: 'Algorithms', definition: 'Halves the range at each step.', relevance: 'Chapter 3 leans on it.', source: 'Study/Algorithms.md' };
+
+		// A term the glossary has, or a note outside its folders, refuses the lot.
+		for (const bad of [{ ...term, term: 'dvc' }, { ...term, source: 'Work/Handbook.md' }]) {
+			const refused = await request.post('/api/glossary', { data: { action: 'add-scanned', glossary: 'work', entries: [term, bad], complete: true } });
+			expect(refused.status()).toBe(400);
+			expect(vaultFile('Glossaries/Work.md')).toBe(sourced);
+		}
+
+		const added = await request.post('/api/glossary', { data: { action: 'add-scanned', glossary: 'work', entries: [term], complete: true } });
+		expect(await added.json()).toMatchObject({ ok: true, added: 1 });
+		const content = vaultFile('Glossaries/Work.md');
+		expect(content).toMatch(/^---\nsources:\n {2}- Study\nscanned: "\d{4}-\d{2}-\d{2}"\n---\n/);
+		expect(content.endsWith(
+			'\n## Binary search\n- status:: looked-up\n- category:: Algorithms\n- source:: [[Algorithms]]\n- drafted:: Claude\n\nHalves the range at each step.\n\n→ Chapter 3 leans on it.\n'
+		)).toBe(true);
+
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('glossary-entry').filter({ hasText: 'Binary search' })).toContainText('definition drafted by Claude');
+		await expect(page.getByTestId('scan-run')).toHaveText(/^(Scan \d+ notes? changed|No notes changed) since \d{1,2} [A-Z][a-z]{2}$/);
+		await expect(page.getByTestId('scan-all')).toHaveText(/^Scan all \d+ notes? instead$/);
 	});
 
 	test('filters by text and by category tab', async ({ page }) => {

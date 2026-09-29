@@ -84,7 +84,7 @@ is a route folder and a line:
   box and prep talking points, each with a Claude draft you accept or throw
   away. Captured terms can feed a glossary.
 - **Glossary** — standalone glossaries, one file each in `Glossaries/`, with
-  Claude look-ups and a "find terms in my notes" proposal.
+  Claude look-ups and a scan of chosen folders for new terms to review and add.
 - **Workspaces** — tasks or a board, an inbox, a dated log, contacts and a
   deal pipeline, past meetings, and read-only notes.
 - **Study** — topics, a reading list, flashcard review, goals with

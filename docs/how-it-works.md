@@ -205,24 +205,76 @@ pointing at the glossary have: the primer of each with a notebook and the
 last three meetings across them. A glossary no workspace points at is
 looked up from its terms alone.
 
-**Find terms in my notes** asks Claude for new entries from a folder of your
-notes. Pick a folder (the field suggests the vault's folders; empty means the
-whole vault). Claude reads the markdown notes under it, in path order,
-read-only and as quoted data, never the private folder, `_hub/` or the
-glossaries themselves, and proposes entries for the technical terms they
-define or use: each with a category, a definition, a `→` line, `source::`
-linking the note it came from, status looked-up and `- drafted:: Claude`.
-Terms the glossary already has are left out. A run reads at most 60,000
-characters (12,000 of any one note) and says how far it got, "Read notes
-1–5 of 40 under Study"; press it again for the next batch, or pick a
-narrower folder. Every entry must quote a sentence of the note it names, and
-it is kept only if that sentence is in the note and the term is in that
-sentence; the rest are dropped before the proposal is made, and the page
-says which.
+A look-up is a proposal like every Claude button's: it is shown as a diff
+first and writes only the glossary's own file, and only when you accept.
 
-Both use the Glossary look-up's model settings. Like every Claude button,
-they show their proposal as a diff first and write only the glossary's own
-file, and only when you accept.
+**Scan notes for new terms** has Claude read your notes for terms the
+glossary lacks. A glossary remembers where to scan in its frontmatter:
+`sources:`, a list of vault folders, and `scanned:`, the day of the last
+full scan.
+
+    ---
+    sources:
+      - Computer Science
+    scanned: "2026-09-29"
+    ---
+
+The folders show as chips under the add-a-term form, each with × to remove
+it, and **Add folder** takes another (the field suggests the vault's
+folders; the private folder, `_hub/` and `Glossaries/` are never offered).
+Each change rewrites only the `sources:` lines; a glossary with no
+frontmatter gains a small block at the top, and its body is never touched.
+With no folder yet, the page asks for one before it will scan.
+
+One button then scans. Before a first scan it reads "Scan all 118 notes";
+after one, "Scan 12 notes changed since 29 Sep", counting the notes under
+the folders whose modified day is that day or later (a note edited on the
+day of a scan is read again rather than missed), with **Scan all 118 notes
+instead** beside it. Empty notes are not counted. The notes are split into
+batches of at most 60,000 characters (12,000 of any one note), and the page
+runs the batches one after another by itself, showing "Batch 3 of 9 · 41 new
+terms so far" and a **Stop** button. Stop drops the batch in flight; the
+terms found so far stay.
+
+Each batch is read-only: Claude reads the notes as quoted data and drafts
+entries for the technical terms they define or use, each with a category, a
+definition, a `→` line, the note it came from and a sentence quoted from
+it. An entry is kept only if that sentence is in the note and the term is in
+that sentence (a bracketed part, either side of a slash, or a plural will
+do); the rest wait, collapsed, under **Left out**. Terms the glossary
+already has, or an earlier batch found, are left out of the list, compared
+ignoring case and spacing, and each batch is told them so it does not look
+for them again.
+
+Nothing is written until you add. Every candidate shows its term, category,
+definition, `→` line, the quoted sentence and a link to its note, with a
+checkbox, ticked to start with, and fields to edit the term, the category
+(the glossary's categories are suggested), the definition and the `→` line.
+**Select all** and **None** tick or untick the terms shown, and a row of
+category chips shows one category at a time. A ticked term with no name or
+no definition, one the glossary has, or one ticked twice is marked, and
+**Add N terms**, which stays at the bottom of the screen, waits until it is
+fixed or unticked.
+
+Add sends only the ticked terms, as edited, and the server checks them all
+again: the glossary must be there; each term needs a name and a definition,
+within length limits (120 characters for a term, 1,500 for a definition),
+and a name that reads back as its heading; no term may be one the glossary
+has now or be sent twice; and each note must be a markdown note under the
+glossary's `sources:` as the file says now. Any failure refuses the lot and
+says which terms. Each term is then appended with `- status:: looked-up`,
+its category, `- source:: [[<note>]]` and `- drafted:: Claude`, then its
+definition and `→` line, after every byte already in the file. When the
+scan read every batch, `scanned:` is set to today; after a Stop it is left
+alone, so the notes not read are still counted as changed next time. The
+result must read back as the old entries unchanged plus exactly the new
+ones, and it is written once, pinned to the file as it was read, so a
+glossary edited meanwhile is refused and nothing is written. The page then
+says "Added 23 terms" and the new entries appear in the list. A full scan
+that found nothing offers **Mark these notes scanned**, which sets only
+`scanned:`.
+
+Look-ups and scans use the Glossary look-up's model settings.
 
 Glossaries used to be `Glossary.md` in a workspace's folder. At start the
 hub moves any such file it finds, once: for each folder of each workspace, a

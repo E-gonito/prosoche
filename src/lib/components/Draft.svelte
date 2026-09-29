@@ -2,9 +2,8 @@
 	/**
 	 * A button that drafts a change, and the proposal it produces.
 	 *
-	 * The drafting features — file this capture, suggest flashcards, the
-	 * meeting notebook's primer and prep, a glossary's look-ups and the terms
-	 * it finds in a folder of notes — differ in what
+	 * The drafting features — file this capture, the meeting notebook's
+	 * primer and prep, a glossary's look-ups — differ in what
 	 * they read and agree on everything after that: a proposal arrives, the
 	 * guardrails are re-run against the note as it is now, the user ticks what
 	 * they want, and the ticked edits are written. That shared half is here,
@@ -25,7 +24,6 @@
 		label,
 		title = '',
 		compact = false,
-		ondrafted,
 		ondone
 	}: {
 		/** What to draft. Passed to the endpoint as written. */
@@ -34,8 +32,6 @@
 		title?: string;
 		/** Smaller button, for a widget row rather than a page. */
 		compact?: boolean;
-		/** Called with each draft as it arrives, so a page can act on what it read. */
-		ondrafted?: (drafted: Drafted) => void;
 		/** Called with the paths written, so the page can reload them. */
 		ondone?: (written: string[]) => void;
 	} = $props();
@@ -62,7 +58,6 @@
 		}
 		drafted = result.value;
 		problem = result.value.problem ?? '';
-		ondrafted?.(result.value);
 
 		if (result.value.proposal) {
 			const checked = await checkProposal(result.value.proposal, result.value.destinations);
@@ -109,22 +104,6 @@
 
 	{#if drafted?.candidates?.length === 0}
 		<p class="hint">There is nowhere to file this yet. Give a workspace some folders first.</p>
-	{/if}
-
-	{#if drafted?.batch}
-		{@const b = drafted.batch}
-		<p class="hint" data-testid="draft-batch">
-			Read notes {b.from + 1}–{b.from + b.read} of {b.total}
-			{b.folder ? `under ${b.folder}` : 'in the vault'} ({Math.round(b.chars / 1000)}k characters).{#if b.next !== null}
-				{' '}Run it again for the next batch, or pick a narrower folder.{/if}
-		</p>
-	{/if}
-
-	{#if drafted?.dropped?.length}
-		<p class="hint" data-testid="draft-dropped">
-			{drafted.dropped.length} term{drafted.dropped.length === 1 ? ' was' : 's were'} dropped: the note named does not
-			support {drafted.dropped.length === 1 ? 'it' : 'them'} ({drafted.dropped.join(', ')}).
-		</p>
 	{/if}
 
 	{#if drafted?.proposal && validation}

@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { addTerm, createGlossary, deleteGlossary, deleteTerm, editTerm, findGlossary, renameGlossary } from '$server/glossary';
+import { today } from '$server/daily';
+import { addScannedTerms, addTerm, createGlossary, deleteGlossary, deleteTerm, editTerm, findGlossary, renameGlossary, setGlossarySources, type ScanAdded } from '$server/glossary';
 import type { Written } from '$server/rewrite';
 import type { RequestHandler } from './$types';
 
 interface Body {
-	action?: 'create-glossary' | 'rename-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete';
+	action?: 'create-glossary' | 'rename-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete' | 'set-sources' | 'add-scanned';
 	/** Every action but create: the glossary, by slug. */
 	glossary?: string;
 	/** create and rename: the glossary's new name. */
@@ -16,25 +17,32 @@ interface Body {
 	change?: { term?: unknown; category?: unknown; definition?: unknown; relevance?: unknown };
 	category?: string | null;
 	source?: string | null;
+	/** set-sources: the folders the glossary is scanned from. */
+	sources?: unknown;
+	/** add-scanned: the entries a person kept, and whether the scan read every note it meant to. */
+	entries?: unknown;
+	complete?: unknown;
 }
 
 const STATUS: Record<Exclude<Written, { ok: true }>['reason'], number> = { conflict: 409, 'not-found': 404, invalid: 400 };
 
 /**
  * The glossaries' writes, each one a user's click: create, rename or delete
- * a glossary, or add, edit or delete a term in one. Translation only;
- * `$server/glossary` decides what is written.
+ * a glossary; add, edit or delete a term in one; set the folders it is
+ * scanned from; or add the terms a person kept from a scan. Translation
+ * only; `$server/glossary` decides what is written. `add-scanned` is the
+ * accept step for Claude's drafted terms, and runs no model.
  *
- * Responds with `{ ok: true, path }`, or `{ ok: false, reason, message }`
- * with 409 for a clash, 404 for an unknown glossary and 400 for a bad
- * request.
+ * Responds with `{ ok: true, path }` (and `added` for add-scanned), or
+ * `{ ok: false, reason, message }` with 409 for a clash, 404 for an unknown
+ * glossary and 400 for a bad request.
  */
 export const POST: RequestHandler = async ({ request }) => {
 	const body = (await request.json().catch(() => ({}))) as Body;
 	const { vault, ready, workspaces } = hub();
 	await ready;
 
-	const reply = (result: Written) => json(result, { status: result.ok ? 200 : STATUS[result.reason] });
+	const reply = (result: Written | ScanAdded) => json(result, { status: result.ok ? 200 : STATUS[result.reason] });
 	if (body.action === 'create-glossary') return reply(await createGlossary(vault, String(body.name ?? '')));
 
 	const glossary = await findGlossary(vault, await workspaces(), String(body.glossary ?? ''));
@@ -68,6 +76,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 		case 'delete':
 			return reply(await deleteTerm(vault, glossary.path, String(body.term ?? '')));
+		case 'set-sources':
+			return reply(await setGlossarySources(vault, glossary, body.sources));
+		case 'add-scanned':
+			return reply(await addScannedTerms(vault, glossary, { entries: body.entries, complete: body.complete }, today()));
 		default:
 			return json({ ok: false, reason: 'invalid', message: 'Unknown action.' }, { status: 400 });
 	}

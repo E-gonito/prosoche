@@ -4,7 +4,7 @@ import { shiftDay, today } from '$server/daily';
 import { fileCapture } from '$server/ai/file-capture';
 import { draftCards } from '$server/ai/suggest-cards';
 import { draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
-import { draftFoundTerms, draftLookups } from '$server/ai/glossary-drafts';
+import { draftLookups, draftScan } from '$server/ai/glossary-drafts';
 import { findGlossary } from '$server/glossary';
 import { subjectOf } from '$server/study/subjects';
 import { eventsBetween } from '$server/calendar';
@@ -20,10 +20,12 @@ import type { RequestHandler } from './$types';
  * this is the code that knows what each run is about and the browser should
  * not be inventing paths for the path policy to check.
  *
- * One feature here drafts no proposal: `suggest-flashcards` answers with
+ * Two features here draft no proposal: `suggest-flashcards` answers with
  * cards for the Make cards page, where a person ticks and edits them and
- * `/api/study/cards` writes what they kept. It belongs here all the same,
- * because it too drafts and stops.
+ * `/api/study/cards` writes what they kept; `glossary-scan` answers with one
+ * batch's candidate terms for the glossary page, where the same happens and
+ * `/api/glossary` writes them. They belong here all the same, because they
+ * too draft and stop.
  *
  * Responds 200 with a problem rather than an error status: a model that was
  * over budget, refused, or chose a path it was not offered is an answer to
@@ -48,7 +50,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		/** The glossary features: which glossary, by slug, and what about. */
 		glossary?: string;
 		terms?: string[];
-		folder?: string;
+		/** glossary-scan: the batch's notes, and the terms earlier batches found. */
+		paths?: unknown;
+		found?: unknown;
 		from?: number;
 	};
 	const { vault, index, ready, workspaces } = hub();
@@ -83,14 +87,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 	}
 
-	// A glossary's two drafts, both under the look-up's settings and policy.
-	// Each names its one destination, the glossary's file.
-	if (body.feature === 'glossary-lookup' || body.feature === 'glossary-find') {
+	// A glossary's two drafts, both under the look-up's settings. A look-up
+	// names its one destination, the glossary's file; a scan's batch is a
+	// list of candidates, and `/api/glossary` writes the ones a person keeps.
+	if (body.feature === 'glossary-lookup' || body.feature === 'glossary-scan') {
 		const glossary = await findGlossary(vault, await workspaces(), String(body.glossary ?? ''));
 		if (!glossary) return json({ error: 'no such glossary' }, { status: 404 });
-		if (body.feature === 'glossary-find') {
-			return json(await draftFoundTerms(vault, glossary, { folder: String(body.folder ?? ''), from: Number(body.from) || 0 }));
-		}
+		if (body.feature === 'glossary-scan') return json(await draftScan(vault, glossary, { paths: body.paths, found: body.found }));
 		const terms = Array.isArray(body.terms) ? body.terms.filter((t) => typeof t === 'string') : null;
 		return json(await draftLookups(vault, glossary, terms));
 	}
