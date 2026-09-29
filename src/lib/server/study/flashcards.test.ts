@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { NoteIndex } from '../index/index';
-import { dueCards, formatComment, isCardSource, parseEntries, review, scanCards } from './flashcards';
+import { dueCards, fileGoal, formatComment, isCardSource, parseEntries, review, scanCards, setCardFileGoal } from './flashcards';
 
 describe('scanCards', () => {
 	it('reads an inline card and the schedule on the line after it', () => {
@@ -278,5 +278,77 @@ describe('dueCards', () => {
 		const queue = await dueCards(vault, index, { on: '2026-09-21', limit: 1 });
 		expect(queue.cards).toHaveLength(1);
 		expect(queue.total).toBe(4);
+	});
+
+	it('lists every card file with its goal and counts', async () => {
+		await vault.write('Art/Colour.md', '---\ngoal: "[[Goals#Colour theory]]"\n---\n#flashcards\n\nHue::A colour\n');
+		const queue = await dueCards(vault, index, { on: '2026-09-21' });
+		expect(queue.files).toEqual([
+			{ path: 'Art/Colour.md', title: 'Colour', goal: 'Colour theory', cards: 1, due: 1 },
+			{ path: 'CS/Due.md', title: 'Due', goal: null, cards: 3, due: 2 }
+		]);
+	});
+
+	it('reviews one goal’s files, matching the goal whatever its case, and still lists every file', async () => {
+		await vault.write('CS/Due.md', `---\ngoal: Computer systems\n---\n${(await vault.read('CS/Due.md')).content}`);
+		const queue = await dueCards(vault, index, { on: '2026-09-21', goal: 'Computer Systems' });
+		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'New']);
+		expect(queue).toMatchObject({ due: 1, fresh: 1, total: 3 });
+		expect(queue.files.map((f) => f.path)).toEqual(['Art/Colour.md', 'CS/Due.md']);
+	});
+});
+
+describe('fileGoal', () => {
+	it.each([
+		[{ goal: 'Networks' }, 'Networks'],
+		[{ goal: '  Networks ' }, 'Networks'],
+		[{ goal: '[[Goals#Networks]]' }, 'Networks'],
+		[{ goal: ['Networks', 'Other'] }, 'Networks'],
+		[{ goal: '' }, null],
+		[{ goal: null }, null],
+		[{}, null]
+	])('reads %j as %j', (frontmatter, goal) => {
+		expect(fileGoal(frontmatter)).toBe(goal);
+	});
+});
+
+describe('setCardFileGoal', () => {
+	let root: string;
+	let vault: Vault;
+	const SCOPE = { folders: ['CS'] };
+
+	beforeEach(async () => {
+		root = await mkdtemp(join(tmpdir(), 'hub-goal-'));
+		vault = new Vault(root);
+	});
+	afterEach(async () => {
+		await vault.close();
+		await rm(root, { recursive: true, force: true });
+	});
+
+	it('sets, changes and clears one frontmatter line, and nothing else', async () => {
+		const body = '#flashcards\n\nQ::A\n<!--SR:!2026-09-01,4,250-->\n';
+		await vault.write('CS/Cards.md', `---\ndeck: x\n---\n${body}`);
+		expect(await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Networks')).toEqual({ ok: true });
+		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal: Networks\n---\n${body}`);
+		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Operating Systems');
+		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal: Operating Systems\n---\n${body}`);
+		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', null);
+		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal:\n---\n${body}`);
+	});
+
+	it('gives a note with no frontmatter a block of its own', async () => {
+		await vault.write('CS/Cards.md', '#flashcards\n\nQ::A\n');
+		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Networks');
+		expect((await vault.read('CS/Cards.md')).content).toBe('---\ngoal: Networks\n---\n\n#flashcards\n\nQ::A\n');
+	});
+
+	it('refuses a note outside the scope, one with no cards, and one that is not there', async () => {
+		await vault.write('Art/Cards.md', '#flashcards\n\nQ::A\n');
+		await vault.write('CS/Plain.md', 'Just prose.\n');
+		expect(await setCardFileGoal(vault, SCOPE, 'Art/Cards.md', 'X')).toEqual({ ok: false, reason: 'not-cards' });
+		expect(await setCardFileGoal(vault, SCOPE, 'CS/Plain.md', 'X')).toEqual({ ok: false, reason: 'not-cards' });
+		expect(await setCardFileGoal(vault, SCOPE, 'CS/Missing.md', 'X')).toEqual({ ok: false, reason: 'no-note' });
+		expect((await vault.read('Art/Cards.md')).content).toBe('#flashcards\n\nQ::A\n');
 	});
 });

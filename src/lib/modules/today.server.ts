@@ -14,8 +14,8 @@
  */
 
 import type { Hub } from '$server/hub';
-import { dueCards } from '$server/study/flashcards';
-import { scopeOf } from '$server/study/topics';
+import { subjectsOf } from '$server/study/subjects';
+import { dueEverywhere } from '$server/study/summary';
 
 export interface TodayCard {
 	/** The module this card speaks for, e.g. `study`. Must not be private. */
@@ -35,17 +35,16 @@ export interface TodayCardContext {
 const SHOWN = 3;
 
 /**
- * Flashcards due for review today, from the study workspace.
+ * Flashcards due for review today, across every study subject.
  *
- * Inputs: the viewed day and the hub. Output: a card linking to the focused
- * review screen, or null once there is nothing due — a permanent "0 due"
+ * Inputs: the viewed day and the hub. Output: a card linking to the review
+ * of everything due, or null once there is nothing due — a permanent "0 due"
  * card would be noise on every day but the ones it matters. Side effects:
  * reads the vault and the index.
  */
 async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
-	const defs = await h.workspaces();
-	const workspace = defs.find((w) => w.template === 'study') ?? null;
-	const queue = await dueCards(h.vault, h.index, { on: day, scope: scopeOf(workspace), limit: SHOWN });
+	const subjects = subjectsOf(await h.workspaces());
+	const queue = await dueEverywhere(h.vault, h.index, subjects, day, SHOWN);
 	const dueCount = queue.due + queue.fresh;
 	if (dueCount === 0) return null;
 

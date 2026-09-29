@@ -215,6 +215,13 @@ describe('createWorkspace', () => {
 		expect(loaded.folders).toEqual(['Work/Riverside']);
 	});
 
+	it('writes template: when asked for one', async () => {
+		const created = await createWorkspace(vault, { name: 'Filipino', folders: ['Study/Filipino'], template: 'study' });
+		if (!created.ok) throw new Error('expected the workspace to be created');
+		expect(created.workspace).toMatchObject({ slug: 'filipino', template: 'study', folders: ['Study/Filipino'] });
+		expect((await vault.read(created.workspace.path)).content).toContain('\ntemplate: study\nfolders:\n  - "Study/Filipino"\n');
+	});
+
 	it('refuses rather than overwrites a taken slug', async () => {
 		await createWorkspace(vault, { name: 'Atlas' });
 		const again = await createWorkspace(vault, { name: 'Atlas' });

@@ -199,6 +199,8 @@ export type NewWorkspace = {
 	name: string;
 	color?: string;
 	folders?: string[];
+	/** Written as `template:` when given; `study` makes the workspace a Study subject. */
+	template?: string;
 };
 
 export type WorkspaceCreated =
@@ -225,6 +227,7 @@ export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise
 		color: spec.color ?? '#6b7280',
 		tag: `ws/${slug}`,
 		folders: (spec.folders ?? []).map((f) => f.replace(/^\/+|\/+$/g, '')).filter(Boolean),
+		...(spec.template ? { template: spec.template } : {}),
 		description: `Created from the hub. Point \`folders\` at wherever its notes live.`
 	};
 	const result = await vault.write(path, renderWorkspace(seed));
