@@ -1,8 +1,7 @@
 <script lang="ts">
 	/**
-	 * "Start a meeting" from a workspace's Overview. (A glossary's page links
-	 * straight to the notebooks of the workspaces pointing at it, which all
-	 * have meetings, so it needs none of this.)
+	 * "Start a meeting" from a workspace's Overview. (A glossary's page only
+	 * links to the notebooks of the workspaces pointing at it.)
 	 *
 	 * The button goes to the workspace's meeting notes, where the title is
 	 * typed and Start meeting or Start standup pressed, rather than starting

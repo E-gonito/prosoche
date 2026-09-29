@@ -10,7 +10,7 @@ import type { PageServerLoad } from './$types';
 /**
  * One glossary: every entry of its file ready to draw, the terms captured in
  * the meetings of every workspace pointing at it that it does not have yet,
- * those workspaces (for Start a meeting), and the vault's folders, offered
+ * those workspaces (their notebooks are linked), and the vault's folders, offered
  * when finding terms in notes. Only an unknown slug is a 404.
  */
 export const load: PageServerLoad = async ({ params }) => {
