@@ -100,9 +100,37 @@ backlinks or recent notes. A link straight to a private note is a 404.
 
 ## Study
 
-Study widgets read flashcards, resources, topics and habits straight out of
-your notes; nothing here is a separate database with its own opinions about
-what you have learned.
+Study is scoped to the workspace whose `template:` says `study` — the `Study`
+workspace in a fresh vault — or the whole vault when there is none. Its own
+notes, `Goals.md` and `Sessions.md`, live in that workspace's first folder.
+Its tabs are Overview, Goals, Sessions, Flashcards and Reading list; a tab
+other than Overview hides itself until its note has something in it.
+
+**Overview** shows what to review right now with a button straight into a
+session, each goal's milestones done out of its total and what is next, this
+week's time against a `weekly_hours:` target, the streak of consecutive days
+with a session logged, what you are currently reading, and a compact list of
+your top-level topic folders.
+
+**Goals** reads `Goals.md`: a `## ` heading per goal, an optional `target::`
+date, and its milestones as ordinary task lines underneath, due-dated with
+the same `📅` field every task in the vault uses. A milestone is a task, so
+ticking one is the ordinary task rewrite; "Add a goal" appends a heading and
+"Add a milestone" appends a task line under one.
+
+**Sessions** reads `Sessions.md`: one line per sitting, `- YYYY-MM-DD
+<duration> [[Topic]] a note`, filed under a `## YYYY-MM` heading. Durations
+read as `1h30m`, `90m` or `1h`. The page logs a new one, and shows hours per
+topic this month and a bar-per-week chart of the last eight weeks.
+
+**Flashcards** is the review session, ported from before: cards are regions
+of your notes written in Obsidian Spaced Repetition's syntax, graded with the
+keyboard or a tap, and the schedule is written back in the plugin's own
+comment, so a card reviewed here is due correctly in Obsidian too.
+
+**Reading list** shows resources — courses, books, articles, videos — grouped
+by status, inferred from the note when it says nothing itself. Moving one
+between groups writes a single `status:` line into its frontmatter.
 
 ## Workspaces and boards
 
