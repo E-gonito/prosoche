@@ -2,21 +2,19 @@ import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { homeFolder } from '$server/workspaces';
 import { buildBoard } from '$server/board';
-import { listDeals } from '$server/deals';
-import { listPeople } from '$server/people';
 import { readLog } from '$server/log';
 import type { LayoutServerLoad } from './$types';
 
-/** Sections that always exist, in reading order. Overview never hides. */
-const SECTIONS = ['tasks', 'inbox', 'log', 'people', 'notes'] as const;
+/** Sections that always exist, in reading order. Overview and CRM never hide. */
+const SECTIONS = ['tasks', 'crm', 'inbox', 'log', 'notes'] as const;
 
 /**
  * The workspace itself, and which tabs have anything to show.
  *
  * Every page under `/w/[slug]` shares one workspace lookup and one tab strip,
  * computed here so a page's own load only has to fetch what it renders. A
- * tab with nothing behind it — no cards, no captures, no log entry, no people
- * or deals, no notes — is left out of the strip; its route still answers
+ * tab with nothing behind it — no cards, no captures, no log entry, no notes
+ * — is left out of the strip, except CRM, which always shows; its route still answers
  * when linked to directly (Overview always links to Inbox and Log, tab or
  * not), so a workspace with nothing yet is never a dead end.
  *
@@ -32,11 +30,9 @@ export const load: LayoutServerLoad = async ({ params }) => {
 	if (!workspace) error(404, `There is no workspace called "${params.slug}".`);
 
 	const home = homeFolder(workspace);
-	const [inbox, logNote, people, deals, pages] = await Promise.all([
+	const [inbox, logNote, pages] = await Promise.all([
 		vault.read(`${home}/Inbox.md`),
 		vault.read(`${home}/Log.md`),
-		listPeople(vault, index, { folders: workspace.folders, tags: [workspace.tag], slug: workspace.slug }),
-		listDeals(vault, workspace),
 		vault.files(`${home}/Pages`, 'html')
 	]);
 
@@ -45,7 +41,7 @@ export const load: LayoutServerLoad = async ({ params }) => {
 		tasks: board.columns.some((c) => c.cards.length > 0),
 		inbox: BULLET.test(inbox.content),
 		log: readLog(logNote.content).length > 0,
-		people: people.length > 0 || deals.length > 0,
+		crm: true,
 		notes: index.notesCount({ under: workspace.folders }) > 0
 	};
 
@@ -74,7 +70,7 @@ const TITLES: Record<(typeof SECTIONS)[number], string> = {
 	tasks: 'Tasks',
 	inbox: 'Inbox',
 	log: 'Log',
-	people: 'People',
+	crm: 'CRM',
 	notes: 'Notes'
 };
 

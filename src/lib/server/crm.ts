@@ -31,6 +31,8 @@ import { hashContent, type Note, type Vault } from './vault/index';
 import { isPrivate } from './vault/paths';
 import { homeFolder, type Workspace } from './workspaces';
 
+export { CONTACT_KINDS } from './parse/contact';
+
 /** The folder under a workspace's home that holds its contacts. */
 export const CRM_FOLDER = 'CRM';
 
