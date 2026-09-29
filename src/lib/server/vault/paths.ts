@@ -40,3 +40,15 @@ export function isIgnored(vaultRelative: string): boolean {
 export function isMarkdown(vaultRelative: string): boolean {
 	return vaultRelative.endsWith('.md') && !isIgnored(vaultRelative);
 }
+
+/**
+ * True for a path inside the private folder.
+ *
+ * Such a path is invisible to every read, list and watch that does not ask
+ * for private scope, and is never offered to git. Only a module registered
+ * as private asks.
+ */
+export function isPrivate(vaultRelative: string): boolean {
+	const root = config.privateFolder;
+	return vaultRelative === root || vaultRelative.startsWith(`${root}/`);
+}

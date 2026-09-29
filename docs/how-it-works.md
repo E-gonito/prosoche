@@ -6,11 +6,11 @@ explanation for anything trimmed from the UI lives here instead — nothing
 written about prosoche is lost, only moved. A unit test reads this page and
 `src/routes`, so a screen named here and missing there fails `npm test`.
 
-The sidebar and the command palette are two views onto the same short list of
-destinations. A "T3 Code" entry joins both, but only once `HUB_T3_URL` names
-a running T3 Code server; unset, neither shows it, rather than linking
-somewhere that will not answer. It opens in a new tab rather than this one,
-since its paired session belongs to that origin.
+Every tab is a module listed once in `src/lib/modules/index.ts`. The rail on a
+desktop, the bottom bar and More sheet on a phone, and the command palette's
+Go commands are all drawn from that list, so a new module appears in all of
+them at once. Workspaces are listed under Workspaces in the rail and in the
+More sheet.
 
 ## Today
 
@@ -83,19 +83,20 @@ inventing its own.
 
 ## Notes
 
-Cards go into a note in the Spaced Repetition plugin's own syntax, so Obsidian
-sees them too; nothing is written until you accept it from a proposal.
+Notes are read-only here: Obsidian is the editor. The list page searches the
+whole vault, shows what changed recently, and offers the folder tree. A note
+shows its rendered text beside its properties, tags, the notes that link to
+it and the notes it links to; Browse opens the folder tree as a side sheet.
 
-The editor's toolbar buttons are terser than what they do: "Make card" turns
-the current selection into a `Question::Answer` line, but that only reaches
-the Spaced Repetition plugin once the note itself carries a `#flashcards` tag
-— worth knowing the first time the card does not show up where you expected.
+The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
+heading. A line that is already a task is kept as written; anything else is
+stamped with the time. That file is the only thing the Notes module writes.
 
-A conflict banner appears when a note changed on another device while you
-were editing it. Nothing has been overwritten in that moment: your version and
-theirs both still exist, and the banner is there so you can choose which one
-to keep, or copy out anything you need from either side, before committing to
-one.
+Suggest cards drafts flashcards from the open note. The draft is shown as a
+diff and nothing reaches the note until you accept it.
+
+The private folder, `Private/`, never appears here: not in search, the tree,
+backlinks or recent notes. A link straight to a private note is a 404.
 
 ## Study
 
@@ -183,33 +184,7 @@ versions, copy across whatever is needed, and then either continue the
 rebase or reset to the remote, with `git rebase origin/<branch>` or
 `git reset --hard origin/<branch>`.
 
-## Review
-
-Review is the queue of changes the app has drafted and not made. Nothing here
-has touched a note: the weekly review and the morning briefing both run while
-nobody is watching, so instead of writing on their own they stop and wait for
-a person to look. With the AI layer off, nothing new arrives, but anything
-already waiting can still be accepted or dismissed — turning the layer off
-does not strand a half-reviewed queue. When the queue is empty, that is
-because the briefing writes itself into today's note between its own
-markers on its own schedule, and the weekly review appears here on a Sunday
-evening; there is no button that fills this list on demand.
-
-## Ask
-
-Answers are read-only. Nothing on this page can change a note, whatever the
-answer itself claims to have done — that guarantee lives in code, not in the
-answer's wording. A question scoped to a workspace also carries a short block
-of figures: this week's planned, done and timed minutes day by day, the open
-cards column by column, what is overdue and what is blocked, the week's daily
-blocks, and the ten notes changed most recently. Those figures are computed
-from the index and the daily notes at the moment the question is asked rather
-than retrieved from any note, which is why an answer quotes them as "computed
-from your notes" instead of linking to a file. Past conversations are kept as
-markdown in the vault's own history note, so they sync with everything else
-and no AI-backed feature can edit them after the fact.
-
-## AI settings
+## Settings
 
 There is no mode that writes without you. prosoche never passes
 `--dangerously-skip-permissions` to the CLI, and the CLI is never given the

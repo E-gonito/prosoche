@@ -28,7 +28,6 @@ const routes = new Set(
 /** Headings whose route directory is not simply the heading in lower case. */
 const ROUTE_FOR: Record<string, string> = {
 	Today: 'day',
-	'AI settings': 'settings',
 	'Workspaces and boards': 'w'
 };
 

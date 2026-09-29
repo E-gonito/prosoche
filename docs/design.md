@@ -1,141 +1,110 @@
 # Design
 
-What every screen is made of. One file — `src/app.css` — holds the tokens and
-the shared classes; a component's own `<style>` block holds only what is that
-component's business. A unit test reads this page and `src/app.css` together,
-so a token named here and missing there fails the build.
+Paper and ink: warm, personal, calm. One file, `src/app.css`, holds the tokens
+and the shared classes; a component's own `<style>` holds only its own
+business. A unit test reads this page and `src/app.css` together, so a token
+named here and missing there fails the build. Light theme only.
 
 ## Tokens
 
-Spacing, on a four-pixel step:
+Paper, from the desk up, and ink:
 
 ```css
---s1: 4px;  --s2: 8px;  --s3: 12px;
---s4: 16px; --s5: 24px; --s6: 32px;
+--bg: #f7f3ec; --panel: #fffdf9; --soft: #f1ebe1; --line: #e6ddd0;
+--text: #2a2622; --muted: #7a7068;
 ```
 
-Type, named by the size it is. Body text is `--t14`.
+Teal is for anything you can press; sand is for an aside worth reading. Both
+come from the meeting-primer artifact the author already liked.
 
 ```css
---t11: 11px; --t12: 12px; --t13: 13px; --t14: 14px;
---t16: 16px; --t20: 20px; --t24: 24px;
+--accent: #2e6b85; --accent-soft: #e3eef2;
+--sand: #efe6da; --sand-edge: #b07a3a;
+--q1: #c2553f; --q2: #2e6b85; --q3: #c8962b; --q4: #a39a90;
+--ok: #3f7d4e; --warn: #a8641c; --bad: #b3372b;
 ```
 
-Radii, elevation, fields and focus:
+Type. Headings are Source Serif 4, self-hosted through
+`@fontsource-variable/source-serif-4`; body text is the system sans at 15px.
 
 ```css
---r-sm: 6px; --r-md: 8px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
---shadow: 0 6px 18px rgba(31, 35, 40, 0.18);      /* lifted off the page */
---shadow-lg: 0 18px 48px rgba(31, 35, 40, 0.18);  /* floating over it */
---field: #fff;                /* anything you type or choose into */
---focus: 2px solid var(--accent);
-```
-
-Colour, from the approved mockup. Light theme only; there is no dark variant
-and no plan for one.
-
-```css
---bg: #f6f7f9; --panel: #ffffff; --soft: #f0f2f5; --line: #e3e6eb;
---text: #1f2328; --muted: #6b7280;
---accent: #2f6fed; --accent-soft: #e8f0fe;
---q1: #d9534f; --q2: #2f6fed; --q3: #e0a100; --q4: #9aa0a6;
---ok: #16a34a; --warn: #b45309; --bad: #b91c1c;
+--serif: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
+--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
 --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+--t11: 11px; --t12: 12px; --t13: 13px; --t14: 14px; --t15: 15px;
+--t16: 16px; --t20: 20px; --t24: 24px; --t30: 30px;
 ```
 
-The shell's own furniture, measured once so nothing guesses at it:
+Spacing on a four-pixel step, radii, elevation and fields:
 
 ```css
---header-h: 48px;
---tabbar-h: 56px;
---page-chrome: calc(var(--header-h) + 40px);
+--s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+--r-sm: 6px; --r-md: 8px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
+--shadow: …; --shadow-lg: …;
+--field: #fffdf9; --focus: 2px solid var(--accent);
 ```
 
-A value off these scales is allowed, and has to say why where it is written:
-the timeline's pixels-per-minute arithmetic, the 44px minimum a thumb needs,
-the 220px a board column needs to hold a readable card.
+The shell's furniture, measured once:
+
+```css
+--rail-w: 232px; --header-h: 52px; --tabbar-h: 60px;
+--read-w: 860px; --page-chrome: calc(var(--s6) * 2);
+```
+
+A value off these scales is allowed and says why where it is written: the
+44px a thumb needs, the timeline's pixels per minute.
 
 ## Breakpoints
 
-Two, and a media query cannot read a custom property, so both are written out
-literally everywhere they appear:
+A media query cannot read a custom property, so two widths are written out:
 
-- **720px** — a phone. One column, the sidebar becomes the bottom tab bar,
-  hover-only affordances come out into the flow.
-- **960px** — too narrow for two widgets side by side, so each takes the row.
+- **720px**: a phone. The rail becomes a bottom bar of four modules plus
+  More, a slim header carries the brand, search and sync dot, and pages pad
+  for the bar.
+- **1100px**: a page's side column (a note's links, a day's week view) drops
+  under its main column.
 
-A page whose own two columns stop fitting at some other width may name that
-width; two do, both narrower than 960px because they run out of room before a
-generic two-widget row would:
+## Layout rules
 
-- **860px** — a person's page (`routes/people/[...name]`). The 1.2fr log
-  column still holds an input and a row of task text, and both crowd before
-  960px would collapse them.
-- **860px** — a note (`routes/notes/[...path]`). Three panes (tree, note,
-  rail), not two, are fighting for the row, so it gives up sooner than a
-  two-column page would.
-
-Nothing else invents one; the sync page's two-up diff stops fitting at the
-usual 960px and uses that.
+- **Few boxes.** Sections are separated by a `.label` and by space. A box is
+  for a thing you act on as a unit (a sheet of rows, a card, a form).
+- **A page is a reading column.** `.page` centres an 860px column, as the
+  primer artifact does; `.page.wide` is for boards and two-column pages.
+- **Titles are serif.** `.title h1` is the page heading, with one line of
+  small print under it. Nothing else on a page is as large.
 
 ## Shared classes
 
-- **`.btn`** — every button and button-shaped link. `.primary` is the one
-  action a screen is for, `.ghost` is quiet, `.danger` is destructive and
-  never the default, `.small` fits inside a row of text.
-- **`.icon-btn`** — a borderless square button that is only its icon. Callers
-  keep their own `data-testid` and `aria-label`; the class says nothing about
-  what the icon means.
-- **`.card`** — a panel. `.card h3` is its heading: a small uppercase label,
-  with at most one count or control in a `.right` span. `.widget > h3` shares
-  that rule, so a card and a widget cannot drift apart.
-- **`.chip` / `.chips`** — a pill and the row it lives in. `.chip.on` is the
-  one selected; `.chip.quiet` reports a number rather than offering a choice,
-  so it loses the border and the pointer.
-- **`.tag`** — a square label: a tag from a note, a file's status. `.tag.bad`
-  is what a refused guardrail wears.
-- **`.num`** — `font-variant-numeric: tabular-nums`, so a column of figures
-  lines up.
-- **`.hint` / `.problem` / `.none`** — a widget's own small print: a quiet
-  aside, an inline error under its controls, its own "nothing here yet"
-  smaller than `EmptyState`. A caller overrides `margin` alone where its
-  layout needs a different side or amount; it never repeats the colour or
-  size.
-- **`.widget-grid`** — the twelve-column dense grid every dashboard uses. A
-  widget states its own span against it.
-- **`.prose`** — rendered note content, kept close to Obsidian's reading view.
-- **`.q`, `.q1`–`.q4`** — an Eisenhower quadrant, drawn as the inline code the
-  vault writes it as.
+- **`.page`, `.page.wide`**: the page column.
+- **`.title`**: a page's heading block; `.crumb` is the small link above it.
+- **`.label`**: a section label in small capitals, with an optional `.right`.
+- **`.sheet`** and **`.rows`**: white paper with a hairline edge, and rows
+  inside it divided by hairlines rather than boxed one by one.
+- **`.callout`**: sand with a warm rule down the left; its first `<b>` is the
+  lead-in ("Rate limit:" in the primer).
+- **`.tabs`**: an underlined row of links across a page. Each tab is a URL;
+  the current one has `aria-current="page"`.
+- **`.btn`** (`.primary`, `.ghost`, `.danger`, `.small`) and **`.icon-btn`**.
+- **`.field`**: any text input, textarea or select.
+- **`.chip` / `.chips`**: a pill filter; `.chip.on` is selected.
+- **`.badge`** (`.ok`, `.warn`, `.muted`): a small uppercase label such as
+  MINE or LOOKED UP.
+- **`.card`**: a panel with a small-caps `h3`, for the rare boxed group.
+- **`.prose`**: rendered markdown, close to Obsidian's reading view.
+- **`.q1`–`.q4`**, **`.tag`**, **`.num`**, **`.muted`**, **`.small`**,
+  **`.hint`**, **`.problem`**, **`.none`**, **`.empty`**, **`.kv`**.
 
 ## Monospace
 
-Monospace means "this is text the vault or the machine chose": paths, tags
-such as `#ws/work`, code, environment variable names, external references
-such as a commit hash, and keyboard hints.
-
-Times, counts and dates are **not** that. They are body text with `.num` or
-`font-variant-numeric: tabular-nums`, which lines the figures up without
-changing the typeface. A clock, a card count, a streak and a relative date are
-all things this app says, not things it quotes.
+Monospace means text the vault or the machine chose: paths, tags, code,
+environment variables, keyboard hints. Times, counts and dates are body text
+with `.num`, which lines figures up without changing the typeface.
 
 ## Components
 
-Three components exist so a pattern is written once.
-
-**`Icon`** (`$lib/components/Icon.svelte`) draws every glyph in the app from
-one hand-copied Lucide path set. Props: `name` (an `IconName`; anything else
-will not compile), `size` (CSS pixels, default 16), `label` (what a screen
-reader should call it — absent means decorative).
-
-**`PageHeader`** (`$lib/components/PageHeader.svelte`) is the heading every
-page wears. Props: `title`, `back` (`{ href, label }`, drawn small above the
-title), `dot` (a colour, drawn before the title), `testid` (placed on the
-`h1`), and two snippets — `meta` for small print beside the title and
-`actions` for the buttons, which drop under the title on a phone.
-
-**`EmptyState`** (`$lib/components/EmptyState.svelte`) is "there is nothing
-here", rendered the same way everywhere it is true. Props: `icon`, `title`
-(one sentence), `hint` (at most one short line), `testid`, and two snippets —
-`action` for the single button that would fix it, and `children` for the rare
-structured content that is not a sentence. There is deliberately no prop for a
-paragraph: longer explanations belong in `how-it-works.md`.
+- **`Icon`**: every glyph, from one hand-copied Lucide path set. `name`,
+  `size` (default 16), `label` (absent means decorative).
+- **`Draft`**: a button that asks Claude for a proposal and shows it as a diff
+  with Accept and Reject. Every AI write in the app goes through it.
+- **`Capture`**: one line into an inbox note.
+- **`FileTree`**: the vault's folders, used by Notes.

@@ -17,6 +17,12 @@ export const config = {
 	undoPath: process.env.HUB_UNDO ?? join(homedir(), '.local/state/hub/undo'),
 	/** Folder inside the vault holding workspace definitions and hub settings. */
 	hubFolder: '_hub',
+	/**
+	 * Folder inside the vault that only a private module may read or write.
+	 * It is never indexed, listed, watched, searched or committed; see
+	 * `isPrivate` in `vault/paths.ts`.
+	 */
+	privateFolder: 'Private',
 
 	git: {
 		/** Wait this long after the last save before committing. */
