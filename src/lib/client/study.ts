@@ -7,12 +7,12 @@
  * component needs one import rather than two.
  */
 
-import type { Result } from './api';
+import type { Result, Task } from './api';
 import type { Card, CardShift, Graded, Resource, ResourceStatus, StudyScope } from '$lib/shared/study';
 import type { Grade } from '$lib/shared/sm2';
 
 export * from '$lib/shared/study';
-export type { Result };
+export type { Result, Task };
 
 /**
  * Grade one card and write the new schedule into its note.
@@ -51,6 +51,35 @@ export function applyShift(cards: Card[], shift: CardShift | null): Card[] {
 				}
 			: card
 	);
+}
+
+/**
+ * Add a goal, appending its `## ` heading (and `target::` line, if given) to
+ * `Goals.md`. Creates the note when this is its first goal.
+ */
+export async function addGoal(path: string, title: string, target: string | null): Promise<Result<void>> {
+	return post('/api/study/goal', { path, title, target }, () => undefined);
+}
+
+/**
+ * Add a milestone under an existing goal, as a task line with the vault's own
+ * `📅` due-date field. Returns the task, ready to be ticked like any other.
+ */
+export async function addMilestone(
+	path: string,
+	heading: string,
+	text: string,
+	due: string | null
+): Promise<Result<Task>> {
+	return post('/api/study/milestone', { path, heading, text, due }, (body) => body.task as Task);
+}
+
+/** Log a study session, appended under its `## YYYY-MM` heading in `Sessions.md`. */
+export async function logSession(
+	path: string,
+	entry: { day: string; minutes: number; topic: string | null; note: string }
+): Promise<Result<void>> {
+	return post('/api/study/session', { path, ...entry }, () => undefined);
 }
 
 /**

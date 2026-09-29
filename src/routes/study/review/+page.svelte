@@ -1,7 +1,7 @@
 <script lang="ts">
 	/** The review session. One card at a time, comfortable on a phone. */
 	import CardReview from '$lib/components/CardReview.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let { data } = $props();
@@ -10,14 +10,10 @@
 <svelte:head><title>Review · prosoche</title></svelte:head>
 
 <div class="page">
-	<PageHeader
-		title="Review cards"
-		back={{ href: `/study${data.workspace ? `?ws=${data.workspace.slug}` : ''}`, label: 'Study' }}
-	>
-		{#snippet meta()}
-			<span>{data.workspace?.name ?? 'Whole vault'}</span>
-		{/snippet}
-	</PageHeader>
+	<div class="title">
+		<h1>Study</h1>
+	</div>
+	<StudyTabs tabs={data.tabs} />
 
 	{#if data.cards.length === 0}
 		<div class="empty" data-testid="nothing-due">
