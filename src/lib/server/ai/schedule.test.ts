@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NoteIndex } from '../index/index';
 import { Vault } from '../vault/index';
-import { STATE_PATH, due, tick, type Job } from './schedule';
+import { JOBS, STATE_PATH, due, tick, type Job } from './schedule';
 
 const at = (day: string, hour: number, minute = 0) => {
 	const [y, m, d] = day.split('-').map(Number);
@@ -15,8 +15,8 @@ const at = (day: string, hour: number, minute = 0) => {
 const MONDAY = '2026-09-21';
 const SUNDAY = '2026-09-20';
 
-const daily: Job = { id: 'briefing', atMin: 7 * 60, run: async () => {} };
-const sunday: Job = { id: 'weekly-review', atMin: 18 * 60, onWeekday: 0, run: async () => {} };
+const daily: Job = { id: 'briefing', atMin: 7 * 60, usesAi: true, run: async () => {} };
+const sunday: Job = { id: 'weekly-review', atMin: 18 * 60, onWeekday: 0, usesAi: true, run: async () => {} };
 
 describe('due', () => {
 	it('holds a job until its time', () => {
@@ -69,6 +69,7 @@ describe('tick', () => {
 	const spy: Job = {
 		id: 'briefing',
 		atMin: 0,
+		usesAi: true,
 		run: async () => {
 			ran.push('briefing');
 		}
@@ -92,10 +93,40 @@ describe('tick', () => {
 		expect(ran).toEqual([]);
 	});
 
+	it('still runs a job that uses no model while the kill switch is off', async () => {
+		ran.length = 0;
+		await vault.write('_hub/ai.md', '---\nenabled: false\n---\n');
+		const plain: Job = { ...spy, id: 'daily-note', usesAi: false };
+		expect(await tick({ vault, index }, [spy, plain], at(MONDAY, 8))).toEqual(['daily-note']);
+	});
+
+	it("creates the day's note from the template, byte for byte, once", async () => {
+		const template = '# Tasks\n- [ ] 09:30 - 10:00 Stretch `Q1`  \n\n## Log\n';
+		await vault.write('Journal/Journal Template.md', template);
+		const job = JOBS.filter((j) => j.id === 'daily-note');
+		expect(await tick({ vault, index }, job, at(MONDAY, 0, 5))).toEqual(['daily-note']);
+		expect((await vault.read('Journal/2026/09/21.md')).content).toBe(template);
+
+		// Written by hand later that day; a second run must not touch it.
+		await vault.write('Journal/2026/09/21.md', 'edited');
+		await vault.write(STATE_PATH, '{}');
+		await tick({ vault, index }, job, at(MONDAY, 9));
+		expect((await vault.read('Journal/2026/09/21.md')).content).toBe('edited');
+	});
+
+	it("after a missed night creates only today's note", async () => {
+		await vault.write('Journal/Journal Template.md', '# Tasks\n');
+		const job = JOBS.filter((j) => j.id === 'daily-note');
+		await tick({ vault, index }, job, at(MONDAY, 10));
+		expect((await vault.read('Journal/2026/09/20.md')).exists).toBe(false);
+		expect((await vault.read('Journal/2026/09/21.md')).exists).toBe(true);
+	});
+
 	it('records a job that threw, so a failure does not repeat every tick', async () => {
 		const angry: Job = {
 			id: 'briefing',
 			atMin: 0,
+			usesAi: true,
 			run: async () => {
 				throw new Error('no');
 			}

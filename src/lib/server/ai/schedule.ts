@@ -1,8 +1,9 @@
 /**
  * The jobs that run on a clock rather than on a click.
  *
- * There are two, and both are small: the morning briefing each day, and the
- * weekly review each Sunday evening. They live together because the awkward
+ * There are three, and all are small: the day's note at 00:05, the morning
+ * briefing each day, and the weekly review each Sunday evening. They live
+ * together because the awkward
  * part is not either job, it is the scheduling — and doing that twice in two
  * files is how the two copies come to disagree about what "missed" means.
  *
@@ -29,6 +30,7 @@
 
 import { config } from '../config';
 import { today, type DayKey } from '../daily';
+import { openDay } from '../daily-note';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { loadSettings } from './settings';
@@ -47,6 +49,11 @@ export interface Job {
 	atMin: number;
 	/** 0 is Sunday. Absent means every day. */
 	onWeekday?: number;
+	/**
+	 * Whether the job calls a model. Only those wait on the AI kill switch;
+	 * creating the day's note is not AI and runs with the layer off.
+	 */
+	usesAi: boolean;
 	run: (deps: JobDeps, day: DayKey) => Promise<void>;
 }
 
@@ -57,8 +64,20 @@ export interface JobDeps {
 
 export const JOBS: Job[] = [
 	{
+		// Obsidian opens today's note on launch; so does the app. The server
+		// creating it first, from the same template, means both sides see the
+		// same bytes and git merges two identical additions without a fight.
+		id: 'daily-note',
+		atMin: 5,
+		usesAi: false,
+		run: async (deps, day) => {
+			await openDay(deps.vault, day);
+		}
+	},
+	{
 		id: 'briefing',
 		atMin: 7 * 60,
+		usesAi: true,
 		run: async (deps, day) => {
 			await runBriefing(deps, day);
 		}
@@ -67,6 +86,7 @@ export const JOBS: Job[] = [
 		id: 'weekly-review',
 		atMin: 18 * 60,
 		onWeekday: 0,
+		usesAi: true,
 		run: async (deps, day) => {
 			await runWeeklyReview(deps, day);
 		}
@@ -102,8 +122,8 @@ export function due(jobs: Job[], now: Date, lastRun: Record<string, string>): Jo
  * for tests. Output: a stop function. Side effects: a repeating timer, and
  * whatever the jobs themselves write.
  *
- * Never runs a job while the kill switch is off, checked on each tick rather
- * than at startup, so turning AI off in the settings page takes effect
+ * Never runs a job that uses a model while the kill switch is off, checked on
+ * each tick rather than at startup, so turning AI off in the settings page takes effect
  * without a restart. Never lets one job's failure stop another's, and never
  * lets either take the process down: a scheduled job that throws is logged
  * and its stamp is still written, because a job that fails every five minutes
@@ -123,11 +143,12 @@ export function startSchedule(
 /** One pass. Exported so a test can drive it without waiting five minutes. */
 export async function tick(deps: JobDeps, jobs: Job[] = JOBS, now = new Date()): Promise<string[]> {
 	const settings = await loadSettings(deps.vault);
-	if (!settings.enabled) return [];
+	const allowed = jobs.filter((job) => settings.enabled || !job.usesAi);
+	if (!allowed.length) return [];
 
 	const state = await readState(deps.vault);
 	const ran: string[] = [];
-	for (const job of due(jobs, now, state)) {
+	for (const job of due(allowed, now, state)) {
 		state[job.id] = today(now);
 		try {
 			await job.run(deps, today(now));
