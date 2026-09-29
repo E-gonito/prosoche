@@ -522,7 +522,7 @@
 
 			{#if blocks.length === 0}
 				<p class="vacant">
-					{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}
+					<span>{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}</span>
 				</p>
 			{/if}
 
@@ -657,7 +657,7 @@
 	}
 	.vacant {
 		position: absolute;
-		inset: 0;
+		inset: 0 0 0 54px;
 		display: grid;
 		place-items: center;
 		margin: 0;
@@ -665,6 +665,8 @@
 		font-size: var(--t13);
 		pointer-events: none;
 	}
+	/* On the panel's own colour, so an hour line never runs through the words. */
+	.vacant span { position: relative; z-index: 1; background: var(--panel); padding: 2px var(--s2); }
 
 	.hour {
 		position: absolute;

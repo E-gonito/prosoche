@@ -340,6 +340,10 @@
 {/if}
 
 <style>
+	/* The columns follow the page's own width, not the window's: the rail
+	   takes its share first, so a portrait monitor at 1200px has the room of
+	   a small laptop, and a viewport query would squeeze three columns in. */
+	.today { container-type: inline-size; }
 	.today .title { margin-bottom: var(--s3); }
 	.sub { display: flex; align-items: center; gap: var(--s2); margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
 	.sub .relative { text-transform: capitalize; }
@@ -407,11 +411,15 @@
 		box-shadow: var(--shadow);
 	}
 
-	@media (max-width: 1100px) {
+	/* Too narrow for a side column: the week and the workspaces move under the
+	   day and lay out across the page instead of down it. */
+	@container (max-width: 1100px) {
 		.grid { grid-template-columns: 1fr; }
+		.week { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+		.workspaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 	}
 
-	@media (max-width: 900px) {
+	@container (max-width: 640px) {
 		.split { grid-template-columns: 1fr; }
 	}
 
