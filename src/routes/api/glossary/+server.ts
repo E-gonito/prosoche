@@ -10,7 +10,6 @@ interface Body {
 	slug?: string;
 	/** add. */
 	term?: string;
-	guess?: string | null;
 	category?: string | null;
 	source?: string | null;
 }
@@ -43,7 +42,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			return reply(
 				await addTerm(vault, workspace, {
 					term: String(body.term ?? ''),
-					guess: text(body.guess),
 					category: text(body.category),
 					source: text(body.source)
 				})

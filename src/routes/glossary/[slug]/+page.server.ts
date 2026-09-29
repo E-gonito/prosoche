@@ -29,7 +29,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		const link = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]$/.exec(e.source?.trim() ?? '');
 		return {
 			term: e.term,
-			guess: e.guess,
 			category: e.category,
 			pending: e.pending,
 			lookedUp: e.status === 'looked-up',

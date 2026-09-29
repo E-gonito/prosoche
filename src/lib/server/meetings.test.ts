@@ -12,6 +12,7 @@ import {
 	customPages,
 	endMeeting,
 	eventForNotebook,
+	giveNotebook,
 	isMeetingNote,
 	loadAssignments,
 	loadMeetings,
@@ -24,7 +25,7 @@ import {
 	type NotebookPaths
 } from './meetings';
 import type { CalendarEvent } from './calendar';
-import type { Workspace } from './workspaces';
+import { loadWorkspaces, type Workspace } from './workspaces';
 
 const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	slug,
@@ -233,6 +234,24 @@ describe('the notebook on disk', () => {
 		await rm(dir, { recursive: true, force: true });
 	});
 
+	it('gives a workspace a notebook by adding meetings: true to its definition, and nothing else', async () => {
+		const definition = '---\nname: Quiet\ncolor: "#123456"\nfolders:\n  - Quiet\n---\n\nNo meetings yet.\n';
+		await vault.write('_hub/workspaces/quiet.md', definition);
+		const quiet = (await loadWorkspaces(vault)).find((w) => w.slug === 'quiet')!;
+		expect(notebookPaths(quiet)).toBeNull();
+
+		expect(await giveNotebook(vault, quiet)).toEqual({ ok: true, path: '_hub/workspaces/quiet.md' });
+		expect((await vault.read('_hub/workspaces/quiet.md')).content).toBe(definition.replace('  - Quiet\n---', '  - Quiet\nmeetings: true\n---'));
+		const after = (await loadWorkspaces(vault)).find((w) => w.slug === 'quiet')!;
+		expect(after.meetings).toBe(true);
+		expect(notebookPaths(after)).not.toBeNull();
+	});
+
+	it('leaves a workspace that already has meetings untouched', async () => {
+		expect(await giveNotebook(vault, work)).toEqual({ ok: true, path: work.path });
+		expect((await vault.read(work.path)).exists).toBe(false);
+	});
+
 	const PAST = `---
 type: meeting
 date: 2026-09-28
@@ -251,14 +270,14 @@ date: 2026-09-28
 		expect(started).toEqual({ ok: true, path: 'Work/Meetings/2026-09-29 Dev Weekly.md' });
 		const path = 'Work/Meetings/2026-09-29 Dev Weekly.md';
 
-		expect(await captureItem(vault, work, path, { kind: 'term', text: 'DVC', guess: 'data versioning' })).toEqual({ ok: true, path });
+		expect(await captureItem(vault, work, path, { kind: 'term', text: 'DVC' })).toEqual({ ok: true, path });
 		await captureItem(vault, work, path, { kind: 'action', text: 'Ask Ben' });
 		expect((await vault.read(path)).content).toBe(
-			'---\ntype: meeting\ndate: 2026-09-29\nattendees: [Ana]\n---\n# Dev Weekly\n\n## Captured\n- term:: DVC guess:: data versioning\n- [ ] action:: Ask Ben\n'
+			'---\ntype: meeting\ndate: 2026-09-29\nattendees: [Ana]\n---\n# Dev Weekly\n\n## Captured\n- term:: DVC\n- [ ] action:: Ask Ben\n'
 		);
-		// The term went into the glossary too, and nothing else did.
+		// The term went into the glossary too, with no guess, and nothing else did.
 		expect((await vault.read('Work/Glossary.md')).content).toBe(
-			'# Glossary\n\n## DVC\n- guess:: data versioning\n- status:: to-look-up\n- source:: [[2026-09-29 Dev Weekly]]\n'
+			'# Glossary\n\n## DVC\n- status:: to-look-up\n- source:: [[2026-09-29 Dev Weekly]]\n'
 		);
 
 		const meetings = await loadMeetings(vault, paths);
@@ -319,10 +338,10 @@ date: 2026-09-28
 	it('lists every captured term, newest meeting first, with its source', async () => {
 		await vault.write('Work/Meetings/2026-09-28 Dev Weekly.md', PAST.replace('- decision', '- term:: DVC\n- decision'));
 		await vault.write('Work/Meetings/2026-09-29 Standup.md', '# Standup\n\n## Captured\n- term:: DVC guess:: again\n');
-		expect((await capturedTerms(vault, work)).map((t) => [t.term, t.guess, t.source, t.meeting.date])).toEqual([
-			['DVC', 'again', '[[2026-09-29 Standup]]', '2026-09-29'],
-			['Cookie Cutter', 'something for AI models', '[[2026-09-28 Dev Weekly]]', '2026-09-28'],
-			['DVC', null, '[[2026-09-28 Dev Weekly]]', '2026-09-28']
+		expect((await capturedTerms(vault, work)).map((t) => [t.term, t.source, t.meeting.date])).toEqual([
+			['DVC', '[[2026-09-29 Standup]]', '2026-09-29'],
+			['Cookie Cutter', '[[2026-09-28 Dev Weekly]]', '2026-09-28'],
+			['DVC', '[[2026-09-28 Dev Weekly]]', '2026-09-28']
 		]);
 		expect(await capturedTerms(vault, { ...work, meetings: false })).toEqual([]);
 	});

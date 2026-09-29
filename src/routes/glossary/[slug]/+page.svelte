@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * One workspace's glossary, as in the artifact: a filter box, chips, and
-	 * one entry per term with the user's guess beside the definition.
+	 * One workspace's glossary, as in the artifact: a filter box, a tab per
+	 * category, and one entry per term with its definition and why it matters.
 	 *
 	 * Terms captured in meetings but not yet in Glossary.md wait at the top.
 	 * Adding one, or typing a new one in, is the user's own act and writes
@@ -10,33 +10,34 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
+	import StartMeeting from '$lib/components/StartMeeting.svelte';
 	import { glossaryAction } from '$lib/client/glossary';
 	import { noteHref } from '$lib/shared/links';
 
 	let { data } = $props();
 
 	let query = $state('');
-	let chip = $state<string>('all');
+	/** 'all', 'pending', or `cat:<category>`. */
+	let tab = $state<string>('all');
 	let problem = $state('');
 	let adding = $state<string | null>(null);
-	let fresh = $state({ term: '', guess: '', category: '' });
+	let fresh = $state({ term: '', category: '' });
 
-	const mine = $derived(data.entries.filter((e) => e.guess).length);
 	const pending = $derived(data.entries.filter((e) => e.pending));
 	const needle = $derived(query.trim().toLowerCase());
 	const matches = (...fields: Array<string | null | undefined>) => !needle || fields.some((f) => f?.toLowerCase().includes(needle));
 
 	const shown = $derived(
 		data.entries.filter((e) => {
-			if (chip === 'mine' && !e.guess) return false;
-			if (chip === 'pending' && !e.pending) return false;
-			if (chip.startsWith('cat:') && e.category !== chip.slice(4)) return false;
-			return matches(e.term, e.guess, e.definition, e.relevance, e.category);
+			if (tab === 'pending' && !e.pending) return false;
+			if (tab.startsWith('cat:') && e.category !== tab.slice(4)) return false;
+			return matches(e.term, e.definition, e.relevance, e.category);
 		})
 	);
-	const captured = $derived(data.captured.filter((c) => matches(c.term, c.guess)));
+	const captured = $derived(data.captured.filter((c) => matches(c.term)));
+	const inCategory = (category: string) => data.entries.filter((e) => e.category === category).length;
 
-	async function add(term: { term: string; guess?: string | null; category?: string | null; source?: string | null }): Promise<boolean> {
+	async function add(term: { term: string; category?: string | null; source?: string | null }): Promise<boolean> {
 		adding = term.term;
 		problem = '';
 		const result = await glossaryAction({ action: 'add', slug: data.workspace.slug, ...term });
@@ -49,8 +50,8 @@
 	async function addFresh(event: SubmitEvent) {
 		event.preventDefault();
 		if (!fresh.term.trim()) return;
-		if (await add({ term: fresh.term, guess: fresh.guess || null, category: fresh.category || null })) {
-			fresh = { term: '', guess: '', category: '' };
+		if (await add({ term: fresh.term, category: fresh.category || null })) {
+			fresh = { term: '', category: '' };
 		}
 	}
 </script>
@@ -61,8 +62,9 @@
 	<div class="title">
 		<a class="crumb" href="/glossary">Glossary</a>
 		<h1><i style="--dot: {data.workspace.color}"></i>{data.workspace.name}</h1>
-		<p>
-			The words you had to guess at, and why they matter here{#if data.meetings}{' · '}<a href="/meetings/{data.workspace.slug}">meeting notebook</a>{/if}
+		<p class="sub">
+			<span>What each term means, and why it matters here{#if data.meetings}{' · '}<a href="/meetings/{data.workspace.slug}">meeting notebook</a>{/if}</span>
+			<StartMeeting slug={data.workspace.slug} meetings={data.meetings} small />
 		</p>
 	</div>
 
@@ -74,7 +76,6 @@
 	{:else}
 		<form class="add" onsubmit={addFresh} data-testid="add-term-form">
 			<input class="field" bind:value={fresh.term} placeholder="New term" aria-label="Term" data-testid="new-term" />
-			<input class="field" bind:value={fresh.guess} placeholder="My guess (optional)" aria-label="My guess" data-testid="new-guess" />
 			<input class="field" bind:value={fresh.category} placeholder="Category" aria-label="Category" list="glossary-categories" data-testid="new-category" />
 			<datalist id="glossary-categories">
 				{#each data.categories as category (category)}<option value={category}></option>{/each}
@@ -84,13 +85,16 @@
 
 		<input class="field filter" type="search" bind:value={query} placeholder="Filter terms…" aria-label="Filter terms" data-testid="glossary-filter" />
 
-		<div class="chips" data-testid="glossary-chips">
-			<button class="chip" class:on={chip === 'all'} onclick={() => (chip = 'all')}>All</button>
-			<button class="chip" class:on={chip === 'mine'} onclick={() => (chip = 'mine')}>Mine ({mine})</button>
-			<button class="chip" class:on={chip === 'pending'} onclick={() => (chip = 'pending')}>To look up</button>
+		<div class="tabs cat-tabs" role="tablist" aria-label="Categories" data-testid="glossary-tabs">
+			<button role="tab" aria-selected={tab === 'all'} onclick={() => (tab = 'all')}>All<span class="count">{data.entries.length}</span></button>
 			{#each data.categories as category (category)}
-				<button class="chip" class:on={chip === `cat:${category}`} onclick={() => (chip = `cat:${category}`)}>{category}</button>
+				<button role="tab" aria-selected={tab === `cat:${category}`} onclick={() => (tab = `cat:${category}`)}>
+					{category}<span class="count">{inCategory(category)}</span>
+				</button>
 			{/each}
+			{#if pending.length}
+				<button role="tab" aria-selected={tab === 'pending'} onclick={() => (tab = 'pending')}>To look up<span class="count">{pending.length}</span></button>
+			{/if}
 		</div>
 
 		<div class="count">
@@ -114,10 +118,9 @@
 					<div class="captured">
 						<div>
 							<b>{term.term}</b>
-							{#if term.guess}<p class="guess"><b>My guess:</b> {term.guess}</p>{/if}
 							<small class="muted">From <a href={noteHref(term.meeting.path)}>{term.meeting.title}{term.meeting.date ? ` ${term.meeting.date}` : ''}</a></small>
 						</div>
-						<button class="btn small" disabled={adding === term.term} onclick={() => add({ term: term.term, guess: term.guess, source: term.source })} data-testid="add-term">Add to glossary</button>
+						<button class="btn small" disabled={adding === term.term} onclick={() => add({ term: term.term, source: term.source })} data-testid="add-term">Add to glossary</button>
 					</div>
 				{/each}
 			</div>
@@ -130,10 +133,9 @@
 					<article class="entry" data-testid="glossary-entry">
 						<h3>
 							{entry.term}
-							{#if entry.guess}<span class="badge">Mine</span>{/if}
-							{#if entry.lookedUp}<span class="badge ok">Looked up</span>{:else if entry.pending}<span class="badge warn">To look up</span>{/if}
+							{#if entry.pending}<span class="badge warn">To look up</span>{/if}
 						</h3>
-						{#if entry.guess}<p class="guess"><b>My guess:</b> {entry.guess}</p>{/if}
+						{#if entry.category}<p class="category">{entry.category}</p>{/if}
 						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 						{#if entry.definition}<div class="definition">{@html entry.definition}</div>{/if}
 						{#if entry.relevance}<p class="relevance"><span>→</span> {entry.relevance}</p>{/if}
@@ -175,7 +177,24 @@
 	.count :global(.draft:has(.proposal)) { flex-basis: 100%; }
 	.captured { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
 	.entry h3 { font-size: var(--t16); margin: 0 0 var(--s1); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
-	.guess { margin: 0 0 var(--s1); font-size: var(--t14); }
+	.sub { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+	.cat-tabs { margin-bottom: var(--s2); }
+	.cat-tabs button {
+		padding: var(--s2) var(--s3);
+		border: 0;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+		background: none;
+		font: inherit;
+		font-size: var(--t14);
+		font-weight: 500;
+		color: var(--muted);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.cat-tabs button:hover { color: var(--text); }
+	.cat-tabs [aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+	.category { margin: 0 0 var(--s1); font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 	.definition { font-size: var(--t15); line-height: 1.55; }
 	.definition :global(p) { margin: 0 0 var(--s1); }
 	.relevance { margin: var(--s1) 0; font-size: var(--t14); color: var(--muted); }

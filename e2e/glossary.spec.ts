@@ -43,23 +43,23 @@ test.describe('Glossary', () => {
 		await expect(entries.first()).toContainText('An open-source tool that versions datasets');
 		await expect(entries.first()).toContainText('→ For Work, it makes training data traceable.');
 		await expect(entries.first()).toContainText(`From ${PAST} Dev Weekly · definition drafted by Claude`);
-		await expect(entries.first().locator('.badge')).toHaveText(['Mine', 'Looked up']);
+		await expect(entries.first().locator('.badge')).toHaveCount(0);
+		await expect(entries.first().locator('.category')).toHaveText('ML');
 
 		await page.getByTestId('glossary-filter').fill('mlf');
 		await expect(count).toHaveText('1 of 2 terms');
 		await expect(entries).toHaveText([/MLflow/]);
 		await page.getByTestId('glossary-filter').fill('');
 
-		const chips = page.getByTestId('glossary-chips');
-		await expect(chips.getByRole('button')).toHaveText(['All', 'Mine (1)', 'To look up', 'ML', 'Tooling']);
-		await chips.getByRole('button', { name: 'Mine (1)' }).click();
-		await expect(entries).toHaveText([/DVC/]);
-		await chips.getByRole('button', { name: 'To look up' }).click();
+		const tabs = page.getByTestId('glossary-tabs');
+		await expect(tabs.getByRole('tab')).toHaveText(['All2', 'ML1', 'Tooling1', 'To look up1']);
+		await expect(page.getByText('My guess')).toHaveCount(0);
+		await tabs.getByRole('tab', { name: /To look up/ }).click();
 		await expect(entries).toHaveText([/MLflow/]);
 		await expect(entries.getByRole('button', { name: 'Look up with Claude' })).toBeVisible();
-		await chips.getByRole('button', { name: 'Tooling' }).click();
+		await tabs.getByRole('tab', { name: /Tooling/ }).click();
 		await expect(count).toHaveText('1 of 2 terms');
-		await chips.getByRole('button', { name: 'All' }).click();
+		await tabs.getByRole('tab', { name: /All/ }).click();
 		await expect(count).toHaveText('2 of 2 terms');
 		await expect(page.getByRole('button', { name: 'Look up all (1)' })).toBeVisible();
 	});
@@ -69,12 +69,12 @@ test.describe('Glossary', () => {
 		await page.goto('/glossary/work');
 		const captured = page.getByTestId('captured-terms');
 		// DVC was captured too, but the glossary already has it.
-		await expect(captured.locator('b:not(.guess b)').first()).toHaveText('Cookie Cutter');
+		await expect(captured.locator('b').first()).toHaveText('Cookie Cutter');
 		await expect(captured).not.toContainText('DVC');
 		await captured.getByTestId('add-term').click();
 		await expect(page.getByTestId('captured-terms')).toHaveCount(0);
 		expect(vaultFile('Work/Glossary.md')).toBe(
-			`${before}\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[${PAST} Dev Weekly]]\n`
+			`${before}\n## Cookie Cutter\n- status:: to-look-up\n- source:: [[${PAST} Dev Weekly]]\n`
 		);
 		await expect(page.getByTestId('glossary-count')).toHaveText('3 of 3 terms');
 	});
@@ -83,13 +83,12 @@ test.describe('Glossary', () => {
 		const before = vaultFile('Work/Glossary.md');
 		await page.goto('/glossary/work');
 		await page.getByTestId('new-term').fill('RPE');
-		await page.getByTestId('new-guess').fill('a layer of the retina');
 		await page.getByTestId('new-category').fill('ML');
 		await page.getByTestId('new-add').click();
 		await expect(page.getByTestId('glossary-count')).toHaveText('3 of 3 terms');
 		await expect(page.getByTestId('new-term')).toHaveValue('');
-		expect(vaultFile('Work/Glossary.md')).toBe(`${before}\n## RPE\n- guess:: a layer of the retina\n- status:: to-look-up\n- category:: ML\n`);
-		await expect(page.getByTestId('glossary-entry').filter({ hasText: 'RPE' }).locator('.badge')).toHaveText(['Mine', 'To look up']);
+		expect(vaultFile('Work/Glossary.md')).toBe(`${before}\n## RPE\n- status:: to-look-up\n- category:: ML\n`);
+		await expect(page.getByTestId('glossary-entry').filter({ hasText: 'RPE' }).locator('.badge')).toHaveText(['To look up']);
 
 		// A term the glossary already has is refused, and the file is left alone.
 		const after = vaultFile('Work/Glossary.md');

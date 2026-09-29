@@ -9,7 +9,7 @@ export type GlossaryResult = { ok: true; path: string } | { ok: false; message: 
 
 export type GlossaryAction =
 	| { action: 'start'; slug: string }
-	| { action: 'add'; slug: string; term: string; guess?: string | null; category?: string | null; source?: string | null };
+	| { action: 'add'; slug: string; term: string; category?: string | null; source?: string | null };
 
 /** Send one glossary write. */
 export async function glossaryAction(body: GlossaryAction): Promise<GlossaryResult> {

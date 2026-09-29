@@ -27,6 +27,7 @@
 
 import { config } from './config';
 import { appendUnderHeading } from './sections';
+import { setFrontmatterField } from './parse/frontmatter';
 import { basename, parseNote } from './parse/note';
 import { renderMarkdown } from './render';
 import { scanTasks, toTask } from './parse/task';
@@ -81,6 +82,20 @@ export function notebookPaths(workspace: Workspace): NotebookPaths | null {
 		log: `${home}/Log.md`,
 		meetings: `${home}/Meetings`
 	};
+}
+
+/**
+ * Give a workspace a meeting notebook: set `meetings: true` in its definition.
+ *
+ * The one line of the workspace file this module ever writes, as a span edit
+ * through `parse/frontmatter.ts`, so every other byte of the definition stays
+ * as the user wrote it. Succeeds without writing when the workspace already
+ * has meetings. Never creates the notebook's files: the first meeting started
+ * does that.
+ */
+export async function giveNotebook(vault: Vault, workspace: Workspace): Promise<Written> {
+	if (workspace.meetings) return { ok: true, path: workspace.path };
+	return rewrite(vault, workspace.path, (content) => setFrontmatterField(content, 'meetings', true), 2);
 }
 
 /** True for a note directly inside the notebook's Meetings folder. */
@@ -187,7 +202,7 @@ export async function captureItem(vault: Vault, workspace: Workspace, path: stri
 	const line = formatCaptured(input);
 	const written = await rewrite(vault, path, (content) => appendUnderHeading(content, CAPTURED_HEADING, line).content, 2);
 	if (written.ok && input.kind === 'term') {
-		await addTerm(vault, workspace, { term: input.text, guess: input.guess ?? null, source: `[[${basename(path)}]]` });
+		await addTerm(vault, workspace, { term: input.text, source: `[[${basename(path)}]]` });
 	}
 	return written;
 }
@@ -217,7 +232,6 @@ export async function capturedTerms(vault: Vault, workspace: Workspace): Promise
 			if (item.kind !== 'term' || !item.text.trim()) continue;
 			out.push({
 				term: item.text,
-				guess: item.guess,
 				source: `[[${basename(meeting.path)}]]`,
 				meeting: { path: meeting.path, title: meeting.title, date: meeting.date }
 			});

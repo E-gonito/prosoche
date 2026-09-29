@@ -17,9 +17,8 @@ const ws = (slug: string, over: Partial<Workspace> = {}): Workspace => ({
 	...over
 });
 
-const captured = (term: string, guess: string | null = null): CapturedTerm => ({
+const captured = (term: string): CapturedTerm => ({
 	term,
-	guess,
 	source: '[[2026-09-28 Dev Weekly]]',
 	meeting: { path: 'Work/Meetings/2026-09-28 Dev Weekly.md', title: 'Dev Weekly', date: '2026-09-28' }
 });
@@ -59,17 +58,17 @@ describe('the glossary on disk', () => {
 	it('offers captured terms the glossary lacks, once each, and adds one', async () => {
 		await vault.write('Work/Glossary.md', '# Glossary\n\n## DVC\n- status:: looked-up\n\nDefinition.\n');
 		const glossary = await loadGlossary(vault, work, [
-			captured('Cookie Cutter', 'something for AI models'),
+			captured('Cookie Cutter'),
 			captured('dvc'),
-			captured('cookie  cutter', 'older guess')
+			captured('cookie  cutter')
 		]);
 		expect(glossary.entries.map((e) => e.term)).toEqual(['DVC']);
-		expect(glossary.captured).toEqual([captured('Cookie Cutter', 'something for AI models')]);
+		expect(glossary.captured).toEqual([captured('Cookie Cutter')]);
 
 		const added = await addTerm(vault, work, glossary.captured[0]);
 		expect(added).toEqual({ ok: true, path: 'Work/Glossary.md' });
 		expect((await vault.read('Work/Glossary.md')).content).toBe(
-			'# Glossary\n\n## DVC\n- status:: looked-up\n\nDefinition.\n\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[2026-09-28 Dev Weekly]]\n'
+			'# Glossary\n\n## DVC\n- status:: looked-up\n\nDefinition.\n\n## Cookie Cutter\n- status:: to-look-up\n- source:: [[2026-09-28 Dev Weekly]]\n'
 		);
 		expect(await addTerm(vault, work, { term: 'cookie cutter' })).toMatchObject({ ok: false, reason: 'invalid' });
 	});

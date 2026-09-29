@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { assignTitle, captureItem, endMeeting, notebookPaths, startMeeting } from '$server/meetings';
+import { assignTitle, captureItem, endMeeting, giveNotebook, notebookPaths, startMeeting } from '$server/meetings';
 import type { Written } from '$server/rewrite';
 import { CAPTURE_KINDS, type CaptureKind } from '$lib/shared/meetings';
 import type { RequestHandler } from './$types';
 
 interface Body {
-	action?: 'assign' | 'start' | 'capture' | 'end';
+	action?: 'assign' | 'enable' | 'start' | 'capture' | 'end';
 	/** The workspace: every action is about one. */
 	slug?: string;
 	/** assign: the event title; start: the meeting title. */
@@ -19,14 +19,13 @@ interface Body {
 	path?: string;
 	kind?: string;
 	text?: string;
-	guess?: string | null;
 }
 
 const STATUS: Record<Exclude<Written, { ok: true }>['reason'], number> = { conflict: 409, 'not-found': 404, invalid: 400 };
 
 /**
  * The notebook's writes, each one a user's click: remember an event's
- * workspace, start a meeting, capture a line, end a meeting. Translation
+ * workspace, give a workspace a notebook, start a meeting, capture a line, end a meeting. Translation
  * only; `$server/meetings` decides what is written, including the glossary
  * entry a captured term also gets. Glossary writes of their own go to
  * `/api/glossary`.
@@ -46,6 +45,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (body.action === 'assign') return reply(await assignTitle(vault, all, String(body.title ?? ''), String(body.slug ?? '')));
 
 	const workspace = all.find((w) => w.slug === body.slug);
+	if (body.action === 'enable') {
+		if (!workspace) return json({ ok: false, reason: 'not-found', message: 'No such workspace.' }, { status: 404 });
+		return reply(await giveNotebook(vault, workspace));
+	}
 	const paths = workspace ? notebookPaths(workspace) : null;
 	if (!workspace || !paths) return json({ ok: false, reason: 'not-found', message: 'No such workspace, or it has no meetings notebook.' }, { status: 404 });
 
@@ -67,8 +70,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return reply(
 				await captureItem(vault, workspace, String(body.path ?? ''), {
 					kind: body.kind as CaptureKind,
-					text: String(body.text ?? ''),
-					guess: typeof body.guess === 'string' ? body.guess : undefined
+					text: String(body.text ?? '')
 				})
 			);
 		}

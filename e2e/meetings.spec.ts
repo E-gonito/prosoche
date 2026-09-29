@@ -44,10 +44,29 @@ test.describe('Meetings', () => {
 		expect(response?.status()).toBe(404);
 		await expect(page.locator('body')).toContainText('Add "meetings: true" to _hub/workspaces/garden.md');
 
+		// Its Overview still offers a meeting, but no notebook link until it has one.
 		await page.goto('/w/garden');
-		await expect(page.locator('.label', { hasText: 'Meetings' })).toHaveCount(0);
+		await expect(page.getByRole('link', { name: /meeting notebook/ })).toHaveCount(0);
+		await expect(page.getByTestId('start-a-meeting')).toBeVisible();
 		await page.goto('/w/work');
 		await expect(page.getByRole('link', { name: /meeting notebook/ })).toHaveAttribute('href', '/meetings/work');
+	});
+
+	test('Start a meeting on a workspace without meetings gives it a notebook first', async ({ page }) => {
+		mkdirSync(join(VAULT, 'Garden'), { recursive: true });
+		const definition = '---\nname: Garden\ncolor: "#16a34a"\nfolders:\n  - "Garden"\n---\n';
+		writeFileSync(join(VAULT, '_hub/workspaces/garden.md'), definition);
+
+		await page.goto('/glossary/garden');
+		await page.getByTestId('start-a-meeting').click();
+		await expect(page).toHaveURL(/\/meetings\/garden\/notes$/);
+		await expect(page.getByTestId('start-meeting')).toBeVisible();
+		expect(vaultFile('_hub/workspaces/garden.md')).toBe(definition.replace('  - "Garden"\n---', '  - "Garden"\nmeetings: true\n---'));
+
+		// Once it has meetings, the Overview's button goes straight there.
+		await page.goto('/w/garden');
+		await page.getByTestId('start-a-meeting').click();
+		await expect(page).toHaveURL(/\/meetings\/garden\/notes$/);
 	});
 
 	test('the card renders the primer in the artifact\'s shape', async ({ page }) => {
@@ -97,9 +116,8 @@ test.describe('Meetings', () => {
 
 		await page.getByTestId('capture-kind-term').click();
 		await page.getByTestId('capture-text').fill('Cookie Cutter');
-		await page.getByTestId('capture-guess').fill('something for AI models');
 		await page.getByTestId('capture-add').click();
-		await expect(page.getByTestId('current-meeting')).toContainText('my guess: something for AI models');
+		await expect(page.getByTestId('current-meeting')).toContainText('Cookie Cutter');
 
 		await page.getByTestId('capture-kind-decision').click();
 		await page.getByTestId('capture-text').fill('Deploy to ECS, not Beanstalk');
@@ -113,13 +131,13 @@ test.describe('Meetings', () => {
 
 		const captured =
 			header +
-			'- term:: Cookie Cutter guess:: something for AI models\n' +
+			'- term:: Cookie Cutter\n' +
 			'- decision:: Deploy to ECS, not Beanstalk\n' +
 			'- [ ] action:: Write up the decision\n';
 		expect(vaultFile(path)).toBe(captured);
 		// The term went into the workspace's glossary as well, appended and nothing more.
 		expect(vaultFile('Work/Glossary.md')).toBe(
-			`${glossary}\n## Cookie Cutter\n- guess:: something for AI models\n- status:: to-look-up\n- source:: [[${TODAY} Design review]]\n`
+			`${glossary}\n## Cookie Cutter\n- status:: to-look-up\n- source:: [[${TODAY} Design review]]\n`
 		);
 		// The new action is open, so it is waiting under Before you go in too.
 		await expect(page.getByTestId('open-action')).toHaveCount(2);
@@ -139,7 +157,8 @@ test.describe('Meetings', () => {
 		await expect(past).toContainText('6 items');
 		await past.locator('summary').click();
 		await expect(past.locator('.label')).toHaveText(['Terms', 'Questions', 'Decisions', 'Actions']);
-		await expect(past).toContainText('Cookie Cutter · my guess: something for AI models');
+		await expect(past).toContainText('Cookie Cutter');
+		await expect(past).not.toContainText('my guess');
 		await expect(past.getByRole('link', { name: 'Open the note' })).toHaveAttribute('href', /\/notes\/Work\/Meetings\//);
 	});
 

@@ -1,6 +1,6 @@
 /**
- * Glossaries: one per workspace, in `<home>/Glossary.md`, for the words you
- * had to guess at.
+ * Glossaries: one per workspace, in `<home>/Glossary.md`: each term, what it
+ * means, and why it matters to that workspace.
  *
  * The Glossary routes talk to this module. It owns where a workspace keeps
  * its glossary, which workspaces have one, and the two writes a user's click
@@ -28,7 +28,6 @@ const TITLE = '# Glossary\n';
 /** A term captured elsewhere, such as in a meeting, that could be added. */
 export interface CapturedTerm {
 	term: string;
-	guess: string | null;
 	/** `[[<note name>]]`, as the glossary's `source::` wants it. */
 	source: string;
 	meeting: { path: string; title: string; date: string | null };
@@ -135,7 +134,7 @@ export async function startGlossary(vault: Vault, workspace: Workspace): Promise
 export async function addTerm(
 	vault: Vault,
 	workspace: Workspace,
-	term: { term: string; guess?: string | null; category?: string | null; source?: string | null }
+	term: { term: string; category?: string | null; source?: string | null }
 ): Promise<Written> {
 	const path = glossaryPath(workspace);
 	if (!path) return invalid('This workspace has no folder to keep a glossary in.');

@@ -108,7 +108,7 @@ the notebook's files are made the first time you use them.
   standup** creates it from a small template (`type`, `date`, the calendar
   `event` and `attendees` when it came from one, and a `## Captured`
   heading). The capture box adds one line under that heading per item:
-  `- term:: DVC guess:: data versioning`, `- question:: …`,
+  `- term:: DVC`, `- question:: …`,
   `- decision:: …`, `- [ ] action:: …`, or `- …` for a plain note. **End
   meeting** writes one `ended: HH:MM` line into the frontmatter. The meeting
   under way is today's latest note without `ended:`.
@@ -149,7 +149,8 @@ meeting by hand. Outlook calendars are not supported yet.
 
 ## Glossary
 
-Glossary is a glossary per workspace, for the words you had to guess at. Any
+Glossary is a glossary per workspace: each term, what it means, and why it
+matters there. Any
 workspace with a folder can have one, meetings or not. It is one file,
 `Glossary.md` in the workspace's home folder, so it is the same glossary a
 meeting's captured terms go into.
@@ -161,20 +162,21 @@ every other workspace, which writes a `Glossary.md` holding only a
 The notebook's old address, `/meetings/<slug>/glossary`, redirects to
 `/glossary/<slug>`.
 
-`Glossary.md` holds one `##` heading per term, with `- guess::`,
-`- status::` (`to-look-up` or `looked-up`), `- category::` and `- source::`
+`Glossary.md` holds one `##` heading per term, with `- status::` (`to-look-up` or `looked-up`), `- category::` and `- source::`
 lines, then the definition, then a line starting `→` saying why the term
 matters in this workspace. Text above the first heading is yours and is
 never touched.
 
-A workspace's glossary page has a filter box, a chip per category, **Mine**
-for the terms you guessed at and **To look up** for the ones still waiting.
-Each entry shows your guess beside the definition, its status, where it came
-from and the `→` line. Type a term in (with a guess and a category if you
+A workspace's glossary page has a filter box and a row of tabs: **All**, one
+per category with its count, and **To look up** while any are still waiting.
+Each entry shows its category, the definition, where it came from and the `→`
+line. There is no "my guess": a `- guess::` line written by an older version
+is left in the file and not shown. Type a term in (with a category if you
 like) to append an entry to look up; a term the glossary already has is
 refused rather than written twice. In a workspace with meetings, any term
 captured in a meeting that the glossary still lacks waits at the top, and
-**Add to glossary** appends an entry for it.
+**Add to glossary** appends an entry for it. **Start a meeting**, beside the
+title, goes to the workspace's meeting notes (see Meetings).
 
 **Look up with Claude** drafts the definition and the `→` line, and marks the
 entry looked up with `- drafted:: Claude`; **Look up all** does every waiting
@@ -257,7 +259,9 @@ custom pages all live.
 
 A line `meetings: true` gives the workspace a meeting notebook (see
 Meetings). Without it the workspace has none, which is the default, because
-most workspaces never hold a meeting.
+most workspaces never hold a meeting. **Start a meeting**, on every
+workspace's Overview and glossary, adds that line for you the first time and
+then opens the meeting notes, where you name the meeting and start it.
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily

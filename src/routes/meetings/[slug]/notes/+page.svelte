@@ -27,7 +27,6 @@
 	let edited = $state(false);
 	let kind = $state<CaptureKind>('term');
 	let text = $state('');
-	let guess = $state('');
 	let textInput: HTMLInputElement | undefined = $state();
 
 	$effect(() => {
@@ -68,10 +67,9 @@
 	async function capture(event: Event) {
 		event.preventDefault();
 		if (!data.current || !text.trim() || busy) return;
-		const ok = await run({ action: 'capture', slug, path: data.current.path, kind, text, guess: kind === 'term' ? guess : undefined });
+		const ok = await run({ action: 'capture', slug, path: data.current.path, kind, text });
 		if (ok) {
 			text = '';
-			guess = '';
 			textInput?.focus();
 		}
 	}
@@ -154,9 +152,6 @@
 			</div>
 			<div class="inputs">
 				<input class="field" bind:this={textInput} bind:value={text} placeholder={placeholder[kind]} aria-label="Capture" data-testid="capture-text" />
-				{#if kind === 'term'}
-					<input class="field guess" bind:value={guess} placeholder="My guess…" aria-label="My guess" data-testid="capture-guess" />
-				{/if}
 				<button class="btn primary" disabled={busy || !text.trim()} data-testid="capture-add">Add</button>
 			</div>
 		</form>
@@ -164,7 +159,7 @@
 		{#if current.captured.length}
 			<div class="rows captured">
 				{#each current.captured as item (item.line)}
-					<div class="item"><span class="badge muted">{CAPTURE_LABELS[item.kind].one}</span> {item.text}{#if item.guess}<span class="muted">{` · my guess: ${item.guess}`}</span>{/if}</div>
+					<div class="item"><span class="badge muted">{CAPTURE_LABELS[item.kind].one}</span> {item.text}</div>
 				{/each}
 			</div>
 		{:else}
@@ -223,7 +218,7 @@
 			<p class="label">{CAPTURE_LABELS[k].many}</p>
 			<ul class="items">
 				{#each items as item (item.line)}
-					<li class:done={item.done}>{item.text}{#if item.guess}<span class="muted">{` · my guess: ${item.guess}`}</span>{/if}</li>
+					<li class:done={item.done}>{item.text}</li>
 				{/each}
 			</ul>
 		{:else}
@@ -248,7 +243,6 @@
 	.capture { margin: var(--s4) 0 var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
 	.inputs { display: flex; gap: var(--s2); }
 	.inputs .field { flex: 2; min-width: 0; }
-	.inputs .guess { flex: 1; }
 	.inputs .btn { flex: none; }
 	.captured { font-size: var(--t14); margin-top: var(--s3); }
 	.item .badge { margin-right: 6px; }
@@ -271,7 +265,7 @@
 
 	@media (max-width: 720px) {
 		.inputs { flex-wrap: wrap; }
-		.inputs .field, .inputs .guess { flex: 1 1 100%; }
+		.inputs .field { flex: 1 1 100%; }
 		.inputs .btn { flex: 1; justify-content: center; min-height: 44px; }
 		.past { padding: var(--s3) var(--s4); }
 	}

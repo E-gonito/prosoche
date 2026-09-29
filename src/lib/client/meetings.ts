@@ -10,7 +10,8 @@ export type MeetingResult = { ok: true; path: string } | { ok: false; message: s
 export type MeetingAction =
 	| { action: 'assign'; title: string; slug: string }
 	| { action: 'start'; slug: string; type: 'meeting' | 'standup'; title: string; event?: string | null; attendees?: string[] }
-	| { action: 'capture'; slug: string; path: string; kind: string; text: string; guess?: string }
+	| { action: 'capture'; slug: string; path: string; kind: string; text: string }
+	| { action: 'enable'; slug: string }
 	| { action: 'end'; slug: string; path: string };
 
 /** Send one notebook write. */

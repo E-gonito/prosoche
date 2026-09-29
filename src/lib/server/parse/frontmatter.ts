@@ -23,7 +23,9 @@ import matter from 'gray-matter';
 /**
  * Set one top-level frontmatter key, leaving every other byte as it was.
  *
- * `value` is a string for a scalar field or a list of strings for a list
+ * `value` is a string for a scalar field, a boolean for a flag such as a
+ * workspace's `meetings: true` (written bare, so YAML reads it back as a
+ * boolean rather than the string "true"), or a list of strings for a list
  * field. An empty string, or a list with nothing in it, clears the field: the
  * key stays with no value (`company:`), so it keeps its place in the block for
  * the next edit.
@@ -44,16 +46,19 @@ import matter from 'gray-matter';
  * newlines included, collapse to one space: a value is one line. Pure; never
  * throws.
  */
-export function setFrontmatterField(content: string, key: string, value: string | readonly string[]): string {
-	const list = typeof value === 'string' ? null : value.map(oneLine).filter(Boolean);
-	const scalar = typeof value === 'string' ? oneLine(value) : '';
+export function setFrontmatterField(content: string, key: string, value: string | boolean | readonly string[]): string {
+	const list = typeof value === 'string' || typeof value === 'boolean' ? null : value.map(oneLine).filter(Boolean);
+	const scalar = typeof value === 'boolean' ? String(value) : typeof value === 'string' ? oneLine(value) : '';
 	const clearing = list ? list.length === 0 : scalar === '';
+	// The scalar as YAML text: a flag bare, anything else quoted only if YAML
+	// would otherwise read it as something other than this string.
+	const encoded = clearing || list ? '' : typeof value === 'boolean' ? scalar : yamlScalar(scalar, 'value');
 
 	const lines = content.split('\n');
 	const close = lines[0]?.replace(/\r$/, '') === '---' ? lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---') : -1;
 	if (close === -1) {
 		if (clearing) return content;
-		return `---\n${render(key, scalar, list, '  ').join('\n')}\n---\n\n${content}`;
+		return `---\n${render(key, encoded, list, '  ').join('\n')}\n---\n\n${content}`;
 	}
 
 	const eol = lines[0].endsWith('\r') ? '\r' : '';
@@ -62,7 +67,7 @@ export function setFrontmatterField(content: string, key: string, value: string 
 
 	if (at === -1) {
 		if (clearing) return content;
-		lines.splice(close, 0, ...render(key, scalar, list, '  ').map((l) => l + eol));
+		lines.splice(close, 0, ...render(key, encoded, list, '  ').map((l) => l + eol));
 		return lines.join('\n');
 	}
 
@@ -71,14 +76,14 @@ export function setFrontmatterField(content: string, key: string, value: string 
 
 	if (!list && end === at + 1) {
 		const [, spacing, , cr] = keyLine.exec(lines[at])!;
-		lines[at] = clearing ? `${key}:${cr}` : `${key}:${spacing || ' '}${yamlScalar(scalar, 'value')}${cr}`;
+		lines[at] = clearing ? `${key}:${cr}` : `${key}:${spacing || ' '}${encoded}${cr}`;
 		return lines.join('\n');
 	}
 
 	const item = end > at + 1 ? /^([ \t]*)-/.exec(lines[at + 1]) : null;
 	const indent = item ? item[1] : '  ';
 	const lineEnd = lines[at].endsWith('\r') ? '\r' : '';
-	lines.splice(at, end - at, ...render(key, scalar, list, indent).map((l) => l + lineEnd));
+	lines.splice(at, end - at, ...render(key, encoded, list, indent).map((l) => l + lineEnd));
 	return lines.join('\n');
 }
 
@@ -87,10 +92,10 @@ function isContinuation(line: string): boolean {
 	return /^[ \t]+\S/.test(line) || /^-([ \t]|\r?$)/.test(line);
 }
 
-/** The lines one key occupies, before any line-ending is added. */
-function render(key: string, scalar: string, list: string[] | null, indent: string): string[] {
+/** The lines one key occupies, before any line-ending is added. `encoded` is already YAML. */
+function render(key: string, encoded: string, list: string[] | null, indent: string): string[] {
 	if (list) return list.length ? [`${key}:`, ...list.map((item) => `${indent}- ${yamlScalar(item, 'item')}`)] : [`${key}:`];
-	return [scalar ? `${key}: ${yamlScalar(scalar, 'value')}` : `${key}:`];
+	return [encoded ? `${key}: ${encoded}` : `${key}:`];
 }
 
 function oneLine(value: string): string {
