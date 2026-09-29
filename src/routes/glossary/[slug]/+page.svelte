@@ -186,7 +186,7 @@
 								{#if entry.pending}<span class="badge warn">To look up</span>{/if}
 								<span class="actions">
 									<button class="btn ghost small" onclick={() => edit(entry)} data-testid="edit-term-open">Edit</button>
-									<button class="btn ghost small danger" onclick={() => remove(entry.term)} data-testid="delete-term">Delete</button>
+									<button class="btn ghost small remove" onclick={() => remove(entry.term)} data-testid="delete-term">Delete</button>
 								</span>
 							</h3>
 							{#if entry.category}<p class="category">{entry.category}</p>{/if}
@@ -249,8 +249,12 @@
 	}
 	.cat-tabs button:hover { color: var(--text); }
 	.cat-tabs [aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-	.actions { margin-left: auto; display: flex; gap: var(--s1); }
-	.danger { color: var(--bad); }
+	/* Inside an h3, so the buttons would take its serif; they are controls, not
+	   part of the term. `.remove` rather than `.danger`, which is the global
+	   filled red button and would put red text on red. */
+	.actions { margin-left: auto; display: flex; gap: var(--s1); font-family: var(--sans); font-weight: 500; }
+	.actions .remove { color: var(--bad); }
+	.actions .remove:hover { background: var(--soft); color: var(--bad); }
 	.edit { display: flex; flex-direction: column; gap: var(--s2); }
 	.edit-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
 	.edit-row .field { flex: 1 1 180px; width: auto; }
