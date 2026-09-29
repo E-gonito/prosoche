@@ -105,11 +105,11 @@
 			<span class="ctx" title={card.path}>{collapseBreadcrumb(card.context)}</span>
 		</p>
 
-		<button class="card" data-testid="card" onclick={() => (revealed = true)} aria-expanded={revealed}>
-			<div class="q" data-testid="card-question">{card.question}</div>
+		<button class="face" data-testid="card" onclick={() => (revealed = true)} aria-expanded={revealed}>
+			<div class="question" data-testid="card-question">{card.question}</div>
 			{#if revealed}
 				<hr />
-				<div class="a" data-testid="card-answer">{card.answer}</div>
+				<div class="answer" data-testid="card-answer">{card.answer}</div>
 			{:else}
 				<p class="reveal">Tap, or press space, to reveal</p>
 			{/if}
@@ -151,7 +151,15 @@
 	.meta { display: flex; gap: 10px; font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 var(--s3); }
 	.ctx { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-	.card {
+	/*
+	 * Named `.face` rather than `.card`, and the question and answer
+	 * `.question`/`.answer` rather than `.q`/`.a`: those shorter names collide
+	 * with `app.css`'s own `.card` (the boxed-group panel) and `.q1`-`.q4`
+	 * quadrant badges — same class, different rule, and Svelte's scoping does
+	 * not raise a plain class selector's specificity, so whichever stylesheet
+	 * loaded second used to win.
+	 */
+	.face {
 		display: block;
 		width: 100%;
 		text-align: left;
@@ -164,8 +172,8 @@
 		min-height: 190px;
 		cursor: pointer;
 	}
-	.q { font-size: 19px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-	.a { font-size: var(--t16); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+	.question { font-size: 19px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+	.answer { font-size: var(--t16); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 	hr { border: 0; border-top: 1px solid var(--line); margin: var(--s4) 0; }
 	.reveal { margin: 18px 0 0; color: var(--muted); font-size: var(--t13); }
 
@@ -212,8 +220,8 @@
 	 */
 	@media (max-width: 720px) {
 		.session { display: flex; flex-direction: column; min-height: 0; }
-		.card { padding: 18px; flex: 1; min-height: 0; overflow-y: auto; }
-		.q { font-size: 17px; }
+		.face { padding: 18px; flex: 1; min-height: 0; overflow-y: auto; }
+		.question { font-size: 17px; }
 		.grades { flex: none; gap: 6px; }
 		.grade { padding: 14px 2px; min-height: 56px; }
 		.grade b { font-size: var(--t13); }
