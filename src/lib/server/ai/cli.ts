@@ -106,7 +106,14 @@ export function buildArgs(request: RunRequest): { args: string[]; cwd: string } 
 		'--output-format',
 		'json',
 		'--no-session-persistence',
-		'--bare',
+		// Isolation without `--bare`, which reads only ANTHROPIC_API_KEY and so
+		// refuses the subscription login this box runs under ("Not logged in").
+		// These keep what `--bare` was here for: none of the user's settings
+		// or hooks (cwd is never a project), no MCP servers, no skills.
+		'--setting-sources',
+		'project',
+		'--strict-mcp-config',
+		'--disable-slash-commands',
 		'--model',
 		request.settings.model,
 		'--effort',
@@ -206,7 +213,7 @@ export function parseOutput(stdout: string, durationMs: number): RunResult {
 
 	const envelope = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
 	if (envelope.is_error === true || typeof envelope.error === 'string') {
-		const message = typeof envelope.error === 'string' ? envelope.error : 'The model reported an error.';
+		const message = envelopeError(trimmed) ?? (typeof envelope.error === 'string' ? envelope.error : 'The model reported an error.');
 		return { ok: false, reason: 'exit', message, refusals: [], durationMs };
 	}
 
@@ -229,6 +236,21 @@ export function parseOutput(stdout: string, durationMs: number): RunResult {
 				: parseMaybe(text);
 
 	return { ok: true, text, json, costUsd, durationMs };
+}
+
+/**
+ * The error a failed run reported in its JSON envelope on stdout, e.g. "Not
+ * logged in · Please run /login", or null. The CLI exits non-zero with its
+ * reason there rather than on stderr, and "exited with code 1" says nothing.
+ */
+function envelopeError(stdout: string): string | null {
+	try {
+		const body = JSON.parse(stdout.trim()) as Record<string, unknown>;
+		if (body.is_error !== true) return null;
+		return typeof body.result === 'string' ? body.result : typeof body.error === 'string' ? body.error : null;
+	} catch {
+		return null;
+	}
 }
 
 /** Some features ask for JSON in the prose; a plain answer leaves this null. */
@@ -305,7 +327,7 @@ function collect(deps: CliDeps, args: string[], cwd: string, timeoutMs: number):
 		child.on('error', (e: Error) => finish({ ok: false, reason: 'spawn-failed', message: e.message }));
 		child.on('close', (code: number | null) => {
 			if (code === 0) finish({ ok: true, stdout });
-			else finish({ ok: false, reason: 'exit', message: stderr.trim() || `The CLI exited with code ${code}.` });
+			else finish({ ok: false, reason: 'exit', message: stderr.trim() || envelopeError(stdout) || `The CLI exited with code ${code}.` });
 		});
 	});
 }

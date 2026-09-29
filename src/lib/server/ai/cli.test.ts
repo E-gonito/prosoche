@@ -92,6 +92,19 @@ describe('buildArgs', () => {
 		expect(args).toContain('--no-session-persistence');
 	});
 
+	it('isolates the run without --bare, which cannot use the subscription login', () => {
+		const { args } = buildArgs(request());
+		expect(args).not.toContain('--bare');
+		expect(value(args, '--setting-sources')).toBe('project');
+		expect(args).toContain('--strict-mcp-config');
+		expect(args).toContain('--disable-slash-commands');
+	});
+
+	it('reports the reason a failed run gave in its envelope', () => {
+		const out = parseOutput(JSON.stringify({ is_error: true, result: 'Not logged in · Please run /login' }), 5);
+		expect(out.ok === false && out.message).toBe('Not logged in · Please run /login');
+	});
+
 	it('passes a schema only when one was asked for', () => {
 		expect(buildArgs(request()).args).not.toContain('--json-schema');
 		const { args } = buildArgs(request({ jsonSchema: { type: 'object', fields: { term: { type: 'string', maxLength: 9 } } } }));
