@@ -9,8 +9,8 @@
  * belong to this workspace?
  *
  * Earlier versions let a workspace file list `tabs:` of named widgets. The
- * rebuild gives every workspace the same sections instead — Overview, Tasks,
- * CRM, Inbox, Log, Notes, and a tab per file in `Pages/` — so `tabs:` is no
+ * rebuild gives every workspace the same sections instead — Overview, CRM,
+ * Inbox, Log, Notes, and a tab per file in `Pages/` — so `tabs:` is no
  * longer read, and neither is the deal pipeline's old `stages:` list. A file
  * that still has either is parsed the same as any other frontmatter the hub
  * does not recognise: harmlessly ignored.
@@ -55,10 +55,6 @@ export interface Workspace {
 	 * without it reads as having no meetings, as a file without it does.
 	 */
 	meetings?: boolean;
-	/** Note new cards are appended to when the board has nowhere better. */
-	deck: string;
-	/** Board column titles. Empty means the five task statuses. */
-	kanbanColumns: string[];
 	path: string;
 }
 
@@ -176,8 +172,6 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		folders,
 		template: str(fm.template) ?? undefined,
 		meetings: fm.meetings === true,
-		deck: str(fm.deck) ?? `${folders[0] ?? 'Inbox'}/Tasks.md`,
-		kanbanColumns: strList(fm.kanban_columns),
 		path
 	};
 }
@@ -195,7 +189,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'deck' | 'kanbanColumns' | 'aliases' | 'meetings'> {
+interface Seed extends Omit<Workspace, 'path' | 'aliases' | 'meetings'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];

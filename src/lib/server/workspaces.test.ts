@@ -110,8 +110,6 @@ describe('workspaceFor', () => {
 		tag,
 		aliases,
 		folders,
-		deck: 'Inbox/Tasks.md',
-		kanbanColumns: [],
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const all = [ws('client', 'ws/client', ['Work/Client']), ws('work', 'ws/work', ['Work'])];
@@ -143,8 +141,6 @@ describe('workspaceFor, by alias', () => {
 		tag: `ws/${slug}`,
 		aliases,
 		folders,
-		deck: 'Inbox/Tasks.md',
-		kanbanColumns: [],
 		path: `_hub/workspaces/${slug}.md`
 	});
 	const kaya = ws('kaya', ['Kaya Thai'], ['Kaya', 'kaya thai therapy']);

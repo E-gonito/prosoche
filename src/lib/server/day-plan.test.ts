@@ -17,8 +17,6 @@ const STUDY: Workspace = {
 	tag: 'ws/study',
 	aliases: [],
 	folders: ['Study'],
-	deck: '',
-	kanbanColumns: [],
 	path: '_hub/workspaces/study.md'
 };
 

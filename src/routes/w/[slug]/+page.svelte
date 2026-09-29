@@ -1,49 +1,32 @@
 <script lang="ts">
 	/**
-	 * A workspace's overview: what to do next, what came in, what happened
-	 * last, what is stuck, and where the notes are.
+	 * A workspace's overview: its board, its master note, what came in, what
+	 * happened last, and where the notes are.
 	 *
-	 * Every section links to the tab that goes deeper, so this page is a
-	 * summary rather than a second place to do the work.
+	 * The board is where the work is done; every other section links to the
+	 * tab that goes deeper, so the rest of the page is a summary.
 	 */
-	import TaskRow from '$lib/components/board/TaskRow.svelte';
-	import CardDrawer from '$lib/components/CardDrawer.svelte';
+	import Board from '$lib/components/board/Board.svelte';
+	import MasterNote from '$lib/components/MasterNote.svelte';
 	import { noteHref } from '$lib/shared/links';
-	import { displayText, type Task } from '$lib/shared/task';
 
 	let { data } = $props();
 
-	let opened = $state<Task | null>(null);
-	let patched = $state<Record<string, Task>>({});
-
-	const nextActions = $derived(data.nextActions.map((t: Task) => patched[`${t.path}:${t.line}`] ?? t));
 	const slug = $derived(data.workspace?.slug);
 </script>
 
 <section>
-	<p class="label">Next actions <span class="right"><a href="/w/{slug}/tasks">Tasks</a></span></p>
-	<div class="sheet rows">
-		{#each nextActions as task (`${task.path}:${task.line}`)}
-			<TaskRow {task} onopen={(t) => (opened = t)} onchange={(t) => (patched = { ...patched, [`${t.path}:${t.line}`]: t })} />
-		{:else}
-			<p class="none">Nothing open. A card shows here once one has a quadrant, a due date or the workspace's tag.</p>
-		{/each}
-	</div>
+	<p class="label">
+		Board
+		{#if data.board.exists}<span class="right"><a href={noteHref(data.board.path)}>Board.md</a></span>{/if}
+	</p>
+	<Board board={data.board} today={data.today} />
 </section>
 
-{#if data.blocked.length}
-	<section>
-		<p class="label">Blocked <span class="right">{data.blocked.length}</span></p>
-		<div class="sheet rows">
-			{#each data.blocked as card (`${card.task.path}:${card.task.line}`)}
-				<div class="blocked-row">
-					<span class="text">{displayText(card.task.text)}</span>
-					<span class="muted small">waiting on {card.blockers.map((b: { id: string; task: Task | null }) => (b.task ? displayText(b.task.text) : b.id)).join(', ')}</span>
-				</div>
-			{/each}
-		</div>
-	</section>
-{/if}
+<section>
+	<p class="label">Overview</p>
+	<MasterNote {...data.overview} />
+</section>
 
 <div class="split">
 	<section>
@@ -93,18 +76,12 @@
 	</section>
 {/if}
 
-{#if opened}
-	<CardDrawer task={opened} onclose={() => (opened = null)} onchange={(t) => (patched = { ...patched, [`${t.path}:${t.line}`]: t })} />
-{/if}
-
 <style>
 	section { margin-bottom: var(--s5); }
 	.split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s5); }
 	.day { margin: 0; padding: var(--s2) var(--s1) 0; font: 600 var(--t12) inherit; color: var(--muted); }
 	.capture { margin: 0; padding: var(--s1); font-size: var(--t13); border-top: 1px solid var(--line); }
 	.capture:first-of-type { border-top: 0; }
-	.blocked-row { display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s1); border-top: 1px solid var(--line); font-size: var(--t13); }
-	.blocked-row:first-child { border-top: 0; }
 	.row { display: flex; justify-content: space-between; gap: var(--s2); padding: var(--s2) var(--s1); border-top: 1px solid var(--line); color: var(--text); }
 	.row:first-child { border-top: 0; }
 	.row:hover { text-decoration: none; background: var(--soft); }

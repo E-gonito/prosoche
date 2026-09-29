@@ -48,30 +48,25 @@ needing to be retyped later. The unscheduled list is exactly what it says:
 once a task gets a time, from the grip or the timeline, it moves to the
 timeline and leaves this list.
 
-**Overdue** lists open tasks from anywhere in the vault whose due date has
-passed, daily notes excluded, because each of those is a copy of your
-template and would otherwise repeat the same unfinished checklist. Each row
-carries its workspace's dot and a button to plan it onto today.
+**Overdue** lists two kinds of thing whose due date has passed. First the
+open cards on any workspace's board, each with its workspace's dot; tick one
+and it is ticked in that board's `Board.md`. Then open tasks from anywhere
+else in the vault with a Tasks-plugin due date, daily notes excluded, because
+each of those is a copy of your template and would otherwise repeat the same
+unfinished checklist; each of those rows has a button to plan it onto today.
 
 **Rest of the week** runs from tomorrow through the coming Sunday, padded out
 to six days on a short week. Each day lists its calendar events, the open
-tasks already in that day's own note if one exists, and the workspace cards
-due that day; clicking the day opens its own dashboard.
+tasks already in that day's own note if one exists, and the board cards due
+that day, which can be ticked from there; clicking anywhere else on the day
+opens its own dashboard.
 
-**From your workspaces** shows each workspace's most urgent open cards — the
-same ones its board would, in the same order — collapsed beyond the first
-three, plus how many captures are waiting untriaged in its inbox. The button
-on a card adds it to today with no time on it, ready to be dragged onto the
-timeline, which is how you plan from a phone where there is no drag onto a
-grid.
-
-Dragging one of those workspace cards onto the timeline does something
-different from dragging an unscheduled task: it adds a block to the day's own
-note, linking back to the card, instead of writing a time onto the card's
-line in its project note. A time with no date says nothing about which day it
-belongs to, and the timeline only ever reads the day's own note, so the card
-would otherwise have vanished on the drop. The card itself is left exactly as
-it was: the block is time spent on it, not a second copy of it.
+**From your workspaces** shows each workspace's most urgent open board cards
+— priority first, then the soonest due date — collapsed beyond the first
+three, plus how many captures are waiting untriaged in its inbox. A card's
+title opens its workspace, where the board is; its checkbox ticks it in
+`Board.md`. A card on a board is not planned onto the day from here: the
+board is where it moves.
 
 Beyond that, any module may add a card of its own — Study offers one for
 flashcards due, once something is. A private module never does: nothing of
@@ -246,10 +241,13 @@ same sections regardless of what its file used to say.
 
 Folders are comma separated and vault-relative. Notes and tasks inside them
 belong to the workspace, and so does anything tagged `#ws/<slug>` wherever it
-lives in the vault, which is what lets a task belong to a workspace without
-living inside one of its folders. The first folder is the workspace's home:
-it is where `Tasks.md`, `Inbox.md`, `Log.md`, `Glossary.md`, a `CRM/` folder and
-a `Pages/` folder of custom pages all live.
+lives in the vault, which is what gives a task its workspace's dot on Today
+and counts a time block as that workspace's time. Belonging is not the same
+as being on the board: the board is `Board.md` and nothing else, so a tagged
+task elsewhere stays in its note, untouched, and is not a card. The first
+folder is the workspace's home: it is where `Board.md`, `Overview.md`,
+`Inbox.md`, `Log.md`, `Glossary.md`, a `CRM/` folder and a `Pages/` folder of
+custom pages all live.
 
 A line `meetings: true` gives the workspace a meeting notebook (see
 Meetings). Without it the workspace has none, which is the default, because
@@ -265,31 +263,62 @@ text — in practice only daily notes and the Inbox are ever claimed this way.
 The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
-A workspace always has an Overview: next actions, an inbox preview, the
-latest log entry, anything blocked, recent notes, and, for a workspace with
+A workspace always has an Overview: its board, its master note, an inbox
+preview, the latest log entry, recent notes, and, for a workspace with
 meetings, a link into its meeting notebook. CRM always shows, because a list
-of contacts starts empty and filling it is the point. Every other tab — Tasks,
+of contacts starts empty and filling it is the point. Every other tab —
 Inbox, Log, Notes, and one per file in `Pages/` — hides itself until it has
 something to show, so a brand new workspace opens quiet rather than full of
-empty panes; visiting one directly still works; adding its first card, capture
-or log line is what
+empty panes; visiting one directly still works; adding its first capture or
+log line is what
 brings the tab back.
 
-**Tasks** is the board: a card is a checkbox line carrying a quadrant, a due
-date, an id or the workspace's tag, or one that lives in the workspace's deck
-note. The deck is the board written down, so every checkbox in it is a card
-whether or not it carries anything else; a line anywhere else in the
-workspace's notes carrying none of those marks is not shown, because it reads
-as checklist notation rather than work. The board says how many it left out
-and which notes they came from, and will show them one note at a time on
-request. Give a line a quadrant and it becomes a card, by the same convention
-the rest of your vault uses. Nothing is promoted for you. The same tab also
-offers a flat list, filterable by status, for a quick scan or a phone.
+**The board** is `Board.md`, written in the Obsidian Kanban plugin's own
+format, so the same file opens as a board in Obsidian once the plugin is
+installed and reads as a plain checklist until then. Each `##` heading is a
+column; each `- [ ]` item under it is a card, with an optional due date
+`@{2026-10-03}`, a priority `` `Q1` `` to `` `Q4` `` (the daily note's
+convention), labels `#print`, and notes as the indented lines beneath it. A
+workspace with no `Board.md` shows To do, Doing and Done, empty, and the
+first change writes the file.
+
+Drag a card within or between columns — anywhere on the card with a mouse,
+by its ⠿ grip with a finger, since anywhere else a finger is scrolling. Its
+⋯ menu does the same from the keyboard: Move up, Move down, and Move to…
+any column. Each column's **Add card** takes one line and reads the details
+out of it: "Call landlord fri Q1 #legal" is a card called "Call landlord",
+due next Friday, priority Q1, labelled legal. The due words are today,
+tomorrow, a weekday (the next one, never today), or a date written
+`2026-10-03`. Clicking a card opens it to edit its title, due date, priority,
+labels and notes, each saved as you leave the field. A due date turns red
+once it has passed. Columns are added at the end, and renamed, moved or
+deleted from their own ⋯ menu; only an empty column can be deleted.
+
+This is the one file in the vault where prosoche moves lines. A drag cuts
+the card's own lines — the item and its notes — and splices them in where it
+was dropped, byte for byte; every other edit rewrites only the part of the
+line it changes, or the card's notes. Nothing else in the file is touched,
+including anything the plugin wrote that the board does not show, such as
+its settings footer or an archive. Ticking a card writes `[x]` and leaves it
+where it is, and dropping a card on the last column does not tick it — with
+one exception kept from the plugin: a column with a `**Complete**` line
+under its heading ticks cards moved into it and unticks cards moved out.
+Every change carries the version of the file it was made against, so an edit
+made in Obsidian or on another device in the meantime is refused rather than
+overwritten, and the board reloads to show what is there now.
+
+**The master note** is `Overview.md`, shown under the board as rendered
+markdown. Edit opens the file exactly as it is, frontmatter included, and
+Save writes it back whole; if the file has changed since you opened it,
+nothing is written and it says so, so copy what you typed and Cancel to see
+the newer version. With no `Overview.md` yet there is a "Write an overview"
+button instead, and the first save creates the file.
 
 **Inbox** is a capture box over `Inbox.md`: a bullet already written as a task
 is ticked in place through the ordinary task rewrite; "make it a task" copies
 any line's words into `Tasks.md` and ticks the inbox line to show it has been
-filed. Nothing is ever deleted, only marked done.
+filed. Nothing is ever deleted, only marked done. `Tasks.md` is an ordinary
+note now, not the board.
 
 **Log** is `Log.md`, a `## YYYY-MM-DD` heading per session. Sessions are shown
 newest first; the file itself only ever grows downward, because "add an

@@ -2,16 +2,17 @@
  * Today: the dashboard for one day and the week around it.
  *
  * This module composes the vault and the index through the existing core —
- * `daily`, `daily-note`, `board`, `workspaces`, `calendar`, the AI proposal
+ * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar`, the AI proposal
  * layer — into the one object the `/today` routes render. Nothing here is a
- * second copy of a rule: what counts as open, overdue, or a workspace's card
- * is decided once, in `board.ts` and `workspaces.ts`, and this module only
- * asks. Read-only throughout; the one write on this page — planning a card
- * onto a day — is `day-plan.ts`'s job, called from the route.
+ * second copy of a rule: what counts as a workspace's open card is decided
+ * once, in `kanban.ts`, and who owns a task in `workspaces.ts`; this module
+ * only asks. Read-only throughout; the writes on this page — planning a task
+ * onto a day, ticking a card — are `day-plan.ts`'s and `kanban.ts`'s, called
+ * from their routes.
  */
 
 import { dailyNotePath, shiftDay, today as todayKey, type DayKey } from './daily';
-import { compareTasks, openCards } from './board';
+import { boardPath, openCards } from './kanban';
 import { workspaceFor, type Workspace } from './workspaces';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
@@ -22,7 +23,8 @@ import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';
 import { formatDuration } from '$lib/shared/duration';
 import { relativeDay } from '$lib/shared/links';
-import { isOpen, OPEN_STATUSES, type Task } from '$lib/shared/task';
+import { compareTasks, isOpen, OPEN_STATUSES, type Task } from '$lib/shared/task';
+import { compareCards } from '$lib/shared/kanban';
 import type { Owner, TodayData, TodayEvent, WeekDay, WorkspaceGroup } from '$lib/shared/today';
 import type { Vault } from './vault/index';
 
@@ -139,6 +141,9 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 
 	const settings = await loadSettings(vault);
 
+	// A board's cards are listed as cards below, so a Tasks-plugin due date
+	// written on one must not bring it in a second time as a task.
+	const boards = new Set(workspaces.map(boardPath));
 	const overdue = index
 		.findTasks({
 			statuses: OPEN_STATUSES,
@@ -147,7 +152,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 			excludePrefixes: [`${config.hubFolder}/`],
 			limit: OVERDUE_LIMIT
 		})
-		.filter(isOpen)
+		.filter((t) => isOpen(t) && !boards.has(t.path))
 		.sort(compareTasks);
 	const overdueOwners: Record<string, Owner> = {};
 	for (const task of overdue) {
@@ -155,10 +160,11 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		if (owner) overdueOwners[key(task)] = { slug: owner.slug, name: owner.name, color: owner.color };
 	}
 
-	// Each workspace's open cards, gathered once: the week's "due that day"
-	// column and the workspace cards section both read from this rather than
-	// asking the board twice for the same thing.
-	const openByWorkspace = workspaces.map((w) => ({ workspace: w, cards: openCards(index, w, workspaces).sort(compareTasks) }));
+	// Every open card on every board, read once: the overdue cards, the
+	// week's "due that day" and the workspace cards section all come from
+	// this rather than reading each board three times.
+	const cards = await openCards(vault, workspaces);
+	const overdueCards = cards.filter((c) => c.due !== null && c.due < real).sort((a, b) => a.due!.localeCompare(b.due!) || compareCards(a, b));
 
 	const weekDays = restOfWeek(real);
 	const weekRange = weekDays.length ? await eventsBetween(weekDays[0], weekDays[weekDays.length - 1]) : { ok: true as const, events: [] };
@@ -171,21 +177,22 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 			label: formatWeekDay(wd),
 			events: weekRange.ok ? weekRange.events.filter((e) => e.day === wd).map(toTodayEvent) : [],
 			openTasks: wdExists ? index.tasksIn(wdPath).filter((t) => !t.fenced && isOpen(t)) : [],
-			dueTasks: openByWorkspace.flatMap((g) => g.cards).filter((t) => t.due === wd)
+			dueCards: cards.filter((c) => c.due === wd).sort(compareCards)
 		});
 	}
 
 	const workspaceGroups: WorkspaceGroup[] = [];
-	for (const { workspace, cards } of openByWorkspace) {
+	for (const workspace of workspaces) {
+		const own = cards.filter((c) => c.workspace.slug === workspace.slug).sort(compareCards);
 		const home = workspace.folders[0];
 		const inboxCount = home ? countOpenTasks(index, `${home}/Inbox.md`) : 0;
-		if (cards.length === 0 && inboxCount === 0) continue;
+		if (own.length === 0 && inboxCount === 0) continue;
 		workspaceGroups.push({
 			slug: workspace.slug,
 			name: workspace.name,
 			color: workspace.color,
-			cards: cards.slice(0, WORKSPACE_CARD_LIMIT),
-			more: Math.max(0, cards.length - WORKSPACE_CARD_LIMIT),
+			cards: own.slice(0, WORKSPACE_CARD_LIMIT),
+			more: Math.max(0, own.length - WORKSPACE_CARD_LIMIT),
 			inboxCount
 		});
 	}
@@ -216,6 +223,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		briefingText: note.exists ? readRegion(note.content, BRIEFING_MARKER) : null,
 		overdue,
 		overdueOwners,
+		overdueCards,
 		week,
 		workspaces: workspaceGroups,
 		summary: summaryLine({
@@ -223,7 +231,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 			done: doneCount,
 			plannedMinutes: coveredMinutes(scheduled),
 			meetings: dayEvents.ok ? dayEvents.events.length : 0,
-			overdue: overdue.length
+			overdue: overdue.length + overdueCards.length
 		})
 	};
 }

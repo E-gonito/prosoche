@@ -108,3 +108,25 @@ with `.num`, which lines figures up without changing the typeface.
   with Accept and Reject. Every AI write in the app goes through it.
 - **`Capture`**: one line into an inbox note.
 - **`FileTree`**: the vault's folders, used by Notes.
+- **`board/Board`**: a workspace's board. Columns are unboxed, a small-caps
+  heading over a stack of cards; the cards are the boxes, because a card is
+  the thing you act on. Columns sit side by side at 230px or more and scroll
+  sideways; below 560px of board width one column takes most of the width
+  and they snap. Its drawer is **`board/CardEditor`**, and a card shown
+  away from its board (on Today) is **`board/CardRow`**.
+- **`MasterNote`**: a note read as `.prose` with an Edit button that swaps in
+  a textarea of the raw file, Save and Cancel below it.
+
+## Patterns
+
+- **Drag with a grip for fingers.** A mouse drags a card from anywhere on
+  it; a finger only from its ⠿ grip, which has `touch-action: none`,
+  because anywhere else a finger is scrolling. The grip shows on hover and
+  always, faintly, on a screen with no hover.
+- **Every drag has a menu.** Anything that can be dragged can be moved from
+  a ⋯ menu too, for the keyboard.
+- **A menu inside a scroller is fixed.** A popover in a sideways scroller
+  would be clipped, so it is drawn once at the top level, fixed to the
+  viewport at its button, and closed on any scroll or resize.
+- **A due date is red once it is late.** `--bad` for a due date that has
+  passed on something still open; muted otherwise.

@@ -10,6 +10,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import Timeline from '$lib/components/Timeline.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
+	import CardRow from '$lib/components/board/CardRow.svelte';
 	import CardDrawer from '$lib/components/CardDrawer.svelte';
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
@@ -233,9 +234,12 @@
 				</div>
 			{/if}
 
-			{#if data.overdue.length}
-				<p class="label">Overdue <span class="right num">{data.overdue.length}</span></p>
+			{#if data.overdue.length || data.overdueCards.length}
+				<p class="label">Overdue <span class="right num">{data.overdue.length + data.overdueCards.length}</span></p>
 				<div class="sheet rows" data-testid="overdue">
+					{#each data.overdueCards as card (card.path + ':' + card.line)}
+						<CardRow {card} today={data.today} showWorkspace onproblem={failed} />
+					{/each}
 					{#each data.overdue as task (task.path + ':' + task.line)}
 						<TaskRow
 							{task}
@@ -254,8 +258,10 @@
 			<p class="label">Rest of the week</p>
 			<div class="week" data-testid="week">
 				{#each data.week as wd (wd.day)}
-					<a class="sheet week-day" data-testid="week-day" data-day={wd.day} href="/today/{wd.day}">
-						<h3>{wd.label}</h3>
+					<!-- The heading's link covers the whole day, so it opens from
+					     anywhere on it; a due card's checkbox sits above it. -->
+					<div class="sheet week-day" data-testid="week-day" data-day={wd.day}>
+						<h3><a class="day-link" href="/today/{wd.day}">{wd.label}</a></h3>
 						{#if wd.events.length}
 							<ul class="plain">
 								{#each wd.events as event (event.id)}
@@ -268,15 +274,17 @@
 								{#each wd.openTasks as t (t.path + ':' + t.line)}<li>{displayText(t.text)}</li>{/each}
 							</ul>
 						{/if}
-						{#if wd.dueTasks.length}
-							<ul class="plain due">
-								{#each wd.dueTasks as t (t.path + ':' + t.line)}<li>{displayText(t.text)} <span class="chip quiet">due</span></li>{/each}
-							</ul>
+						{#if wd.dueCards.length}
+							<div class="due-cards" data-testid="week-due">
+								{#each wd.dueCards as card (card.path + ':' + card.line)}
+									<CardRow {card} today={data.today} showWorkspace onproblem={failed} />
+								{/each}
+							</div>
 						{/if}
-						{#if !wd.events.length && !wd.openTasks.length && !wd.dueTasks.length}
+						{#if !wd.events.length && !wd.openTasks.length && !wd.dueCards.length}
 							<p class="none">Nothing yet.</p>
 						{/if}
-					</a>
+					</div>
 				{/each}
 			</div>
 
@@ -287,13 +295,8 @@
 						<div class="sheet" data-testid="workspace-card">
 							<h3><i style="background: {group.color}"></i>{group.name} {#if group.inboxCount}<span class="right muted small">{group.inboxCount} in inbox</span>{/if}</h3>
 							<div class="rows">
-								{#each group.cards as task (task.path + ':' + task.line)}
-									<TaskRow
-										{task}
-										overdue={task.due !== null && task.due < data.today}
-										onopen={(t) => (opened = t)}
-										onadd={addToToday}
-									/>
+								{#each group.cards as card (card.path + ':' + card.line)}
+									<CardRow {card} today={data.today} onproblem={failed} />
 								{/each}
 							</div>
 							{#if group.more}<p class="hint">and {group.more} more</p>{/if}
@@ -382,11 +385,14 @@
 	h3 i { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; }
 
 	.week { display: flex; flex-direction: column; gap: var(--s2); margin-bottom: var(--s3); }
-	.week-day { display: block; color: var(--text); }
-	.week-day:hover { text-decoration: none; border-color: var(--accent); }
+	.week-day { position: relative; display: block; color: var(--text); }
+	.week-day:hover { border-color: var(--accent); }
+	.day-link { color: inherit; }
+	.day-link:hover { text-decoration: none; }
+	.day-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-lg); }
 	.plain { list-style: none; margin: 0 0 6px; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
 	.plain li { display: flex; align-items: center; gap: 6px; }
-	.plain.due .chip { padding: 0 6px; }
+	.due-cards { display: flex; flex-direction: column; gap: 2px; margin: 0 0 6px; }
 
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }

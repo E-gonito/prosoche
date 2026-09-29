@@ -55,11 +55,9 @@ const STUDY: Workspace = {
 	aliases: [],
 	folders: ['Study'],
 	template: 'study',
-	deck: 'Study/Tasks.md',
-	kanbanColumns: [],
 	path: '_hub/workspaces/study.md'
 };
-const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], template: undefined, deck: 'Work/Tasks.md', path: '_hub/workspaces/work.md' };
+const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], template: undefined, path: '_hub/workspaces/work.md' };
 const WORKSPACES = [STUDY, WORK];
 
 const DAY = '2026-09-29';
@@ -74,6 +72,21 @@ const WORK_NOTE = [
 	'',
 	'- [ ] Overdue report `Q1` 📅 2026-09-20',
 	`- [ ] Due later this week 📅 ${FUTURE}`,
+	''
+].join('\n');
+
+/** Work's board: one card overdue, one due today, one later this week, one ticked. */
+const BOARD = [
+	'## To do',
+	'',
+	`- [ ] Send the invoice @{${FUTURE}}`,
+	'- [ ] Due today @{2026-09-29} `Q2`',
+	'- [ ] No date at all',
+	'',
+	'## Doing',
+	'',
+	'- [ ] Renew the lease @{2026-09-25} `Q1`',
+	'- [x] Old and done @{2026-09-01}',
 	''
 ].join('\n');
 
@@ -122,21 +135,44 @@ describe('loadToday', () => {
 		expect(data.overdue.map((t) => t.text)).toContain('Overdue report');
 	});
 
-	it('lists the open tasks of a future day, and the workspace cards due on it', async () => {
+	it('lists the open tasks of a future day, and the board cards due on it', async () => {
+		await vault.write('Work/Board.md', BOARD);
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		const group = data.week.find((w) => w.day === FUTURE);
 		expect(group).toBeTruthy();
 		expect(group!.openTasks.map((t) => t.text)).toEqual(['Prep the slides']);
-		expect(group!.dueTasks.map((t) => t.text)).toContain('Due later this week');
+		expect(group!.dueCards.map((c) => [c.title, c.workspace.slug])).toEqual([['Send the invoice', 'work']]);
 	});
 
-	it('gives each workspace its top open cards and its inbox count', async () => {
+	it('puts a board card in Overdue once its day has passed, and counts it in the summary', async () => {
+		await vault.write('Work/Board.md', BOARD);
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.overdueCards.map((c) => [c.title, c.due, c.column])).toEqual([['Renew the lease', '2026-09-25', 'Doing']]);
+		expect(data.summary).toContain(`${data.overdue.length + 1} overdue`);
+	});
+
+	it('leaves a ticked card, and a card due today, out of Overdue', async () => {
+		await vault.write('Work/Board.md', BOARD);
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.overdueCards.map((c) => c.title)).not.toContain('Old and done');
+		expect(data.overdueCards.map((c) => c.title)).not.toContain('Due today');
+	});
+
+	it('no longer treats tagged or deck tasks as workspace cards', async () => {
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.week.flatMap((w) => w.dueCards)).toEqual([]);
+		expect(data.workspaces.find((w) => w.slug === 'work')?.cards ?? []).toEqual([]);
+	});
+
+	it('gives each workspace its most urgent open cards and its inbox count', async () => {
+		await vault.write('Work/Board.md', BOARD);
 		await vault.write('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
 		index.put('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		const work = data.workspaces.find((w) => w.slug === 'work');
 		expect(work?.inboxCount).toBe(1);
-		expect(work?.cards.map((t) => t.text)).toContain('Due later this week');
+		expect(work?.cards.map((c) => c.title)).toEqual(['Renew the lease', 'Due today', 'Send the invoice']);
+		expect(work?.more).toBe(1);
 	});
 
 	it('reads the calendar as not configured without failing the page', async () => {

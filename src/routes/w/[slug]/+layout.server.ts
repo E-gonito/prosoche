@@ -1,20 +1,19 @@
 import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { homeFolder } from '$server/workspaces';
-import { buildBoard } from '$server/board';
 import { readLog } from '$server/log';
 import type { LayoutServerLoad } from './$types';
 
 /** Sections that always exist, in reading order. Overview and CRM never hide. */
-const SECTIONS = ['tasks', 'crm', 'inbox', 'log', 'notes'] as const;
+const SECTIONS = ['crm', 'inbox', 'log', 'notes'] as const;
 
 /**
  * The workspace itself, and which tabs have anything to show.
  *
  * Every page under `/w/[slug]` shares one workspace lookup and one tab strip,
  * computed here so a page's own load only has to fetch what it renders. A
- * tab with nothing behind it — no cards, no captures, no log entry, no notes
- * — is left out of the strip, except CRM, which always shows; its route still answers
+ * tab with nothing behind it — no captures, no log entry, no notes — is
+ * left out of the strip, except CRM, which always shows; its route still answers
  * when linked to directly (Overview always links to Inbox and Log, tab or
  * not), so a workspace with nothing yet is never a dead end.
  *
@@ -36,9 +35,7 @@ export const load: LayoutServerLoad = async ({ params }) => {
 		vault.files(`${home}/Pages`, 'html')
 	]);
 
-	const board = buildBoard(index, workspace, defs);
 	const has: Record<(typeof SECTIONS)[number], boolean> = {
-		tasks: board.columns.some((c) => c.cards.length > 0),
 		inbox: BULLET.test(inbox.content),
 		log: readLog(logNote.content).length > 0,
 		crm: true,
@@ -67,7 +64,6 @@ export const load: LayoutServerLoad = async ({ params }) => {
 const BULLET = /^[ \t]*[-*+][ \t]+/m;
 
 const TITLES: Record<(typeof SECTIONS)[number], string> = {
-	tasks: 'Tasks',
 	inbox: 'Inbox',
 	log: 'Log',
 	crm: 'CRM',

@@ -41,8 +41,6 @@ const WORK: Workspace = {
 	folders: ['Work'],
 	template: 'project',
 	meetings: true,
-	deck: 'Work/Tasks.md',
-	kanbanColumns: [],
 	path: '_hub/workspaces/work.md'
 };
 

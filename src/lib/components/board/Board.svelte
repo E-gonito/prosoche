@@ -1,635 +1,590 @@
 <script lang="ts">
 	/**
-	 * The kanban board for a workspace, on its own `Tasks` tab.
+	 * A workspace's board: its columns side by side, its cards in file order.
 	 *
-	 * Adapted from the old widget catalogue's `Board.svelte`: the thinking is
-	 * unchanged (`$lib/shared/board`, `$lib/client/cards`, `$lib/server/board`
-	 * stay the one place each of those questions is answered), but this copy
-	 * owns its own heading and "show finished" toggle rather than reaching for
-	 * a widget frame's header slot, since the Tasks page is not a grid of
-	 * widgets — it is one board.
+	 * The board it is given is the server's reading of `Board.md`. Every
+	 * change — a drag, a tick, a card added, a column renamed — is one op sent
+	 * with the hash of that reading, and the board that comes back replaces
+	 * this one, whether the op was applied, refused or beaten by an edit made
+	 * somewhere else. So the screen never shows a guess for longer than one
+	 * request, and only one request is ever in flight.
 	 *
-	 * Columns come from the server already filled; this component decides
-	 * nothing about membership and asks `$lib/shared/board` which column a card
-	 * is in, so a card dragged here lands where the server would have put it.
-	 *
-	 * Dragging is never the only way. Every card carries a column select, which
-	 * works from the keyboard and on a phone where a long drag across a
-	 * horizontally scrolling board is miserable.
+	 * What an op does to the file is `$lib/server/parse/kanban.ts`'s business;
+	 * this component only chooses which op to ask for.
 	 */
-	import { displayText, type Task } from '$lib/shared/task';
-	import { cardKey, columnFor, compareCards, type BoardWidget, type Card, type Column } from '$lib/shared/board';
-	import { createCard, moveCard } from '$lib/client/cards';
-	import { editTask } from '$lib/client/api';
-	import { drag, registerDropZone, startDrag } from '$lib/client/drag.svelte';
+	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import CardDrawer from '$lib/components/CardDrawer.svelte';
+	import CardEditor from './CardEditor.svelte';
+	import { changeBoard } from '$lib/client/api';
+	import { boardDrag, clickEndedDrag, startBoardDrag, type BoardDrop } from '$lib/client/board-drag.svelte';
+	import { dueLabel, type Board, type BoardCard, type BoardOp } from '$lib/shared/kanban';
 
-	/** Where the "show the finished columns" preference is kept, per device. */
-	const FINISHED_KEY = 'hub:board-finished';
+	let { board, today }: { board: Board; today: string } = $props();
 
-	let { board, refresh }: { board: BoardWidget; refresh?: () => void } = $props();
+	let current = $state(untrack(() => board));
+	// A fresh load from the server wins over whatever this copy has become.
+	$effect(() => {
+		current = board;
+	});
 
-	const columns = $derived<Column[]>(
-		board.columns.map(({ key, title, status, tag }) => ({ key, title, status, tag }))
-	);
-
-	let patches = $state(new Map<string, Task>());
-	// Cards this page just made: one appended to the deck, or one promoted from
-	// a checklist line. Shown at once rather than waiting for the index to
-	// catch up with the file that was just written.
-	let mine = $state<Card[]>([]);
-	let promoted = $state(new Set<string>());
-	let drafts = $state<Record<string, string>>({});
+	let busy = $state(false);
 	let problem = $state('');
-	let busy = $state('');
-	let opened = $state<Task | null>(null);
-	let reviewing = $state(false);
-	let adding = $state('');
-	let revealed = $state('');
-	let showFinished = $state(false);
-	let active = $state('');
-	let scroller: HTMLDivElement | undefined = $state();
-	let more = $state(false);
+	/**
+	 * The open menu, and where on screen its button is. Drawn outside the
+	 * columns, fixed to the viewport, so the sideways scroller cannot clip it.
+	 */
+	let menu = $state<{ kind: 'card'; line: number } | { kind: 'column'; index: number } | null>(null);
+	let menuAt = $state({ top: 0, right: 0 });
+	let opened = $state<number | null>(null);
+	let adding = $state<number | null>(null);
+	let draft = $state('');
+	let renaming = $state<number | null>(null);
+	let rename = $state('');
+	let addingColumn = $state(false);
+	let columnDraft = $state('');
+	let root: HTMLElement | undefined = $state();
 
-	const cards = $derived.by(() => {
-		const fromServer = board.columns.flatMap((column) => column.cards);
-		const known = new Set(fromServer.map((card) => cardKey(card.task)));
-		return [...fromServer, ...mine.filter((card) => !known.has(cardKey(card.task)))].map((card) => {
-			const patched = patches.get(cardKey(card.task));
-			return patched ? { ...card, task: patched } : card;
-		});
-	});
-	const grouped = $derived(
-		columns.map((column) => ({
-			column,
-			cards: cards.filter((card) => columnFor(card.task, columns).key === column.key).sort(compareCards)
-		}))
-	);
-	const finished = (column: Column) => column.status === 'done' || column.status === 'cancelled';
-	const parked = $derived(grouped.filter((group) => finished(group.column) && group.cards.length === 0).length);
-	const shown = $derived(
-		grouped.filter((group) => showFinished || group.cards.length > 0 || !finished(group.column))
-	);
-	const candidates = $derived(
-		board.candidates
-			.map((note) => ({
-				...note,
-				rest: note.count - note.tasks.length,
-				tasks: note.tasks.filter((task) => !promoted.has(cardKey(task)))
-			}))
-			.filter((note) => note.tasks.length > 0)
-	);
-	const showReview = $derived(reviewing || cards.length === 0);
+	const openedCard = $derived(opened === null ? null : find(opened));
 
-	const excludedSays = $derived.by(() => {
-		const notes = board.candidates;
-		if (notes.length === 0) return `${board.excluded} checklist lines are not cards.`;
-		if (notes.length === 1) {
-			const [only] = notes;
-			return only.count === 1
-				? `1 checklist line in ${only.title} is not a card.`
-				: `${only.count} checklist lines in ${only.title} are not cards.`;
+	function find(line: number): { card: BoardCard; column: number; index: number } | null {
+		for (const [c, column] of current.columns.entries()) {
+			const index = column.cards.findIndex((card) => card.line === line);
+			if (index !== -1) return { card: column.cards[index], column: c, index };
 		}
-		const named = notes.slice(0, 3).map((note) => `${note.count} in ${note.title}`);
-		const rest = notes.length - named.length;
-		if (rest > 0) named.push(`and ${rest} more ${rest === 1 ? 'note' : 'notes'}`);
-		return `${board.excluded} checklist lines are not cards: ${named.join(', ')}.`;
-	});
-
-	$effect(() => {
-		showFinished = localStorage.getItem(FINISHED_KEY) === '1';
-	});
-
-	$effect(() => {
-		const root = scroller;
-		const groups = shown;
-		if (!root) return;
-
-		const measure = () => {
-			more = root.scrollLeft + root.clientWidth < root.scrollWidth - 1;
-		};
-		measure();
-
-		const ratios = new Map<string, number>();
-		const observer = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) {
-					ratios.set((entry.target as HTMLElement).dataset.column ?? '', entry.intersectionRatio);
-				}
-				let best = '';
-				let widest = 0;
-				for (const group of groups) {
-					const ratio = ratios.get(group.column.key) ?? 0;
-					if (ratio > widest) {
-						widest = ratio;
-						best = group.column.key;
-					}
-				}
-				if (best) active = best;
-			},
-			{ root, threshold: [0, 0.25, 0.5, 0.75, 1] }
-		);
-		for (const group of groups) {
-			const element = root.querySelector(`[data-column="${group.column.key}"]`);
-			if (element) observer.observe(element);
-		}
-
-		const resize = new ResizeObserver(measure);
-		resize.observe(root);
-		root.addEventListener('scroll', measure, { passive: true });
-		return () => {
-			observer.disconnect();
-			resize.disconnect();
-			root.removeEventListener('scroll', measure);
-		};
-	});
-
-	function toggleFinished() {
-		showFinished = !showFinished;
-		localStorage.setItem(FINISHED_KEY, showFinished ? '1' : '0');
+		return null;
 	}
 
-	function jumpTo(key: string) {
-		const element = scroller?.querySelector(`[data-column="${key}"]`);
-		if (!scroller || !element) return;
-		const left = scroller.scrollLeft + element.getBoundingClientRect().left - scroller.getBoundingClientRect().left;
-		scroller.scrollTo({ left, behavior: 'smooth' });
-		active = key;
-	}
-
-	function applied(task: Task) {
+	/**
+	 * Send one op. `guess` draws the expected result straight away, for a
+	 * drag, where waiting for the round trip would look like the card
+	 * snapping back; the server's answer replaces it either way.
+	 */
+	async function run(op: BoardOp, guess?: (board: Board) => void): Promise<boolean> {
+		if (busy) return false;
+		busy = true;
 		problem = '';
-		const next = new Map(patches);
-		next.set(cardKey(task), task);
-		patches = next;
+		const before = current;
+		if (guess) {
+			const copy = structuredClone($state.snapshot(current)) as Board;
+			guess(copy);
+			current = copy;
+		}
+		const result = await changeBoard(before.workspace, before.hash, op);
+		busy = false;
+		if (result.ok) {
+			current = result.value;
+			return true;
+		}
+		current = 'board' in result ? result.board : before;
+		problem = result.message;
+		return false;
 	}
 
-	async function move(task: Task, column: Column) {
-		if (busy === cardKey(task)) return;
-		busy = cardKey(task);
-		const result = await moveCard(task, column, columns);
-		busy = '';
-		if (result.ok) applied(result.value);
-		else fail(result.message);
+	function move(line: number, target: BoardDrop) {
+		const from = find(line);
+		if (!from) return;
+		menu = null;
+		void run({ kind: 'move-card', line, column: target.column, index: target.index }, (b) => {
+			const [card] = b.columns[from.column].cards.splice(from.index, 1);
+			b.columns[target.column].cards.splice(target.index, 0, card);
+		});
 	}
 
-	async function add(event: Event, column: Column) {
-		event.preventDefault();
-		const text = (drafts[column.key] ?? '').trim();
-		if (!text || !board.workspace) return;
-		busy = `new:${column.key}`;
-		const result = await createCard({ workspace: board.workspace.slug, text, column: column.key });
-		busy = '';
-		if (!result.ok) return fail(result.message);
-		drafts[column.key] = '';
-		mine = [...mine, { task: result.value, blockers: [] }];
-		refresh?.();
+	function toggle(card: BoardCard) {
+		menu = null;
+		void run({ kind: 'toggle-card', line: card.line, done: !card.done }, (b) => {
+			for (const column of b.columns) for (const c of column.cards) if (c.line === card.line) c.done = !card.done;
+		});
 	}
 
-	async function promote(task: Task, quadrant: number) {
-		busy = cardKey(task);
-		const result = await editTask(task, { quadrant });
-		busy = '';
-		if (!result.ok) return fail(result.message);
-		promoted = new Set(promoted).add(cardKey(task));
-		mine = [...mine, { task: result.value, blockers: [] }];
-		refresh?.();
+	async function addCard(column: number) {
+		const text = draft.trim();
+		if (!text) {
+			adding = null;
+			return;
+		}
+		if (await run({ kind: 'add-card', column, text })) draft = '';
 	}
 
-	function fail(message: string) {
-		problem = message;
+	async function saveRename(column: number) {
+		const title = rename.trim();
+		renaming = null;
+		if (title && title !== current.columns[column]?.title) await run({ kind: 'rename-column', column, title });
 	}
 
-	const blockerTitle = (card: Card) =>
-		card.blockers
-			.map((blocker) => (blocker.task ? displayText(blocker.task.text) : `${blocker.id} (no such task)`))
-			.join(', ');
+	async function addColumn() {
+		const title = columnDraft.trim();
+		if (!title) {
+			addingColumn = false;
+			return;
+		}
+		if (await run({ kind: 'add-column', title })) {
+			columnDraft = '';
+			addingColumn = false;
+		}
+	}
 
-	const noteName = (path: string) => (path.split('/').pop() ?? path).replace(/\.md$/, '');
-	const zoneId = (column: Column) => `board:${board.workspace?.slug ?? 'none'}:${column.key}`;
-	const isDragging = (task: Task) => drag.task?.path === task.path && drag.task?.line === task.line;
+	function columnAction(op: BoardOp) {
+		menu = null;
+		void run(op);
+	}
 
-	function dropColumn(element: HTMLElement, column: Column) {
-		let off = registerDropZone({ id: zoneId(column), element, drop: (task) => void move(task, column) });
-		return {
-			update(next: Column) {
-				off();
-				off = registerDropZone({ id: zoneId(next), element, drop: (task) => void move(task, next) });
-			},
-			destroy: () => off()
+	/** Open, unless this click is the end of a drag. */
+	function open(card: BoardCard) {
+		if (clickEndedDrag()) return;
+		menu = null;
+		opened = card.line;
+	}
+
+	function toggleMenu(next: NonNullable<typeof menu>, event: MouseEvent) {
+		if (menuIs(next)) {
+			menu = null;
+			return;
+		}
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		menuAt = { top: rect.bottom + 4, right: Math.max(8, window.innerWidth - rect.right) };
+		menu = next;
+	}
+
+	function menuIs(m: NonNullable<typeof menu>): boolean {
+		if (!menu || menu.kind !== m.kind) return false;
+		return menu.kind === 'card' ? menu.line === (m as { line: number }).line : menu.index === (m as { index: number }).index;
+	}
+
+	// A fixed menu would float away from its button once anything scrolls.
+	$effect(() => {
+		if (!menu) return;
+		const close = () => (menu = null);
+		window.addEventListener('scroll', close, true);
+		window.addEventListener('resize', close);
+		return () => {
+			window.removeEventListener('scroll', close, true);
+			window.removeEventListener('resize', close);
 		};
+	});
+
+	const menuCard = $derived(menu?.kind === 'card' ? find(menu.line) : null);
+	const menuColumn = $derived(menu?.kind === 'column' ? menu.index : null);
+
+	/** Where the drop line goes in a column: before that card's line, `'end'`, or nowhere. */
+	function dropBefore(c: number): number | 'end' | null {
+		const target = boardDrag.target;
+		if (boardDrag.line === null || !target || target.column !== c) return null;
+		const others = current.columns[c].cards.filter((card) => card.line !== boardDrag.line);
+		return others[target.index]?.line ?? 'end';
 	}
 
-	function takesFocus(node: HTMLInputElement) {
-		node.focus();
-	}
+	const focus = (el: HTMLElement) => el.focus();
 </script>
 
-{#if !board.workspace}
-	<p class="empty">This workspace has no board yet.</p>
-{:else}
-	<div class="head">
-		{#if parked > 0}
-			<button
-				class="btn ghost small finished"
-				data-testid="show-finished"
-				aria-pressed={showFinished}
-				onclick={toggleFinished}
-			>
-				{showFinished ? 'Hide finished' : `Show finished (${parked})`}
-			</button>
-		{/if}
-	</div>
+<svelte:window
+	onclick={(e) => {
+		if (menu && !(e.target as HTMLElement).closest('[data-menu]')) menu = null;
+	}}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') menu = null;
+	}}
+/>
 
-	{#if problem}<p class="problem" data-testid="board-problem" role="alert">{problem}</p>{/if}
+<div class="board" data-testid="board" bind:this={root} class:busy aria-busy={busy}>
+	{#if problem}<p class="problem" role="status" data-testid="board-problem">{problem}</p>{/if}
 
-	<div class="chips pills" role="group" data-testid="column-pills" aria-label="Jump to a column">
-		{#each shown as group (group.column.key)}
-			<button
-				class="chip"
-				class:on={active === group.column.key}
-				data-testid="column-pill"
-				data-pill={group.column.key}
-				aria-current={active === group.column.key ? 'true' : undefined}
-				onclick={() => jumpTo(group.column.key)}
-			>
-				{group.column.title}<span class="n num">{group.cards.length}</span>
-			</button>
-		{/each}
-	</div>
-
-	<div class="deck" class:more data-testid="board-deck" data-more={more}>
-		<div class="columns" bind:this={scroller} data-testid="board">
-			{#each shown as group (group.column.key)}
-				<section
-					class="col"
-					class:over={drag.zone === zoneId(group.column)}
-					data-testid="column"
-					data-column={group.column.key}
-					use:dropColumn={group.column}
-				>
-					<header>
-						<h4>{group.column.title}</h4>
-						<span class="n">{group.cards.length}</span>
-					</header>
-
-					<div class="stack">
-						{#each group.cards as card (cardKey(card.task))}
-							<article
-								class="card"
-								class:dragging={isDragging(card.task)}
-								class:saving={busy === cardKey(card.task)}
-								class:revealed={revealed === cardKey(card.task)}
-								data-testid="card"
-								data-key={cardKey(card.task)}
-							>
-								<div class="top">
-									<span
-										class="grip"
-										data-testid="card-grip"
-										role="button"
-										tabindex="-1"
-										aria-label="Drag {displayText(card.task.text)} to another column"
-										title="Drag to another column"
-										onpointerdown={(e) => startDrag(card.task, e)}
-									>⠿</span>
-									{#if card.task.quadrant}<span class="q q{card.task.quadrant}">Q{card.task.quadrant}</span>{/if}
-									<button class="open" data-testid="open-card" onclick={() => (opened = card.task)}>
-										{displayText(card.task.text)}
-									</button>
-								</div>
-
-								<div class="meta">
-									{#if card.task.due}<span class="due" data-testid="card-due">Due {card.task.due}</span>{/if}
-									{#if card.blockers.length}
-										<span class="blocked" data-testid="card-blocked" title={blockerTitle(card)}>
-											<Icon name="ban" size={11} />{card.blockers.length}
-										</span>
-									{/if}
-									<span class="src" title={card.task.path}>{noteName(card.task.path)}</span>
-								</div>
-
-								<div class="actions">
-									<button
-										class="icon-btn"
-										data-testid="card-more"
-										aria-expanded={revealed === cardKey(card.task)}
-										aria-label="Column picker for {displayText(card.task.text)}"
-										title="Move to another column"
-										onclick={() => (revealed = revealed === cardKey(card.task) ? '' : cardKey(card.task))}
-									>
-										<Icon name="more-horizontal" size={14} />
-									</button>
-									<select
-										class="move"
-										data-testid="move-card"
-										aria-label="Column for {displayText(card.task.text)}"
-										value={group.column.key}
-										onchange={(e) => {
-											const next = columns.find((c) => c.key === e.currentTarget.value);
-											if (next) void move(card.task, next);
-										}}
-									>
-										{#each columns as column (column.key)}
-											<option value={column.key}>{column.title}</option>
-										{/each}
-									</select>
-								</div>
-							</article>
-						{/each}
-					</div>
-
-					{#if adding === group.column.key}
-						<form class="new" onsubmit={(e) => add(e, group.column)}>
-							<input
-								use:takesFocus
-								data-testid="new-card"
-								bind:value={drafts[group.column.key]}
-								placeholder="New card"
-								aria-label="New card in {group.column.title}"
-								onkeydown={(e) => {
-									if (e.key === 'Escape') adding = '';
-								}}
-							/>
-							<button class="btn" data-testid="add-card" disabled={!(drafts[group.column.key] ?? '').trim()}>
-								Add
-							</button>
-							<button
-								type="button"
-								class="icon-btn"
-								data-testid="add-card-cancel"
-								aria-label="Cancel"
-								onclick={() => (adding = '')}
-							>
-								<Icon name="x" size={13} />
-							</button>
-						</form>
+	<div class="scroll" data-board-scroll>
+		{#each current.columns as column, c (c)}
+			{@const line = dropBefore(c)}
+			<section class="column" data-column={c} data-testid="board-column" aria-label={column.title} class:target={boardDrag.target?.column === c}>
+				<header>
+					{#if renaming === c}
+						<input
+							class="field rename"
+							data-testid="column-rename"
+							aria-label="Column name"
+							bind:value={rename}
+							use:focus
+							onblur={() => saveRename(c)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter') saveRename(c);
+								if (e.key === 'Escape') {
+									// Leaving the field saves it, so put the name back first.
+									rename = column.title;
+									renaming = null;
+								}
+							}}
+						/>
 					{:else}
-						<button
-							class="addopen"
-							data-testid="add-card-open"
-							aria-label="Add a card to {group.column.title}"
-							onclick={() => (adding = group.column.key)}
-						>
-							<Icon name="plus" size={13} />Add card
-						</button>
+						<h3>
+							{column.title}
+							<span class="count num">{column.cards.length}{column.limit ? `/${column.limit}` : ''}</span>
+						</h3>
 					{/if}
-				</section>
-			{/each}
-		</div>
-	</div>
+					<button
+						class="icon-btn"
+						data-menu
+						data-testid="column-menu"
+						aria-label="{column.title} column options"
+						aria-haspopup="menu"
+						aria-expanded={menuColumn === c}
+						onclick={(e) => toggleMenu({ kind: 'column', index: c }, e)}
+					><Icon name="more-horizontal" size={16} /></button>
+				</header>
 
-	{#if cards.length === 0}
-		<div class="nothing" data-testid="board-empty">
-			<p class="lead">No cards yet. Add one and it starts {board.deck}.</p>
-			<form class="first" onsubmit={(e) => add(e, columns[0])}>
-				<input
-					data-testid="first-card"
-					bind:value={drafts[columns[0].key]}
-					placeholder="First card for {board.workspace.name}…"
-					aria-label="First card"
-				/>
-				<button class="btn primary">Add card</button>
-			</form>
-			<p class="hint">Every checkbox in that note is a card, with or without a quadrant.</p>
-		</div>
-	{/if}
-
-	{#if board.excluded > 0}
-		<p class="excluded" data-testid="excluded">
-			{excludedSays}
-			{#if !showReview}
-				<button class="link" data-testid="review-excluded" onclick={() => (reviewing = true)}>
-					Review {board.excluded === 1 ? 'it' : 'them'}
-				</button>
-			{/if}
-		</p>
-	{/if}
-
-	{#if showReview && candidates.length > 0}
-		<div class="review" data-testid="promote">
-			<h5>Promote a line to a card</h5>
-			<p class="hint">A quadrant is what makes a line a card, and nothing is promoted for you.</p>
-			{#each candidates as note, i (note.path)}
-				<details class="note" data-testid="candidate-note" open={i === 0}>
-					<summary>
-						{note.title} <span class="n">{note.count} {note.count === 1 ? 'line' : 'lines'}</span>
-					</summary>
-					<a class="src" href="/notes/{note.path.split('/').map(encodeURIComponent).join('/')}">{note.path}</a>
-					{#each note.tasks as task (cardKey(task))}
-						<div class="line" data-testid="candidate">
-							<span class="text">{displayText(task.text)}</span>
-							<span class="qs">
-								{#each [1, 2, 3, 4] as q (q)}
-									<button
-										class="qbtn q{q}"
-										data-testid="promote-q{q}"
-										disabled={busy === cardKey(task)}
-										title="Make this a Q{q} card"
-										aria-label="Make {displayText(task.text)} a Q{q} card"
-										onclick={() => promote(task, q)}
-									>Q{q}</button>
-								{/each}
-							</span>
+				<div class="cards">
+					{#each column.cards as card, i (card.line)}
+						{#if line === card.line}<div class="drop-line" aria-hidden="true"></div>{/if}
+						<!-- The whole card is the drag handle for a mouse; the title button
+						     is what a keyboard or a screen reader uses. -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="card"
+							class:done={card.done}
+							class:lifted={boardDrag.line === card.line}
+							data-card={card.line}
+							data-testid="board-card"
+							onpointerdown={(e) => root && !busy && startBoardDrag(e, { line: card.line, title: card.title, column: c, index: i }, root, (t) => move(card.line, t))}
+						>
+							<span class="grip" data-grip aria-hidden="true">⠿</span>
+							<button
+								class="box"
+								data-nodrag
+								data-testid="card-done"
+								aria-pressed={card.done}
+								aria-label={card.done ? `Mark "${card.title}" not done` : `Mark "${card.title}" done`}
+								disabled={busy}
+								onclick={() => toggle(card)}
+							>{card.done ? '✓' : ''}</button>
+							<div class="body">
+								<button class="title" data-testid="card-open" onclick={() => open(card)}>{card.title || 'Untitled'}</button>
+								{#if card.due || card.priority || card.labels.length || card.notes}
+									<div class="meta">
+										{#if card.due}
+											<span class="due num" class:overdue={!card.done && card.due < today} data-testid="card-due">{dueLabel(card.due, today)}</span>
+										{/if}
+										{#if card.priority}<span class="q q{card.priority}">Q{card.priority}</span>{/if}
+										{#each card.labels as label (label)}<span class="tag">#{label}</span>{/each}
+										{#if card.notes}<span class="notes" title="Has notes"><Icon name="file-text" size={12} label="Has notes" /></span>{/if}
+									</div>
+								{/if}
+							</div>
+							<button
+								class="icon-btn more"
+								data-menu
+								data-nodrag
+								data-testid="card-menu"
+								aria-label="Options for {card.title}"
+								aria-haspopup="menu"
+								aria-expanded={menuCard?.card.line === card.line}
+								onclick={(e) => toggleMenu({ kind: 'card', line: card.line }, e)}
+							><Icon name="more-horizontal" size={14} /></button>
 						</div>
 					{/each}
-					{#if note.rest > 0}
-						<p class="hint">and {note.rest} more in this note; open it to see them all.</p>
-					{/if}
-				</details>
-			{/each}
-		</div>
-	{/if}
+					{#if line === 'end'}<div class="drop-line" aria-hidden="true"></div>{/if}
+				</div>
 
-	{#if opened}
-		<CardDrawer task={opened} onclose={() => (opened = null)} onchange={applied} />
-	{/if}
+				{#if adding === c}
+					<input
+						class="field add-field"
+						data-testid="add-card-text"
+						aria-label="New card in {column.title}"
+						placeholder="Call landlord fri Q1 #legal"
+						bind:value={draft}
+						use:focus
+						onblur={() => {
+							if (!draft.trim()) adding = null;
+						}}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') void addCard(c);
+							if (e.key === 'Escape') {
+								draft = '';
+								adding = null;
+							}
+						}}
+					/>
+				{:else}
+					<button class="add" data-testid="add-card" onclick={() => { draft = ''; adding = c; }}>
+						<Icon name="plus" size={14} /> Add card
+					</button>
+				{/if}
+			</section>
+		{/each}
+
+		<section class="column new-column">
+			{#if addingColumn}
+				<input
+					class="field"
+					data-testid="add-column-text"
+					aria-label="New column name"
+					placeholder="Column name"
+					bind:value={columnDraft}
+					use:focus
+					onblur={() => {
+						if (!columnDraft.trim()) addingColumn = false;
+					}}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') void addColumn();
+						if (e.key === 'Escape') addingColumn = false;
+					}}
+				/>
+			{:else}
+				<button class="add" data-testid="add-column" onclick={() => (addingColumn = true)}><Icon name="plus" size={14} /> Add column</button>
+			{/if}
+		</section>
+	</div>
+</div>
+
+{#if menuCard}
+	{@const { card, column: c, index: i } = menuCard}
+	<div class="menu" role="menu" data-menu data-testid="card-menu-items" style="top: {menuAt.top}px; right: {menuAt.right}px">
+		<button role="menuitem" use:focus onclick={() => open(card)}>Edit</button>
+		<button role="menuitem" onclick={() => toggle(card)}>{card.done ? 'Mark not done' : 'Mark done'}</button>
+		{#if i > 0}<button role="menuitem" onclick={() => move(card.line, { column: c, index: i - 1 })}>Move up</button>{/if}
+		{#if i < current.columns[c].cards.length - 1}<button role="menuitem" onclick={() => move(card.line, { column: c, index: i + 1 })}>Move down</button>{/if}
+		{#if current.columns.length > 1}<p class="menu-label">Move to…</p>{/if}
+		{#each current.columns as other, t (t)}
+			{#if t !== c}
+				<button role="menuitem" data-testid="move-to" onclick={() => move(card.line, { column: t, index: other.cards.length })}>{other.title}</button>
+			{/if}
+		{/each}
+	</div>
+{:else if menuColumn !== null && current.columns[menuColumn]}
+	{@const c = menuColumn}
+	{@const column = current.columns[c]}
+	<div class="menu" role="menu" data-menu data-testid="column-menu-items" style="top: {menuAt.top}px; right: {menuAt.right}px">
+		<button role="menuitem" use:focus onclick={() => { menu = null; rename = column.title; renaming = c; }}>Rename</button>
+		{#if c > 0}<button role="menuitem" onclick={() => columnAction({ kind: 'move-column', column: c, index: c - 1 })}>Move left</button>{/if}
+		{#if c < current.columns.length - 1}<button role="menuitem" onclick={() => columnAction({ kind: 'move-column', column: c, index: c + 1 })}>Move right</button>{/if}
+		<button
+			role="menuitem"
+			class="danger"
+			data-testid="column-delete"
+			disabled={column.cards.length > 0}
+			title={column.cards.length ? 'Move its cards out first' : undefined}
+			onclick={() => columnAction({ kind: 'delete-column', column: c })}
+		>Delete column</button>
+	</div>
+{/if}
+
+{#if openedCard}
+	<CardEditor
+		card={openedCard.card}
+		column={openedCard.column}
+		columns={current.columns.map((c) => c.title)}
+		{busy}
+		{problem}
+		onsave={(fields) => {
+			if (opened !== null) void run({ kind: 'edit-card', line: opened, ...fields });
+		}}
+		ontoggle={(done) => {
+			if (opened !== null) void run({ kind: 'toggle-card', line: opened, done });
+		}}
+		onmove={async (column) => {
+			const at = openedCard;
+			if (!at) return;
+			const title = at.card.title;
+			const index = current.columns[column].cards.length;
+			if (await run({ kind: 'move-card', line: at.card.line, column, index })) {
+				// The card starts on a new line once moved: follow it there.
+				opened = current.columns[column].cards.find((c) => c.title === title)?.line ?? null;
+			}
+		}}
+		onclose={() => (opened = null)}
+	/>
+{/if}
+
+{#if boardDrag.line !== null}
+	<div class="drag-ghost" style="left: {boardDrag.x + 12}px; top: {boardDrag.y - 10}px">{boardDrag.title}</div>
 {/if}
 
 <style>
-	.empty { color: var(--muted); }
-	.head { display: flex; justify-content: flex-end; min-height: 1px; }
-	.finished { white-space: nowrap; }
-	.chip .n { font-size: var(--t11); }
+	/* Sized by the board's own width, not the window's: on a portrait monitor
+	   the rail has already taken its share. */
+	.board { container-type: inline-size; }
+	.busy .card { cursor: progress; }
+	.problem { margin: 0 0 var(--s2); }
 
-	.pills { display: none; }
-
-	.deck { position: relative; min-width: 0; }
-	.deck::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		right: 0;
-		bottom: 6px;
-		width: 28px;
-		pointer-events: none;
-		opacity: 0;
-		transition: opacity 0.15s;
-		background: linear-gradient(to right, rgba(255, 255, 255, 0), var(--panel));
-	}
-	.deck.more::after { opacity: 1; }
-
-	.columns {
-		display: flex;
-		gap: 10px;
+	.scroll {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(230px, 1fr);
+		gap: var(--s4);
 		overflow-x: auto;
-		padding-bottom: 6px;
-		align-items: flex-start;
+		padding-bottom: var(--s2);
+		align-items: start;
+		scrollbar-width: thin;
 	}
-	.col {
-		flex: 1 1 220px;
-		min-width: 220px;
-		background: var(--soft);
-		border: 1px solid var(--line);
-		border-radius: var(--r);
-		padding: 7px;
-	}
-	.col.over { border-color: var(--accent); background: var(--accent-soft); }
-	.col header { display: flex; align-items: center; gap: 6px; margin: 2px 2px 7px; }
-	h4 { margin: 0; font-size: var(--t12); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-	.col header .n { margin-left: auto; font-size: var(--t11); color: var(--muted); }
+	.column { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; border-radius: var(--r-lg); }
+	.column.target { outline: 2px dashed var(--accent); outline-offset: 4px; }
+	.new-column { padding-top: 2px; }
 
-	.stack { display: flex; flex-direction: column; gap: 5px; }
+	header { display: flex; align-items: center; gap: var(--s2); min-height: 30px; }
+	h3 {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+		font: 600 var(--t12)/1.2 var(--sans);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--muted);
+		overflow-wrap: anywhere;
+	}
+	.count { font-weight: 400; letter-spacing: 0; margin-left: var(--s1); }
+	.rename { flex: 1; padding: var(--s1) var(--s2); font-size: var(--t13); }
+
+	.cards { display: flex; flex-direction: column; gap: var(--s2); min-height: var(--s6); }
+
 	.card {
 		position: relative;
+		display: flex;
+		align-items: flex-start;
+		gap: var(--s2);
+		padding: 10px var(--s3) 10px var(--s2);
 		background: var(--panel);
 		border: 1px solid var(--line);
 		border-radius: var(--r-md);
-		padding: 5px 7px 6px;
+		user-select: none;
+		-webkit-user-select: none;
+		cursor: grab;
 	}
-	.card.dragging { opacity: 0.4; }
-	.card.saving { opacity: 0.6; }
-	.top { display: flex; align-items: baseline; gap: 6px; }
-	.grip { color: var(--muted); cursor: grab; touch-action: none; user-select: none; font-size: var(--t12); line-height: 1; }
-	.open {
-		flex: 1;
-		min-width: 0;
+	.card:hover { border-color: #d6cbbb; }
+	.card:focus-within { border-color: var(--accent); }
+	.card.lifted { opacity: 0.35; }
+	.card.done .title { text-decoration: line-through; color: var(--muted); }
+
+	/* The title stretches over the whole card, so a click anywhere opens it;
+	   the checkbox, grip and menu sit above that. */
+	.title {
 		border: 0;
 		background: none;
 		padding: 0;
 		font: inherit;
+		font-size: var(--t14);
+		line-height: 1.4;
+		color: var(--text);
+		text-align: left;
+		cursor: inherit;
+		overflow-wrap: anywhere;
+	}
+	.title::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-md); }
+	.title:focus-visible { outline: none; }
+	.body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--s1); }
+	.grip, .box, .more { position: relative; z-index: 1; }
+
+	.grip {
+		flex: none;
+		width: var(--s3);
+		margin-top: 2px;
+		color: var(--muted);
 		font-size: var(--t13);
-		color: inherit;
+		line-height: 1;
+		touch-action: none;
+		opacity: 0;
+	}
+	.card:hover .grip { opacity: 1; }
+	.box {
+		flex: none;
+		width: var(--s4);
+		height: var(--s4);
+		margin-top: 2px;
+		padding: 0;
+		border: 1.5px solid #9aa0a6;
+		border-radius: 3px;
+		background: var(--field);
+		font-size: var(--t11);
+		line-height: 1;
+		color: #fff;
+		cursor: pointer;
+	}
+	.box:hover { border-color: var(--accent); }
+	.done .box { background: var(--accent); border-color: var(--accent); }
+
+	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+	.due { font-size: var(--t12); color: var(--muted); }
+	.due.overdue { color: var(--bad); font-weight: 600; }
+	.notes { color: var(--muted); display: inline-flex; }
+
+	.more { flex: none; margin: -2px -6px 0 0; opacity: 0; }
+	.card:hover .more, .more:focus-visible, .more[aria-expanded='true'] { opacity: 1; }
+
+	.menu {
+		position: fixed;
+		z-index: 40;
+		min-width: 170px;
+		display: flex;
+		flex-direction: column;
+		padding: var(--s1);
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: var(--r-md);
+		box-shadow: var(--shadow);
+	}
+	.menu button {
+		border: 0;
+		background: none;
+		padding: 6px var(--s2);
+		border-radius: var(--r-sm);
+		font: inherit;
+		font-size: var(--t13);
+		color: var(--text);
 		text-align: left;
 		cursor: pointer;
 	}
-	.open:hover { color: var(--accent); }
-	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: var(--t11); color: var(--muted); }
-	.due { font-variant-numeric: tabular-nums; }
-	.blocked { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
-	.src { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
-
-	.actions { display: flex; align-items: center; gap: var(--s1); margin-top: 5px; }
-	.actions .icon-btn { display: none; }
-	.move {
-		flex: 1;
-		min-width: 0;
-		font: var(--t11) inherit;
+	.menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--soft); outline: none; }
+	.menu button:disabled { color: var(--muted); cursor: default; }
+	.menu button.danger:not(:disabled) { color: var(--bad); }
+	.menu-label {
+		margin: var(--s1) var(--s2) 2px;
+		font-size: var(--t11);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 		color: var(--muted);
-		border: 1px solid var(--line);
-		border-radius: var(--r-sm);
-		background: var(--field);
-		padding: 2px var(--s1);
 	}
 
-	.addopen {
-		display: flex;
+	.drop-line { height: 2px; margin: -5px 0; background: var(--accent); border-radius: 1px; }
+
+	.add {
+		display: inline-flex;
 		align-items: center;
-		justify-content: center;
-		gap: 5px;
-		width: 100%;
-		min-height: var(--s6);
-		margin-top: 7px;
-		border: 1px dashed var(--line);
-		border-radius: var(--r-md);
+		gap: 6px;
+		align-self: flex-start;
+		border: 0;
 		background: none;
-		color: var(--muted);
+		padding: var(--s1) 2px;
 		font: inherit;
-		font-size: var(--t12);
+		font-size: var(--t13);
+		color: var(--muted);
 		cursor: pointer;
 	}
-	.addopen:hover { background: var(--panel); color: var(--accent); border-color: var(--accent); }
+	.add:hover { color: var(--accent); }
+	.add-field { padding: 7px var(--s2); font-size: var(--t14); }
 
-	.new { display: flex; gap: var(--s1); margin-top: 7px; }
-	.new input {
-		flex: 1;
-		min-width: 0;
-		border: 1px solid var(--line);
+	.drag-ghost {
+		position: fixed;
+		z-index: 50;
+		pointer-events: none;
+		background: var(--text);
+		color: #fff;
 		border-radius: var(--r-sm);
-		padding: 5px 7px;
-		font: inherit;
+		padding: var(--s1) 9px;
 		font-size: var(--t12);
-		background: var(--field);
+		max-width: 260px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		box-shadow: var(--shadow);
 	}
-	.new .btn { padding: var(--s1) var(--s2); font-size: var(--t12); flex: none; }
-	.new .icon-btn { flex: none; }
+	:global(body.board-dragging) { cursor: grabbing; user-select: none; }
 
-	.nothing { margin-top: 14px; text-align: center; padding: 18px var(--s3); border: 1px dashed var(--line); border-radius: var(--r); }
-	.lead { margin: 0 0 10px; color: var(--muted); }
-	.first { display: flex; gap: 6px; justify-content: center; }
-	.first input { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s2) 10px; font: inherit; background: var(--field); min-width: 240px; }
-
-	.excluded { margin: var(--s3) 0 0; font-size: var(--t12); color: var(--muted); }
-	.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
-
-	.review { margin-top: var(--s3); border-top: 1px solid var(--line); padding-top: 10px; }
-	h5 { margin: 0 0 var(--s1); font-size: var(--t13); }
-	.note { margin-top: 10px; }
-	.note summary { cursor: pointer; font-size: var(--t13); }
-	.note summary .n { font-size: var(--t11); color: var(--muted); }
-	.note .src { display: block; font-size: var(--t12); margin: 2px 0; max-width: none; }
-	.line { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t13); }
-	.line .text { flex: 1; min-width: 0; }
-	.qs { display: flex; gap: 3px; flex: none; }
-	.qbtn {
-		border: 1px solid var(--line);
-		background: var(--field);
-		border-radius: 4px;
-		font: var(--t11)/1 var(--mono);
-		padding: 3px var(--s1);
-		cursor: pointer;
-		color: var(--muted);
-	}
-	.qbtn:hover:not(:disabled) { color: #fff; }
-	.qbtn.q1:hover:not(:disabled) { background: var(--q1); border-color: var(--q1); }
-	.qbtn.q2:hover:not(:disabled) { background: var(--q2); border-color: var(--q2); }
-	.qbtn.q3:hover:not(:disabled) { background: var(--q3); border-color: var(--q3); }
-	.qbtn.q4:hover:not(:disabled) { background: var(--q4); border-color: var(--q4); }
-
-	.problem { margin: 0 0 var(--s2); }
-
-	@media (hover: hover) {
-		.top { padding-right: 22px; }
-		.actions { position: absolute; top: 3px; right: var(--s1); display: block; margin-top: 0; }
-		.actions .icon-btn { display: inline-flex; opacity: 0.4; }
-		.card:hover .actions .icon-btn,
-		.card:focus-within .actions .icon-btn { opacity: 1; }
-		.move {
-			position: absolute;
-			top: 21px;
-			right: 0;
-			z-index: 2;
-			width: max-content;
-			max-width: 150px;
-			visibility: hidden;
-			background: var(--panel);
-			box-shadow: 0 2px 8px rgba(31, 35, 40, 0.18);
-		}
-		.card:hover .move,
-		.card:focus-within .move,
-		.card.revealed .move { visibility: visible; }
+	/* There is no hover on a touch screen: the grip and the menu are always
+	   there, faint, and the grip is where a finger starts a drag. */
+	@media (hover: none) {
+		.grip { opacity: 0.6; padding: 0 var(--s1); margin-left: calc(-1 * var(--s1)); }
+		.more { opacity: 0.7; }
+		.card { cursor: default; }
 	}
 
-	@media (max-width: 720px) {
-		.col { flex: 0 0 82vw; scroll-snap-align: start; }
-		.columns { scroll-snap-type: x mandatory; }
-		.first input { min-width: 0; flex: 1; }
-		.pills { display: flex; flex-wrap: nowrap; overflow-x: auto; min-width: 0; margin-bottom: var(--s2); padding-bottom: 2px; }
-		.pills .chip { min-height: 40px; }
-		.top { padding-right: 0; }
-		.actions { position: static; display: flex; margin-top: 5px; }
-		.actions .icon-btn { display: none; }
-		.move { position: static; flex: 1; width: auto; max-width: none; visibility: visible; box-shadow: none; }
+	/* Too narrow for the columns side by side: one column at a time, most of
+	   the width, the next one peeking in, snapping as it scrolls. */
+	@container (max-width: 560px) {
+		.scroll { grid-auto-columns: 84%; scroll-snap-type: x mandatory; }
+		.column { scroll-snap-align: start; }
 	}
 </style>

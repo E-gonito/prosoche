@@ -1,6 +1,6 @@
 import { hub } from '$server/hub';
 import { homeFolder } from '$server/workspaces';
-import { openCards } from '$server/board';
+import { openCards } from '$server/kanban';
 import { openInboxCount } from '$server/inbox';
 import { readLog } from '$server/log';
 import { parseNote } from '$server/parse/note';
@@ -11,10 +11,11 @@ import type { PageServerLoad } from './$types';
  * open one.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, index, ready, workspaces } = hub();
+	const { vault, ready, workspaces } = hub();
 	await ready;
 
 	const defs = await workspaces();
+	const cards = await openCards(vault, defs);
 	const rows = await Promise.all(
 		defs.map(async (workspace) => {
 			const home = homeFolder(workspace);
@@ -33,7 +34,7 @@ export const load: PageServerLoad = async () => {
 				name: workspace.name,
 				color: workspace.color,
 				description: description ?? '',
-				openTasks: openCards(index, workspace, defs).length,
+				openTasks: cards.filter((c) => c.workspace.slug === workspace.slug).length,
 				inboxCount: openInboxCount(inbox.content),
 				latestLog: readLog(log.content)[0]?.day ?? null
 			};
