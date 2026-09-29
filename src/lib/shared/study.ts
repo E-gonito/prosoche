@@ -149,6 +149,14 @@ export interface TopicCoverage extends Topic {
 	state: 'covered' | 'started' | 'gap';
 }
 
+/** One tab of the study section's own tab bar. */
+export interface StudyTab {
+	title: string;
+	href: string;
+	/** Overview is always visible; every other tab hides until it has data. */
+	visible: boolean;
+}
+
 /** One day of a habit, for the streak strip. */
 export interface HabitDay {
 	day: string;

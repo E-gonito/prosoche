@@ -1,35 +1,46 @@
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { loadWidgets } from '$server/widgets';
+import { studySummary, studyTabs } from '$server/study/summary';
+import { minutesThisWeek, streak } from '$server/study/sessions';
+import { topicsIn } from '$server/study/topics';
+import { isDone } from '$lib/shared/task';
 import type { PageServerLoad } from './$types';
 
-/** The dashboard's widgets, in reading order: what is due, then what is next. */
-const TABS = ['flashcards-due', 'currently-learning', 'queue', 'habits', 'topic-map'];
-
 /**
- * The study dashboard.
- *
- * Its scope is a workspace, because the widgets are the workspace widgets:
- * `?ws=<slug>` picks one, otherwise the first workspace built from the study
- * template, otherwise the whole vault. So this page is a view of a workspace
- * rather than a second, parallel notion of "study" that could disagree with
- * one.
+ * Study at a glance: what is due right now, the goals under way, this week's
+ * time against the target, the streak, and what is currently being read.
  */
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async () => {
 	const { vault, index, ready, workspaces } = hub();
 	await ready;
 
-	const defs = await workspaces();
-	const asked = url.searchParams.get('ws');
-	const workspace = asked ? (defs.find((w) => w.slug === asked) ?? null) : (defs.find((w) => w.template === 'study') ?? null);
-
 	const day = today();
-	const widgets = await loadWidgets(TABS, { vault, index, workspace, workspaces: defs, today: day });
+	const summary = await studySummary(vault, index, workspaces, day);
+	const topics = await topicsIn(vault, index, summary.scope);
 
 	return {
 		today: day,
-		widgets,
-		workspace: workspace ? { slug: workspace.slug, name: workspace.name, color: workspace.color } : null,
-		choices: defs.map((w) => ({ slug: w.slug, name: w.name }))
+		tabs: studyTabs(summary),
+		due: summary.cards.cards.length,
+		fresh: summary.cards.fresh,
+		goals: summary.goals.goals.map((goal) => {
+			const next = goal.milestones.find((m) => !isDone(m)) ?? null;
+			return {
+				title: goal.title,
+				target: goal.target,
+				done: goal.milestones.filter(isDone).length,
+				total: goal.milestones.length,
+				next: next ? { text: next.text, due: next.due } : null
+			};
+		}),
+		weeklyHours: summary.goals.weeklyHours,
+		weekMinutes: minutesThisWeek(summary.sessions, day),
+		streak: streak(summary.sessions, day),
+		currentlyReading: summary.resources.find((r) => r.status === 'learning') ?? null,
+		// Top-level folders only, and a dozen at most: a compact list, not the map.
+		topics: topics
+			.filter((t) => t.parent === null)
+			.map((t) => ({ name: t.name, notes: t.notes }))
+			.slice(0, 12)
 	};
 };
