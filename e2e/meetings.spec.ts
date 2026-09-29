@@ -27,7 +27,9 @@ test.describe('Meetings', () => {
 
 	test('the card renders the primer in the artifact\'s shape', async ({ page }) => {
 		await page.goto('/meetings/work');
-		await expect(page.locator('.tabs a')).toHaveText(['Meeting card', 'Notes', 'Glossary']);
+		// Eye is Work/Pages/eye.html from the Workspaces fixture, served by that module.
+		await expect(page.locator('.tabs a')).toHaveText(['Meeting card', 'Notes', 'Glossary', 'Eye']);
+		await expect(page.locator('.tabs a', { hasText: 'Eye' })).toHaveAttribute('href', '/w/work/pages/Eye.html');
 		const primer = page.getByTestId('primer');
 		await expect(primer.locator('.lead')).toContainText('Your job in the room is to turn talk into constraints.');
 		await expect(primer.locator('.lead')).not.toContainText('Work primer');

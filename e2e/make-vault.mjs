@@ -56,6 +56,8 @@ const TODAY_NOTE = `# [[Journal ${now.getFullYear()}]]
 `;
 
 const files = {
+	// As the real vault has it: the private folder never reaches git.
+	'.gitignore': 'Private/\n',
 	'Journal/Journal Template.md': TEMPLATE,
 	[`Journal/${y}/${m}/${d}.md`]: TODAY_NOTE,
 	'Study/Algorithms.md': `# Algorithms\n\nSee [[Handbook]] and [[Nowhere At All]].\n\n#study\n\n- [ ] Finish chapter 3 \`Q2\`\n`,
