@@ -134,12 +134,17 @@ export interface Drafted {
  * must be passed through to that call, because the path policy is per-run.
  */
 export async function draftChange(request: {
-	feature: 'capture' | 'suggest-flashcards' | 'timesheet';
+	feature: 'capture' | 'suggest-flashcards' | 'timesheet' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup';
 	path?: string;
 	line?: number;
 	expectedRaw?: string;
 	day?: string;
 	count?: number;
+	/** The meeting features: the workspace, the meeting title, event and terms. */
+	slug?: string;
+	title?: string;
+	event?: string;
+	terms?: string[];
 }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
 }

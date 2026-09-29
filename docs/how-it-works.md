@@ -81,6 +81,67 @@ example in the README — is shown read-only, because Obsidian treats those
 lines as text, not tasks, and prosoche follows Obsidian's lead rather than
 inventing its own.
 
+## Meetings
+
+Meetings is a notebook per workspace: a card to read before you go in, a
+place to capture what you don't know while you're there, and a glossary for
+the words you had to guess at. Everything it keeps is markdown in the
+workspace's home folder (its first folder):
+
+- `Primer.md` is the meeting card. Write it in Obsidian, or press **Draft a
+  primer with Claude**; once it exists, **Suggest updates** proposes a
+  revised version. The card draws the note the way it is written: the
+  opening paragraph on its own, a `>` quote as a sand aside (a bold first
+  word becomes its lead-in), each `##` heading as a section label, a bullet
+  list as rows with any nested bullet as the muted line under its row, and a
+  numbered list as a set of frames.
+- `Meetings/YYYY-MM-DD Title.md` is one meeting. **Start meeting** or **Start
+  standup** creates it from a small template (`type`, `date`, the calendar
+  `event` and `attendees` when it came from one, and a `## Captured`
+  heading). The capture box adds one line under that heading per item:
+  `- term:: DVC guess:: data versioning`, `- question:: …`,
+  `- decision:: …`, `- [ ] action:: …`, or `- …` for a plain note. **End
+  meeting** writes one `ended: HH:MM` line into the frontmatter. The meeting
+  under way is today's latest note without `ended:`.
+- "Before you go in" lists every open task line from the workspace's meeting
+  notes. Ticking one rewrites that line and nothing else, as ticking a task
+  anywhere does.
+- `Glossary.md` holds one `##` heading per term, with `- guess::`,
+  `- status::` (`to-look-up` or `looked-up`), `- category::` and
+  `- source::` lines, then the definition, then a line starting `→` saying
+  why the term matters in this workspace. Terms you captured in a meeting
+  that the glossary lacks wait at the top of the Glossary tab; **Add to
+  glossary** appends an entry for one. **Look up with Claude** drafts the
+  definition and the `→` line from the primer and recent meetings, and marks
+  the entry looked up with `- drafted:: Claude`. **Look up all** does every
+  waiting term in one proposal.
+- `Pages/*.html` are the workspace's own pages. Each gets a tab in the
+  notebook.
+
+Every Claude button here (the primer, **Prep with Claude**, the look-ups)
+shows its proposal as a diff first and writes only the file it names, and
+only when you accept. **Prep with Claude** adds a `## Talking points`
+section to the meeting under way, drafted from the primer, the last three
+meetings, the open actions and the calendar event. With no meeting under
+way, it proposes the new meeting note with the talking points already in
+it, so accepting the prep also starts the meeting.
+
+The Meetings page lists today's and the next seven days' calendar events.
+Pick an event's workspace once and it is remembered by the event's title in
+`_hub/meetings.md`, one line per title (`- Dev Weekly Meeting → eye2gene`),
+which you can edit in Obsidian. A workspace whose alias appears in the title
+is offered first but never applied without a click. An assigned event has
+**Prep**, which opens its notebook ready to start it, and **Start**, which
+starts the meeting at once. Nothing from the private folder is ever read
+here.
+
+The calendar is Google's, read through its secret iCal address, so no
+sign-in is needed: in Google Calendar open Settings, choose your calendar,
+then Integrate calendar, copy "Secret address in iCal format", and set it as
+`HUB_GCAL_ICS` in the server's environment. Treat that address like a
+password. Without it the page still works: open a notebook and start a
+meeting by hand. Outlook calendars are not supported yet.
+
 ## Notes
 
 Notes are read-only here: Obsidian is the editor. The list page searches the
