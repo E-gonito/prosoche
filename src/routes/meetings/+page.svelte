@@ -157,7 +157,6 @@
 </div>
 
 <style>
-	.callout code { font: var(--t13) var(--mono); }
 	.events { overflow: hidden; }
 	.event { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--s3); align-items: start; }
 	.event.hl { background: var(--accent-soft); margin: 0 calc(-1 * var(--s5)); padding-left: var(--s5); padding-right: var(--s5); }
