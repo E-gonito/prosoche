@@ -11,5 +11,10 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const home = studyHome(await workspaces(), params.subject);
 	if (!home) error(404, 'There is no study subject by that name.');
-	return { home, decks: await importAnkiDecks(vault, home) };
+	// Deck folders whose name matches one of the subject's own folders start
+	// ticked, so Computer Science's decks are chosen for a subject that keeps
+	// Computer Science/ and Wisdom's are not.
+	const ws = (await workspaces()).find((w) => w.slug === params.subject);
+	const own = (ws?.folders ?? []).map((f) => f.replace(/\/+$/, '').split('/').pop()!.toLowerCase());
+	return { home, own, decks: await importAnkiDecks(vault, home) };
 };

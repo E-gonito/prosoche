@@ -133,8 +133,8 @@ export function ankiDeckUrl(scope: StudyScope, deck: string): string {
  * that has none yet. Returns every deck with what happened to it; a file that
  * already existed is reported as `exists` and left exactly as it was.
  */
-export async function importAnkiDecks(subject: string): Promise<Result<DeckImport[]>> {
-	return post('/api/study/import', { subject }, (body) => body.decks as DeckImport[]);
+export async function importAnkiDecks(subject: string, sources: string[]): Promise<Result<DeckImport[]>> {
+	return post('/api/study/import', { subject, sources }, (body) => body.decks as DeckImport[]);
 }
 
 /**

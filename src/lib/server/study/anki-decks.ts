@@ -29,17 +29,23 @@ export const ANKI_FOLDER = 'Flashcards';
  * the import itself.
  *
  * `home` is the subject's home folder (`studyHome`), vault-relative; '' puts
- * the card files beside the decks. Decks come
- * back in path order, each with its target, card count, first card and any
- * problems reading it.
+ * the card files beside the decks. Decks come back in path order, each with
+ * its target, card count, first card and any problems reading it.
  *
  * Without `apply`, nothing is written and each deck is `new`, `exists` or
  * `empty`. With it, each `new` deck's file is written and comes back
  * `created`; one that appeared since it was listed comes back `exists`,
- * untouched. Never overwrites a file, never writes to a `.txt`, and never
- * throws for a deck it cannot read: a deck that has vanished reads as empty.
+ * untouched. `only`, when given, limits the writing to those source paths;
+ * any other deck is reported as it would be without `apply`. Never
+ * overwrites a file, never writes to a `.txt`, and never throws for a deck it
+ * cannot read: a deck that has vanished reads as empty.
  */
-export async function importAnkiDecks(vault: Vault, home: string, opts: { apply?: boolean } = {}): Promise<DeckImport[]> {
+export async function importAnkiDecks(
+	vault: Vault,
+	home: string,
+	opts: { apply?: boolean; only?: readonly string[] } = {}
+): Promise<DeckImport[]> {
+	const chosen = opts.only ? new Set(opts.only) : null;
 	const out: DeckImport[] = [];
 	for (const below of await vault.files(ANKI_FOLDER, 'txt', { deep: true })) {
 		const source = `${ANKI_FOLDER}/${below}`;
@@ -63,7 +69,7 @@ export async function importAnkiDecks(vault: Vault, home: string, opts: { apply?
 			out.push({ ...base, status: 'exists' });
 			continue;
 		}
-		if (!opts.apply) {
+		if (!opts.apply || (chosen && !chosen.has(source))) {
 			out.push({ ...base, status: 'new' });
 			continue;
 		}

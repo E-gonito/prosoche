@@ -60,6 +60,16 @@ describe('importAnkiDecks', () => {
 		expect(cards.every((c) => c.schedule === null)).toBe(true);
 	});
 
+	it('writes only the decks it is given, and plans the rest', async () => {
+		const decks = await importAnkiDecks(vault, 'Study', { apply: true, only: ['Flashcards/Wisdom.txt'] });
+		expect(decks.map((d) => [d.source, d.status])).toEqual([
+			['Flashcards/CS/Networking/HTTP.txt', 'new'],
+			['Flashcards/Empty.txt', 'empty'],
+			['Flashcards/Wisdom.txt', 'created']
+		]);
+		expect(await vault.list()).toEqual(['Study/Flashcards/Wisdom.md']);
+	});
+
 	it('never overwrites a card file that is already there, and says so', async () => {
 		await mkdir(join(root, 'Study/Flashcards'), { recursive: true });
 		await writeFile(join(root, 'Study/Flashcards/Wisdom.md'), 'mine\n');

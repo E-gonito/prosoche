@@ -22,6 +22,8 @@ test.describe('Anki import', () => {
 		const decks = page.getByTestId('anki-deck');
 		await expect(decks).toHaveCount(2);
 		await expect(page.getByTestId('anki-plan')).toContainText('2 decks, 3 cards. 2 to create');
+		// The fixture subject keeps Study/ only, so no deck folder matches it and nothing starts ticked.
+		await expect(page.getByTestId('anki-import')).toBeDisabled();
 
 		const networking = decks.filter({ hasText: 'CS::Networking' });
 		await expect(networking.getByTestId('deck-target')).toHaveText(NETWORKING);
@@ -36,6 +38,8 @@ test.describe('Anki import', () => {
 	test('writes each deck as a card file on Import, and leaves the .txt alone', async ({ page }) => {
 		const before = vaultFile('Flashcards/CS/Networking.txt');
 		await page.goto('/study/study/import');
+		for (const box of await page.getByTestId('deck-choose').all()) await box.check();
+		await expect(page.getByTestId('anki-import')).toHaveText('Import 2 decks');
 		await page.getByTestId('anki-import').click();
 
 		await expect(page.getByTestId('anki-summary')).toContainText('Created 2 card files holding 3 cards.');
@@ -65,6 +69,7 @@ test.describe('Anki import', () => {
 		await expect(wisdom.getByTestId('deck-status')).toHaveText('Already there');
 		await expect(page.getByTestId('anki-plan')).toContainText('1 to create, 1 already there');
 
+		await page.getByTestId('deck-choose').check();
 		await page.getByTestId('anki-import').click();
 		await expect(page.getByTestId('anki-summary')).toContainText('Created 1 card file holding 2 cards.');
 		await expect(page.getByTestId('anki-summary')).toContainText('Skipped 1 deck whose file was already there.');

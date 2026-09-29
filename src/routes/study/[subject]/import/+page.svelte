@@ -1,8 +1,13 @@
 <script lang="ts">
 	/**
 	 * The Anki import: every deck under `Flashcards/` and the card file it
-	 * becomes, with a sample card, then one Import that writes the files not
-	 * there yet and a summary of what it did.
+	 * becomes, with a sample card, then one Import that writes the chosen files
+	 * not there yet and a summary of what it did.
+	 *
+	 * Decks are grouped by their top folder under `Flashcards/` (Computer
+	 * Science, Wisdom, …), because that is where they differ in subject. A group
+	 * whose name matches one of this subject's folders starts ticked; the rest
+	 * start unticked, so another subject's decks are not swept in by default.
 	 */
 	import { importAnkiDecks } from '$lib/client/study';
 	import type { DeckImport, DeckStatus } from '$lib/shared/anki-import';
@@ -20,13 +25,42 @@
 	const cardsIn = (list: DeckImport[]) => list.reduce((sum, d) => sum + d.cards, 0);
 	const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+	/** The top folder under `Flashcards/` a deck sits in; '' for a deck at its root. */
+	const groupOf = (deck: DeckImport) => {
+		const parts = deck.source.split('/');
+		return parts.length > 2 ? parts[1] : '';
+	};
+	const groups = $derived([...new Set(decks.map(groupOf))]);
+	const fresh = $derived(decks.filter((d) => d.status === 'new'));
+	/** Set once, from the load: the groups named like this subject's own folders. */
+	const defaults = () => data.decks.filter((d) => d.status === 'new' && data.own.includes(groupOf(d).toLowerCase())).map((d) => d.source);
+	let chosen = $state<Set<string>>(new Set(defaults()));
+	const inGroup = (group: string) => fresh.filter((d) => groupOf(d) === group);
+	const allChosen = (group: string) => inGroup(group).length > 0 && inGroup(group).every((d) => chosen.has(d.source));
+	function toggle(source: string) {
+		const next = new Set(chosen);
+		if (next.has(source)) next.delete(source);
+		else next.add(source);
+		chosen = next;
+	}
+	function toggleGroup(group: string) {
+		const next = new Set(chosen);
+		const on = !allChosen(group);
+		for (const d of inGroup(group)) {
+			if (on) next.add(d.source);
+			else next.delete(d.source);
+		}
+		chosen = next;
+	}
+	const chosenCards = $derived(fresh.filter((d) => chosen.has(d.source)).reduce((sum, d) => sum + d.cards, 0));
+
 	const LABEL: Record<DeckStatus, string> = { new: 'New', created: 'Created', exists: 'Already there', empty: 'No cards' };
 	const TONE: Record<DeckStatus, string> = { new: '', created: 'ok', exists: 'muted', empty: 'warn' };
 
 	async function run() {
 		busy = true;
 		problem = '';
-		const result = await importAnkiDecks(data.subject.slug);
+		const result = await importAnkiDecks(data.subject.slug, [...chosen]);
 		busy = false;
 		if (result.ok) imported = result.value;
 		else problem = result.message;
@@ -55,16 +89,28 @@
 				<a href="/study/{data.subject.slug}/flashcards">Go to Flashcards</a>
 			</p>
 		{:else}
-			{@const fresh = withStatus('new')}
 			<div class="plan">
 				<p data-testid="anki-plan">
 					{plural(decks.length, 'deck')}, {plural(cardsIn(decks), 'card')}.
 					{fresh.length} to create{#if withStatus('exists').length}, {withStatus('exists').length} already there{/if}.
+					<b>{plural(chosen.size, 'deck')} chosen</b> ({plural(chosenCards, 'card')}).
 				</p>
-				<button class="btn primary" onclick={run} disabled={busy || fresh.length === 0} data-testid="anki-import">
-					{busy ? 'Importing…' : 'Import'}
+				<button class="btn primary" onclick={run} disabled={busy || chosen.size === 0} data-testid="anki-import">
+					{busy ? 'Importing…' : `Import ${plural(chosen.size, 'deck')}`}
 				</button>
 			</div>
+			{#if groups.length > 1}
+				<div class="groups" data-testid="anki-groups">
+					{#each groups as group (group)}
+						{#if inGroup(group).length}
+							<label class="chip" class:on={allChosen(group)}>
+								<input type="checkbox" checked={allChosen(group)} onchange={() => toggleGroup(group)} />
+								{group || 'Flashcards/'} <span class="muted">{inGroup(group).length}</span>
+							</label>
+						{/if}
+					{/each}
+				</div>
+			{/if}
 			<p class="hint">
 				Nothing is written until you press Import. A file already there is never overwritten, and the
 				<span class="path">.txt</span> decks are never changed. Review history starts fresh.
@@ -76,6 +122,9 @@
 			{#each decks as deck (deck.source)}
 				<div class="deck" data-testid="anki-deck">
 					<div class="head">
+						{#if !imported && deck.status === 'new'}
+							<input type="checkbox" checked={chosen.has(deck.source)} onchange={() => toggle(deck.source)} aria-label="Import {deck.deck}" data-testid="deck-choose" />
+						{/if}
 						<span class="name">{deck.deck}</span>
 						<span class="num muted small" data-testid="deck-count">{plural(deck.cards, 'card')}</span>
 						<span class="badge {TONE[deck.status]}" data-testid="deck-status">{LABEL[deck.status]}</span>
@@ -101,6 +150,8 @@
 	.plan p { margin: 0; }
 	.callout { margin: 0; }
 	.decks { margin-top: var(--s5); }
+	.groups { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+	.groups .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 
 	.head { display: flex; align-items: baseline; gap: var(--s3); }
 	.name { flex: 1; min-width: 0; font-weight: 500; }
