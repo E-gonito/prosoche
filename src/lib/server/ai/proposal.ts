@@ -69,7 +69,7 @@ export interface Policy {
 export interface PolicyContext {
 	today: DayKey;
 	/** Extra paths this particular run may write: the destination capture
-	 *  proposed, the deck a flashcard belongs in, the note being studied. */
+	 *  proposed, the primer, meeting note or glossary a draft names. */
 	destinations?: string[];
 }
 
@@ -116,9 +116,6 @@ export function policyFor(
 		case 'capture':
 			return wrap(['Inbox/', ...extra], { maxFiles: 2 });
 
-		case 'suggest-flashcards':
-			return wrap(extra, { maxFiles: Math.min(settings.blast.maxFiles, 2) });
-
 		// The meeting and glossary features each write one note of one kind,
 		// and the destination names it exactly. The destination arrives back
 		// from the browser, so it is also held to its kind here: a forged one
@@ -131,6 +128,9 @@ export function policyFor(
 		case 'meeting-prep':
 			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
 
+		// Suggest flashcards drafts cards rather than a proposal, and the cards
+		// a person keeps are written by `study/card-files.ts`, so a proposal
+		// claiming to be one may write nowhere; nor may any feature not named.
 		default:
 			return wrap([]);
 	}
