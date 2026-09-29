@@ -23,8 +23,22 @@
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
 	import { timer } from '$lib/client/timer.svelte';
 
+	/**
+	 * A calendar event, drawn on the grid beside the tasks. Deliberately not a
+	 * `Task`: it has no line to rewrite, so it carries only what a read-only
+	 * block needs to place and label itself, plus somewhere to send a click.
+	 */
+	export interface TimelineEvent {
+		id: string;
+		title: string;
+		startMin: number | null;
+		endMin: number | null;
+		href: string;
+	}
+
 	let {
 		tasks,
+		events = [],
 		isToday = false,
 		day,
 		dayPath,
@@ -35,6 +49,8 @@
 		owners = {}
 	}: {
 		tasks: Task[];
+		/** Calendar events for this day. Only the timed ones are placed on the grid. */
+		events?: TimelineEvent[];
 		isToday?: boolean;
 		/**
 		 * The day this timeline shows and the note that holds it. Given both, a
@@ -133,6 +149,10 @@
 	const scheduled = $derived(
 		tasks.filter((t) => Number.isFinite(t.startMin) && Number.isFinite(t.endMin))
 	);
+	/** All-day events have nowhere to sit on a grid of minutes. */
+	const timedEvents = $derived(
+		events.filter((e): e is TimelineEvent & { startMin: number; endMin: number } => e.startMin !== null && e.endMin !== null)
+	);
 
 	/** The range each block occupies, with the dragged one showing its preview. */
 	function rangeOf(task: Task): { startMin: number; endMin: number } {
@@ -142,8 +162,26 @@
 		return { startMin: task.startMin!, endMin: task.endMin! };
 	}
 
-	const range = $derived(timelineRange(scheduled.map(rangeOf)));
-	const placed = $derived(layoutBlocks(scheduled, rangeOf));
+	/**
+	 * Tasks and events placed on one grid together, so a meeting and a card at
+	 * the same hour take separate columns instead of drawing on top of each
+	 * other. An event carries no line to rewrite, so it is never draggable and
+	 * never the target of `start`.
+	 */
+	type Block = { kind: 'task'; task: Task } | { kind: 'event'; event: TimelineEvent & { startMin: number; endMin: number } };
+	const blocks = $derived<Block[]>([
+		...scheduled.map((task) => ({ kind: 'task' as const, task })),
+		...timedEvents.map((event) => ({ kind: 'event' as const, event }))
+	]);
+	function rangeOfBlock(block: Block): { startMin: number; endMin: number } {
+		return block.kind === 'task' ? rangeOf(block.task) : { startMin: block.event.startMin, endMin: block.event.endMin };
+	}
+	function blockKey(block: Block): string {
+		return block.kind === 'task' ? `${block.task.path}:${block.task.line}` : `event:${block.event.id}`;
+	}
+
+	const range = $derived(timelineRange(blocks.map(rangeOfBlock)));
+	const placed = $derived(layoutBlocks(blocks, rangeOfBlock));
 	const hours = $derived(
 		Array.from({ length: Math.ceil((range.toMin - range.fromMin) / 60) + 1 }, (_, i) => range.fromMin + i * 60)
 	);
@@ -483,7 +521,7 @@
 				</div>
 			{/if}
 
-			{#if scheduled.length === 0}
+			{#if blocks.length === 0}
 				<p class="vacant">
 					{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}
 				</p>
@@ -493,8 +531,25 @@
 				<div class="now" data-testid="now-line" style="top: {top(nowMin)}px"></div>
 			{/if}
 
-			{#each placed as p (p.item.path + ':' + p.item.line)}
-				{@const task = p.item}
+			{#each placed as p (blockKey(p.item))}
+				{#if p.item.kind === 'event'}
+					{@const event = p.item.event}
+					<a
+						class="block event"
+						data-testid="calendar-block"
+						href={event.href}
+						style="top: {top(p.startMin)}px; height: {(p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP}px;
+						       --label-lines: {labelLines((p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP)};
+						       left: calc(54px + {(p.column / p.columns) * 100}% - {(p.column / p.columns) * 58}px);
+						       width: calc({100 / p.columns}% - {58 / p.columns}px - 4px)"
+						class:compact={(p.endMin - p.startMin) * PX_PER_MIN < COMPACT_BELOW_PX}
+						aria-label="{event.title}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}, on your calendar"
+					>
+						<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
+						<div class="label">{event.title}</div>
+					</a>
+				{:else}
+				{@const task = p.item.task}
 				{@const done = isDone(task)}
 				{@const owner = ownerOf(task)}
 				{@const timing = timer.task?.path === task.path && timer.task?.line === task.line}
@@ -566,6 +621,7 @@
 						onpointerdown={(e) => { e.stopPropagation(); start(e, task, 'resize'); }}
 					></div>
 				</div>
+				{/if}
 			{/each}
 		</div>
 	</div>
@@ -675,6 +731,21 @@
 	.block.q2 { border-left-color: var(--q2); }
 	.block.q3 { border-left-color: var(--q3); }
 	.block.q4 { border-left-color: var(--q4); }
+
+	/* A calendar event: read-only, sand rather than teal, so it never reads as
+	   a card you could drag or tick. Colour and cursor are the whole diff from
+	   `.block`; the rest of the shape — position, padding, the time line — is
+	   shared, so the two kinds of block still line up on the same grid. */
+	.block.event {
+		background: var(--sand);
+		border-color: var(--sand-edge);
+		border-left-width: 4px;
+		color: var(--text);
+		cursor: pointer;
+		z-index: 1;
+	}
+	.block.event:hover { text-decoration: none; box-shadow: var(--shadow); }
+	.block.event .t { color: var(--sand-edge); }
 
 	/* A time, so body text with the figures lined up rather than monospace. */
 	.t { font-size: var(--t11); font-variant-numeric: tabular-nums; line-height: 15px; color: var(--muted); }

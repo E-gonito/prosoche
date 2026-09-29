@@ -1,20 +1,20 @@
 /**
- * The morning briefing: what today looks like, written into today's note.
+ * The morning briefing: what today looks like, drafted for today's note.
  *
- * This is the one automatic write in the whole application, so it is the one
- * that has to be argued for. SPEC 7.2.1 allows it on a single condition: it
- * may replace the text between `<!-- hub:briefing start -->` and
- * `<!-- hub:briefing end -->` in today's note, and nothing else, ever. That
- * condition is kept by construction rather than by care - the briefing emits
- * a `replace-region` edit and `proposal.replaceRegion` rebuilds the note as
- * head, marker, new body, marker, tail, with all four of those pieces taken
- * verbatim from the file. There is no code path here that produces a whole
- * note.
+ * `docs/plan-rebuild.md`'s Today section replaces SPEC 7.2.1's old exception
+ * for this feature - "the briefing is shown on screen, and written into the
+ * note only after Save to note is pressed" - which is also CLAUDE.md's rule
+ * against a model writing without an explicit accept step. So this module
+ * only ever proposes: it emits a `replace-region` edit and lets
+ * `proposal.replaceRegion` rebuild the note as head, marker, new body,
+ * marker, tail, with all four of those pieces taken verbatim from the file,
+ * but the edit is applied by the caller through the ordinary accept step,
+ * never by this module.
  *
  * The facts come from the index, not from a model: what is scheduled, what is
  * overdue, what is blocked, what yesterday left unfinished are all queries.
  * A model is only asked to write the sentence at the top, and if it is not
- * available the briefing still writes, with the facts and no sentence. A
+ * available the briefing still proposes, with the facts and no sentence. A
  * planner that goes blank because an API was slow is worse than a plain one.
  */
 
@@ -26,8 +26,7 @@ import { displayText, isDone, isOpen, matchKey, type Task } from '$lib/shared/ta
 import { compareTasks, openCards } from '../board';
 import { loadWorkspaces, type Workspace } from '../workspaces';
 import { BRIEFING_MARKER, checkBudget, checkKillSwitch } from './guardrails';
-import { apply, markerBlock, newId, policyFor, readRegion } from './proposal';
-import { enqueue } from './pending';
+import { markerBlock, newId, readRegion } from './proposal';
 import { loadSettings } from './settings';
 import { logRun, spentOn } from './audit';
 import { runClaude, type CliDeps } from './cli';
@@ -250,22 +249,27 @@ export interface BriefingDeps {
 }
 
 /**
- * Produce today's briefing and, when the note allows it, write it.
+ * Produce today's briefing, and draft it as a proposal rather than writing it.
  *
- * Inputs: the vault and index, the day, and whether this was asked for or
- * fired by the clock. Output: what the card should show. Side effects: may
- * write the briefing region of one note, spawns the CLI for the opening
- * sentence, appends to the audit log.
+ * Inputs: the vault and index, the day, and whether this was asked for again
+ * having already run once. Output: what the card should show, including a
+ * proposal when there is fresh text to offer. Side effects: spawns the CLI
+ * for the opening sentence, appends to the audit log. Never writes to the
+ * vault - `docs/plan-rebuild.md`'s Today section and CLAUDE.md's rule against
+ * a model writing without an explicit accept step both replace SPEC 7.2.1's
+ * old exception for this feature. The caller applies the proposal through the
+ * ordinary `/api/ai/proposal` accept step, the same as every other feature.
  *
  * Never throws and never leaves the card empty. The facts come from the
  * index, so a CLI that is missing, refused or over budget costs the sentence
- * and nothing else - the lists still get written. That is the whole reason
+ * and nothing else - the lists still get proposed. That is the whole reason
  * the model's part is one paragraph at the top rather than the briefing
  * itself.
  *
- * Never writes without markers. A note that has none gets a proposal back,
- * which is an ordinary click, because adding a heading to someone's note is a
- * change they should see before it happens.
+ * When the note has no markers yet, the proposal only adds them; the body
+ * text is not written until a second draft, run after that proposal is
+ * accepted, finds them there and offers the `replace-region` edit instead.
+ * That is `propose`'s own rule, kept exactly as it was written.
  */
 export async function run(
 	deps: BriefingDeps,
@@ -288,18 +292,12 @@ export async function run(
 		return { day, text: existing, proposal: null, problem: stop[0].message, stamp };
 	}
 
-	// Read here rather than taken as a dependency: the scheduled job and the
-	// route both hand this module a vault and an index, and a workspace file
-	// is a note in that vault like any other.
+	// Read here rather than taken as a dependency: a route handing this
+	// module a vault and an index is enough, and a workspace file is a note
+	// in that vault like any other.
 	const facts = gather(deps.index, day, await loadWorkspaces(deps.vault));
 	const opener = await openingSentence(deps.vault, facts, chosen, settings.budget, options.cli);
 	const proposal = await propose(deps.vault, day, facts, opener.text, { ...stamp, ...opener.spent });
-
-	// The marker form is G1's exception and applies itself; the other form is a
-	// proposal the user accepts. `apply` decides which by asking the guardrail,
-	// not by trusting the shape we think we built.
-	const policy = policyFor('briefing', settings, { today: day });
-	const result = await apply(deps.vault, proposal, policy);
 
 	await logRun(deps.vault, {
 		at: startedAt,
@@ -307,28 +305,14 @@ export async function run(
 		model: chosen.model,
 		effort: chosen.effort,
 		permission: chosen.permission,
-		paths: result.written,
-		decision: result.written.length ? 'applied' : 'proposed',
-		guardrails: [...new Set(result.refusals.map((r) => r.guardrail))],
+		paths: proposal.edits.map((e) => e.path),
+		decision: 'proposed',
+		guardrails: [],
 		costUsd: opener.spent.costUsd,
 		durationMs: opener.spent.durationMs,
 		note: proposal.summary
 	});
 
-	if (result.written.length) {
-		return {
-			day,
-			text: readRegion((await deps.vault.read(path)).content, BRIEFING_MARKER),
-			proposal: null,
-			problem: null,
-			stamp: { ...stamp, ...opener.spent }
-		};
-	}
-
-	// Nothing was written, which means the note has no markers and adding them
-	// needs a click. Queue it, so a briefing the 07:00 job could not apply is
-	// still waiting on the review page rather than lost.
-	await enqueue(deps.vault, proposal);
 	return {
 		day,
 		text: existing,
