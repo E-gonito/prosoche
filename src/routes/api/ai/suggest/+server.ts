@@ -4,7 +4,7 @@ import { shiftDay, today } from '$server/daily';
 import { fileCapture } from '$server/ai/file-capture';
 import { suggestCards } from '$server/ai/suggest-cards';
 import { draftPrep, draftPrimer } from '$server/ai/meeting-drafts';
-import { draftLookups } from '$server/ai/glossary-drafts';
+import { draftFoundTerms, draftLookups } from '$server/ai/glossary-drafts';
 import { findGlossary } from '$server/glossary';
 import { eventsBetween } from '$server/calendar';
 import type { RequestHandler } from './$types';
@@ -34,9 +34,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		slug?: string;
 		title?: string;
 		event?: string;
-		/** The glossary look-up: which glossary, by slug, and which terms. */
+		/** The glossary features: which glossary, by slug, and what about. */
 		glossary?: string;
 		terms?: string[];
+		folder?: string;
+		from?: number;
 	};
 	const { vault, index, ready, workspaces } = hub();
 	await ready;
@@ -61,10 +63,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ ...result, destinations: [body.path] });
 	}
 
-	// A glossary's look-up names its one destination, the glossary's file.
-	if (body.feature === 'glossary-lookup') {
+	// A glossary's two drafts, both under the look-up's settings and policy.
+	// Each names its one destination, the glossary's file.
+	if (body.feature === 'glossary-lookup' || body.feature === 'glossary-find') {
 		const glossary = await findGlossary(vault, await workspaces(), String(body.glossary ?? ''));
 		if (!glossary) return json({ error: 'no such glossary' }, { status: 404 });
+		if (body.feature === 'glossary-find') {
+			return json(await draftFoundTerms(vault, glossary, { folder: String(body.folder ?? ''), from: Number(body.from) || 0 }));
+		}
 		const terms = Array.isArray(body.terms) ? body.terms.filter((t) => typeof t === 'string') : null;
 		return json(await draftLookups(vault, glossary, terms));
 	}
