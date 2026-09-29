@@ -9,7 +9,10 @@ Guidance for any agent or contributor working in this repository. Read
   rebuildable cache. Never store state the vault cannot express.
 - **Preserve every byte the user did not change.** Task edits rewrite a single
   line through character spans. Never re-serialise a note from a parsed model.
-  Never reorder lines, including where the UI displays them sorted.
+  Never reorder lines, including where the UI displays them sorted. The one
+  exception is a workspace's `Board.md`, where prosoche is the source of
+  truth: dragging a card moves that card's lines byte for byte, and touches
+  nothing else (see `docs/plan-workspaces-v2.md`).
 - **`vault-conformance.test.ts` is the safety net.** It rewrites every task in
   a real vault and asserts the bytes are unchanged. If it fails, stop and fix
   the parser rather than the test.
