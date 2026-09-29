@@ -12,6 +12,7 @@
 <div class="page">
 	<div class="title">
 		<h1>Study</h1>
+		<p><a href="/study/import" data-testid="anki-import-link">Import Anki decks</a></p>
 	</div>
 	<StudyTabs tabs={data.tabs} />
 
