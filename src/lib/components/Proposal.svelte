@@ -22,8 +22,7 @@
 		validation,
 		busy = false,
 		onaccept,
-		onreject,
-		onedit
+		onreject
 	}: {
 		proposal: Proposal;
 		validation: Validation;
@@ -31,8 +30,6 @@
 		/** Called with the edit ids the user ticked. */
 		onaccept: (ids: string[]) => void;
 		onreject: () => void;
-		/** Called when the user wants to change an edit's text before accepting. */
-		onedit?: (id: string, text: string) => void;
 	} = $props();
 
 	const previews = $derived(validation.previews);
@@ -40,8 +37,6 @@
 
 	const allowed = $derived(previews.filter((p) => p.refusals.length === 0).map((p) => p.id));
 	let ticked = $state<string[]>([]);
-	let editing = $state<string | null>(null);
-	let draft = $state('');
 
 	// Start with every applicable edit ticked: the common case is accepting the
 	// lot, and an empty list reads as if nothing were on offer.
@@ -52,15 +47,6 @@
 	const toggle = (id: string) => {
 		ticked = ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id];
 	};
-
-	function startEdit(preview: EditPreview) {
-		editing = preview.id;
-		draft = preview.after;
-	}
-	function saveEdit(id: string) {
-		onedit?.(id, draft);
-		editing = null;
-	}
 
 	const href = (path: string) => `/notes/${path.split('/').map(encodeURIComponent).join('/')}`;
 	const rows = (preview: EditPreview) => diffLines(preview.before, preview.after);
@@ -125,22 +111,9 @@
 				{@render refusalList(preview.refusals, 'edit-refusals')}
 			{/if}
 
-			{#if editing === preview.id}
-				<textarea bind:value={draft} rows="12" data-testid="edit-text" aria-label="Edit the proposed text"></textarea>
-				<div class="row">
-					<button class="btn primary" onclick={() => saveEdit(preview.id)} data-testid="save-edit">Save</button>
-					<button class="btn" onclick={() => (editing = null)}>Cancel</button>
-				</div>
-			{:else}
-				<pre class="diff" data-testid="edit-diff">{#each rows(preview) as row, i (i)}<span
-							class="line {row.kind}">{row.kind === 'add' ? '+' : row.kind === 'remove' ? '-' : ' '}{row.text}
+			<pre class="diff" data-testid="edit-diff">{#each rows(preview) as row, i (i)}<span
+						class="line {row.kind}">{row.kind === 'add' ? '+' : row.kind === 'remove' ? '-' : ' '}{row.text}
 </span>{/each}</pre>
-				{#if onedit && !refused}
-					<button class="btn ghost edit-toggle" onclick={() => startEdit(preview)} data-testid="edit-before-accept">
-						Edit before accepting
-					</button>
-				{/if}
-			{/if}
 		</article>
 	{/each}
 
@@ -194,17 +167,6 @@
 	.line { display: block; }
 	.line.add { background: #e7f6ec; }
 	.line.remove { background: #fdecea; }
-	textarea {
-		width: 100%;
-		font: var(--t12)/1.5 var(--mono);
-		border: 1px solid var(--line);
-		border-radius: var(--r-sm);
-		padding: var(--s2);
-		margin-top: 6px;
-		background: var(--field);
-	}
-	.row { display: flex; gap: var(--s2); margin-top: var(--s2); }
-	.edit-toggle { font-size: var(--t12); padding: 3px var(--s2); margin-top: 6px; }
 	footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: var(--s1); }
 	.note { font-size: var(--t12); }
 </style>

@@ -21,7 +21,6 @@
 		type AiSettings,
 		type FeatureId
 	} from '$lib/shared/ai';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { saveAiSettings, undoProposal } from '$lib/client/ai';
 
 	let { data } = $props();
@@ -65,11 +64,10 @@
 
 <div class="page">
 
-<PageHeader title="Settings">
-	{#snippet meta()}
-		<span class="path">{data.settingsPath}</span>
-	{/snippet}
-</PageHeader>
+<div class="title">
+	<h1>Settings</h1>
+	<p><span class="path">{data.settingsPath}</span></p>
+</div>
 
 <section class="card">
 	<h3>Kill switch</h3>

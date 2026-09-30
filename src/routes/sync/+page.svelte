@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import Confirm from '$lib/components/Confirm.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 
 	let { data } = $props();
 
@@ -117,17 +116,16 @@
 
 <div class="page">
 
-<PageHeader title="Sync">
-	{#snippet meta()}
-		<span class="path">{data.vaultPath}</span>
-	{/snippet}
-	{#snippet actions()}
-		<button class="btn" onclick={() => simple('pull')} disabled={!!busy}>{busy === 'pull' ? 'Pulling…' : 'Pull'}</button>
-		<button class="btn" onclick={() => simple('rebuild')} disabled={!!busy}>
-			{busy === 'rebuild' ? 'Rebuilding…' : 'Rebuild index'}
-		</button>
-	{/snippet}
-</PageHeader>
+<div class="title">
+	<h1>Sync</h1>
+	<p><span class="path">{data.vaultPath}</span></p>
+</div>
+<div class="bar">
+	<button class="btn" onclick={() => simple('pull')} disabled={!!busy}>{busy === 'pull' ? 'Pulling…' : 'Pull'}</button>
+	<button class="btn" onclick={() => simple('rebuild')} disabled={!!busy}>
+		{busy === 'rebuild' ? 'Rebuilding…' : 'Rebuild index'}
+	</button>
+</div>
 
 {#if note}<div class="card msg ok">{note}</div>{/if}
 {#if problem}<div class="card msg bad">{problem}</div>{/if}
@@ -284,6 +282,7 @@
 
 <style>
 	/* A path, so monospaced, as everywhere else a path is drawn. */
+	.bar { display: flex; gap: var(--s2); margin-bottom: var(--s4); }
 	.path { font: var(--t12) var(--mono); }
 	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s4); align-items: start; }
 	.msg { margin-bottom: 14px; }

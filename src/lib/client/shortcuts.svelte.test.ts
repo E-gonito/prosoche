@@ -4,7 +4,6 @@ import { all, keyLabel, register, type Shortcut } from './shortcuts.svelte';
 const shortcut = (keys: string, description = keys): Shortcut => ({
 	keys,
 	description,
-	group: 'Test',
 	run: () => {}
 });
 

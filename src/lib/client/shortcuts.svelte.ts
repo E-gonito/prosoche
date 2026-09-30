@@ -18,8 +18,6 @@ export interface Shortcut {
 	keys: string;
 	/** What it does, in the palette's words. */
 	description: string;
-	/** Heading it appears under in the palette. */
-	group: string;
 	run: () => void;
 	/** Fires even when the caret is in a text box. Chorded keys only. */
 	whileTyping?: boolean;

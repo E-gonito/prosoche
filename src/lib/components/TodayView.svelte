@@ -15,12 +15,10 @@
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
-	import { formatMinutes } from '$lib/shared/time';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
-	import type { TodayData, TodayEvent } from '$lib/shared/today';
+	import type { TodayData } from '$lib/shared/today';
 
 	let { data }: { data: TodayData } = $props();
 
@@ -111,11 +109,6 @@
 		if (result.ok) await invalidateAll();
 		else failed(result.message);
 	}
-
-	function formatEventTime(event: TodayEvent): string {
-		if (event.startMin === null) return '';
-		return event.endMin !== null ? `${formatMinutes(event.startMin)}–${formatMinutes(event.endMin)}` : formatMinutes(event.startMin);
-	}
 </script>
 
 <svelte:head><title>{data.label} · prosoche</title></svelte:head>
@@ -147,11 +140,10 @@
 
 			{#if !data.exists}
 				<div class="sheet">
-					<EmptyState
-						icon="file-text"
-						title={data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}
-						hint="Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced."
-					/>
+					<div class="empty">
+						<p><b>{data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}</b></p>
+						<p>Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced.</p>
+					</div>
 				</div>
 			{:else}
 				<div class="segmented" data-testid="today-segment" role="tablist" aria-label="What to show">
