@@ -12,6 +12,11 @@
  *     Private/Dating/Ledger.md          one line per day, `parse/ledger.ts`
  *     Private/Dating/People/<Name>.md   the shared person format, `parse/dating-person.ts`
  *
+ * A person enters at `stage: liked` when the user logs a like they sent,
+ * with `liked:` (the day) and `chance:` (their guess, 0–100, that she
+ * replies) in frontmatter. Moving her to any later stage is the reply;
+ * `likeOdds` sets the guesses against what happened.
+ *
  * The stats functions are pure — they take entries already read, not a vault
  * — so they can be table-tested without touching the filesystem at all.
  */
@@ -31,8 +36,10 @@ export const LEDGER_PATH = `${DATING_FOLDER}/Ledger.md`;
 export const PEOPLE_FOLDER = `${DATING_FOLDER}/People`;
 const DATES_HEADING = '## Dates';
 
-export const STAGES = ['matched', 'talking', 'date planned', 'dating', 'ended'] as const;
+export const STAGES = ['liked', 'matched', 'talking', 'date planned', 'dating', 'ended'] as const;
 export type Stage = (typeof STAGES)[number];
+/** The stage a person added by hand starts at: they have matched, since a like sent is logged separately. */
+export const DEFAULT_STAGE: Stage = 'matched';
 
 function asStage(value: unknown): Stage | null {
 	return typeof value === 'string' && (STAGES as readonly string[]).includes(value) ? (value as Stage) : null;
@@ -41,6 +48,19 @@ function asStage(value: unknown): Stage | null {
 function text(value: unknown): string | null {
 	if (value === undefined || value === null || value === '') return null;
 	return String(value);
+}
+
+/** YAML turns a bare date into a Date; both spellings mean the same day. */
+function asDay(value: unknown): DayKey | null {
+	if (value instanceof Date) return value.toISOString().slice(0, 10);
+	return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+}
+
+/** A `chance:` value as a whole percentage, 0–100, or null for anything else. */
+function asChance(value: unknown): number | null {
+	if (value === undefined || value === null || value === '') return null;
+	const n = Number(value);
+	return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : null;
 }
 
 /* ------------------------------------------------------------------ Log --- */
@@ -191,6 +211,39 @@ export function bestDayOfWeek(entries: LedgerLine[]): WeekdayStat | null {
 	return totals[best] > 0 ? { weekday: names[best], matches: totals[best] } : null;
 }
 
+interface LikeOdds {
+	/** Logged likes that carry a guess. */
+	rated: number;
+	/** The mean guess, 0–1. */
+	meanChance: number;
+	/** How many replies the guesses add up to: the sum of every chance. */
+	expected: number;
+	/** Rated likes whose person has moved past `liked`. */
+	replied: number;
+	/** Rated likes still at `liked`: no reply yet, or none coming. */
+	waiting: number;
+}
+
+/**
+ * The user's guesses at a reply set against what happened, or null when no
+ * like carries a guess. Pure. A person counts as having replied once she is
+ * at any stage past `liked`, and as waiting while she is still there; it
+ * never decides on the user's behalf that a like has gone unanswered.
+ */
+export function likeOdds(people: Array<{ stage: Stage | null; chance: number | null }>): LikeOdds | null {
+	const rated = people.filter((p): p is { stage: Stage | null; chance: number } => p.chance !== null);
+	if (!rated.length) return null;
+	const expected = rated.reduce((n, p) => n + p.chance / 100, 0);
+	const waiting = rated.filter((p) => p.stage === 'liked').length;
+	return {
+		rated: rated.length,
+		meanChance: expected / rated.length,
+		expected,
+		replied: rated.filter((p) => p.stage !== null && p.stage !== 'liked').length,
+		waiting
+	};
+}
+
 /* -------------------------------------------------------------- People --- */
 
 interface DatingPersonSummary {
@@ -201,6 +254,10 @@ interface DatingPersonSummary {
 	place: string | null;
 	job: string | null;
 	stage: Stage | null;
+	/** The day the user logged sending her a like, when they did. */
+	liked: DayKey | null;
+	/** The user's guess, 0–100, that she replies to that like. */
+	chance: number | null;
 }
 
 function personPath(name: string): string {
@@ -215,7 +272,9 @@ function summaryFrom(path: string, frontmatter: Record<string, unknown>): Dating
 		age: text(frontmatter.age),
 		place: text(frontmatter.place),
 		job: text(frontmatter.job),
-		stage: asStage(frontmatter.stage)
+		stage: asStage(frontmatter.stage),
+		liked: asDay(frontmatter.liked),
+		chance: asChance(frontmatter.chance)
 	};
 }
 
@@ -264,11 +323,25 @@ function proseOnly(body: string): string {
 
 type AddPersonResult = { ok: true; path: string } | { ok: false; reason: 'no-name' | 'exists' };
 
-/** Create a new dating person's note. Refuses rather than overwrites one that already exists. */
-export async function addDatingPerson(
-	vault: Vault,
-	fields: { name: string; app?: string; age?: string; place?: string; job?: string; stage?: Stage; notes?: string }
-): Promise<AddPersonResult> {
+type NewPersonFields = {
+	app?: string;
+	age?: string;
+	place?: string;
+	job?: string;
+	stage?: Stage;
+	notes?: string;
+	/** The day a like was sent; written as `liked:` only when given. */
+	liked?: DayKey;
+	/** The guess, 0–100, that she replies; rounded and clamped, written as `chance:` only when given. */
+	chance?: number;
+};
+
+/**
+ * Create a new dating person's note. Refuses rather than overwrites one that
+ * already exists. Logging a like sent is this with `stage: 'liked'`, `liked`
+ * and `chance`; a person added with none of those gets no such lines.
+ */
+export async function addDatingPerson(vault: Vault, fields: { name: string } & NewPersonFields): Promise<AddPersonResult> {
 	const name = personName(fields.name);
 	if (!name) return { ok: false, reason: 'no-name' };
 	const path = personPath(name);
@@ -316,10 +389,8 @@ export async function setStage(vault: Vault, rawName: string, stage: Stage): Pro
 	return { ok: true };
 }
 
-function newPersonNote(
-	name: string,
-	fields: { app?: string; age?: string; place?: string; job?: string; stage?: Stage; notes?: string }
-): string {
+function newPersonNote(name: string, fields: NewPersonFields): string {
+	const chance = asChance(fields.chance);
 	const frontmatter = [
 		'---',
 		'type: person',
@@ -327,7 +398,9 @@ function newPersonNote(
 		`age: ${fields.age ?? ''}`,
 		`place: ${fields.place ?? ''}`,
 		`job: ${fields.job ?? ''}`,
-		`stage: ${fields.stage ?? STAGES[0]}`,
+		`stage: ${fields.stage ?? DEFAULT_STAGE}`,
+		...(fields.liked ? [`liked: ${fields.liked}`] : []),
+		...(chance !== null ? [`chance: ${chance}`] : []),
 		'---'
 	].join('\n');
 	const notes = (fields.notes ?? '').trim();

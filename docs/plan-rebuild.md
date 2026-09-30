@@ -214,6 +214,11 @@ format, with `app:`, age, place and job in frontmatter, free notes, and a
 - 2026-09-20 Coffee at Monmouth rating:: 4 cost:: 9 notes:: easy conversation
 ```
 
+A like sent can be logged from the Log tab with a name and a guess that she
+replies. That creates her note at `stage: liked`, with `liked: <day>` and
+`chance: <0–100>` in frontmatter. Moving her to any later stage counts as a
+reply, and Stats sets the guesses against the replies.
+
 ---
 
 ## The modules

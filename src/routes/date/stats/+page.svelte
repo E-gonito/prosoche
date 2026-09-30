@@ -1,7 +1,8 @@
 <script lang="ts">
 	/**
 	 * Stats: totals and rates over three ranges, a twelve-week trend, the best
-	 * day of the week, and the Insights button.
+	 * day of the week, the user's guesses at a reply against the replies, and
+	 * the Insights button.
 	 *
 	 * The trend is a small inline SVG — two thin lines, no library — built
 	 * from `data.trend`, which the server already reduced to one point per
@@ -133,6 +134,23 @@
 	<p class="hint">Best day of the week for matches: <b>{data.bestDay.weekday}</b> ({data.bestDay.matches} total).</p>
 {/if}
 
+{#if data.odds}
+	<p class="label">Your guesses <span class="right muted small">likes logged with a chance</span></p>
+	<div class="sheet" data-testid="dating-like-odds">
+		<div class="kv odds">
+			<b>Likes rated</b><span class="num">{data.odds.rated}</span>
+			<b>Average guess</b><span class="num" data-testid="dating-odds-mean">{pct(data.odds.meanChance)}</span>
+			<b>Replies you expected</b><span class="num">{per(data.odds.expected)}</span>
+			<b>Replied</b><span class="num" data-testid="dating-odds-replied">{data.odds.replied}</span>
+			<b>Still waiting</b><span class="num">{data.odds.waiting}</span>
+		</div>
+	</div>
+	<p class="hint definitions">
+		She counts as replied once you move her past <b>liked</b> on People. Your guesses run high if the replies
+		fall short of the ones you expected once nobody is left waiting.
+	</p>
+{/if}
+
 <p class="label">Insights</p>
 <div class="sheet insights">
 	<button class="btn" onclick={askInsights} disabled={asking} data-testid="dating-ask-insights">
@@ -147,7 +165,7 @@
 
 <style>
 	.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s4); margin-bottom: var(--s3); }
-	.card-stat .kv { grid-template-columns: 1fr auto; }
+	.card-stat .kv, .kv.odds { grid-template-columns: 1fr auto; }
 	.definitions { margin-bottom: var(--s3); }
 
 	.trend-card { padding: var(--s4); }

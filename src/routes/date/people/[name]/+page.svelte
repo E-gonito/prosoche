@@ -88,6 +88,8 @@
 	<b>Age</b><span>{data.age ?? '—'}</span>
 	<b>Place</b><span>{data.place ?? '—'}</span>
 	<b>Job</b><span>{data.job ?? '—'}</span>
+	{#if data.liked}<b>Liked</b><span>{data.liked}</span>{/if}
+	{#if data.chance !== null}<b>Chance she replies</b><span data-testid="dating-profile-chance">{data.chance}%</span>{/if}
 </div>
 
 {#if data.html}
