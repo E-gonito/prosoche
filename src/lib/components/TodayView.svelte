@@ -272,17 +272,19 @@
 		</div>
 
 		<div class="side">
-			{#if data.inbox.count}
-				<div class="sheet inbox-card" data-testid="today-inbox">
-					<h3 class="caps">Inbox <a class="right small" href="/inbox">{data.inbox.count} to triage</a></h3>
+			<!-- Always shown: its capture row is where a thought goes, whether or not anything is waiting. -->
+			<div class="sheet inbox-card" data-testid="today-inbox">
+				<h3 class="caps">Inbox {#if data.inbox.count}<a class="right small" href="/inbox">{data.inbox.count} to triage</a>{/if}</h3>
+				<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
+				{#if data.inbox.lines.length}
 					<div class="rows">
 						{#each data.inbox.lines as line (line.line)}
 							<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
 						{/each}
 					</div>
 					{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
-				</div>
-			{/if}
+				{/if}
+			</div>
 
 			<p class="label">This week</p>
 			<div class="sheet week" data-testid="week-bars">

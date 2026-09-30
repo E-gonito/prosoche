@@ -82,9 +82,12 @@ instead; nothing is lost and nothing is created. The unscheduled list is
 exactly what it says: once a task gets a time, from the grip or the
 timeline, it moves to the timeline and leaves this list.
 
-**Inbox** is a card listing the newest five unfiled lines of
-`Inbox/Capture.md`, with how many are waiting and a link to the triage page
-(see Inbox). It is not shown when there are none.
+**Inbox** is a card with its own capture box, for a thought that is not a
+task for today: a line typed there goes where its words say (see above),
+which for a bare thought is `Inbox/Capture.md`. Under the box are the newest
+five unfiled lines, how many are waiting and a link to the triage page (see
+Inbox). The card is always there; only the list and the count go when the
+inbox is empty.
 
 **This week** is seven small bars, Monday to Sunday of the week the day is
 in: each day's owed tasks (done and open) in the pale bar, the done ones in
