@@ -14,7 +14,7 @@ export const VAULT = `${process.env.E2E_ROOT ?? '/tmp/prosoche-e2e'}/vault`;
  * turning "drag it an hour later" into half an hour, which is exactly what
  * happened when it went from one pixel a minute to two.
  */
-export const PX_PER_MIN = 2;
+export const PX_PER_MIN = 3;
 
 /** That many minutes of timeline, in pixels. */
 export const minutes = (n: number): number => n * PX_PER_MIN;

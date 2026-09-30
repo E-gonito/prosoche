@@ -73,17 +73,19 @@
 	/**
 	 * The scale, and the rule that sets it: **the shortest block this app lets
 	 * you make must be legible.** `SNAP` and `MIN_DURATION` are both ten
-	 * minutes, so ten minutes has to be tall enough for one row of text —
-	 * about eighteen pixels once padding and border are counted. At one pixel
-	 * per minute it was ten, so every short block was forced up to a minimum
-	 * height, and adjacent ones then overlapped and sliced each other's text
-	 * in half. Two pixels per minute makes the height honest, which means no
-	 * minimum is needed and nothing occludes anything.
+	 * minutes, so ten minutes has to be tall enough to read and to grab. At
+	 * one pixel per minute it was ten, so every short block was forced up to
+	 * a minimum height, and adjacent ones then overlapped and sliced each
+	 * other's text in half. Two made the height honest but left a ten-minute
+	 * block eighteen pixels tall: legible, not draggable. Three gives it
+	 * twenty-eight, enough for a finger on the block and a thumb on its
+	 * resize handle, so a day can be planned in ten-minute pieces.
 	 *
-	 * The cost is a longer page. That is the right trade for a day with a
-	 * column of ten-minute tasks in it, which is what these days look like.
+	 * The cost is a longer page, 180 pixels an hour. That is the right trade
+	 * for a day with a column of ten-minute tasks in it, which is what these
+	 * days look like.
 	 */
-	const PX_PER_MIN = 2;
+	const PX_PER_MIN = 3;
 	const SNAP = 10;
 	const MIN_DURATION = 10;
 	/** Gap between one block and the next, taken out of the block's height. */
@@ -733,11 +735,10 @@
 	.q-badge { position: absolute; top: 5px; right: 26px; }
 
 	/*
-	 * A ten-minute block is eighteen pixels tall, so the compact row is built
-	 * to that budget: sixteen pixels inside the border, holding a 12px label
-	 * at line-height 1.2, centred. No vertical padding, because there is none
-	 * to spare — the block clips, and a row that does not fit is the bug this
-	 * was written to remove.
+	 * A ten-minute block is twenty-eight pixels tall, so the compact row is
+	 * built to that budget: twenty-six inside the border, holding a 12px
+	 * label at line-height 1.2, centred. No vertical padding, so a block
+	 * that shrinks below this still clips cleanly rather than wrapping.
 	 */
 	.block.compact {
 		display: flex;
