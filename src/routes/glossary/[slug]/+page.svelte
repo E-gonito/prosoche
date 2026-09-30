@@ -356,7 +356,9 @@
 	.ask { font-size: var(--t13); display: inline-flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
 	.rename { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin: var(--s1) 0 var(--s2); }
 	.rename .field { flex: 1 1 220px; width: auto; font: var(--t20) var(--serif); }
-	.cat-tabs { margin-bottom: var(--s2); }
+	/* Wrapped rather than scrolled: the categories are the user's own and
+	   unbounded, and a hidden sideways scroll cannot be reached with a mouse. */
+	.cat-tabs { margin-bottom: var(--s2); flex-wrap: wrap; overflow-x: visible; }
 	.cat-tabs button {
 		padding: var(--s2) var(--s3);
 		border: 0;
