@@ -171,10 +171,4 @@ describe('loadToday', () => {
 		expect(data.events).toEqual([]);
 		expect(data.calendarProblem).toBeNull();
 	});
-
-	it('is calm about AI being off by default', async () => {
-		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
-		expect(data.aiEnabled).toBe(false);
-		expect(data.briefingText).toBeNull();
-	});
 });

@@ -76,9 +76,6 @@ export interface TodayData {
 	events: TodayEvent[];
 	/** Set only when the feed is configured and unreachable; absent is calm. */
 	calendarProblem: string | null;
-	aiEnabled: boolean;
-	/** The note's own briefing region, read like any other text. */
-	briefingText: string | null;
 	/** Open tasks overdue as of the real today, from anywhere but a daily note or a board. */
 	overdue: Task[];
 	overdueOwners: Record<string, Owner>;

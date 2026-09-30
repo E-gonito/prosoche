@@ -2,8 +2,8 @@
  * Today: the dashboard for one day.
  *
  * This module composes the vault and the index through the existing core —
- * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar`, the AI proposal
- * layer — into the one object the `/today` routes render. Nothing here is a
+ * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar` — into the one
+ * object the `/today` routes render. Nothing here is a
  * second copy of a rule: what counts as a workspace's open card is decided
  * once, in `kanban.ts`, and who owns a task in `workspaces.ts`; this module
  * only asks. Read-only throughout; the writes on this page — planning a task
@@ -17,9 +17,6 @@ import { workspaceFor, type Workspace } from './workspaces';
 import { belongsTo, readInbox, unfiled } from './inbox';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
-import { readRegion } from './ai/proposal';
-import { BRIEFING_MARKER } from './ai/briefing';
-import { loadSettings } from './ai/settings';
 import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';
 import { formatDuration } from '$lib/shared/duration';
@@ -118,8 +115,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 
 	const dayEvents = await eventsBetween(day, day);
 
-	const settings = await loadSettings(vault);
-
 	// A board's cards are listed as cards below, so a Tasks-plugin due date
 	// written on one must not bring it in a second time as a task.
 	const boards = new Set(workspaces.map(boardPath));
@@ -190,8 +185,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		offerReview,
 		events: dayEvents.ok ? dayEvents.events.map(toTodayEvent) : [],
 		calendarProblem: dayEvents.ok || dayEvents.reason === 'not-configured' ? null : dayEvents.message,
-		aiEnabled: settings.enabled,
-		briefingText: note.exists ? readRegion(note.content, BRIEFING_MARKER) : null,
 		overdue,
 		overdueOwners,
 		overdueCards,
