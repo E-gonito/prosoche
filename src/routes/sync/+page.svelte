@@ -89,6 +89,7 @@
 	let conflict = $state<{ path: string; mine: string; theirs: string } | null>(null);
 
 	const when = (at: Date | string | null) => (at ? new Date(at).toLocaleString('en-GB') : 'never');
+	const span = (seconds: number) => (seconds < 60 ? `${seconds} s` : `${seconds / 60} min`);
 	const label: Record<string, string> = {
 		modified: 'changed',
 		added: 'added',
@@ -177,8 +178,8 @@
 			<b>diverged</b><span>{data.status.ahead} ahead, {data.status.behind} behind</span>
 			<b>schedule</b>
 			<span>
-				pull every {data.pullIntervalMinutes} min; changes this app makes are committed
-				{data.commitDebounceMinutes} min after the last save
+				pull every {span(data.pullIntervalSeconds)}; changes this app makes are committed
+				{span(data.commitDebounceSeconds)} after the last save
 			</span>
 		</div>
 		{#if data.status.error}<p class="err">{data.status.error}</p>{/if}

@@ -11,7 +11,7 @@ export const load: PageServerLoad = async () => {
 		vaultPath: config.vaultPath,
 		undoPath: config.undoPath,
 		branch: config.git.branch,
-		commitDebounceMinutes: config.git.commitDebounceMs / 60000,
-		pullIntervalMinutes: config.git.pullIntervalMs / 60000
+		commitDebounceSeconds: config.git.commitDebounceMs / 1000,
+		pullIntervalSeconds: config.git.pullIntervalMs / 1000
 	};
 };

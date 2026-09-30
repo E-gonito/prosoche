@@ -30,10 +30,16 @@ export const config = {
 	glossaryFolder: 'Glossaries',
 
 	git: {
-		/** Wait this long after the last save before committing. */
-		commitDebounceMs: 3 * 60 * 1000,
-		/** How often to pull. */
-		pullIntervalMs: 5 * 60 * 1000,
+		/**
+		 * Wait this long after the last save before committing; each save
+		 * restarts the wait, so a burst of saves, like a review session, is
+		 * one commit. Short, so an edit reaches Obsidian on the Mac, which
+		 * commits two minutes after its own last edit, before either side
+		 * edits the same file again.
+		 */
+		commitDebounceMs: 60 * 1000,
+		/** How often to pull, for the same reason. */
+		pullIntervalMs: 60 * 1000,
 		branch: 'master'
 	},
 
