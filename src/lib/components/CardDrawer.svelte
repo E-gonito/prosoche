@@ -13,8 +13,8 @@
 	 */
 	import { untrack } from 'svelte';
 	import { displayText, workspaceTags, type Task, type TaskStatus } from '$lib/shared/task';
-	import { editTask, type TaskEdit } from '$lib/client/api';
-	import { cardContext, type CardContext } from '$lib/client/cards';
+	import { api, editTask, type TaskEdit } from '$lib/client/api';
+	import type { CardContext } from '$lib/shared/task';
 
 	let {
 		task,
@@ -57,7 +57,7 @@
 	// leaves the fields working: the context is extra, not the point.
 	$effect(() => {
 		void (async () => {
-			const result = await cardContext(task.path, task.line);
+			const result = await api<CardContext>(`/api/card?${new URLSearchParams({ path: task.path, line: String(task.line) })}`);
 			if (result.ok) context = result.value;
 		})();
 	});

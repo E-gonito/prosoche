@@ -3,6 +3,7 @@
 	 * Every workspace, at a glance: what it is, what is open, and when it was
 	 * last touched.
 	 */
+	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
@@ -15,13 +16,9 @@
 	async function remove(w: { slug: string; name: string }) {
 		if (!confirm(`Delete the “${w.name}” workspace?\n\nOnly its definition in _hub/workspaces is removed. Its folders and notes stay in your vault.`)) return;
 		problem = '';
-		const res = await fetch('/api/workspace', {
-			method: 'DELETE',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ slug: w.slug })
-		}).catch(() => null);
-		if (!res?.ok) {
-			problem = (await res?.json().catch(() => null))?.error ?? 'No connection. Nothing was deleted.';
+		const result = await api('/api/workspace', { slug: w.slug }, { method: 'DELETE' });
+		if (!result.ok) {
+			problem = result.message;
 			return;
 		}
 		await invalidateAll();

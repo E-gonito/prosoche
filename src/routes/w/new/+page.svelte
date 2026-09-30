@@ -14,7 +14,7 @@
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { slugify } from '$lib/shared/slug';
-	import { createWorkspace } from '$lib/client/cards';
+	import { api } from '$lib/client/api';
 
 	let { data } = $props();
 
@@ -37,13 +37,13 @@
 		event.preventDefault();
 		if (!slug || taken || saving) return;
 		saving = true;
-		const result = await createWorkspace({ name: name.trim(), color, folders: folderList });
+		const result = await api<{ workspace: { slug: string } }>('/api/workspace', { name: name.trim(), color, folders: folderList });
 		saving = false;
 		if (!result.ok) {
 			problem = result.message;
 			return;
 		}
-		await goto(`/w/${result.value.slug}`, { invalidateAll: true });
+		await goto(`/w/${result.value.workspace.slug}`, { invalidateAll: true });
 	}
 </script>
 

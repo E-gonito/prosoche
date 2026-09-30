@@ -8,6 +8,7 @@
 	 * week. Definitions sit in small print under each card, per the artifact's
 	 * own caution about a match rate that only counts likes the user sent.
 	 */
+	import { api } from '$lib/client/api';
 	let { data } = $props();
 
 	interface Range {
@@ -63,14 +64,9 @@
 		if (asking) return;
 		asking = true;
 		insight = null;
-		try {
-			const res = await fetch('/api/dating/insights', { method: 'POST' });
-			insight = await res.json();
-		} catch {
-			insight = { text: '', problem: 'No connection.' };
-		} finally {
-			asking = false;
-		}
+		const result = await api<{ text: string; problem: string | null }>('/api/dating/insights', {});
+		insight = result.ok ? result.value : { text: '', problem: result.message };
+		asking = false;
 	}
 </script>
 

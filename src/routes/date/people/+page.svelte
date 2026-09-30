@@ -1,5 +1,6 @@
 <script lang="ts">
 	/** People: dating profiles grouped by stage, and the form that adds one. */
+	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
@@ -25,24 +26,14 @@
 		if (adding || !name.trim()) return;
 		adding = true;
 		problem = '';
-		try {
-			const res = await fetch('/api/dating/people', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name, app, age, place, job, stage })
-			});
-			const body = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				problem = body.error ?? `Could not add ${name} (${res.status})`;
-				return;
-			}
-			name = app = age = place = job = '';
-			await invalidateAll();
-		} catch {
-			problem = 'No connection.';
-		} finally {
-			adding = false;
+		const result = await api('/api/dating/people', { name, app, age, place, job, stage });
+		adding = false;
+		if (!result.ok) {
+			problem = result.message;
+			return;
 		}
+		name = app = age = place = job = '';
+		await invalidateAll();
 	}
 </script>
 

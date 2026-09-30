@@ -6,8 +6,8 @@
 	 * everywhere else in the hub.
 	 */
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
-	import { editTask, type Task } from '$lib/client/api';
-	import { addGoal, addMilestone } from '$lib/client/study';
+	import { api, editTask } from '$lib/client/api';
+	import type { Task } from '$lib/shared/task';
 	import { isDone } from '$lib/shared/task';
 	import { invalidateAll } from '$app/navigation';
 
@@ -41,7 +41,7 @@
 		const title = goalTitle.trim();
 		if (!title || addingGoal) return;
 		addingGoal = true;
-		const result = await addGoal(data.subject.slug, title, goalTarget.trim() || null);
+		const result = await api('/api/study/goal', { subject: data.subject.slug, title, target: goalTarget.trim() || null });
 		addingGoal = false;
 		if (result.ok) {
 			goalTitle = '';
@@ -66,7 +66,7 @@
 		const text = milestoneText.trim();
 		if (!text || !milestoneGoal || addingMilestone) return;
 		addingMilestone = true;
-		const result = await addMilestone(data.subject.slug, milestoneGoal, text, milestoneDue.trim() || null);
+		const result = await api('/api/study/milestone', { subject: data.subject.slug, heading: milestoneGoal, text, due: milestoneDue.trim() || null });
 		addingMilestone = false;
 		if (result.ok) {
 			milestoneText = '';

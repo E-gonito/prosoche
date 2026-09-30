@@ -4,6 +4,7 @@
 	 * and two small writes — a new date, appended, and a stage change, which
 	 * rewrites only the frontmatter `stage:` line.
 	 */
+	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
@@ -22,24 +23,14 @@
 	async function changeStage(next: string) {
 		stageSaving = true;
 		stageProblem = '';
-		try {
-			const res = await fetch('/api/dating/people/stage', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name: data.name, stage: next })
-			});
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				stageProblem = body.error ?? 'Could not change stage.';
-				return;
-			}
-			stage = next;
-			await invalidateAll();
-		} catch {
-			stageProblem = 'No connection.';
-		} finally {
-			stageSaving = false;
+		const result = await api('/api/dating/people/stage', { name: data.name, stage: next });
+		stageSaving = false;
+		if (!result.ok) {
+			stageProblem = result.message;
+			return;
 		}
+		stage = next;
+		await invalidateAll();
 	}
 
 	let day = $state(new Date().toISOString().slice(0, 10));
@@ -54,32 +45,22 @@
 		if (addingDate || !text.trim()) return;
 		addingDate = true;
 		dateProblem = '';
-		try {
-			const res = await fetch('/api/dating/people/date', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					name: data.name,
-					day,
-					text,
-					rating: rating ? Number(rating) : null,
-					cost: cost ? Number(cost) : null,
-					notes
-				})
-			});
-			const body = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				dateProblem = body.error ?? 'Could not add that date.';
-				return;
-			}
-			text = notes = '';
-			rating = cost = '';
-			await invalidateAll();
-		} catch {
-			dateProblem = 'No connection.';
-		} finally {
-			addingDate = false;
+		const result = await api('/api/dating/people/date', {
+			name: data.name,
+			day,
+			text,
+			rating: rating ? Number(rating) : null,
+			cost: cost ? Number(cost) : null,
+			notes
+		});
+		addingDate = false;
+		if (!result.ok) {
+			dateProblem = result.message;
+			return;
 		}
+		text = notes = '';
+		rating = cost = '';
+		await invalidateAll();
 	}
 </script>
 

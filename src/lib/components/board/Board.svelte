@@ -15,7 +15,7 @@
 	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import CardEditor from './CardEditor.svelte';
-	import { changeBoard } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 	import { boardDrag, clickEndedDrag, startBoardDrag, type BoardDrop } from '$lib/client/board-drag.svelte';
 	import { dueLabel, type Board, type BoardCard, type BoardOp } from '$lib/shared/kanban';
 
@@ -69,13 +69,14 @@
 			guess(copy);
 			current = copy;
 		}
-		const result = await changeBoard(before.workspace, before.hash, op);
+		// Every answer but a lost connection carries the board as it now is.
+		const result = await api<{ board: Board }>('/api/board', { workspace: before.workspace, hash: before.hash, op });
 		busy = false;
 		if (result.ok) {
-			current = result.value;
+			current = result.value.board;
 			return true;
 		}
-		current = 'board' in result ? result.board : before;
+		current = result.body.board ?? before;
 		problem = result.message;
 		return false;
 	}

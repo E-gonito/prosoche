@@ -8,7 +8,7 @@
 	 * adding what just happened, is on the page you land on.
 	 */
 	import { goto } from '$app/navigation';
-	import { createContact } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 	import { relativeDay } from '$lib/shared/links';
 
 	let { data } = $props();
@@ -44,13 +44,13 @@
 		saving = true;
 		problem = '';
 		const { name, notes, ...details } = form;
-		const result = await createContact(data.workspace.slug, name, { ...details, notes });
+		const result = await api<{ contact: { name: string } }>('/api/crm', { workspace: data.workspace.slug, name, ...details, notes });
 		saving = false;
 		if (!result.ok) {
 			problem = result.message;
 			return;
 		}
-		await goto(href(result.value.name));
+		await goto(href(result.value.contact.name));
 	}
 </script>
 

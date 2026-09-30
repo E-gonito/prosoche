@@ -14,17 +14,20 @@
 	 * they have already seen and dismissed would be noise.
 	 */
 	import Proposal from '$lib/components/Proposal.svelte';
-	import { applyProposal, checkProposal, draftChange, type Drafted } from '$lib/client/ai';
-	import type { Proposal as P, Validation } from '$lib/shared/ai';
+	import { api } from '$lib/client/api';
+	import type { ApplyResult, DraftResult, Proposal as P, Validation } from '$lib/shared/ai';
 
 	let {
+		endpoint,
 		request,
 		label,
 		title = '',
 		ondone
 	}: {
+		/** The drafting route, e.g. `/api/glossary/lookup`, which answers a `DraftResult`. */
+		endpoint: string;
 		/** What to draft. Passed to the endpoint as written. */
-		request: Parameters<typeof draftChange>[0];
+		request: Record<string, unknown>;
 		label: string;
 		title?: string;
 		/** Smaller button, for a widget row rather than a page. */
@@ -33,7 +36,7 @@
 	} = $props();
 
 	let busy = $state(false);
-	let drafted = $state<Drafted | null>(null);
+	let drafted = $state<DraftResult | null>(null);
 	let validation = $state<Validation | null>(null);
 	let problem = $state('');
 	let written = $state<string[]>([]);
@@ -46,7 +49,8 @@
 		drafted = null;
 		validation = null;
 
-		const result = await draftChange(request);
+		// Read-only: nothing is written until the proposal is accepted below.
+		const result = await api<DraftResult>(endpoint, request);
 		if (!result.ok) {
 			problem = result.message;
 			busy = false;
@@ -56,8 +60,12 @@
 		problem = result.value.problem ?? '';
 
 		if (result.value.proposal) {
-			const checked = await checkProposal(result.value.proposal, result.value.destinations);
-			if (checked.ok) validation = checked.value;
+			const checked = await api<{ validation: Validation }>('/api/ai/proposal', {
+				action: 'validate',
+				proposal: result.value.proposal,
+				destinations: result.value.destinations
+			});
+			if (checked.ok) validation = checked.value.validation;
 			else problem = checked.message;
 		}
 		busy = false;
@@ -66,17 +74,23 @@
 	async function accept(proposal: P, ids: string[]) {
 		if (busy) return;
 		busy = true;
-		const result = await applyProposal(proposal, ids, drafted?.destinations ?? []);
+		const answer = await api<{ result: ApplyResult }>('/api/ai/proposal', {
+			action: 'apply',
+			proposal,
+			accepted: ids,
+			destinations: drafted?.destinations ?? []
+		});
 		busy = false;
-		if (!result.ok) {
-			problem = result.message;
+		if (!answer.ok) {
+			problem = answer.message;
 			return;
 		}
-		if (result.value.written.length === 0) {
-			problem = result.value.refusals[0]?.message ?? 'Nothing was written.';
+		const result = answer.value.result;
+		if (result.written.length === 0) {
+			problem = result.refusals[0]?.message ?? 'Nothing was written.';
 			return;
 		}
-		written = result.value.written;
+		written = result.written;
 		drafted = null;
 		validation = null;
 		ondone?.(written);

@@ -5,6 +5,7 @@
 	 * plain link, so it works with no JavaScript too); editing a counter is
 	 * local until Save writes it in one request.
 	 */
+	import { api } from '$lib/client/api';
 	import { goto } from '$app/navigation';
 	import { relativeDay } from '$lib/shared/links';
 	import Icon from '$lib/components/Icon.svelte';
@@ -70,25 +71,15 @@
 		if (saving) return;
 		saving = true;
 		problem = '';
-		try {
-			const res = await fetch('/api/dating/day', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ day: data.day, ...counts, notes, expectedHash: hash })
-			});
-			const body = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				problem = body.error ?? `Save failed (${res.status})`;
-				if (res.status === 409) await goto(`/date?day=${data.day}`, { invalidateAll: true });
-				return;
-			}
-			hash = body.hash;
-			saved = true;
-		} catch {
-			problem = 'No connection. Nothing was lost — try again.';
-		} finally {
-			saving = false;
+		const result = await api<{ hash: string }>('/api/dating/day', { day: data.day, ...counts, notes, expectedHash: hash });
+		saving = false;
+		if (!result.ok) {
+			problem = result.message;
+			if (result.kind === 'conflict') await goto(`/date?day=${data.day}`, { invalidateAll: true });
+			return;
 		}
+		hash = result.value.hash;
+		saved = true;
 	}
 </script>
 

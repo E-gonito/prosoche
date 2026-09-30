@@ -10,7 +10,10 @@
 	 * overwritten, and what was typed stays in the form.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import { updateContact, type ContactDetails } from '$lib/client/api';
+	import { api } from '$lib/client/api';
+
+	/** A contact's details as the form sends them. Links are one per item; an empty value clears. */
+	type ContactDetails = { kind?: string; company?: string; role?: string; email?: string; phone?: string; links?: string[] };
 	import { noteHref, relativeDay } from '$lib/shared/links';
 
 	let { data } = $props();
@@ -58,7 +61,7 @@
 		}
 		saving = true;
 		problem = '';
-		const result = await updateContact(data.workspace.slug, c.name, c.hash, { fields });
+		const result = await api('/api/crm', { workspace: data.workspace.slug, name: c.name, expectedHash: c.hash, fields }, { method: 'PATCH' });
 		saving = false;
 		if (!result.ok) {
 			problem = result.message;
@@ -82,7 +85,7 @@
 		if (adding || !text.trim()) return;
 		adding = true;
 		entryProblem = '';
-		const result = await updateContact(data.workspace.slug, c.name, c.hash, { entry: { day, text } });
+		const result = await api('/api/crm', { workspace: data.workspace.slug, name: c.name, expectedHash: c.hash, entry: { day, text } }, { method: 'PATCH' });
 		adding = false;
 		if (!result.ok) {
 			entryProblem = result.message;
