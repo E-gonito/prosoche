@@ -21,12 +21,6 @@ describe('defaults', () => {
 		expect(SETTINGS_PATH).toBe('_hub/ai.md');
 	});
 
-	it('starts every feature at read-only or propose, never apply', () => {
-		for (const [name, run] of Object.entries(defaultSettings().features)) {
-			expect(run.permission, name).not.toBe('apply');
-		}
-	});
-
 	it('is off until the user turns it on, and capped once they do', () => {
 		// A vault with no `_hub/ai.md` has an owner who has not seen the
 		// settings page. Nothing should run, and nothing should be spent.
@@ -51,7 +45,7 @@ describe('fromFrontmatter', () => {
 		expect(settings.features.briefing.model).toBe('claude-opus-5');
 		expect(settings.features.briefing.effort).toBe('high');
 		// Untouched fields keep the shipped value.
-		expect(settings.features.briefing.permission).toBe('read-only');
+		expect(settings.features.briefing.budgetUsd).toBe(0.25);
 		expect(settings.features['glossary-lookup'].model).toBe('claude-sonnet-5');
 	});
 
@@ -64,9 +58,9 @@ describe('fromFrontmatter', () => {
 		expect(settings.features['glossary-lookup'].model).toBe('claude-opus-5');
 	});
 
-	it('falls back to the safe value for a permission mode it does not know', () => {
+	it('ignores a permission line, from an older file or a hopeful edit', () => {
 		const settings = fromFrontmatter({ features: { 'glossary-lookup': { permission: 'bypassPermissions' } } });
-		expect(settings.features['glossary-lookup'].permission).toBe('propose');
+		expect(settings.features['glossary-lookup']).not.toHaveProperty('permission');
 	});
 
 	it('falls back for a model or effort it does not know', () => {
@@ -97,7 +91,7 @@ describe('the round trip through the vault', () => {
 		wanted.enabled = false;
 		wanted.features.briefing.model = 'claude-opus-5';
 		wanted.features.briefing.effort = 'xhigh';
-		wanted.features['glossary-lookup'].permission = 'read-only';
+		wanted.features['glossary-lookup'].timeoutSeconds = 60;
 		wanted.budget.dailyUsd = 3;
 
 		await saveSettings(vault, wanted);
@@ -110,7 +104,8 @@ describe('the round trip through the vault', () => {
 		expect(note.content.startsWith('---\n')).toBe(true);
 		expect(note.content).toContain('# AI settings');
 		expect(note.content).toContain('kill switch');
-		expect(note.content).toContain('| Feature | Model | Effort | Permission |');
+		expect(note.content).toContain('| Feature | Model | Effort |');
+		expect(note.content).not.toMatch(/^\s*permission:/m);
 	});
 
 	it('says in the file that permissions are never skipped', async () => {

@@ -21,7 +21,6 @@ const entry = (over: Partial<AuditEntry> = {}): AuditEntry => ({
 	feature: 'dating-insights',
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'read-only',
 	paths: ['Work/Deployment.md'],
 	decision: 'answered',
 	guardrails: [],

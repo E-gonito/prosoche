@@ -23,6 +23,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	const when = day && isDayKey(day) ? day : today();
 	const { vault, index, ready } = hub();
 	await ready;
-	const briefing = await run({ vault, index }, when, { regenerate: true });
+	const briefing = await run({ vault, index }, when);
 	return json({ briefing, destinations: briefing.proposal?.edits.map((e) => e.path) ?? [] });
 };

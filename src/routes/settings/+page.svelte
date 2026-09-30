@@ -1,23 +1,20 @@
 <script lang="ts">
 	/**
-	 * AI settings: model, effort and permission for every feature, the limits
-	 * they all sit under, and the record of what has happened.
+	 * AI settings: model, effort, budget and timeout for every feature, the
+	 * limits they all sit under, and the record of what has happened.
 	 *
 	 * The page is a form over `_hub/ai.md`, which is the user's own markdown
 	 * file. That is why the path is printed at the top: anything here can be
 	 * edited in Obsidian instead, and neither copy is the real one.
 	 *
-	 * The permission column has three options and will never have a fourth.
-	 * A "skip all checks" mode is the one setting that would make every other
-	 * guardrail decorative, so it does not exist in the type, in this select,
-	 * or in the flags the CLI is given.
+	 * There is no permission column. Every run is read-only, and a mode that
+	 * could be changed here would be a guardrail someone could switch off.
 	 */
 	import {
 		EFFORTS,
 		FEATURE_LABELS,
 		GUARDRAILS,
 		MODELS,
-		PERMISSION_MODES,
 		type AiSettings,
 		type FeatureId
 	} from '$lib/shared/ai';
@@ -88,7 +85,7 @@
 	<h3>Per feature</h3>
 	<table data-testid="feature-table">
 		<thead>
-			<tr><th>Feature</th><th>Model</th><th>Effort</th><th>Permission</th><th>Budget</th><th>Timeout</th></tr>
+			<tr><th>Feature</th><th>Model</th><th>Effort</th><th>Budget</th><th>Timeout</th></tr>
 		</thead>
 		<tbody>
 			{#each features as feature (feature)}
@@ -104,22 +101,13 @@
 							{#each EFFORTS as e (e)}<option value={e}>{e}</option>{/each}
 						</select>
 					</td>
-					<td>
-						<select
-							bind:value={settings.features[feature].permission}
-							aria-label="{FEATURE_LABELS[feature]} permission"
-							data-testid="permission-{feature}"
-						>
-							{#each PERMISSION_MODES as m (m.id)}<option value={m.id} title={m.hint}>{m.label}</option>{/each}
-						</select>
-					</td>
 					<td><input type="number" min="0.01" max="2" step="0.05" bind:value={settings.features[feature].budgetUsd} aria-label="{FEATURE_LABELS[feature]} budget" /></td>
 					<td><input type="number" min="5" max="900" step="5" bind:value={settings.features[feature].timeoutSeconds} aria-label="{FEATURE_LABELS[feature]} timeout" /></td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
-	<p class="hint">There is no mode that writes without you.</p>
+	<p class="hint">Every run is read-only. There is no mode that writes without you.</p>
 </section>
 
 <section class="card">
@@ -127,8 +115,6 @@
 	<div class="kv">
 		<b>Daily budget</b>
 		<span><input type="number" min="0" max="100" step="0.5" bind:value={settings.budget.dailyUsd} data-testid="daily-budget" aria-label="Daily budget" /> US dollars</span>
-		<b>Runs at once</b>
-		<span><input type="number" min="1" max="4" bind:value={settings.budget.maxConcurrent} aria-label="Concurrent runs" /></span>
 		<b>Files per proposal</b>
 		<span><input type="number" min="1" max="20" bind:value={settings.blast.maxFiles} data-testid="max-files" aria-label="Files per proposal" /></span>
 		<b>Lines a file may lose</b>
@@ -173,7 +159,7 @@
 </section>
 
 <section class="card">
-	<h3>The ten guardrails</h3>
+	<h3>The nine guardrails</h3>
 	<ol class="rails">
 		{#each Object.entries(GUARDRAILS) as [id, title] (id)}
 			<li><span class="tag">{id}</span> {title}</li>

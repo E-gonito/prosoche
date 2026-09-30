@@ -72,7 +72,7 @@
 	<h3>
 		Proposed changes
 		<span class="right muted">
-			{proposal.stamp.model} · {proposal.stamp.effort} · {proposal.stamp.permission}
+			{proposal.stamp.model} · {proposal.stamp.effort} · read-only
 		</span>
 	</h3>
 

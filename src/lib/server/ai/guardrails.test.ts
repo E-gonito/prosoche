@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-	BRIEFING_MARKER,
-	briefingException,
 	checkBlastRadius,
 	checkBudget,
 	checkKillSwitch,
@@ -9,11 +7,11 @@ import {
 	dailyNoteDay,
 	DEFAULT_BLAST,
 	DEFAULT_BUDGET,
+	NEVER,
 	requireHumanAccept,
-	requireSandboxRoot,
+	requireOutsideVault,
 	requireUndoSnapshot,
 	toJsonSchema,
-	toolPolicyFor,
 	validateModelOutput,
 	wrapAsData,
 	type PathPolicy
@@ -23,7 +21,6 @@ import type { Proposal, ProposalEdit, RunSettings } from '$lib/shared/ai';
 const STAMP = {
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'read-only',
 	budgetUsd: 0.25,
 	timeoutSeconds: 90,
 	feature: 'briefing',
@@ -71,112 +68,42 @@ describe('G1 requireHumanAccept', () => {
 		expect(result.refusals.some((r) => r.message.includes('smuggled'))).toBe(true);
 	});
 
-	it('lets the morning briefing through without a click', () => {
+	it('gives the morning briefing no way round the click', () => {
 		const p = proposal({
 			feature: 'briefing',
-			edits: [{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: BRIEFING_MARKER, text: 'x', reason: 'r' }]
+			edits: [{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: 'hub:briefing', text: 'x', reason: 'r' }]
 		});
-		expect(requireHumanAccept(p, []).edits).toHaveLength(1);
-	});
-
-	it('does not let a second edit ride along with the briefing', () => {
-		const p = proposal({
-			feature: 'briefing',
-			edits: [
-				{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: BRIEFING_MARKER, text: 'x', reason: 'r' },
-				edit({ id: 'b2', path: 'Notes/Secret.md' })
-			]
-		});
-		expect(briefingException(p)).toBeNull();
 		expect(requireHumanAccept(p, []).edits).toEqual([]);
-	});
-
-	it('does not let another feature claim the briefing exception', () => {
-		const p = proposal({
-			feature: 'glossary-lookup',
-			edits: [{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: BRIEFING_MARKER, text: 'x', reason: 'r' }]
-		});
-		expect(briefingException(p)).toBeNull();
-	});
-
-	it('does not let a different marker claim the exception', () => {
-		const p = proposal({
-			feature: 'briefing',
-			edits: [{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: 'hub:anything', text: 'x', reason: 'r' }]
-		});
-		expect(briefingException(p)).toBeNull();
+		expect(requireHumanAccept(p, ['b1']).edits).toHaveLength(1);
 	});
 });
 
 /* ------------------------------------------------------------------ G2 ---- */
 
-describe('G2 toolPolicyFor', () => {
-	it('gives a read-only run no tools at all', () => {
-		expect(toolPolicyFor('read-only').allowed).toEqual([]);
-		expect(toolPolicyFor('read-only').needsSandbox).toBe(false);
-	});
-
-	it('gives a tool run an explicit allowlist and a sandbox', () => {
-		const policy = toolPolicyFor('propose');
-		expect(policy.allowed).toEqual(['Read', 'Grep', 'Glob', 'Edit', 'Write']);
-		expect(policy.needsSandbox).toBe(true);
-	});
-
-	it('never allows the network or the shell, in any mode', () => {
-		for (const mode of ['read-only', 'propose', 'apply'] as const) {
-			const policy = toolPolicyFor(mode);
-			for (const banned of ['Bash', 'WebFetch', 'WebSearch', 'Task']) {
-				expect(policy.allowed).not.toContain(banned);
-				expect(policy.disallowed).toContain(banned);
-			}
-		}
-	});
-});
-
-/* ------------------------------------------------------------------ G3 ---- */
-
-describe('G3 requireSandboxRoot', () => {
+describe('G2 read-only, always', () => {
 	const VAULT = '/home/dev/vault';
 
+	it('refuses the network and the shell by name', () => {
+		for (const banned of ['Bash', 'WebFetch', 'WebSearch', 'Task']) expect(NEVER).toContain(banned);
+	});
+
 	it('refuses the vault as a working directory', () => {
-		const out = requireSandboxRoot({ cwd: VAULT, addDirs: ['/tmp/sandbox'] }, VAULT, 'propose');
-		expect(out.map((r) => r.guardrail)).toContain('G3');
+		expect(requireOutsideVault(VAULT, VAULT).map((r) => r.guardrail)).toEqual(['G2']);
 	});
 
-	it('refuses a subdirectory of the vault', () => {
-		expect(requireSandboxRoot({ cwd: '/home/dev/vault/Inbox', addDirs: ['/tmp/s'] }, VAULT, 'propose')).not.toEqual([]);
+	it('refuses a subdirectory of the vault, however it is spelled', () => {
+		expect(requireOutsideVault('/home/dev/vault/Inbox', VAULT)).not.toEqual([]);
+		expect(requireOutsideVault('/tmp/../home/dev/vault/Notes', VAULT)).not.toEqual([]);
+		expect(requireOutsideVault('/home/dev/vault/', VAULT)).not.toEqual([]);
 	});
 
-	it('refuses a parent of the vault for a tool run', () => {
-		expect(requireSandboxRoot({ cwd: '/home/dev', addDirs: ['/tmp/s'] }, VAULT, 'propose')).not.toEqual([]);
+	it('refuses an empty working directory, which would inherit the server\'s', () => {
+		expect(requireOutsideVault('  ', VAULT)).not.toEqual([]);
 	});
 
-	it('refuses a traversal that lands back in the vault', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp/s', addDirs: ['/tmp/../home/dev/vault'] }, VAULT, 'propose')).not.toEqual([]);
-	});
-
-	it('refuses a trailing-slash spelling of the vault', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp/s', addDirs: ['/home/dev/vault/'] }, VAULT, 'propose')).not.toEqual([]);
-	});
-
-	it('refuses a tool run with no sandbox to point at', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp/s', addDirs: [] }, VAULT, 'propose')).not.toEqual([]);
-	});
-
-	it('allows a real sandbox', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp/prosoche-ai-a1', addDirs: ['/tmp/prosoche-ai-a1'] }, VAULT, 'propose')).toEqual([]);
-	});
-
-	it('refuses a read-only run that names any directory', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp', addDirs: ['/tmp/s'] }, VAULT, 'read-only')).not.toEqual([]);
-	});
-
-	it('allows a read-only run outside the vault', () => {
-		expect(requireSandboxRoot({ cwd: '/tmp', addDirs: [] }, VAULT, 'read-only')).toEqual([]);
-	});
-
-	it('refuses a read-only run sitting inside the vault', () => {
-		expect(requireSandboxRoot({ cwd: '/home/dev/vault/Notes', addDirs: [] }, VAULT, 'read-only')).not.toEqual([]);
+	it('allows a run outside the vault', () => {
+		expect(requireOutsideVault('/tmp', VAULT)).toEqual([]);
+		expect(requireOutsideVault('/home/dev/vaulted', VAULT)).toEqual([]);
 	});
 });
 
@@ -402,37 +329,32 @@ describe('G7 checkBudget', () => {
 	const settings: RunSettings = {
 		model: 'claude-sonnet-5',
 		effort: 'medium',
-		permission: 'read-only',
 		budgetUsd: 0.25,
 		timeoutSeconds: 90
 	};
 
 	it('allows a run inside the caps', () => {
-		expect(checkBudget(settings, { todayUsd: 1, running: 0 }).refusals).toEqual([]);
+		expect(checkBudget(settings, 1).refusals).toEqual([]);
 	});
 
 	it('refuses when the day is spent', () => {
-		const out = checkBudget(settings, { todayUsd: 5, running: 0 });
+		const out = checkBudget(settings, 5);
 		expect(out.refusals[0].guardrail).toBe('G7');
 	});
 
-	it('refuses a third concurrent run', () => {
-		expect(checkBudget(settings, { todayUsd: 0, running: 2 }).refusals).not.toEqual([]);
-	});
-
 	it('clamps a run budget to what is left of the day', () => {
-		const out = checkBudget({ ...settings, budgetUsd: 3 }, { todayUsd: 4.5, running: 0 });
+		const out = checkBudget({ ...settings, budgetUsd: 3 }, 4.5);
 		expect(out.settings.budgetUsd).toBeCloseTo(0.5, 5);
 	});
 
 	it('clamps a hand-edited timeout to the hard limit', () => {
-		const out = checkBudget({ ...settings, timeoutSeconds: 99_999 }, { todayUsd: 0, running: 0 });
+		const out = checkBudget({ ...settings, timeoutSeconds: 99_999 }, 0);
 		expect(out.settings.timeoutSeconds).toBe(DEFAULT_BUDGET.maxTimeoutSeconds);
 	});
 
 	it('refuses a zero or negative budget rather than treating it as unlimited', () => {
-		expect(checkBudget({ ...settings, budgetUsd: 0 }, { todayUsd: 0, running: 0 }).refusals).not.toEqual([]);
-		expect(checkBudget({ ...settings, timeoutSeconds: -1 }, { todayUsd: 0, running: 0 }).refusals).not.toEqual([]);
+		expect(checkBudget({ ...settings, budgetUsd: 0 }, 0).refusals).not.toEqual([]);
+		expect(checkBudget({ ...settings, timeoutSeconds: -1 }, 0).refusals).not.toEqual([]);
 	});
 });
 

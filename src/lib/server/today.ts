@@ -17,7 +17,7 @@ import { workspaceFor, type Workspace } from './workspaces';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
 import { readRegion } from './ai/proposal';
-import { BRIEFING_MARKER } from './ai/guardrails';
+import { BRIEFING_MARKER } from './ai/briefing';
 import { loadSettings } from './ai/settings';
 import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';

@@ -13,7 +13,6 @@ import type { FeatureId, RunStamp } from '$lib/shared/ai';
 const stamp = (feature: FeatureId): RunStamp => ({
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'propose',
 	budgetUsd: 0.25,
 	timeoutSeconds: 120,
 	feature,
@@ -135,7 +134,7 @@ describe('on disk', () => {
 
 	async function fakeCli(result: unknown): Promise<string> {
 		const path = join(scratch, 'fake-claude');
-		const body = JSON.stringify({ type: 'result', subtype: 'success', result: JSON.stringify(result), total_cost_usd: 0.01 });
+		const body = JSON.stringify({ type: 'result', subtype: 'success', result: JSON.stringify(result), structured_output: result, total_cost_usd: 0.01 });
 		await writeFile(path, `#!/bin/sh\ncat <<'JSON'\n${body}\nJSON\n`, 'utf8');
 		await chmod(path, 0o755);
 		return path;

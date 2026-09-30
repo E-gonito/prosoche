@@ -28,32 +28,21 @@ export type Model = (typeof MODELS)[number]['id'];
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const;
 export type Effort = (typeof EFFORTS)[number];
 
-/**
- * How much the run is allowed to do.
- *
- * There is deliberately no fourth mode. A "bypass everything" option would be
- * one mis-click away from a language model with write access to the vault, so
- * the type system does not admit one and `guardrails.toolPolicyFor` has no
- * branch that could produce one.
- */
-export const PERMISSION_MODES = [
-	{ id: 'read-only', label: 'Read only', hint: 'No tools. The server supplies the notes.' },
-	{ id: 'propose', label: 'Propose', hint: 'Tools inside a sandbox copy. Comes back as a diff.' },
-	{ id: 'apply', label: 'Propose, one-click accept', hint: 'Same sandbox. Accept is still a click.' }
-] as const;
-
-export type PermissionMode = (typeof PERMISSION_MODES)[number]['id'];
-
 export type FeatureId =
 	| 'briefing'
 	| 'glossary-lookup'
 	| 'dating-insights';
 
-/** The four controls the user picks, plus the two limits that bound a run. */
+/**
+ * The two controls the user picks, plus the two limits that bound a run.
+ *
+ * There is no permission mode. Every run is read-only: the model gets no
+ * tools and the server puts the notes in the prompt (G2). A mode that could
+ * be switched would be a guardrail someone could switch off.
+ */
 export interface RunSettings {
 	model: Model;
 	effort: Effort;
-	permission: PermissionMode;
 	/** Hard cap for this run, in US dollars. */
 	budgetUsd: number;
 	/** Wall-clock limit. The server kills the process at this point. */
@@ -76,11 +65,10 @@ export interface RunStamp extends RunSettings {
  * copies of this table would drift.
  */
 export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
-	briefing: { model: 'claude-sonnet-5', effort: 'medium', permission: 'read-only', budgetUsd: 0.25, timeoutSeconds: 120 },
-	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
-	// Read-only by construction, never just by default: Dating's own budget row,
-	// kept low because a read on a private log is a small, occasional ask.
-	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', permission: 'read-only', budgetUsd: 0.15, timeoutSeconds: 90 }
+	briefing: { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
+	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 180 },
+	// Kept low because a read on a private log is a small, occasional ask.
+	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
@@ -92,7 +80,6 @@ export const FEATURE_LABELS: Record<FeatureId, string> = {
 /** The caps G7 enforces, whatever an individual feature's row asks for. */
 export interface BudgetLimits {
 	dailyUsd: number;
-	maxConcurrent: number;
 	maxTimeoutSeconds: number;
 	maxRunUsd: number;
 }
@@ -119,13 +106,17 @@ export interface AiSettings {
 	features: Record<FeatureId, RunSettings>;
 }
 
-export type GuardrailId = 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'G6' | 'G7' | 'G8' | 'G9' | 'G10';
+/**
+ * The guardrails of SPEC 7.2, by the number the spec gives them. There are
+ * nine: G3, "sandbox for tool runs", went with the tool runs, and what was
+ * left of it (the CLI never runs inside the vault) is part of G2. The
+ * numbers are kept because the audit log already quotes them.
+ */
+export type GuardrailId = 'G1' | 'G2' | 'G4' | 'G5' | 'G6' | 'G7' | 'G8' | 'G9' | 'G10';
 
-/** The ten guardrails of SPEC 7.2, by the number the spec gives them. */
 export const GUARDRAILS: Record<GuardrailId, string> = {
 	G1: 'No direct writes',
-	G2: 'Read-only by default',
-	G3: 'Sandbox for tool runs',
+	G2: 'Read-only, always',
 	G4: 'Path policy',
 	G5: 'Blast radius',
 	G6: 'Schema validation',
@@ -159,9 +150,11 @@ export function refuse(guardrail: GuardrailId, message: string, path?: string): 
  * rewrite?"), and a bag of character offsets cannot answer that. The bytes are
  * computed from the intention by our own code, never by the model, which is
  * also why there is no `delete` kind — nothing in this phase removes a file.
+ * Each kind exists because a feature produces it: the briefing appends its
+ * markers and then replaces the region between them, and a glossary look-up
+ * revises its glossary.
  */
 export type ProposalEdit =
-	| { id: string; kind: 'create'; path: string; text: string; reason: string }
 	| { id: string; kind: 'append'; path: string; text: string; reason: string }
 	| { id: string; kind: 'replace-region'; path: string; marker: string; text: string; reason: string }
 	/**
@@ -175,7 +168,6 @@ export type ProposalEdit =
 type EditKind = ProposalEdit['kind'];
 
 export const EDIT_KIND_LABELS: Record<EditKind, string> = {
-	create: 'New note',
 	append: 'Append',
 	'replace-region': 'Replace marker region',
 	revise: 'Revise note'
@@ -319,14 +311,11 @@ export function changedLines(before: string, after: string): { removed: number; 
  * What a briefing run produced, as the card needs it.
  *
  * Here rather than beside the module that builds it because the browser shows
- * this and a component may not import from `$server`. `text` is the region as
- * it now stands in the note; `proposal` is set only when the note had no
- * markers, which is the case a human has to accept.
+ * this and a component may not import from `$server`. `proposal` is the fresh
+ * briefing (or, when the note has no markers yet, the markers) waiting for
+ * Save to note; `problem` says why there is none.
  */
 export interface BriefingRun {
-	day: string;
-	text: string | null;
 	proposal: Proposal | null;
 	problem: string | null;
-	stamp: RunStamp;
 }

@@ -55,7 +55,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			feature: proposal.feature,
 			model: proposal.stamp.model,
 			effort: proposal.stamp.effort,
-			permission: proposal.stamp.permission,
 			paths: result.written.length ? result.written : proposal.edits.map((e) => e.path),
 			decision: result.written.length ? 'applied' : 'refused',
 			guardrails: [...new Set(result.refusals.map((r) => r.guardrail))],

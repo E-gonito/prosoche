@@ -17,7 +17,6 @@ const YESTERDAY_PATH = 'Journal/2026/09/20.md';
 const STAMP: RunStamp = {
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'read-only',
 	budgetUsd: 0.25,
 	timeoutSeconds: 120,
 	feature: 'briefing',
@@ -25,6 +24,9 @@ const STAMP: RunStamp = {
 	durationMs: 2000,
 	costUsd: 0.02
 };
+
+/** Every edit id in a proposal, as the card's Save to note ticks them. */
+const ticked = (p: { edits: Array<{ id: string }> }) => p.edits.map((e) => e.id);
 
 /**
  * A daily note with the user's own writing above, below and beside the
@@ -203,15 +205,24 @@ describe('propose, and what it writes', () => {
 		expect(p.edits[0].path).toBe(TODAY_PATH);
 	});
 
-	it('applies without a click, because the briefing is G1\'s one exception', async () => {
+	it('writes nothing until its edit is ticked, like every proposal', async () => {
 		const p = await propose(vault, DAY, gather(index, DAY, CARDS), 'A busy morning.', STAMP);
-		const result = await apply(vault, p, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
+		const before = (await vault.read(TODAY_PATH)).content;
+		const refused = await apply(vault, p, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
+		expect(refused.written).toEqual([]);
+		expect(refused.refusals[0].guardrail).toBe('G1');
+		expect((await vault.read(TODAY_PATH)).content).toBe(before);
+	});
+
+	it('writes today\'s note once its edit is ticked', async () => {
+		const p = await propose(vault, DAY, gather(index, DAY, CARDS), 'A busy morning.', STAMP);
+		const result = await apply(vault, p, policy(), { accepted: ticked(p), vaultPath: root, undoPath: undoRoot });
 		expect(result.written).toEqual([TODAY_PATH]);
 	});
 
 	it('leaves every byte outside the markers exactly as the user wrote it', async () => {
 		const p = await propose(vault, DAY, gather(index, DAY, CARDS), 'A busy morning.', STAMP);
-		await apply(vault, p, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
+		await apply(vault, p, policy(), { accepted: ticked(p), vaultPath: root, undoPath: undoRoot });
 
 		const after = (await vault.read(TODAY_PATH)).content;
 		const OPEN = '<!-- hub:briefing start -->';
@@ -226,9 +237,9 @@ describe('propose, and what it writes', () => {
 
 	it('replaces the stale text rather than stacking a second briefing', async () => {
 		const p1 = await propose(vault, DAY, gather(index, DAY, CARDS), 'First.', STAMP);
-		await apply(vault, p1, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
+		await apply(vault, p1, policy(), { accepted: ticked(p1), vaultPath: root, undoPath: undoRoot });
 		const p2 = await propose(vault, DAY, gather(index, DAY, CARDS), 'Second.', STAMP);
-		await apply(vault, p2, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
+		await apply(vault, p2, policy(), { accepted: ticked(p2), vaultPath: root, undoPath: undoRoot });
 
 		const after = (await vault.read(TODAY_PATH)).content;
 		expect(after).not.toContain('stale text from yesterday');
@@ -241,17 +252,14 @@ describe('propose, and what it writes', () => {
 		await vault.write(TODAY_PATH, '# A plain day\n\nNo markers here.\n');
 		const p = await propose(vault, DAY, gather(index, DAY, CARDS), 'x', STAMP);
 		expect(p.edits[0].kind).toBe('append');
-		// And that one waits for a human, because it changes the note's shape.
-		const result = await apply(vault, p, policy(), { accepted: [], vaultPath: root, undoPath: undoRoot });
-		expect(result.written).toEqual([]);
-		expect(result.refusals[0].guardrail).toBe('G1');
+		expect((await vault.read(TODAY_PATH)).content).toBe('# A plain day\n\nNo markers here.\n');
 	});
 
 	it('writes the markers once accepted, and nothing else', async () => {
 		const before = '# A plain day\n\nNo markers here.\n';
 		await vault.write(TODAY_PATH, before);
 		const p = await propose(vault, DAY, gather(index, DAY, CARDS), 'x', STAMP);
-		await apply(vault, p, policy(), { accepted: [p.edits[0].id], vaultPath: root, undoPath: undoRoot });
+		await apply(vault, p, policy(), { accepted: ticked(p), vaultPath: root, undoPath: undoRoot });
 		const after = (await vault.read(TODAY_PATH)).content;
 		expect(after.startsWith(before)).toBe(true);
 		expect(after).toContain('<!-- hub:briefing start -->');
@@ -305,44 +313,49 @@ const envelope = (text: string) => JSON.stringify({ type: 'result', subtype: 'su
 describe('run', () => {
 	it('never writes: draft or not, the note is exactly as it was', async () => {
 		const before = (await vault.read(TODAY_PATH)).content;
-		await run({ vault, index }, DAY, { regenerate: true });
+		await run({ vault, index }, DAY);
 		expect((await vault.read(TODAY_PATH)).content).toBe(before);
-	});
-
-	it('reads the region rather than drafting again, unless told to regenerate', async () => {
-		const result = await run({ vault, index }, DAY);
-		expect(result.text).toBe('stale text from yesterday');
-		expect(result.proposal).toBeNull();
 	});
 
 	it('refuses a day with no note, rather than drafting into a file only Obsidian may create', async () => {
 		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
-		const result = await run({ vault, index }, '2026-09-25', { regenerate: true });
+		const result = await run({ vault, index }, '2026-09-25');
 		expect(result.proposal).toBeNull();
 		expect(result.problem).toContain('Obsidian');
 		expect((await vault.read('Journal/2026/09/25.md')).exists).toBe(false);
 	});
 
 	it('is a no-op while the kill switch is off, the vault default', async () => {
-		const result = await run({ vault, index }, DAY, { regenerate: true });
+		const result = await run({ vault, index }, DAY);
 		expect(result.proposal).toBeNull();
 		expect(result.problem).toContain('off');
 	});
 
-	it('drafts a replace-region proposal once asked to regenerate, and applies nothing', async () => {
+	it('drafts a replace-region proposal, and applies nothing', async () => {
 		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
 		const executable = await fakeCli(envelope('A calm start to the day.'));
 
-		const result = await run({ vault, index }, DAY, { regenerate: true, cli: { executable, vaultPath: root } });
+		const result = await run({ vault, index }, DAY, { cli: { executable, vaultPath: root } });
 
 		expect(result.proposal?.edits).toHaveLength(1);
 		expect(result.proposal?.edits[0].kind).toBe('replace-region');
 		if (result.proposal?.edits[0].kind === 'replace-region') {
 			expect(result.proposal.edits[0].text).toContain('A calm start to the day.');
 		}
-		// The stale text is what the page still shows until this is accepted.
-		expect(result.text).toBe('stale text from yesterday');
+		// The stale text is what the note still holds until this is accepted.
 		expect((await vault.read(TODAY_PATH)).content).toContain('stale text from yesterday');
+	});
+
+	it('still proposes the facts when the model fails, with no sentence and no problem', async () => {
+		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
+		const executable = await fakeCli('not json');
+
+		const result = await run({ vault, index }, DAY, { cli: { executable, vaultPath: root } });
+
+		expect(result.problem).toBeNull();
+		const edit = result.proposal?.edits[0];
+		expect(edit?.kind).toBe('replace-region');
+		if (edit?.kind === 'replace-region') expect(edit.text.startsWith('**Scheduled**')).toBe(true);
 	});
 
 	it('proposes only adding the markers when the note has none yet, and still writes nothing', async () => {
@@ -350,7 +363,7 @@ describe('run', () => {
 		await vault.write(TODAY_PATH, '# A plain day\n\nNo markers here.\n');
 		const executable = await fakeCli(envelope('x'));
 
-		const result = await run({ vault, index }, DAY, { regenerate: true, cli: { executable, vaultPath: root } });
+		const result = await run({ vault, index }, DAY, { cli: { executable, vaultPath: root } });
 
 		expect(result.proposal?.edits[0].kind).toBe('append');
 		expect((await vault.read(TODAY_PATH)).content).toBe('# A plain day\n\nNo markers here.\n');

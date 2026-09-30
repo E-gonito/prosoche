@@ -8,11 +8,9 @@ import type { RunSettings } from '$lib/shared/ai';
 const READ_ONLY: RunSettings = {
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'read-only',
 	budgetUsd: 0.25,
 	timeoutSeconds: 5
 };
-const WITH_TOOLS: RunSettings = { ...READ_ONLY, permission: 'propose' };
 
 const VAULT = '/home/dev/vault';
 
@@ -44,39 +42,28 @@ describe('buildArgs', () => {
 		...over
 	});
 
-	it('never passes --dangerously-skip-permissions, in any mode', () => {
-		for (const settings of [READ_ONLY, WITH_TOOLS, { ...READ_ONLY, permission: 'apply' as const }]) {
-			const { args } = buildArgs(request({ settings, sandboxRoot: '/tmp/sbx' }));
-			expect(args).not.toContain('--dangerously-skip-permissions');
-			expect(args.join(' ')).not.toMatch(/bypassPermissions|skip-permissions/);
-		}
+	it('never passes --dangerously-skip-permissions', () => {
+		const { args } = buildArgs(request());
+		expect(args).not.toContain('--dangerously-skip-permissions');
+		expect(args.join(' ')).not.toMatch(/bypassPermissions|skip-permissions|acceptEdits|--allowedTools/);
 	});
 
-	it('never names the vault as a directory or a working directory', () => {
-		const { args, cwd } = buildArgs(request({ settings: WITH_TOOLS, sandboxRoot: '/tmp/sbx' }));
+	it('never names a directory, and runs outside the vault', () => {
+		const { args, cwd } = buildArgs(request());
 		expect(args).not.toContain(VAULT);
-		expect(value(args, '--add-dir')).toBe('/tmp/sbx');
-		expect(cwd).toBe('/tmp/sbx');
+		expect(args).not.toContain('--add-dir');
+		expect(cwd.startsWith(VAULT)).toBe(false);
 	});
 
-	it('passes an empty tool list for a read-only run, rather than omitting it', () => {
+	it('passes an empty tool list, rather than omitting it', () => {
 		const { args } = buildArgs(request());
 		expect(value(args, '--tools')).toBe('');
-		expect(args).not.toContain('--add-dir');
 		expect(value(args, '--permission-mode')).toBe('plan');
 	});
 
-	it('passes an explicit allowlist for a tool run', () => {
-		const { args } = buildArgs(request({ settings: WITH_TOOLS, sandboxRoot: '/tmp/sbx' }));
-		expect(value(args, '--allowedTools')).toBe('Read,Grep,Glob,Edit,Write');
-		expect(value(args, '--permission-mode')).toBe('acceptEdits');
-	});
-
-	it('disallows the network and the shell in every mode', () => {
-		for (const settings of [READ_ONLY, WITH_TOOLS]) {
-			const disallowed = value(buildArgs(request({ settings, sandboxRoot: '/tmp/sbx' })).args, '--disallowedTools') ?? '';
-			for (const tool of ['Bash', 'WebFetch', 'WebSearch', 'Task']) expect(disallowed).toContain(tool);
-		}
+	it('disallows the network and the shell as well', () => {
+		const disallowed = value(buildArgs(request()).args, '--disallowedTools') ?? '';
+		for (const tool of ['Bash', 'WebFetch', 'WebSearch', 'Task']) expect(disallowed).toContain(tool);
 	});
 
 	it('carries the model, effort and budget the user chose', () => {
@@ -135,24 +122,15 @@ describe('runClaude against a fake executable', () => {
 		}
 	});
 
-	it('refuses before spawning when the sandbox would be the vault', async () => {
+	it('refuses before spawning when the working directory is inside the vault', async () => {
 		const executable = await fakeClaude('{"result":"should never run"}');
-		const result = await runClaude(
-			{ prompt: 'x', settings: WITH_TOOLS, sandboxRoot: VAULT },
-			deps(executable)
-		);
+		const { cwd } = buildArgs({ prompt: 'x', settings: READ_ONLY });
+		const result = await runClaude({ prompt: 'x', settings: READ_ONLY }, { ...deps(executable), vaultPath: cwd });
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.reason).toBe('refused');
-			expect(result.refusals[0].guardrail).toBe('G3');
+			expect(result.refusals[0].guardrail).toBe('G2');
 		}
-	});
-
-	it('refuses a tool run with no sandbox at all', async () => {
-		const executable = await fakeClaude('{"result":"should never run"}');
-		const result = await runClaude({ prompt: 'x', settings: WITH_TOOLS }, deps(executable));
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('refused');
 	});
 
 	it('reports bad JSON rather than throwing', async () => {
@@ -213,25 +191,19 @@ describe('runClaude against a fake executable', () => {
 });
 
 describe('parseOutput', () => {
-	it('takes the text from result, text, or a bare string', () => {
-		expect((parseOutput('{"result":"a"}', 0) as { text: string }).text).toBe('a');
-		expect((parseOutput('{"text":"b"}', 0) as { text: string }).text).toBe('b');
-		expect((parseOutput('"c"', 0) as { text: string }).text).toBe('c');
+	it('takes the text from result, and no JSON without a schema', () => {
+		const out = parseOutput('{"result":"a","total_cost_usd":0.5}', 0);
+		expect(out.ok && out.text).toBe('a');
+		expect(out.ok && out.costUsd).toBe(0.5);
+		expect(out.ok && out.json).toBeNull();
 	});
 
-	it('takes the cost from either spelling, and zero when it is absent', () => {
-		expect((parseOutput('{"result":"a","cost_usd":0.5}', 0) as { costUsd: number }).costUsd).toBe(0.5);
+	it('takes zero cost when it is absent', () => {
 		expect((parseOutput('{"result":"a"}', 0) as { costUsd: number }).costUsd).toBe(0);
 	});
 
-	it('pulls JSON out of a fenced block, for a structured feature', () => {
-		const out = parseOutput('{"result":"```json\\n{\\"path\\":\\"a.md\\"}\\n```"}', 0);
-		expect(out.ok).toBe(true);
-		if (out.ok) expect(out.json).toEqual({ path: 'a.md' });
-	});
-
 	it('treats an error envelope as a failure', () => {
-		expect(parseOutput('{"is_error":true,"error":"budget exceeded"}', 0).ok).toBe(false);
+		expect(parseOutput('{"is_error":true,"result":"budget exceeded"}', 0).ok).toBe(false);
 	});
 
 	it('treats empty output as a failure rather than an empty answer', () => {

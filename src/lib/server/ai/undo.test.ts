@@ -1,18 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
 	listSnapshots,
-	makeSandbox,
 	pruneSnapshots,
-	readSandboxChanges,
 	readSnapshot,
 	recordApplied,
 	appliedResult,
 	resolvesInsideVault,
 	snapshot
-} from './sandbox';
+} from './undo';
 
 let vaultRoot: string;
 let undoRoot: string;
@@ -23,79 +21,10 @@ beforeEach(async () => {
 	undoRoot = await mkdtemp(join(tmpdir(), 'hub-sbx-undo-'));
 	outside = await mkdtemp(join(tmpdir(), 'hub-sbx-out-'));
 	await mkdir(join(vaultRoot, 'Notes'), { recursive: true });
-	await mkdir(join(vaultRoot, '.git'), { recursive: true });
-	await mkdir(join(vaultRoot, '.obsidian'), { recursive: true });
 	await writeFile(join(vaultRoot, 'Notes', 'a.md'), '# A\n');
-	await writeFile(join(vaultRoot, 'Notes', 'b.md'), '# B\n');
-	await writeFile(join(vaultRoot, '.git', 'config.md'), 'secret remote');
-	await writeFile(join(vaultRoot, '.obsidian', 'app.md'), 'plugin config');
 });
 afterEach(async () => {
 	for (const dir of [vaultRoot, undoRoot, outside]) await rm(dir, { recursive: true, force: true });
-});
-
-describe('makeSandbox', () => {
-	it('copies the notes into a directory outside the vault', async () => {
-		const sandbox = await makeSandbox(vaultRoot);
-		expect(sandbox.root.startsWith(vaultRoot)).toBe(false);
-		expect(await readFile(join(sandbox.root, 'Notes', 'a.md'), 'utf8')).toBe('# A\n');
-		expect(sandbox.paths.sort()).toEqual(['Notes/a.md', 'Notes/b.md']);
-		await sandbox.dispose();
-	});
-
-	it('never copies .git or .obsidian, so the CLI cannot reach the remote or the plugins', async () => {
-		const sandbox = await makeSandbox(vaultRoot);
-		const entries = await readdir(sandbox.root);
-		expect(entries).not.toContain('.git');
-		expect(entries).not.toContain('.obsidian');
-		await sandbox.dispose();
-	});
-
-	it('does not follow a symlink that points out of the vault', async () => {
-		await writeFile(join(outside, 'secret.md'), 'private key');
-		await symlink(join(outside, 'secret.md'), join(vaultRoot, 'Notes', 'link.md'));
-		const sandbox = await makeSandbox(vaultRoot);
-		expect(sandbox.paths).not.toContain('Notes/link.md');
-		await sandbox.dispose();
-	});
-
-	it('copies only the subtree it is given', async () => {
-		await mkdir(join(vaultRoot, 'Work'), { recursive: true });
-		await writeFile(join(vaultRoot, 'Work', 'c.md'), '# C\n');
-		const sandbox = await makeSandbox(vaultRoot, 'Work');
-		expect(sandbox.paths).toEqual(['Work/c.md']);
-		await sandbox.dispose();
-	});
-
-	it('gives an empty sandbox for a subtree that does not exist', async () => {
-		const sandbox = await makeSandbox(vaultRoot, 'NotThere');
-		expect(sandbox.paths).toEqual([]);
-		await sandbox.dispose();
-	});
-
-	it('disposes twice without complaint', async () => {
-		const sandbox = await makeSandbox(vaultRoot);
-		await sandbox.dispose();
-		await expect(sandbox.dispose()).resolves.toBeUndefined();
-	});
-});
-
-describe('readSandboxChanges', () => {
-	it('reports only what changed, and never a deletion', async () => {
-		const sandbox = await makeSandbox(vaultRoot);
-		const before = new Map([
-			['Notes/a.md', '# A\n'],
-			['Notes/b.md', '# B\n']
-		]);
-		await writeFile(join(sandbox.root, 'Notes', 'a.md'), '# A\n\nadded by the run\n');
-		await writeFile(join(sandbox.root, 'Notes', 'new.md'), 'a whole new note');
-		await rm(join(sandbox.root, 'Notes', 'b.md'));
-
-		const changes = await readSandboxChanges(sandbox, before);
-		expect(changes.map((c) => c.path)).toEqual(['Notes/a.md', 'Notes/new.md']);
-		expect(changes.find((c) => c.path === 'Notes/new.md')?.created).toBe(true);
-		await sandbox.dispose();
-	});
 });
 
 describe('resolvesInsideVault', () => {

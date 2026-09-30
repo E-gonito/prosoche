@@ -10,7 +10,6 @@ import type { Proposal, ProposalEdit, RunStamp } from '$lib/shared/ai';
 const STAMP: RunStamp = {
 	model: 'claude-sonnet-5',
 	effort: 'medium',
-	permission: 'propose',
 	budgetUsd: 0.25,
 	timeoutSeconds: 90,
 	feature: 'glossary-lookup',
@@ -75,24 +74,13 @@ describe('validate', () => {
 		if (!result.ok) expect(result.refusals.some((r) => r.guardrail === 'G10')).toBe(true);
 	});
 
-	it('refuses creating a note that already exists', async () => {
-		const p = proposal([{ id: 'e1', kind: 'create', path: 'Inbox/Capture.md', text: 'replacement', reason: 'r' }]);
-		const result = await validate(vault, p, policy());
-		expect(result.ok).toBe(false);
-	});
-
-	it('creates a note that does not exist', async () => {
-		const p = proposal([{ id: 'e1', kind: 'create', path: 'Inbox/New.md', text: '# New', reason: 'r' }]);
-		const result = await validate(vault, p, policy());
-		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.previews[0].after).toBe('# New\n');
-	});
-
-	it('refuses an edit kind it does not know', async () => {
-		const p = proposal([{ id: 'e1', kind: 'move', path: 'Inbox/Capture.md', to: 'Inbox/Filed.md', reason: 'tidy' } as unknown as ProposalEdit]);
-		const result = await validate(vault, p, policy());
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.refusals[0].message).toContain('Unknown edit kind');
+	it('refuses an edit kind it does not know, including ones it used to', async () => {
+		for (const kind of ['move', 'create']) {
+			const p = proposal([{ id: 'e1', kind, path: 'Inbox/New.md', text: '# New', reason: 'tidy' } as unknown as ProposalEdit]);
+			const result = await validate(vault, p, policy());
+			expect(result.ok, kind).toBe(false);
+			if (!result.ok) expect(result.refusals[0].message).toContain('Unknown edit kind');
+		}
 	});
 
 	it('shows the previews even when it refuses, so the user can see what was stopped', async () => {
@@ -126,7 +114,7 @@ describe('apply', () => {
 	it('writes only the accepted half of a proposal', async () => {
 		const p = proposal([
 			{ id: 'good', kind: 'append', path: 'Inbox/Capture.md', text: '- three', reason: 'r' },
-			{ id: 'skip', kind: 'create', path: 'Inbox/Other.md', text: 'unwanted', reason: 'r' }
+			{ id: 'skip', kind: 'append', path: 'Inbox/Other.md', text: 'unwanted', reason: 'r' }
 		]);
 		const result = await run(p, ['good']);
 		expect(result.written).toEqual(['Inbox/Capture.md']);
@@ -163,14 +151,6 @@ describe('apply', () => {
 		const restored = await undo(vault, result.undoId!, undoRoot);
 		expect(restored.restored).toEqual(['Inbox/Capture.md']);
 		expect((await vault.read('Inbox/Capture.md')).content).toBe('# Capture\n\n- one\n- two\n');
-	});
-
-	it('leaves a created note alone on undo rather than deleting it', async () => {
-		const p = accepted([{ id: 'e1', kind: 'create', path: 'Inbox/New.md', text: 'new', reason: 'r' }]);
-		const result = await run(p);
-		const restored = await undo(vault, result.undoId!, undoRoot);
-		expect(restored.skipped).toEqual(['Inbox/New.md']);
-		expect((await vault.read('Inbox/New.md')).exists).toBe(true);
 	});
 
 	it('reports a conflict rather than overwriting a note changed underneath', async () => {
