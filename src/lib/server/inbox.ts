@@ -33,6 +33,8 @@ export type { InboxLine };
 const BULLET = /^([ \t]*)([-*+])([ \t]+)(?:\[.\][ \t]+)?(.*)$/;
 const PLAIN_BULLET = /^([ \t]*)([-*+])([ \t]+)(.*)$/;
 const DAY_HEADING = /^##[ \t]+(\d{4}-\d{2}-\d{2})[ \t]*$/;
+/** The `HH:MM` stamp `capture.ts` writes in front of a bare line. */
+const STAMP = /^(\d{1,2}:\d{2})[ \t]+(.*)$/;
 
 /**
  * Every capture in an inbox note, in file order, each with the `## <day>`
@@ -50,12 +52,18 @@ export function listInboxLines(content: string, path: string): InboxLine[] {
 			return;
 		}
 		const task = parseTaskLine(raw, line);
-		if (task) {
-			out.push({ line, raw, task: toTask(task, path), done: task.status === 'done' || task.status === 'cancelled', text: task.text, day });
-			return;
-		}
-		const m = PLAIN_BULLET.exec(raw);
-		if (m) out.push({ line, raw, task: null, done: false, text: m[4].trim(), day });
+		const words = task ? task.text : PLAIN_BULLET.exec(raw)?.[4].trim();
+		if (words === undefined) return;
+		const stamp = STAMP.exec(words);
+		out.push({
+			line,
+			raw,
+			task: task ? toTask(task, path) : null,
+			done: task ? task.status === 'done' || task.status === 'cancelled' : false,
+			text: stamp ? stamp[2] : words,
+			stamp: stamp ? stamp[1] : null,
+			day
+		});
 	});
 	return out;
 }
@@ -196,7 +204,7 @@ async function tickLine(vault: Vault, line: number, raw: string, path: string): 
  */
 function wordsOf(raw: string): string | null {
 	const m = BULLET.exec(raw);
-	return m ? m[4].trim().replace(/^\d{1,2}:\d{2}[ \t]+/, '') || null : null;
+	return m ? m[4].trim().replace(STAMP, '$2') || null : null;
 }
 
 /**

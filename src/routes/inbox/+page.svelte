@@ -34,5 +34,9 @@
 <style>
 	.sub { margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
 	.keys { margin-top: var(--s4); }
+	/* No keyboard to speak of on a phone. */
+	@media (hover: none) {
+		.keys { display: none; }
+	}
 	kbd { font-family: var(--mono); font-size: var(--t12); padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 </style>

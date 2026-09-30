@@ -15,8 +15,10 @@ export interface InboxLine {
 	task: Task | null;
 	/** True once ticked, whichever way it was ticked. */
 	done: boolean;
-	/** The words, with the bullet and any checkbox stripped. */
+	/** The words, with the bullet, any checkbox and the capture stamp stripped. */
 	text: string;
+	/** The `HH:MM` `capture.ts` stamped a bare line with, or null. */
+	stamp: string | null;
 	/** The `## YYYY-MM-DD` heading the line sits under, or null above the first one. */
 	day: string | null;
 }

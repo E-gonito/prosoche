@@ -155,7 +155,7 @@ describe('loadToday', () => {
 		await vault.write('Inbox/Capture.md', lines.join('\n'));
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		expect(data.inbox.count).toBe(6);
-		expect(data.inbox.lines.map((l) => l.text)).toEqual(['09:05 capture 5', '09:04 capture 4', '09:03 capture 3', '09:02 capture 2', '09:01 capture 1']);
+		expect(data.inbox.lines.map((l) => l.text)).toEqual(['capture 5', 'capture 4', 'capture 3', 'capture 2', 'capture 1']);
 	});
 
 	it("counts done against planned for each day of the viewed day's week", async () => {

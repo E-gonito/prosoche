@@ -83,7 +83,7 @@ describe('listInboxLines', () => {
 		const content = ['# Inbox', '', '## 2026-09-29', '- 09:00 Plain capture', '- [ ] An open task `Q1`'].join('\n');
 		const lines = listInboxLines(content, 'Work/Inbox.md');
 		expect(lines).toHaveLength(2);
-		expect(lines[0]).toMatchObject({ line: 3, task: null, done: false, text: '09:00 Plain capture', day: '2026-09-29' });
+		expect(lines[0]).toMatchObject({ line: 3, task: null, done: false, text: 'Plain capture', stamp: '09:00', day: '2026-09-29' });
 		expect(lines[1].task).not.toBeNull();
 		expect(lines[1].done).toBe(false);
 		expect(lines[1].text).toBe('An open task');
@@ -99,7 +99,7 @@ describe('listInboxLines', () => {
 	});
 });
 
-const line = (n: number, day: string | null, done = false) => ({ line: n, raw: `- l${n}`, task: null, done, text: `l${n}`, day });
+const line = (n: number, day: string | null, done = false) => ({ line: n, raw: `- l${n}`, task: null, done, text: `l${n}`, stamp: null, day });
 
 describe('unfiled', () => {
 	const lines = [line(0, null), line(2, '2026-09-28'), line(3, '2026-09-28', true), line(4, '2026-09-28'), line(6, '2026-09-29'), line(7, '2026-09-29')];
@@ -166,6 +166,6 @@ describe('the other two exits', () => {
 	it("lists a workspace's old Inbox.md, open lines only", async () => {
 		const WORK: Workspace = { slug: 'work', name: 'Work', color: '#000', tag: 'ws/work', aliases: [], folders: ['Work'], path: '_hub/workspaces/work.md' };
 		await vault.write('Work/Inbox.md', '- [x] done\n- 08:00 still here\n');
-		expect(await legacyInbox(vault, WORK)).toMatchObject({ path: 'Work/Inbox.md', lines: [{ line: 1, text: '08:00 still here' }] });
+		expect(await legacyInbox(vault, WORK)).toMatchObject({ path: 'Work/Inbox.md', lines: [{ line: 1, text: 'still here', stamp: '08:00' }] });
 	});
 });

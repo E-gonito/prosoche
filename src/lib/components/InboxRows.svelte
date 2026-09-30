@@ -104,7 +104,9 @@
 			aria-label={displayText(line.text)}
 			onkeydown={(e) => keydown(e, line, index)}
 		>
+			{#if line.stamp}<span class="stamp num">{line.stamp}</span>{/if}
 			<span class="text">{displayText(line.text)}</span>
+			{#if line.task?.quadrant}<span class="q q{line.task.quadrant}">Q{line.task.quadrant}</span>{/if}
 			<span class="actions">
 				<button class="btn ghost small" data-testid="inbox-plan" title="Plan onto today (t)" onclick={() => act(line, 'plan')}>Today</button>
 				<button class="btn ghost small" data-testid="inbox-file" title="File as a board card (b)" aria-expanded={fileTo ? undefined : picking === line.line} onclick={() => file(line)}>Board</button>
@@ -126,11 +128,16 @@
 </div>
 
 <style>
-	.inbox-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); border-radius: var(--r-sm); }
-	.inbox-row:focus-visible { outline: var(--focus); outline-offset: 2px; }
+	.inbox-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); }
+	.inbox-row:focus-visible { outline: var(--focus); outline-offset: 4px; }
+	.stamp { flex: none; font-size: var(--t12); color: var(--muted); }
 	.inbox-row.busy { opacity: 0.5; }
 	.text { flex: 1 1 16em; min-width: 0; overflow-wrap: anywhere; font-size: var(--t14); }
-	.actions { display: flex; gap: var(--s1); flex: none; margin-left: auto; }
+	.actions { display: flex; gap: var(--s1); flex: none; margin-left: auto; align-self: center; }
+	/* A thumb needs more than a small button's height. */
+	@media (hover: none) {
+		.actions .btn { min-height: 36px; padding: 0 var(--s3); }
+	}
 	.day { color: var(--muted); }
 	.rows > .day + .inbox-row { border-top: 0; padding-top: var(--s1); }
 	.picker { flex-basis: 100%; margin: 0; }
