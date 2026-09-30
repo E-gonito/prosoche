@@ -125,7 +125,14 @@ function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings
  * `unknown` on purpose, because the caller is a form post and pretending
  * otherwise would only move the validation somewhere less careful. Output:
  * the settings as stored, after the same clamping a read applies, so the page
- * always shows what is really in force. Side effects: writes that one note.
+ * always shows what is really in force. Side effects: reads and writes that
+ * one note.
+ *
+ * The file is re-rendered whole, so hand edits to its prose and any key this
+ * version does not write (a `defaults:` block, a comment) are replaced. The
+ * one exception is `features:` entries this version does not know, such as a
+ * feature since removed: those are carried over byte for byte, after the
+ * known ones, so saving never deletes a row someone may still want.
  *
  * This is a human action from the settings page, which is why it may write
  * the one file every AI code path is forbidden to touch. Nothing under `ai/`
@@ -133,8 +140,35 @@ function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings
  */
 export async function saveSettings(vault: Vault, settings: unknown): Promise<AiSettings> {
 	const stored = normalise(settings);
-	await vault.write(SETTINGS_PATH, render(stored));
+	const existing = await vault.read(SETTINGS_PATH);
+	await vault.write(SETTINGS_PATH, render(stored, unknownFeatureRows(existing.content)));
 	return stored;
+}
+
+/**
+ * The `features:` entries of an `_hub/ai.md` that this version does not know,
+ * verbatim: each one's key line at two spaces of indent and every more deeply
+ * indented line under it, joined by newlines. Pure; an absent file or one with
+ * no such entries gives `''`.
+ */
+export function unknownFeatureRows(content: string): string {
+	const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
+	if (!frontmatter) return '';
+	const out: string[] = [];
+	let inFeatures = false;
+	let keep = false;
+	for (const line of frontmatter[1].split('\n')) {
+		if (/^\S/.test(line)) {
+			inFeatures = /^features:\s*$/.test(line);
+			keep = false;
+			continue;
+		}
+		if (!inFeatures) continue;
+		const key = /^ {2}(['"]?)([^\s'":]+)\1:/.exec(line);
+		if (key) keep = !(FEATURES as string[]).includes(key[2]);
+		if (keep && line.trim() !== '') out.push(line);
+	}
+	return out.join('\n');
 }
 
 /**
@@ -189,8 +223,11 @@ export function toFrontmatter(settings: AiSettings): Record<string, unknown> {
 	};
 }
 
-/** The file as a person reads it: frontmatter first, then what it all means. */
-function render(settings: AiSettings): string {
+/**
+ * The file as a person reads it: frontmatter first, then what it all means.
+ * `unknownRows` is `unknownFeatureRows` of the file being replaced.
+ */
+function render(settings: AiSettings, unknownRows = ''): string {
 	const rows = FEATURES.map((f) => {
 		const run = settings.features[f];
 		return [
@@ -200,7 +237,9 @@ function render(settings: AiSettings): string {
 			`    budget_usd: ${run.budgetUsd}`,
 			`    timeout_s: ${run.timeoutSeconds}`
 		].join('\n');
-	}).join('\n');
+	})
+		.concat(unknownRows === '' ? [] : [unknownRows])
+		.join('\n');
 
 	const table = FEATURES.map((f) => {
 		const run = settings.features[f];
@@ -232,7 +271,8 @@ Every run is **read-only**: the model gets no tools and no directory, runs
 outside the vault, and sees only the notes the server puts in its prompt.
 Anything that would change a note comes back as a proposal to accept or
 reject. There is no mode that writes without you, and there never will be:
-the hub does not pass \`--dangerously-skip-permissions\`.
+the hub does not pass \`--dangerously-skip-permissions\`. Feature entries this
+version does not know are kept as they are when the settings page saves.
 
 **Effort** is \`low\`, \`medium\`, \`high\` or \`xhigh\`. **Model** is one of
 ${MODEL_IDS.join(', ')}.

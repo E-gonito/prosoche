@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { defaultSettings, fromFrontmatter, loadSettings, saveSettings, SETTINGS_PATH, toFrontmatter } from './settings';
+import { defaultSettings, fromFrontmatter, loadSettings, saveSettings, SETTINGS_PATH, toFrontmatter, unknownFeatureRows } from './settings';
 
 let root: string;
 let vault: Vault;
@@ -106,6 +106,39 @@ describe('the round trip through the vault', () => {
 		expect(note.content).toContain('kill switch');
 		expect(note.content).toContain('| Feature | Model | Effort |');
 		expect(note.content).not.toMatch(/^\s*permission:/m);
+	});
+
+	it('keeps the rows of features it does not know, byte for byte', async () => {
+		const old = [
+			'---',
+			'enabled: true',
+			'features:',
+			'  ask:',
+			'    model: claude-opus-5-5',
+			'    permission: read-only',
+			'  briefing:',
+			'    model: claude-opus-5',
+			'  capture:',
+			'    model: claude-haiku-4-5-20251001  # the cheap one',
+			'    permission: propose',
+			'---',
+			'',
+			'# AI settings',
+			''
+		].join('\n');
+		await vault.write(SETTINGS_PATH, old);
+		await saveSettings(vault, { ...(await loadSettings(vault)), enabled: false });
+		const content = (await vault.read(SETTINGS_PATH)).content;
+		expect(content).toContain('  ask:\n    model: claude-opus-5-5\n    permission: read-only\n');
+		expect(content).toContain('  capture:\n    model: claude-haiku-4-5-20251001  # the cheap one\n    permission: propose\n---');
+		expect(content.match(/ {2}briefing:/g)).toHaveLength(1);
+		expect((await loadSettings(vault)).enabled).toBe(false);
+	});
+
+	it('finds no unknown rows in a file it wrote itself, or in no file', async () => {
+		await saveSettings(vault, defaultSettings());
+		expect(unknownFeatureRows((await vault.read(SETTINGS_PATH)).content)).toBe('');
+		expect(unknownFeatureRows('')).toBe('');
 	});
 
 	it('says in the file that permissions are never skipped', async () => {
