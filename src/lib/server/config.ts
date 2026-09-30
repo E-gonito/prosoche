@@ -51,7 +51,6 @@ export const config = {
 	 */
 	dailyNote: {
 		folder: 'Journal',
-		format: 'YYYY/MM/DD',
 		template: 'Journal/Journal Template.md',
 		tasksHeading: '# Tasks'
 	},

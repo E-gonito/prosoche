@@ -4,9 +4,7 @@ import {
 	dayOfNote,
 	shiftDay,
 	isDayKey,
-	today,
-	formatMinutes,
-	isDailyNote
+	today
 } from './daily';
 
 describe('dailyNotePath', () => {
@@ -40,26 +38,6 @@ describe('today', () => {
 	it('uses local calendar date, not UTC', () => {
 		expect(today(new Date(2026, 8, 21, 23, 30))).toBe('2026-09-21');
 		expect(today(new Date(2026, 0, 1, 0, 5))).toBe('2026-01-01');
-	});
-});
-
-describe('formatMinutes', () => {
-	it('pads to HH:MM', () => {
-		expect(formatMinutes(570)).toBe('09:30');
-		expect(formatMinutes(0)).toBe('00:00');
-		expect(formatMinutes(1080)).toBe('18:00');
-	});
-});
-
-describe('isDailyNote', () => {
-	it('matches only the dated notes, not everything in the journal folder', () => {
-		expect(isDailyNote('Journal/2026/09/21.md')).toBe(true);
-		// A workspace can keep its notes inside the journal folder. Excluding
-		// the whole folder to skip the template copies would empty its board.
-		expect(isDailyNote('Journal/Projects/Some Business/Staff.md')).toBe(false);
-		expect(isDailyNote('Journal/Journal Template.md')).toBe(false);
-		expect(isDailyNote('Journal/2026/09/21-notes.md')).toBe(false);
-		expect(isDailyNote('Computer Science/Algorithms.md')).toBe(false);
 	});
 });
 

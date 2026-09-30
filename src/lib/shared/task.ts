@@ -34,11 +34,6 @@ export interface Task {
 	due: string | null;
 }
 
-/** True when the task carries `tag` exactly, or a tag nested under it. */
-export function hasTag(task: Task, tag: string): boolean {
-	return task.tags.some((t) => t === tag || t.startsWith(`${tag}/`));
-}
-
 /**
  * The workspace tags written on the line, e.g. `ws/work`, in written order.
  *

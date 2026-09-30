@@ -44,7 +44,7 @@ export function indexVault(vault: Vault, index: NoteIndex): () => Promise<number
 	// which is why a removal needs no case of its own.
 	const resync = async (path: string): Promise<void> => {
 		const note = await vault.read(path);
-		if (note.exists) index.put(path, note.content, note.mtimeMs, note.hash);
+		if (note.exists) index.put(path, note.content, note.mtimeMs);
 		else index.forget(path);
 	};
 

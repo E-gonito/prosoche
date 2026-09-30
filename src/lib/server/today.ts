@@ -48,9 +48,8 @@ export const WORKSPACE_CARD_LIMIT = 3;
 const OVERDUE_LIMIT = 40;
 
 /**
- * "Tuesday 29 September", the title's own reading of a day — deliberately
- * without the year `daily.ts`'s `formatDay` carries, since the title already
- * says "today" or "3 days ago" right beneath it.
+ * "Tuesday 29 September", the title's own reading of a day. It leaves out the
+ * year, since the title already says "today" or "3 days ago" right beneath it.
  */
 export function formatTitleDay(day: DayKey): string {
 	const [y, m, d] = day.split('-').map(Number);

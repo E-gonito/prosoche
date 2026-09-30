@@ -35,11 +35,6 @@ export function dailyNotePath(day: DayKey): string {
  */
 export const DAILY_NOTE_GLOB = `${config.dailyNote.folder}/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9].md`;
 
-/** True for a path that is one of the dated daily notes. */
-export function isDailyNote(path: string): boolean {
-	return dayOfNote(path) !== null;
-}
-
 /**
  * The day a note is about, or null when the path is not a daily note. The
  * inverse of `dailyNotePath`, so anything that reads a date out of a path uses
@@ -57,26 +52,10 @@ export function shiftDay(day: DayKey, offset: number): DayKey {
 	return today(date);
 }
 
-/** "Monday 21 September 2026", for page headings. */
-export function formatDay(day: DayKey): string {
-	const [y, m, d] = day.split('-').map(Number);
-	return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
-		weekday: 'long',
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	});
-}
-
 /** True for a well-formed YYYY-MM-DD that names a real calendar day. */
 export function isDayKey(value: string): value is DayKey {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
 	const [y, m, d] = value.split('-').map(Number);
 	const date = new Date(y, m - 1, d);
 	return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
-}
-
-/** Minutes since midnight rendered as HH:MM. */
-export function formatMinutes(minutes: number): string {
-	return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }

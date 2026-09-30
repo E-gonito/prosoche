@@ -424,18 +424,6 @@ function field(
 	}
 }
 
-/** Minutes since midnight, or null when the task is unscheduled. */
-export function startMinutes(task: TaskLine): number | null {
-	return task.start ? toMinutes(task.start) : null;
-}
-
-/** Duration in minutes, or null when the task has no range. */
-export function durationMinutes(task: TaskLine): number | null {
-	if (!task.start || !task.end) return null;
-	const d = toMinutes(task.end) - toMinutes(task.start);
-	return d < 0 ? d + 24 * 60 : d;
-}
-
 function toMinutes(hhmm: string): number {
 	const [h, m] = hhmm.split(':');
 	return Number(h) * 60 + Number(m);

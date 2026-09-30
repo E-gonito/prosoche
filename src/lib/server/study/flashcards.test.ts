@@ -253,7 +253,7 @@ describe('dueCards', () => {
 		await vault.write('Notes/Prompting.md', '#prompt_engineering\n\nWhy prompt?\n?\nBecause.\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs, note.hash);
+			index.put(path, note.content, note.mtimeMs);
 		}
 	});
 	afterEach(async () => {
@@ -290,7 +290,7 @@ describe('dueCards', () => {
 	it('does not call a highlight in an untagged note a missing flashcard', async () => {
 		await vault.write('Notes/Speech.md', 'He said it was ==very good== indeed.\n');
 		const note = await vault.read('Notes/Speech.md');
-		index.put('Notes/Speech.md', note.content, note.mtimeMs, note.hash);
+		index.put('Notes/Speech.md', note.content, note.mtimeMs);
 		const queue = await dueCards(vault, index, { on: '2026-09-21' });
 		expect(queue.invisible.map((i) => i.path)).toEqual(['Notes/Prompting.md']);
 	});

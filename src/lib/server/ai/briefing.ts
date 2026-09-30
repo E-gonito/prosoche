@@ -18,7 +18,8 @@
  * planner that goes blank because an API was slow is worse than a plain one.
  */
 
-import { dailyNotePath, formatMinutes, shiftDay, type DayKey } from '../daily';
+import { dailyNotePath, shiftDay, type DayKey } from '../daily';
+import { formatMinutes } from '$lib/shared/time';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { config } from '../config';

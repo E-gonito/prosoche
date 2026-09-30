@@ -6,16 +6,13 @@
  * the vault does not already say.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS notes (
   path        TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
-  hash        TEXT NOT NULL,
-  mtime_ms    INTEGER NOT NULL,
-  bytes       INTEGER NOT NULL,
-  frontmatter TEXT NOT NULL DEFAULT '{}'
+  mtime_ms    INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -36,7 +33,6 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS tasks_quadrant ON tasks(quadrant);
-CREATE INDEX IF NOT EXISTS tasks_id ON tasks(task_id);
 CREATE INDEX IF NOT EXISTS tasks_due ON tasks(due);
 
 -- Tags written on a task line, kept apart from the note's tags so a board can
@@ -52,8 +48,7 @@ CREATE INDEX IF NOT EXISTS task_tags_tag ON task_tags(tag);
 CREATE TABLE IF NOT EXISTS links (
   path   TEXT NOT NULL,
   target TEXT NOT NULL,
-  line   INTEGER NOT NULL,
-  embed  INTEGER NOT NULL DEFAULT 0
+  line   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS links_target ON links(target);
 CREATE INDEX IF NOT EXISTS links_path ON links(path);
@@ -64,14 +59,6 @@ CREATE TABLE IF NOT EXISTS tags (
   PRIMARY KEY (path, tag)
 );
 CREATE INDEX IF NOT EXISTS tags_tag ON tags(tag);
-
-CREATE TABLE IF NOT EXISTS headings (
-  path  TEXT NOT NULL,
-  level INTEGER NOT NULL,
-  text  TEXT NOT NULL,
-  line  INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS headings_path ON headings(path);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
   path UNINDEXED, title, body, tokenize = 'porter unicode61'
