@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { inScope, scopedNotes, scopeOf } from './scope';
+import { inScope, scopedNotes } from './scope';
 
 describe('inScope', () => {
 	it('lets everything through when nothing is named', () => {
@@ -19,13 +19,6 @@ describe('inScope', () => {
 	it('matches a tag on the note, including a nested one', () => {
 		expect(inScope('Anywhere/x.md', ['ws/personal/reading'], { tags: ['ws/personal'] })).toBe(true);
 		expect(inScope('Anywhere/x.md', ['ws/work'], { tags: ['ws/personal'] })).toBe(false);
-	});
-});
-
-describe('scopeOf', () => {
-	it('is the workspace’s folders and its tag', () => {
-		expect(scopeOf({ folders: ['Study/CS', 'CS'], tag: 'ws/cs' })).toEqual({ folders: ['Study/CS', 'CS'], tags: ['ws/cs'] });
-		expect(scopeOf({ folders: [], tag: '' })).toEqual({ folders: [], tags: [] });
 	});
 });
 

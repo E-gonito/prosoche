@@ -7,7 +7,6 @@ import { findGlossary, loadGlossary, noteFolders } from '$server/glossary';
 import { scanPlan } from '$server/ai/glossary-drafts';
 import { loadSettings } from '$server/ai/settings';
 import { glossaryCardsState } from '$server/study/glossary-cards';
-import { subjectsOf } from '$server/study/subjects';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -18,7 +17,7 @@ import type { PageServerLoad } from './$types';
  * sources to count them. Only an unknown slug is a 404. Writes nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
-	const { vault, index, workspaces } = await hub();
+	const { vault, index, workspaces, subjects } = await hub();
 	const all = await workspaces();
 	const ref = await findGlossary(vault, all, params.slug);
 	if (!ref) error(404, 'No such glossary');
@@ -47,8 +46,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		glossary: { name: ref.name, slug: ref.slug, color: ref.color, path: ref.path, description: readLede(glossary.content), href: noteHref(ref.path) },
 		entries,
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))],
-		cards: await glossaryCardsState(vault, all, ref.path),
-		subjects: subjectsOf(all).map((s) => ({ slug: s.slug, name: s.name })),
+		cards: await glossaryCardsState(vault, ref.path),
+		subjects: (await subjects()).map((s) => ({ slug: s.slug, name: s.name })),
 		folders: await noteFolders(vault),
 		scan: await scanPlan(vault, ref),
 		aiEnabled: (await loadSettings(vault)).enabled

@@ -19,10 +19,10 @@ afterEach(async () => {
 describe('seedWorkspaces and loadWorkspaces', () => {
 	it('writes the starting workspaces and reads them back', async () => {
 		const written = await seedWorkspaces(vault);
-		expect(written).toHaveLength(4);
+		expect(written).toHaveLength(3);
 
 		const loaded = await loadWorkspaces(vault);
-		expect(loaded.map((w) => w.slug).sort()).toEqual(['personal', 'side-projects', 'study', 'work']);
+		expect(loaded.map((w) => w.slug).sort()).toEqual(['personal', 'side-projects', 'work']);
 		const work = loaded.find((w) => w.slug === 'work')!;
 		expect(work.folders).toEqual(['Work']);
 	});
@@ -34,7 +34,7 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 
 	it('writes no aliases block, because none of the seeds has one', async () => {
 		await seedWorkspaces(vault);
-		for (const path of ['work', 'study', 'personal', 'side-projects']) {
+		for (const path of ['work', 'personal', 'side-projects']) {
 			expect((await vault.read(`_hub/workspaces/${path}.md`)).content).not.toContain('aliases');
 		}
 		expect((await loadWorkspaces(vault)).every((w) => w.aliases.length === 0)).toBe(true);
@@ -105,19 +105,6 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 	])('reads %j as glossary %j', async (line, expected) => {
 		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
 		expect((await loadWorkspaces(vault))[0].glossary).toBe(expected);
-	});
-
-	it.each([
-		['new_per_day: 10', 10],
-		['new_per_day: 0', 0],
-		['new_per_day: "15"', 15],
-		['new_per_day: -1', undefined],
-		['new_per_day: 2.5', undefined],
-		['new_per_day: lots', undefined],
-		['new_per_day:', undefined]
-	])('reads %j as new cards a day %j', async (line, expected) => {
-		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
-		expect((await loadWorkspaces(vault))[0].newPerDay).toBe(expected);
 	});
 });
 
@@ -234,13 +221,6 @@ describe('createWorkspace', () => {
 		expect(loaded.folders).toEqual(['Work/Riverside']);
 	});
 
-	it('writes template: when asked for one', async () => {
-		const created = await createWorkspace(vault, { name: 'Filipino', folders: ['Study/Filipino'], template: 'study' });
-		if (!created.ok) throw new Error('expected the workspace to be created');
-		expect(created.workspace).toMatchObject({ slug: 'filipino', template: 'study', folders: ['Study/Filipino'] });
-		expect((await vault.read(created.workspace.path)).content).toContain('\ntemplate: study\nfolders:\n  - "Study/Filipino"\n');
-	});
-
 	it('refuses rather than overwrites a taken slug', async () => {
 		await createWorkspace(vault, { name: 'Atlas' });
 		const again = await createWorkspace(vault, { name: 'Atlas' });
@@ -253,7 +233,6 @@ describe('editWorkspace', () => {
 name: CS study
 # the subject's home comes first
 tag: ws/cs-study
-template: study
 folders:
   - "Study/Computer Science"
   - "Computer Science"
@@ -305,18 +284,17 @@ Notes about the subject.
 		expect(await editWorkspace(vault, ws, { folders: ['X'] })).toMatchObject({ ok: false, reason: 'not-found' });
 	});
 
-	it('writes the name, colour, tag, kind and description in place, and only those', async () => {
+	it('writes the name, colour, tag and description in place, and only those', async () => {
 		const ws = await cs();
-		const result = await editWorkspace(vault, ws, { name: 'Computing', color: '#2E6B85', tag: '#ws/computing', template: 'project', description: 'Everything  about\ncomputers.' });
+		const result = await editWorkspace(vault, ws, { name: 'Computing', color: '#2E6B85', tag: '#ws/computing', description: 'Everything  about\ncomputers.' });
 		expect(result).toEqual({ ok: true, path: ws.path });
 		expect((await vault.read(ws.path)).content).toBe(
 			FILE.replace('name: CS study', 'name: Computing')
 				.replace('tag: ws/cs-study', 'tag: ws/computing')
 				.replace('  - title: Overview\n', '  - title: Overview\ncolor: "#2e6b85"\n')
-				.replace('template: study', 'template: project')
 				.replace('Notes about the subject.', 'Everything about computers.')
 		);
-		expect((await loadWorkspaces(vault)).find((w) => w.slug === 'cs-study')).toMatchObject({ name: 'Computing', color: '#2e6b85', tag: 'ws/computing', template: 'project' });
+		expect((await loadWorkspaces(vault)).find((w) => w.slug === 'cs-study')).toMatchObject({ name: 'Computing', color: '#2e6b85', tag: 'ws/computing' });
 	});
 
 	it('leaves a file alone when nothing is sent', async () => {

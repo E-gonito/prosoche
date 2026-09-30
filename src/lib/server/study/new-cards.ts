@@ -2,7 +2,7 @@
  * New cards per day: how many cards never reviewed may join a subject's
  * reviews today.
  *
- * A subject lets `newPerDay` unseen cards in a day (20 unless its workspace
+ * A subject lets `newPerDay` unseen cards in a day (20 unless its subject
  * file says `new_per_day:`), the first ones in a stable order, and the rest
  * wait. `dueCards` does the choosing; this module says how many each
  * subject may still let in today, which needs to know how many it already

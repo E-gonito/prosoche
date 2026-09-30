@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { NoteIndex } from '$server/index/index';
 import { Vault } from '$server/vault/index';
 import { loadWorkspaces } from '$server/workspaces';
+import { loadSubjects } from '$server/study/subjects';
 import { TODAY_CARDS, todayCards } from './today.server';
 import { MODULES } from './index';
 import type { Hub } from '$server/hub';
@@ -27,8 +28,8 @@ describe('TODAY_CARDS never names a private module', () => {
 		index = new NoteIndex(':memory:');
 		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		await vault.write(
-			'_hub/workspaces/study.md',
-			'---\nname: Study\ncolor: "#7c3aed"\ntag: ws/study\ntemplate: study\nfolders:\n  - "Study"\n---\n'
+			'_hub/subjects/study.md',
+			'---\nname: Study\ncolor: "#7c3aed"\ntag: ws/study\nfolders:\n  - "Study"\n---\n'
 		);
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
@@ -47,7 +48,8 @@ describe('TODAY_CARDS never names a private module', () => {
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
-		workspaces: async () => loadWorkspaces(vault)
+		workspaces: async () => loadWorkspaces(vault),
+		subjects: async () => loadSubjects(vault)
 	});
 
 	it('produces cards whose module is never marked private in MODULES', async () => {
@@ -93,7 +95,8 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
-		workspaces: async () => loadWorkspaces(vault)
+		workspaces: async () => loadWorkspaces(vault),
+		subjects: async () => loadSubjects(vault)
 	});
 
 	it('is absent when nothing is due', async () => {
@@ -105,8 +108,8 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		await vault.write('Filipino/Words.md', '#flashcards\n\nAso::Dog\n');
 		await vault.write('Elsewhere/Cards.md', '#flashcards\n\nNot::a subject\n');
-		await vault.write('_hub/workspaces/cs.md', '---\nname: CS\ntemplate: study\nfolders:\n  - "Study"\n---\n');
-		await vault.write('_hub/workspaces/fil.md', '---\nname: Filipino\ntemplate: study\nfolders:\n  - "Filipino"\n---\n');
+		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nfolders:\n  - "Study"\n---\n');
+		await vault.write('_hub/subjects/fil.md', '---\nname: Filipino\nfolders:\n  - "Filipino"\n---\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
 			index.put(path, note.content, note.mtimeMs);
@@ -123,7 +126,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 
 	it('counts only each subject’s new cards for today, as Study does', async () => {
 		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n\nWhat is Big Theta::A tight bound\n');
-		await vault.write('_hub/workspaces/cs.md', '---\nname: CS\ntemplate: study\nnew_per_day: 1\nfolders:\n  - "Study"\n---\n');
+		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nnew_per_day: 1\nfolders:\n  - "Study"\n---\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
 			index.put(path, note.content, note.mtimeMs);

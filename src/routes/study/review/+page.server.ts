@@ -1,6 +1,5 @@
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { subjectsOf } from '$server/study/subjects';
 import { dueEverywhere } from '$server/study/summary';
 import type { PageServerLoad } from './$types';
 
@@ -10,9 +9,9 @@ import type { PageServerLoad } from './$types';
  * queue is fixed at page load.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, index, workspaces } = await hub();
+	const { vault, index, subjects } = await hub();
 
 	const day = today();
-	const queue = await dueEverywhere(vault, index, subjectsOf(await workspaces()), day);
+	const queue = await dueEverywhere(vault, index, await subjects(), day);
 	return { today: day, cards: queue.cards, total: queue.total };
 };

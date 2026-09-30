@@ -50,7 +50,7 @@ export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => 
 	const glossary = await findGlossary(vault, all, str(body.glossary) ?? '');
 	if (!glossary) return refuse('not-found', 'No such glossary.');
 	const synced = async (result: Written | ScanAdded, opts: { renamedFrom?: string } = {}) => {
-		if (result.ok) await syncGlossaryCards(vault, all, result.path, opts);
+		if (result.ok) await syncGlossaryCards(vault, result.path, opts);
 		return result;
 	};
 
@@ -73,7 +73,7 @@ export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => 
 		case 'delete':
 			return synced(await deleteTerm(vault, glossary.path, term));
 		case 'set-study':
-			return synced(await setGlossaryStudy(vault, glossary, all, body.study));
+			return synced(await setGlossaryStudy(vault, glossary, body.study));
 		case 'set-sources':
 			return setGlossarySources(vault, glossary, body.sources);
 		case 'add-scanned':

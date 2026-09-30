@@ -6,6 +6,6 @@ import { noSubject, refuse, route, str } from '../../route';
 export const POST = route(async ({ body, hub }) => {
 	const title = str(body.title)?.trim();
 	if (!body.subject || !title) return refuse('invalid', 'subject and title are required');
-	const subject = subjectOf(await hub.workspaces(), body.subject);
+	const subject = subjectOf(await hub.subjects(), body.subject);
 	return subject ? addGoal(hub.vault, subject.files.goals, title, str(body.target)?.trim() || null) : noSubject();
 });

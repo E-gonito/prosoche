@@ -6,7 +6,7 @@
 	 * The heading and the tab strip are the things every workspace page
 	 * shares, so they live here rather than being redrawn by each. The heading
 	 * is the shared `DetailsHeader`, whose Edit changes the definition file's
-	 * name, description, colour, tag and kind. Which tabs exist is decided by
+	 * name, description, colour and tag. Which tabs exist is decided by
 	 * the server load in `+layout.server.ts`; this component only draws them
 	 * and marks the current one.
 	 */
@@ -26,8 +26,8 @@
 <div class="page wide">
 	{#key data.workspace.slug}
 		<DetailsHeader
-			details={{ ...data.workspace, kind: data.workspace.template }}
-			fields={['name', 'description', 'color', 'tag', 'kind']}
+			details={data.workspace}
+			fields={['name', 'description', 'color', 'tag']}
 			fileHref={data.definitionHref}
 			save={async (changed) => {
 				const result = await saveWorkspace(data.workspace.slug, changed);

@@ -34,7 +34,7 @@ const CARD_FILE_SUFFIX = ' (cards)';
  * Every deck under `Flashcards/` and what importing it does; with `apply`,
  * the import itself.
  *
- * `home` is the subject's home folder (`studyHome`), vault-relative; '' puts
+ * `home` is the subject's home folder (`Subject.home`), vault-relative; '' puts
  * the card files beside the decks. Decks come back in path order, each with
  * its target, card count, first card and any problems reading it.
  *

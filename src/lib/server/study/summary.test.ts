@@ -4,31 +4,22 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { NoteIndex } from '../index/index';
-import { subjectsOf } from './subjects';
+import { readSubject } from './subjects';
 import { dueEverywhere, filesByGoal, progressByGoal, studySummary, subjectCard } from './summary';
 import { NEW_CARDS_PATH, newCardQuotas, recordIntroduced } from './new-cards';
-import type { Workspace } from '../workspaces';
 
 const TODAY = '2026-09-29'; // a Tuesday; the week starts on the 28th
 
-const workspace = (slug: string, folders: string[], template?: string): Workspace => ({
-	slug,
-	name: slug.toUpperCase(),
-	color: '#123456',
-	tag: `ws/${slug}`,
-	aliases: [],
-	folders,
-	template,
-	path: `_hub/workspaces/${slug}.md`
-});
+const subject = (slug: string, folders: string[], extra = '') =>
+	readSubject(`_hub/subjects/${slug}.md`, `---\nname: ${slug.toUpperCase()}\ncolor: "#123456"\ntag: ws/${slug}\nfolders:\n${folders.map((f) => `  - ${f}\n`).join('')}${extra}---\n`);
 
-const WORKSPACES = [workspace('cs', ['Study/CS', 'Computer Science'], 'study'), workspace('fil', ['Study/Filipino'], 'study'), workspace('work', ['Work'])];
+const SUBJECTS = [subject('cs', ['Study/CS', 'Computer Science']), subject('fil', ['Study/Filipino'])];
 
 describe('a subject’s summary', () => {
 	let root: string;
 	let vault: Vault;
 	let index: NoteIndex;
-	const [CS, FIL] = subjectsOf(WORKSPACES);
+	const [CS, FIL] = SUBJECTS;
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-summary-'));
@@ -129,14 +120,14 @@ describe('a subject’s summary', () => {
 	});
 
 	it('reviews everything due across subjects, and nothing when there are none', async () => {
-		const all = await dueEverywhere(vault, index, subjectsOf(WORKSPACES), TODAY);
+		const all = await dueEverywhere(vault, index, SUBJECTS, TODAY);
 		expect(all.cards.map((c) => c.question).sort()).toEqual(['A', 'Aso', 'C']);
 		expect((await dueEverywhere(vault, index, [], TODAY)).total).toBe(0);
 	});
 
 	it('lets in a subject’s new cards a day at a time, the same in its review, its files and everywhere', async () => {
 		// One new card a day for CS; Filipino keeps the default.
-		const [cs, fil] = subjectsOf([{ ...WORKSPACES[0], newPerDay: 1 }, WORKSPACES[1]]);
+		const [cs, fil] = [subject('cs', ['Study/CS', 'Computer Science'], 'new_per_day: 1\n'), SUBJECTS[1]];
 		const summary = await studySummary(vault, index, cs, TODAY);
 		// `Computer Science/Unfiled.md` comes before `Study/CS/…` by path.
 		expect(summary.cards.cards.map((c) => c.question)).toEqual(['C']);
@@ -158,7 +149,7 @@ describe('a subject’s summary', () => {
 	});
 
 	it('counts a card’s first review for each subject that holds it, and only today', async () => {
-		const [cs, fil] = subjectsOf(WORKSPACES);
+		const [cs, fil] = SUBJECTS;
 		await recordIntroduced(vault, [cs, fil], 'Study/CS/Flashcards/Nets.md', '#flashcards\n', TODAY);
 		await recordIntroduced(vault, [cs, fil], 'Study/CS/Flashcards/Nets.md', '#flashcards\n', TODAY);
 		await recordIntroduced(vault, [cs, fil], 'Elsewhere/Tagged.md', '#flashcards #ws/fil\n', TODAY);

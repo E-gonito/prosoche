@@ -3,29 +3,31 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { loadWorkspaces, type Workspace } from '../workspaces';
-import { createSubject, studyHome, subjectOf, subjectsOf } from './subjects';
+import { loadWorkspaces } from '../workspaces';
+import { adoptStudyWorkspaces, createSubject, deleteSubject, editSubject, loadSubjects, readSubject, subjectOf } from './subjects';
 
-const workspace = (slug: string, folders: string[], template?: string): Workspace => ({
-	slug,
-	name: slug,
-	color: '#7c3aed',
-	tag: `ws/${slug}`,
-	aliases: [],
-	folders,
-	template,
-	path: `_hub/workspaces/${slug}.md`
-});
+const CS = `---
+name: CS study
+color: "#7c3aed"
+tag: ws/cs-study
+folders:
+  - "Study/Computer Science"
+  - "Computer Science"
+---
 
-describe('subjectsOf', () => {
-	const all = [workspace('work', ['Work']), workspace('cs-study', ['Study/Computer Science', 'Computer Science'], 'study'), workspace('bare', [], 'study')];
+Computers, mostly.
+`;
 
-	it('is every study workspace, with its files in its home folder and every folder in scope', () => {
-		const [cs, bare] = subjectsOf(all);
-		expect(cs).toMatchObject({
+describe('readSubject', () => {
+	it('is the file’s subject, with its files in its home folder and every folder in scope', () => {
+		expect(readSubject('_hub/subjects/cs-study.md', CS)).toMatchObject({
 			slug: 'cs-study',
+			name: 'CS study',
+			color: '#7c3aed',
 			home: 'Study/Computer Science',
+			path: '_hub/subjects/cs-study.md',
 			scope: { folders: ['Study/Computer Science', 'Computer Science'], tags: ['ws/cs-study'] },
+			newPerDay: 20,
 			files: {
 				goals: 'Study/Computer Science/Goals.md',
 				reading: 'Study/Computer Science/Reading List.md',
@@ -33,26 +35,25 @@ describe('subjectsOf', () => {
 				flashcards: 'Study/Computer Science/Flashcards'
 			}
 		});
-		// A subject naming no folder still has one place for its files.
-		expect(bare.home).toBe('Inbox');
 	});
 
-	it('lets twenty new cards a day join a subject’s reviews unless its file says otherwise', () => {
-		const [cs] = subjectsOf(all);
-		expect(cs.newPerDay).toBe(20);
-		const [quiet] = subjectsOf([{ ...workspace('quiet', ['Q'], 'study'), newPerDay: 0 }]);
-		expect(quiet.newPerDay).toBe(0);
+	it('homes a subject naming no folder at Study/<name>, in scope on its own, with no tag', () => {
+		const bare = readSubject('_hub/subjects/bare.md', '---\nname: Bare\n---\n');
+		expect(bare).toMatchObject({ home: 'Study/Bare', scope: { folders: ['Study/Bare'], tags: [] } });
 	});
 
-	it('finds one subject, and its study home, by slug', () => {
-		expect(subjectOf(all, 'cs-study')?.name).toBe('cs-study');
-		expect(subjectOf(all, 'work')).toBeNull();
-		expect(studyHome(all, 'cs-study')).toBe('Study/Computer Science');
-		expect(studyHome(all, 'nope')).toBeNull();
+	it.each([
+		['new_per_day: 10', 10],
+		['new_per_day: 0', 0],
+		['new_per_day: "15"', 15],
+		['new_per_day: -1', 20],
+		['new_per_day: lots', 20]
+	])('reads %s as %d new cards a day', (line, expected) => {
+		expect(readSubject('_hub/subjects/q.md', `---\nname: Q\n${line}\n---\n`).newPerDay).toBe(expected);
 	});
 });
 
-describe('createSubject', () => {
+describe('subjects on disk', () => {
 	let root: string;
 	let vault: Vault;
 
@@ -65,28 +66,91 @@ describe('createSubject', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
-	it('writes a study workspace homed at Study/<name>, with reference folders after it', async () => {
-		const created = await createSubject(vault, [], { name: ' Filipino ', extraFolders: [' Languages/Filipino/ ', ''] });
+	it('are the files in _hub/subjects/, and never a workspace', async () => {
+		await vault.write('_hub/subjects/cs-study.md', CS);
+		await vault.write('_hub/workspaces/work.md', '---\nname: Work\nfolders:\n  - Work\n---\n');
+		const subjects = await loadSubjects(vault);
+		expect(subjects.map((s) => s.slug)).toEqual(['cs-study']);
+		expect(subjectOf(subjects, 'cs-study')?.name).toBe('CS study');
+		expect(subjectOf(subjects, 'work')).toBeNull();
+		expect((await loadWorkspaces(vault)).map((w) => w.slug)).toEqual(['work']);
+	});
+
+	it('creates a subject file homed at Study/<name>, with reference folders after it, and no workspace', async () => {
+		const created = await createSubject(vault, { name: ' Filipino ', extraFolders: [' Languages/Filipino/ ', ''] });
 		expect(created).toMatchObject({ ok: true, subject: { slug: 'filipino', name: 'Filipino', home: 'Study/Filipino' } });
-		const [loaded] = await loadWorkspaces(vault);
-		expect(loaded).toMatchObject({ slug: 'filipino', template: 'study', folders: ['Study/Filipino', 'Languages/Filipino'] });
+		const [loaded] = await loadSubjects(vault);
+		expect(loaded).toMatchObject({ slug: 'filipino', scope: { folders: ['Study/Filipino', 'Languages/Filipino'], tags: [] } });
+		expect((await vault.read('_hub/subjects/filipino.md')).content).toContain('\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n---\n');
+		expect(await loadWorkspaces(vault)).toEqual([]);
 	});
 
 	it('takes the characters a folder or a link cannot hold out of the name', async () => {
-		const created = await createSubject(vault, [], { name: 'C/C++: the [hard] way' });
+		const created = await createSubject(vault, { name: 'C/C++: the [hard] way' });
 		expect(created).toMatchObject({ ok: true, subject: { name: 'C C++ the hard way', home: 'Study/C C++ the hard way' } });
 	});
 
 	it('picks a colour no other subject has', async () => {
-		const first = await createSubject(vault, [], { name: 'One' });
-		const second = await createSubject(vault, await loadWorkspaces(vault), { name: 'Two' });
+		const first = await createSubject(vault, { name: 'One' });
+		const second = await createSubject(vault, { name: 'Two' });
 		expect(first.ok && second.ok && first.subject.color !== second.subject.color).toBe(true);
 	});
 
-	it('refuses no name, a taken name, and the review page’s', async () => {
-		expect(await createSubject(vault, [], { name: ' / ' })).toMatchObject({ ok: false, reason: 'no-name' });
-		await createSubject(vault, [], { name: 'Filipino' });
-		expect(await createSubject(vault, [], { name: 'filipino' })).toMatchObject({ ok: false, reason: 'exists' });
-		expect(await createSubject(vault, [], { name: 'Review' })).toMatchObject({ ok: false, reason: 'reserved' });
+	it('refuses no name, a taken name, and the review page’s, but not a workspace’s', async () => {
+		expect(await createSubject(vault, { name: ' / ' })).toMatchObject({ ok: false, reason: 'no-name' });
+		await createSubject(vault, { name: 'Filipino' });
+		expect(await createSubject(vault, { name: 'filipino' })).toMatchObject({ ok: false, reason: 'exists' });
+		expect(await createSubject(vault, { name: 'Review' })).toMatchObject({ ok: false, reason: 'reserved' });
+		await vault.write('_hub/workspaces/eye2gene.md', '---\nname: eye2gene\n---\n');
+		expect(await createSubject(vault, { name: 'eye2gene' })).toMatchObject({ ok: true });
+	});
+
+	it('edits only the lines asked for, keeping the home first and every other byte', async () => {
+		await vault.write('_hub/subjects/cs-study.md', CS);
+		const [cs] = await loadSubjects(vault);
+		expect(await editSubject(vault, cs, { folders: ['Computer Science', 'Papers/ML'], name: 'Computing', tag: '' })).toEqual({ ok: true, path: cs.path });
+		expect((await vault.read(cs.path)).content).toBe(
+			CS.replace('name: CS study', 'name: Computing').replace('tag: ws/cs-study', 'tag:').replace('  - "Computer Science"\n', '  - Computer Science\n  - Papers/ML\n').replace('  - "Study/Computer Science"', '  - Study/Computer Science')
+		);
+		const [edited] = await loadSubjects(vault);
+		expect(edited).toMatchObject({ name: 'Computing', scope: { folders: ['Study/Computer Science', 'Computer Science', 'Papers/ML'], tags: [] } });
+	});
+
+	it('refuses an edit it will not write, and writes nothing', async () => {
+		await vault.write('_hub/subjects/cs-study.md', CS);
+		const [cs] = await loadSubjects(vault);
+		for (const edit of [{ name: ' ' }, { color: 'purple' }, { tag: 'ws/cs study' }, { folders: ['../outside'] }]) {
+			expect(await editSubject(vault, cs, edit)).toMatchObject({ ok: false, reason: 'invalid' });
+		}
+		expect((await vault.read(cs.path)).content).toBe(CS);
+	});
+
+	it('deletes only the subject’s file', async () => {
+		await vault.write('_hub/subjects/cs-study.md', CS);
+		await vault.write('Study/Computer Science/Goals.md', '## Networks\n');
+		expect(await deleteSubject(vault, 'cs-study')).toEqual({ ok: true });
+		expect(await loadSubjects(vault)).toEqual([]);
+		expect((await vault.read('Study/Computer Science/Goals.md')).exists).toBe(true);
+		expect(await deleteSubject(vault, 'cs-study')).toEqual({ ok: false, reason: 'not-found' });
+		expect(await deleteSubject(vault, '../workspaces/work')).toEqual({ ok: false, reason: 'not-found' });
+	});
+
+	it('moves a study workspace to a subject file byte for byte, once, and leaves other workspaces alone', async () => {
+		const old = CS.replace('tag: ws/cs-study\n', 'tag: ws/cs-study\ntemplate: study\n');
+		await vault.write('_hub/workspaces/cs-study.md', old);
+		await vault.write('_hub/workspaces/work.md', '---\nname: Work\ntemplate: project\n---\n');
+		expect(await adoptStudyWorkspaces(vault)).toEqual(['_hub/subjects/cs-study.md']);
+		expect((await vault.read('_hub/subjects/cs-study.md')).content).toBe(old);
+		expect((await vault.read('_hub/workspaces/cs-study.md')).exists).toBe(false);
+		expect((await loadWorkspaces(vault)).map((w) => w.slug)).toEqual(['work']);
+		expect(await adoptStudyWorkspaces(vault)).toEqual([]);
+	});
+
+	it('leaves a study workspace where it is when a subject file already has its slug', async () => {
+		await vault.write('_hub/subjects/cs-study.md', CS);
+		await vault.write('_hub/workspaces/cs-study.md', '---\nname: Other\ntemplate: study\n---\n');
+		expect(await adoptStudyWorkspaces(vault)).toEqual([]);
+		expect((await vault.read('_hub/subjects/cs-study.md')).content).toBe(CS);
+		expect((await vault.read('_hub/workspaces/cs-study.md')).exists).toBe(true);
 	});
 });

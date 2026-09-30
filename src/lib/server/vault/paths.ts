@@ -52,3 +52,17 @@ export function isPrivate(vaultRelative: string): boolean {
 	const root = config.privateFolder;
 	return vaultRelative === root || vaultRelative.startsWith(`${root}/`);
 }
+
+/**
+ * A list of folders as a person typed them, made into what a definition
+ * file's `folders:` holds: each trimmed of spaces and surrounding slashes,
+ * backslashes made `/`, empties and repeats dropped, and `home`, when there
+ * is one, kept first and never repeated. Null when a folder has a `.` or
+ * `..` segment, which no vault-relative folder needs. Pure; a folder need
+ * not exist.
+ */
+export function folderList(typed: string[], home?: string): string[] | null {
+	const cleaned = typed.map((f) => f.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/')).filter(Boolean);
+	if (cleaned.some((f) => f.split('/').some((part) => part === '..' || part === '.'))) return null;
+	return [...new Set(home ? [home, ...cleaned] : cleaned)];
+}

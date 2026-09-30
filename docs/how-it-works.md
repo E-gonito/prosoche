@@ -358,15 +358,37 @@ backlinks or recent notes. A link straight to a private note is a 404.
 ## Study
 
 Study is divided into subjects — CS, Filipino, whatever comes next. A
-subject is a workspace whose file says `template: study`, and there can be
-any number; each is listed under Study in the rail. Nothing is shared
-between two subjects but the code. A subject's own files live in its home
-folder, the first folder its workspace names: `Goals.md`, `Reading List.md`,
+subject is one markdown file under `_hub/subjects/`, and there can be any
+number; each is listed under Study in the rail. Subjects and workspaces
+have nothing to do with each other: a subject is not a workspace, is not
+listed among them, and claims no note or task for one, and a workspace
+never shows in Study. Nothing is shared between two subjects but the code.
+
+    ---
+    name: Filipino
+    color: "#7c3aed"
+    folders:
+      - "Study/Filipino"
+      - "Languages/Filipino"
+    new_per_day: 20
+    ---
+
+A subject's own files live in its home folder, the first folder its file
+names (`Study/<name>` when it names none): `Goals.md`, `Reading List.md`,
 `Sessions.md` and a `Flashcards/` folder. Its cards come from every folder
 it names, so reference notes kept elsewhere can sit beside the home as
-further folders, and from any note tagged with the workspace's tag.
-Folders, at the foot of a subject's page, adds or removes those (see
-Workspaces). A glossary whose `study:` names the subject also makes cards
+further folders, and, when the file has a `tag:`, from any note carrying
+that tag. Folders, at the foot of a subject's page, adds or removes those:
+the home stays first and never moves, and each change rewrites only the
+`folders:` lines. The heading's Edit changes the name, description, colour
+and tag in the same file, and Delete, after asking in place, removes that
+one file and nothing else: the home folder and everything in it stay, and
+git history still has the file.
+
+Subjects used to be workspaces whose file said `template: study`. On start,
+each such file still in `_hub/workspaces/` is moved to `_hub/subjects/`
+byte for byte, unless a subject of that name is already there, in which
+case both are left for you to sort out. A glossary whose `study:` names the subject also makes cards
 here, and the subject's Overview says so under its flashcards: "Scan notes
 in the Computer Science glossary for more cards", linking to that
 glossary's scan (see Glossary).
@@ -377,9 +399,10 @@ across every subject, with Review everything due, which reviews them all in
 one session. Today's flashcards card instead gives each subject its own
 line, with its count and new cards, leading to that subject's review, so a
 day can take one subject's cards rather than all of them. New subject takes a
-name and, optionally, reference folders, and writes the workspace file with
-`template: study`, homed at `Study/<name>`; a name another workspace
-already has is refused, and so is "Review", which that page already is. The
+name and, optionally, reference folders, and writes the subject's file,
+homed at `Study/<name>`; a name another subject already has is refused, and
+so is "Review", which that page already is. A workspace of the same name is
+no clash. The
 old single-subject addresses, such as `/study/goals`, open that tab of the
 only subject, or this page when there are several.
 
@@ -500,7 +523,7 @@ show here like any card file, grouped by goal with the same picker (see
 Glossary).
 
 **New cards a day.** Cards never reviewed join a subject's reviews twenty a
-day; the rest wait. A subject's workspace file can set another number with
+day; the rest wait. A subject's file can set another number with
 `new_per_day:`, and 0 lets none in. Today's new cards are the first ones
 never reviewed in the subject's folders, by file path and then position in
 the file, less those already reviewed for the first time today, so the
@@ -517,14 +540,13 @@ worked out.
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders, which glossary
-it points at, and for a study subject how many new cards a day
-join its reviews — so
+definition — its name, colour, tag, folders and which glossary
+it points at — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
 deliberately no settings form that would rewrite it behind your back.
-The one exception is **Folders**, at the foot of a workspace's Overview and
-of a study subject's page: it lists the home, which never moves, then each
+The one exception is **Folders**, at the foot of a workspace's Overview: it
+lists the home, which never moves, then each
 reference folder, with × to stop reading one and a field (suggesting the
 vault's folders, but taking any path) to add another. Each change rewrites
 only the `folders:` lines of the file and every other byte stays as it was.
@@ -552,10 +574,8 @@ the workspace's definition file for context. It is optional. Several
 workspaces may name the same glossary, and renaming a glossary rewrites this
 line in each of them.
 
-A study subject (`template: study`) may say `new_per_day: <number>`: how
-many cards never reviewed join its reviews each day. It is 20 without the
-line, and 0 lets none in; anything but a whole number reads as 20 (see
-Study).
+A `template:` line is no longer read. It once made a workspace a study
+subject; subjects now have files of their own (see Study).
 
 Last of all, an `aliases:` list in the workspace file claims a task that names
 the workspace in its own words: with `aliases: [eye2gene, e2g]`, the daily

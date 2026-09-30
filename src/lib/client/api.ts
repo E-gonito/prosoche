@@ -97,14 +97,19 @@ export async function planOnDay(day: string, task: Task, time?: { startMin: numb
 }
 
 /**
- * Write a workspace's (or study subject's) changed details: `kind` is its
- * `template:`. Only the fields given are sent, and the server writes only
- * those. Returns the server's result; never reloads the page.
+ * Write a workspace's changed details. Only the fields given are sent, and
+ * the server writes only those. Returns the server's result; never reloads
+ * the page.
  */
-export async function saveWorkspace(
-	slug: string,
-	changed: { name?: string; description?: string; color?: string; tag?: string; kind?: string }
-): Promise<Result<unknown>> {
-	const { kind, ...rest } = changed;
-	return api('/api/workspace', { slug, ...rest, ...(kind === undefined ? {} : { template: kind }) }, { method: 'PATCH' });
+export async function saveWorkspace(slug: string, changed: { name?: string; description?: string; color?: string; tag?: string }): Promise<Result<unknown>> {
+	return api('/api/workspace', { slug, ...changed }, { method: 'PATCH' });
+}
+
+/**
+ * Write a study subject's changed details to its own file, as
+ * `saveWorkspace` does a workspace's. Returns the server's result; never
+ * reloads the page.
+ */
+export async function saveSubject(slug: string, changed: { name?: string; description?: string; color?: string; tag?: string }): Promise<Result<unknown>> {
+	return api('/api/study/subject', { subject: slug, ...changed }, { method: 'PATCH' });
 }

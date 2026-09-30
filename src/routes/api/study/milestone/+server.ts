@@ -11,6 +11,6 @@ export const POST = route(async ({ body, hub }) => {
 	const heading = str(body.heading);
 	const text = str(body.text)?.trim();
 	if (!body.subject || !heading || !text) return refuse('invalid', 'subject, heading and text are required');
-	const subject = subjectOf(await hub.workspaces(), body.subject);
+	const subject = subjectOf(await hub.subjects(), body.subject);
 	return subject ? addMilestone(hub.vault, subject.files.goals, heading, text, str(body.due)?.trim() || null) : noSubject();
 });
