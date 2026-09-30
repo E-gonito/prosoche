@@ -225,6 +225,16 @@ export class Vault {
 	 * sorted: `Journal`, `Journal/2026`, ... A folder with no markdown in or
 	 * under it is left out, as in `tree`; so are ignored and private ones.
 	 */
+	/**
+	 * True when the vault has its private folder (`config.privateFolder`).
+	 * Says only that the folder is there: nothing inside it is listed, read
+	 * or indexed. The shell hides a private module on a vault without one.
+	 */
+	async hasPrivate(): Promise<boolean> {
+		const found = await stat(toAbsolute(config.privateFolder, this.root)).catch(() => null);
+		return Boolean(found?.isDirectory());
+	}
+
 	async folders(): Promise<string[]> {
 		const out = new Set<string>();
 		for (const path of await this.list()) {
