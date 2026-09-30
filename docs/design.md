@@ -112,13 +112,12 @@ with `.num`, which lines figures up without changing the typeface.
 
 ## Components
 
-- **`Icon`**: every glyph, from one hand-copied Lucide path set. `name`,
-  `size` (default 16), `label` (absent means decorative).
+- **`Icon`**: every glyph, one Lucide path set; `name`, `size` (16), `label` (absent: decorative).
 - **`Draft`**: a button that asks Claude for a proposal and shows it as a diff
   with Accept and Reject. Every AI write goes through it, but the briefing's
   Save, which previews the text and writes it only on Save.
-- **`Capture`**: one line, sent where its words say. **`FileTree`**: folders.
-- **`InboxRows`**: focusable rows, Today/Board/Drop on `t` `b` `x`. **`WeekBars`**: bars.
+- **`Capture`**: one routed line. **`InboxRows`**: triage rows on `t` `b` `x`.
+  **`FileTree`**: folders. **`WeekBars`**: bars, a total drawn pale behind.
 - **`board/Board`**: a workspace's board. Columns are unboxed, a small-caps
   heading over a stack of cards; the cards are the boxes, because a card is
   the thing you act on. Columns sit side by side at 230px or more and scroll
