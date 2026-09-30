@@ -1,7 +1,8 @@
 <script lang="ts">
 	// Recursive folder tree. Folders start closed except the one containing the
-	// open note, which the parent expands by passing `openPath`. `hrefFor` says
-	// where a note links; the vault-wide reader unless a page wants its own.
+	// open note, which the parent expands by passing `openPath`, and the top
+	// `openDepth` levels, for a tree whose roots are few and chosen. `hrefFor`
+	// says where a note links; the vault-wide reader unless a page wants its own.
 	import Self from './FileTree.svelte';
 	import { noteHref } from '$lib/shared/links';
 
@@ -13,8 +14,9 @@
 		nodes,
 		openPath = '',
 		depth = 0,
+		openDepth = 0,
 		hrefFor = noteHref
-	}: { nodes: Node[]; openPath?: string; depth?: number; hrefFor?: (path: string) => string } = $props();
+	}: { nodes: Node[]; openPath?: string; depth?: number; openDepth?: number; hrefFor?: (path: string) => string } = $props();
 	const containsOpen = (node: Extract<Node, { type: 'folder' }>) => openPath.startsWith(node.path + '/');
 </script>
 
@@ -22,9 +24,9 @@
 	{#each nodes as node (node.path)}
 		{#if node.type === 'folder'}
 			<li>
-				<details open={containsOpen(node)}>
+				<details open={depth < openDepth || containsOpen(node)}>
 					<summary>{node.name}</summary>
-					<Self nodes={node.children} {openPath} depth={depth + 1} {hrefFor} />
+					<Self nodes={node.children} {openPath} depth={depth + 1} {openDepth} {hrefFor} />
 				</details>
 			</li>
 		{:else}

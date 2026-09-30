@@ -49,7 +49,7 @@
 						{/each}
 					</ul>
 				{:else}
-					<FileTree nodes={data.tree} openPath={data.note?.path ?? ''} {hrefFor} />
+					<FileTree nodes={data.tree} openPath={data.note?.path ?? ''} openDepth={1} {hrefFor} />
 				{/if}
 			</aside>
 

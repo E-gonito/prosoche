@@ -103,8 +103,8 @@ test.describe('Today', () => {
 	test('has no briefing, and the inbox sits above the day', async ({ page }) => {
 		await expect(page.getByTestId('briefing')).toHaveCount(0);
 		const inbox = await page.getByTestId('today-inbox').boundingBox();
-		const segment = await page.getByTestId('segment-timeline').or(page.getByTestId('unscheduled')).first().boundingBox();
-		expect(inbox!.y).toBeLessThan(segment!.y);
+		const day = await page.getByTestId('unscheduled').boundingBox();
+		expect(inbox!.y).toBeLessThan(day!.y);
 	});
 });
 

@@ -350,7 +350,8 @@
 	{@const c = menuColumn}
 	{@const column = current.columns[c]}
 	<div class="menu" role="menu" data-menu data-testid="column-menu-items" style="top: {menuAt.top}px; right: {menuAt.right}px">
-		<button role="menuitem" use:focus onclick={() => { menu = null; rename = column.title; renaming = c; }}>Rename</button>
+		<!-- The menu goes last: `c` and `column` are read from it, and are gone once it closes. -->
+		<button role="menuitem" use:focus onclick={() => { rename = column.title; renaming = c; menu = null; }}>Rename</button>
 		{#if c > 0}<button role="menuitem" onclick={() => columnAction({ kind: 'move-column', column: c, index: c - 1 })}>Move left</button>{/if}
 		{#if c < current.columns.length - 1}<button role="menuitem" onclick={() => columnAction({ kind: 'move-column', column: c, index: c + 1 })}>Move right</button>{/if}
 		<button
