@@ -36,6 +36,11 @@ phase agents reported:
    `Private/` folder) was missed by the phases and added after phase 9: the
    rail and More sheet leave Date out; its palette command still exists.
 
+The glossary scan (decision 4's cut, phase 2) was restored on 2026-09-30 at
+the author's request, as the way notes become cards: its own `glossary-scan`
+feature through `runDraft`, `api/glossary/scan`, and `add-scanned` as the
+accept step.
+
 ## Why
 
 The codebase is 45,000 lines, 13,000 of them tests. The audit found about

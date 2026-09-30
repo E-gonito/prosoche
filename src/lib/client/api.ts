@@ -28,21 +28,24 @@ export type Result<T> =
 /**
  * Send one request to `path` and read the JSON answer.
  *
- * Inputs: the path (with any query string), a body to send as JSON, and the
- * method, POST when there is a body and GET when there is none. Output: the
- * answer as `T` for a 2xx; otherwise `conflict` for a 409 and `error` for
- * any other status, with the server's own sentence, which is written to be
- * shown to a person; `offline` when there was no answer at all. Never throws.
+ * Inputs: the path (with any query string), a body to send as JSON, the
+ * method, POST when there is a body and GET when there is none, and a
+ * `signal` that abandons the request. Output: the answer as `T` for a 2xx;
+ * otherwise `conflict` for a 409 and `error` for any other status, with the
+ * server's own sentence, which is written to be shown to a person; `offline`
+ * when there was no answer at all, an abandoned request included. Never
+ * throws.
  */
 export async function api<T = Record<string, never>>(
 	path: string,
 	body?: unknown,
-	{ method = body === undefined ? 'GET' : 'POST' }: { method?: string } = {}
+	{ method = body === undefined ? 'GET' : 'POST', signal }: { method?: string; signal?: AbortSignal } = {}
 ): Promise<Result<T>> {
 	let res: Response;
 	try {
 		res = await fetch(path, {
 			method,
+			signal,
 			headers: body === undefined ? undefined : { 'content-type': 'application/json' },
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});

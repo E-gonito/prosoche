@@ -31,6 +31,7 @@ export type Effort = (typeof EFFORTS)[number];
 export type FeatureId =
 	| 'briefing'
 	| 'glossary-lookup'
+	| 'glossary-scan'
 	| 'dating-insights';
 
 /**
@@ -67,6 +68,8 @@ export interface RunStamp extends RunSettings {
 export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	briefing: { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
 	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 180 },
+	// Per batch: up to 60,000 characters of notes in, up to 25 entries out.
+	'glossary-scan': { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 240 },
 	// Kept low because a read on a private log is a small, occasional ask.
 	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
@@ -74,6 +77,7 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 export const FEATURE_LABELS: Record<FeatureId, string> = {
 	briefing: 'Morning briefing',
 	'glossary-lookup': 'Glossary look-up',
+	'glossary-scan': 'Glossary scan',
 	'dating-insights': 'Dating insights'
 };
 
