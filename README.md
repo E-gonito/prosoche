@@ -9,9 +9,8 @@ you are actually doing, as against what you meant to do. That is the whole
 premise. The plan you wrote this morning and the day you actually had are the
 same file.
 
-> Working, and in daily use by its author. Six modules — Today, Glossary,
-> Workspaces, Study, Date and Notes — plus the AI layer are all in. It has
-> no login and is meant to run on a private network.
+> Working, and in daily use by its author. It has no login and is meant to
+> run on a private network.
 
 ## Why
 
@@ -48,50 +47,36 @@ A daily note at `Journal/YYYY/MM/DD.md` containing tasks like:
 - [x] 09:30 - 10:00 Morning stretch `Q1`
 - [ ] 23:00 - 23:10 Write the daily log `Q1`
 	- What am I avoiding, and why
-- [ ] Walk the dog, refill the water, sweep the yard `Q1`
-
-## Backlog
-```
-- [ ] Driving licence `Q2`
-```
+- [-] 12:00 - 12:30 Walk the dog `Q3`
+- [ ] Refill the water, sweep the yard #ws/home `Q2`
 ~~~
 
-Tasks inside that fenced block are shown as a backlog and never edited, because
-Obsidian treats them as text rather than tasks.
+`[ ]` is open, `[x]` done and `[-]` skipped. A time range puts the line on the
+timeline. `Q1` to `Q4` are Eisenhower quadrants, written as inline code. A
+`#ws/<slug>` tag puts a task in a workspace, as does a workspace's own alias
+for it. Everything else is ordinary Obsidian: wikilinks, tags, frontmatter.
 
-`Q1` to `Q4` are Eisenhower quadrants, written as inline code. A `#ws/<slug>`
-tag on a line puts that one task in a workspace, wherever the line lives.
-Everything else is ordinary Obsidian: wikilinks, tags, frontmatter.
-
-Workspaces are markdown too. One file per workspace under `_hub/workspaces/`
-names it, colours it and says where its notes live, so that travels with the
-vault and is editable in Obsidian. Every workspace gets the same sections —
-tasks or board, inbox, log, contacts and deals, notes — and a
-section with nothing in it is simply hidden. An `aliases:` list in that file
-names the words you already use for the project — `aliases: [eye2gene, e2g]`
-— so a daily block reading "Work on eye2gene" is counted against it without
-your having to tag anything.
+New here? [`docs/getting-started.md`](docs/getting-started.md) takes you from
+`npm install` to a reviewed day in ten steps.
 
 ## Modules
 
-Six tabs, drawn from one registry (`src/lib/modules/index.ts`) so a new one
-is a route folder and a line:
+Six tabs, drawn from one registry (`src/lib/modules/index.ts`):
 
-- **Today** — the day and the week around it: scheduled blocks, overdue and
-  blocked cards, calendar events, and a briefing button that drafts a
-  paragraph you save yourself.
-- **Glossary** — standalone glossaries, one file each in `Glossaries/`, with
-  Claude look-ups for the terms you have to guess at, and flashcards made
-  from them.
-- **Workspaces** — tasks or a board, an inbox, a dated log, contacts and a
-  deal pipeline, and read-only notes.
-- **Study** — topics, a reading list, flashcard review, goals with
-  milestones, and a session log.
-- **Date** — a daily counter ledger, stats and history, and person
-  profiles. Everything here lives under a gitignored `Private/` folder:
-  never indexed, searched, shown on Today, or committed to git.
-- **Notes** — a read-only Obsidian viewer, with search, backlinks and a
-  quick capture box.
+- **Today** — the day and the week around it: the timeline, board cards to
+  drag onto it, an inbox card and an evening review.
+- **Glossary** — one file per glossary, with Claude look-ups and flashcards
+  made from its terms.
+- **Workspaces** — a kanban board, overview, inbox, log, contacts and notes,
+  each defined by one file in `_hub/workspaces/`.
+- **Study** — subjects with goals, a reading list, sessions and flashcards
+  scheduled by FSRS.
+- **Date** — a private counter ledger and person profiles under a gitignored
+  `Private/` folder.
+- **Notes** — a read-only Obsidian viewer with search and backlinks.
+
+Beside them: an **Inbox** for triaging captures, **Sync** for git, and
+**Settings** for the AI layer.
 
 ## Running it
 
@@ -127,96 +112,31 @@ It has no login. Run it behind something that does, or on a private network
 such as a [Tailscale](https://tailscale.com) tailnet, which is how it is meant
 to be used.
 
-## Tests
-
-```bash
-npm test                              # 1100+ unit tests, no vault needed
-VAULT_PATH=~/vault npm test           # adds a conformance pass over your vault
-npm run build && npm run e2e          # browser tests against a throwaway vault
-```
-
-Two suites matter more than the rest.
-
-The **conformance** suite parses every task in a real vault, rewrites each one
-with the values it already has, and asserts the bytes come back identical. If
-that fails, the app would quietly reformat notes the first time it saved one.
-
-The **end-to-end** suite drives the built server in a real browser against a
-disposable vault built by `e2e/make-vault.mjs`, with its own git remote, and
-checks the markdown on disk after every interaction. Ticking a task must change
-one character on one line; dragging a block must change only its time. Each
-test rewinds the fixture first, so none depends on another.
-
-Playwright's Chromium needs some system libraries. On a machine without root,
-`e2e/install-browser-deps.sh` unpacks them into a user prefix; point
-`LD_LIBRARY_PATH` at it when running the suite.
-
-## How it is put together
-
-SvelteKit with `adapter-node`, SQLite through `better-sqlite3` with FTS5 for
-search, `chokidar` to watch the vault, `simple-git` for sync.
-
-| Module | Owns |
-|---|---|
-| `src/lib/server/parse/` | Task lines and note structure. Pure functions. |
-| `src/lib/server/vault/` | Every filesystem call, path safety, hashes, the watcher, the sync provider. |
-| `src/lib/server/index/` | The database. The only SQL in the codebase. |
-| `src/lib/server/workspaces.ts` | Workspace definitions and membership. |
-| `src/lib/server/study/` | Flashcards, resources, topics, goals and the session log, all read out of notes. |
-| `src/lib/server/dating.ts` | The ledger, person profiles and the `Private/` scope, read by one module only. |
-| `src/lib/server/ai/` | The nine guardrails, the one read-only runner, the CLI bridge, and the three features. |
-| `src/lib/server/hub.ts` | Wires those into one running instance. |
-| `src/lib/modules/` | The module registry the shell draws its navigation from. |
-| `src/routes/` | Pages and JSON API. Handlers translate HTTP and nothing else. |
-
-Sync sits behind a `SyncProvider` interface with a git implementation: saves
-write to disk immediately and are committed on a debounce, pulls run on a
-timer, and conflicts are reported as data rather than thrown. Swapping git for
-something else is a new implementation, not a rewrite.
-
-The design follows John Ousterhout's *A Philosophy of Software Design*: deep
-modules behind small interfaces, complexity pulled downward, and errors defined
-out of existence where possible. Reading a note that does not exist returns an
-empty note. Writing returns a conflict instead of throwing one.
-
-For the fuller explanation behind what each screen's hint text only gestures
-at, see [`docs/how-it-works.md`](docs/how-it-works.md). For the token scale,
-the shared classes and the three shared components every screen is built from,
-see [`docs/design.md`](docs/design.md).
-
 ## The AI layer
 
 Off by default, and it never writes without a click. Every model run is
-**read-only, always**: the CLI is given no tools and no directory, never runs
-inside the vault, and sees only the notes the server puts in its prompt.
-Anything that would change a note comes back as a **proposal** — the edits,
-the diff for each one, and the reason — and only what you tick is written.
-That holds for the morning briefing too: it is shown on screen and saved to
-today's note only when you press Save to note.
+read-only: the CLI gets no tools and no directory and sees only the notes the
+server puts in its prompt. Three features use it (glossary look-up, the
+morning briefing and Date insights), and each returns a proposal you accept or
+reject before a byte is written. Nine guardrails enforce this in code, not in
+prompt text. The details are in [`docs/how-it-works.md`](docs/how-it-works.md#settings).
 
-Nine guardrails enforce this in code rather than in prompt text: no direct
-writes, read-only always, a per-feature path policy, a blast-radius cap,
-schema validation of anything a model returns, a budget, note text wrapped as
-data so a note cannot issue instructions, an undo snapshot before every write
-(kept seven days), and a kill switch.
+## More
 
-Three features use it: glossary look-up, the morning briefing and Date
-insights. You choose the model, the effort level, the budget and the timeout
-per feature, in `_hub/ai.md` or on the settings page. With the layer off —
-which is how it ships — every surface still loads and says so.
+- [`docs/getting-started.md`](docs/getting-started.md): first day, step by step.
+- [`docs/how-it-works.md`](docs/how-it-works.md): what each screen does.
+- [`docs/design.md`](docs/design.md): the token scale and shared classes.
+- [`docs/contributing.md`](docs/contributing.md): tests and how the code is put together.
 
 ## Roadmap
 
-- [x] Vault reading, full-text index, file tree, rendered notes, git sync, daily note view
-- [x] Ticking tasks, drag-and-drop timeline, conflict resolver
-- [x] Six modules: Today, Glossary, Workspaces, Study, Date, Notes
-- [x] Kanban boards, contacts and a deal pipeline, task dependencies
-- [x] LLM assistance over the vault, behind an accept-or-reject proposal flow
-      so nothing is written without confirmation
-- [x] Study tracker: resource queue, topic coverage, spaced repetition, goals
-      and a session log
-- [x] A private, gitignored Date module with its own ledger and profiles
-- [x] Command palette, phone and desktop, installable via add-to-home-screen
+- [x] Vault reading, full-text index, git sync, rendered notes
+- [x] Timeline with drag-and-drop, task ticking, conflict resolver
+- [x] Six modules, kanban boards, contacts, evening review, one inbox
+- [x] Read-only AI: glossary look-up, briefing and Date insights, behind an
+      accept step
+- [x] Flashcards scheduled by FSRS, Anki import, cards from glossaries
+- [x] Command palette, phone and desktop, installable to the home screen
 - [ ] Multi-vault, and a second sync provider to prove the interface
 - [ ] Outlook calendars, deferred behind Google's ICS feed
 
