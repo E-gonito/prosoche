@@ -47,7 +47,8 @@ export type FeatureId =
 	| 'briefing'
 	| 'glossary-lookup'
 	| 'glossary-scan'
-	| 'dating-insights';
+	| 'dating-insights'
+	| 'commit-message';
 
 /**
  * The two controls the user picks, plus the two limits that bound a run.
@@ -86,14 +87,17 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	// Per batch: up to 60,000 characters of notes in, up to 25 entries out.
 	'glossary-scan': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 240 },
 	// Kept low because a read on a private log is a small, occasional ask.
-	'dating-insights': { model: 'claude-sonnet-5-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 }
+	'dating-insights': { model: 'claude-sonnet-5-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 },
+	// One line from a few diffs: the cheapest model is enough.
+	'commit-message': { model: 'claude-haiku-4-5-20251001', effort: 'low', budgetUsd: 0.05, timeoutSeconds: 60 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
 	briefing: 'Morning briefing',
 	'glossary-lookup': 'Glossary look-up',
 	'glossary-scan': 'Glossary scan',
-	'dating-insights': 'Dating insights'
+	'dating-insights': 'Dating insights',
+	'commit-message': 'Commit message'
 };
 
 /** The caps G7 enforces, whatever an individual feature's row asks for. */
