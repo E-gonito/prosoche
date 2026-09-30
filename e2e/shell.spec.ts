@@ -22,12 +22,12 @@ test.describe('the shell', () => {
 		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).not.toHaveAttribute('aria-current', 'page');
 	});
 
-	test('a phone gets a top bar of three modules and a More sheet', async ({ page }) => {
+	test('a phone gets a top bar of three modules, the review and a More sheet', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.goto('/notes');
 		const bar = page.getByTestId('tabbar');
 		await expect(bar).toBeVisible();
-		await expect(bar.getByRole('link')).toHaveCount(3);
+		await expect(bar.getByRole('link')).toHaveText(['Today', 'Review', 'Workspaces', 'Notes']);
 		await bar.getByTestId('tab-more').click();
 		await expect(page.locator('dialog.more')).toBeVisible();
 		await expect(page.locator('dialog.more').getByRole('link', { name: 'Date', exact: true })).toBeVisible();
