@@ -5,7 +5,6 @@ import {
 	FEATURE_DEFAULTS,
 	GUARDRAILS,
 	MODELS,
-	PERMISSION_MODES,
 	refuse
 } from './ai';
 
@@ -20,22 +19,20 @@ describe('the pickers', () => {
 		]);
 	});
 
-	it('offers no mode that bypasses permissions', () => {
-		const ids = PERMISSION_MODES.map((m) => m.id).join(' ');
-		expect(ids).not.toMatch(/bypass|skip|dangerous|yolo/i);
-		expect(PERMISSION_MODES).toHaveLength(3);
+	it('offers no permission mode at all, because every run is read-only', () => {
+		for (const run of Object.values(FEATURE_DEFAULTS)) expect(run).not.toHaveProperty('permission');
 	});
 
 	it('defaults every feature to something cautious', () => {
 		for (const [feature, run] of Object.entries(FEATURE_DEFAULTS)) {
-			expect(run.permission, feature).not.toBe('apply');
 			expect(run.budgetUsd, feature).toBeGreaterThan(0);
 			expect(run.timeoutSeconds, feature).toBeGreaterThan(0);
 		}
 	});
 
-	it('names all ten guardrails', () => {
-		expect(Object.keys(GUARDRAILS)).toHaveLength(10);
+	it('names all nine guardrails, G2 as read-only always', () => {
+		expect(Object.keys(GUARDRAILS)).toHaveLength(9);
+		expect(GUARDRAILS.G2).toBe('Read-only, always');
 	});
 });
 

@@ -164,7 +164,7 @@ search, `chokidar` to watch the vault, `simple-git` for sync.
 | `src/lib/server/workspaces.ts` | Workspace definitions and membership. |
 | `src/lib/server/study/` | Flashcards, resources, topics, goals and the session log, all read out of notes. |
 | `src/lib/server/dating.ts` | The ledger, person profiles and the `Private/` scope, read by one module only. |
-| `src/lib/server/ai/` | The ten guardrails, the CLI bridge, and every feature that drafts a change. |
+| `src/lib/server/ai/` | The nine guardrails, the one read-only runner, the CLI bridge, and the three features. |
 | `src/lib/server/hub.ts` | Wires those into one running instance. |
 | `src/lib/modules/` | The module registry the shell draws its navigation from. |
 | `src/routes/` | Pages and JSON API. Handlers translate HTTP and nothing else. |
@@ -186,22 +186,24 @@ see [`docs/design.md`](docs/design.md).
 
 ## The AI layer
 
-Off by default, and it never writes without a click. Every feature that would
-change a note produces a **proposal** — the edits, the diff for each one, and
-the reason — and writes only what you tick. Ten guardrails enforce that in
-code rather than in prompt text: no direct writes, read-only by default, tool
-runs in a sandbox copy of the vault rather than the vault, a per-feature path
-policy, a blast-radius cap, schema validation of anything a model returns, a
-budget, retrieved note text wrapped as data so a note cannot issue
-instructions, an undo snapshot before every write, and a kill switch.
+Off by default, and it never writes without a click. Every model run is
+**read-only, always**: the CLI is given no tools and no directory, never runs
+inside the vault, and sees only the notes the server puts in its prompt.
+Anything that would change a note comes back as a **proposal** — the edits,
+the diff for each one, and the reason — and only what you tick is written.
+That holds for the morning briefing too: it is shown on screen and saved to
+today's note only when you press Save to note.
 
-There is one exception, and it is stated where it lives: the morning briefing
-may replace the text between its own two markers in today's note, and nothing
-else, ever.
+Nine guardrails enforce this in code rather than in prompt text: no direct
+writes, read-only always, a per-feature path policy, a blast-radius cap,
+schema validation of anything a model returns, a budget, note text wrapped as
+data so a note cannot issue instructions, an undo snapshot before every write
+(kept seven days), and a kill switch.
 
-You choose the model, the effort level and the permission mode per feature, in
-`_hub/ai.md` or on the settings page. With the layer off — which is how it
-ships — every surface still loads and says so.
+Three features use it: glossary look-up, the morning briefing and Date
+insights. You choose the model, the effort level, the budget and the timeout
+per feature, in `_hub/ai.md` or on the settings page. With the layer off —
+which is how it ships — every surface still loads and says so.
 
 ## Roadmap
 

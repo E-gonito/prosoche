@@ -13,7 +13,7 @@
  * "is this a deletion?", "is this a rename out of Inbox?", "is this a new
  * note or a rewrite of an old one?", and a span cannot be asked.
  *
- * So an edit is one of four named intentions, and the bytes it produces are
+ * So an edit is one of three named intentions, and the bytes it produces are
  * computed here, by our code, from the vault as it is right now. The model
  * never supplies bytes for anything except the text it is adding. The one
  * exception is `revise`, a whole new version of a note, which exists for a
@@ -34,7 +34,6 @@ import { dailyNotePath, shiftDay, type DayKey } from '../daily';
 import { isGlossaryPath } from '../glossary';
 import type { Vault } from '../vault/index';
 import {
-	BRIEFING_MARKER,
 	checkBlastRadius,
 	checkKillSwitch,
 	checkPath,
@@ -43,7 +42,7 @@ import {
 	type BlastLimits,
 	type PathPolicy
 } from './guardrails';
-import { appliedResult, recordApplied, readSnapshot, resolvesInsideVault, snapshot } from './sandbox';
+import { appliedResult, pruneSnapshots, recordApplied, readSnapshot, resolvesInsideVault, snapshot } from './undo';
 import {
 	refuse,
 	type ApplyResult,
@@ -102,9 +101,8 @@ export function policyFor(
 	});
 
 	switch (feature) {
-		// The briefing is G1's exception, so its policy is the tightest here:
-		// one file, one day, no renames. The overlap with the writable-days
-		// list is deliberate - a date bug has to get past both.
+		// The briefing writes one file on one day. The overlap with the
+		// writable-days list is deliberate - a date bug has to get past both.
 		case 'briefing':
 			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today] });
 
@@ -126,10 +124,6 @@ interface Resolved {
 	edit: ProposalEdit;
 	before: string;
 	after: string;
-	/** Hash of the file as it was read, so a clashing write is a conflict. */
-	expectedHash: string;
-	/** True when the file does not exist yet. */
-	fresh: boolean;
 	refusals: Refusal[];
 }
 
@@ -138,8 +132,8 @@ interface Resolved {
  * now.
  *
  * Inputs: the vault and the edits. Output: one `Resolved` per edit, carrying
- * any refusal that only reading the file could reveal - a `create` aimed at a
- * note that already exists, a `replace-region` whose markers are gone.
+ * any refusal that only reading the file could reveal - a `revise` of a note
+ * that changed since the draft, a `replace-region` whose markers are gone.
  *
  * Side effects: reads notes. Never writes, and never invents content: `after`
  * is always the current file with the model's text inserted by our own string
@@ -155,33 +149,14 @@ async function resolve(vault: Vault, edits: ProposalEdit[], policy: PathPolicy):
 	for (const edit of edits) {
 		const pathRefusals = checkPath(edit.path, policy);
 		if (pathRefusals.length) {
-			out.push({ edit, before: '', after: '', expectedHash: '', fresh: true, refusals: pathRefusals });
+			out.push({ edit, before: '', after: '', refusals: pathRefusals });
 			continue;
 		}
 
 		const note = await vault.read(edit.path);
-		const base = {
-			edit,
-			before: note.content,
-			expectedHash: note.hash,
-			fresh: !note.exists,
-			refusals: [] as Refusal[]
-		};
+		const base = { edit, before: note.content, refusals: [] as Refusal[] };
 
 		switch (edit.kind) {
-			case 'create': {
-				if (note.exists) {
-					out.push({
-						...base,
-						after: note.content,
-						refusals: [refuse('G5', 'That note already exists; creating it would replace what is there.', edit.path)]
-					});
-					break;
-				}
-				out.push({ ...base, after: ensureTrailingNewline(edit.text) });
-				break;
-			}
-
 			case 'append': {
 				const body = note.content === '' ? '' : ensureTrailingNewline(note.content);
 				out.push({ ...base, after: `${body}${ensureTrailingNewline(edit.text)}` });
@@ -341,11 +316,13 @@ export async function apply(
 	if (writable.length === 0) return { written: [], refusals, undoId: null };
 
 	// G9: snapshot before the first write, and refuse anything not covered.
+	// Pruning here is what keeps the seven-day promise without a timer.
 	const taken = await snapshot(
 		proposal.id,
-		writable.map((p) => ({ path: p.path, content: p.before === '' && p.kind === 'create' ? null : p.before })),
+		writable.map((p) => ({ path: p.path, content: p.before })),
 		undoPath
 	);
+	await pruneSnapshots(7, undoPath);
 	const missing = requireUndoSnapshot(
 		writable.map((p) => p.path),
 		taken.paths
@@ -407,8 +384,8 @@ const markerRegion = (marker: string): RegExp =>
 /**
  * Replace the text between `<!-- marker start -->` and `<!-- marker end -->`.
  *
- * The hub's one automatic write lands here, so this function is what keeps
- * that promise: it rebuilds the note as head plus marker plus new body plus
+ * The briefing's accepted write lands here, so this function is what keeps
+ * the byte-for-byte promise: it rebuilds the note as head plus marker plus new body plus
  * marker plus tail, all three of the outer pieces taken verbatim from the
  * original string. Every byte outside the region is the same object it was.
  *
@@ -435,7 +412,7 @@ export function readRegion(content: string, marker: string): string | null {
 }
 
 /** The markers themselves, for a proposal that has to add them first. */
-export function markerBlock(marker: string = BRIEFING_MARKER): string {
+export function markerBlock(marker: string): string {
 	return `<!-- ${marker} start -->\n<!-- ${marker} end -->`;
 }
 

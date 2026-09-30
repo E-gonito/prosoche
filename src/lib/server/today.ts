@@ -17,7 +17,7 @@ import { workspaceFor, type Workspace } from './workspaces';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
 import { readRegion } from './ai/proposal';
-import { BRIEFING_MARKER } from './ai/guardrails';
+import { BRIEFING_MARKER } from './ai/briefing';
 import { loadSettings } from './ai/settings';
 import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';
@@ -58,17 +58,17 @@ function formatTitleDay(day: DayKey): string {
 
 /**
  * The one-line summary under the title: "4 of 9 done · 5h 30m planned ·
- * 2 meetings · 3 overdue".
+ * 2 events · 3 overdue".
  *
  * Every clause but the count of tasks is dropped once it is zero, because
- * "0 meetings" and "0 overdue" on an ordinary day is noise repeated every
+ * "0 events" and "0 overdue" on an ordinary day is noise repeated every
  * morning. The task count never drops, even at 0 of 0, so the line always
  * says something about the day. Pure, so the rule is table-tested on its own.
  */
-export function summaryLine(input: { total: number; done: number; plannedMinutes: number; meetings: number; overdue: number }): string {
+export function summaryLine(input: { total: number; done: number; plannedMinutes: number; events: number; overdue: number }): string {
 	const parts = [`${input.done} of ${input.total} done`];
 	if (input.plannedMinutes > 0) parts.push(`${formatDuration(input.plannedMinutes, ' ')} planned`);
-	if (input.meetings > 0) parts.push(`${input.meetings} meeting${input.meetings === 1 ? '' : 's'}`);
+	if (input.events > 0) parts.push(`${input.events} event${input.events === 1 ? '' : 's'}`);
 	if (input.overdue > 0) parts.push(`${input.overdue} overdue`);
 	return parts.join(' · ');
 }
@@ -185,7 +185,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 			total: tasks.length,
 			done: doneCount,
 			plannedMinutes: coveredMinutes(scheduled),
-			meetings: dayEvents.ok ? dayEvents.events.length : 0,
+			events: dayEvents.ok ? dayEvents.events.length : 0,
 			overdue: overdue.length + overdueCards.length
 		})
 	};

@@ -140,9 +140,10 @@ export async function draftLookups(vault: Vault, glossary: GlossaryRef, terms: s
 		system: 'You define terms for one person\'s glossary. Answer only with JSON: {"entries":[{"term":"…","definition":"…","relevance":"…"}]}.',
 		schema: LOOKUP_SCHEMA,
 		paths: [glossary.path],
+		note: `${entries.length} term${entries.length === 1 ? '' : 's'} drafted`,
 		cli: options.cli
 	});
-	if (!run.ok) return { ...run.result, destinations };
+	if (!run.ok) return { ...nothing(run.problem), refusals: run.refusals, destinations };
 	const proposal = lookupProposal(glossary.path, note, run.value.entries, run.stamp);
 	return { proposal, problem: proposal ? null : 'The answer matched none of the terms asked about.', refusals: [], destinations };
 }

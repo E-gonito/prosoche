@@ -1,153 +1,19 @@
 /**
- * The AI layer's two private directories, and its only filesystem code.
+ * The AI layer's undo store, and its only filesystem code.
  *
  * Elsewhere in this codebase `src/lib/server/vault/` owns every file
- * operation. The AI layer needs two things the vault module cannot give it,
- * both of them outside the vault: a throwaway copy to run tools against (G3,
- * because the CLI must never be handed the real vault) and a place to
- * snapshot files before applying a proposal (G9, `config.undoPath`). Both
- * live here so there is exactly one file to audit, and the rule it keeps is
- * short enough to state in a line: **this module reads the vault and writes
- * only under directories it created itself.** No code path here opens a vault
- * file for writing.
+ * operation. The AI layer needs two things the vault module cannot give it:
+ * a place outside the vault to snapshot files before applying a proposal
+ * (G9, `config.undoPath`), and a symlink check on a path about to be written
+ * (G4). Both live here so there is exactly one file to audit, and the rule it
+ * keeps is short enough to state in a line: **this module reads the vault and
+ * writes only under `config.undoPath`.** No code path here opens a vault file
+ * for writing.
  */
 
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
+import { mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, sep } from 'node:path';
 import { config } from '../config';
-
-export interface Sandbox {
-	/** Absolute path of the copy. Safe to pass as cwd and `--add-dir`. */
-	root: string;
-	/** Vault-relative paths that were copied in. */
-	paths: string[];
-	/** Delete the copy. Safe to call twice, and never touches the vault. */
-	dispose(): Promise<void>;
-}
-
-/**
- * Folders never copied into a sandbox: the ones that are large, the ones that
- * are secrets, and the ones whose presence would let a tool run reach the
- * real world. `.git` in particular would hand the CLI the push remote.
- */
-const NEVER_COPIED = ['.git', '.obsidian', '.stversions', '.stfolder', '.venv', 'node_modules', '__pycache__'];
-
-/**
- * Copy the notes a run is allowed to see into a fresh temporary directory.
- *
- * Inputs: the vault root, and optionally the vault-relative subtree to copy -
- * a workspace folder, say - so a question about one project does not need the
- * whole vault on disk twice. Output: a `Sandbox` whose `root` is a directory
- * that did not exist a moment ago.
- *
- * Side effects: creates a directory under the OS temp dir and copies files
- * into it; reads the vault. Never writes to the vault, never copies `.git` or
- * `.obsidian`, and never returns a root inside the vault - if the temp
- * directory somehow resolved to somewhere under the vault, which would defeat
- * the whole point, it throws instead of handing back an unsafe path.
- */
-export async function makeSandbox(vaultPath: string = config.vaultPath, subtree = ''): Promise<Sandbox> {
-	const vaultReal = await realpath(vaultPath);
-	const base = await mkdtemp(join(await realpath(tmpdir()), 'prosoche-ai-'));
-	const root = await realpath(base);
-
-	if (root === vaultReal || root.startsWith(vaultReal + sep) || vaultReal.startsWith(root + sep)) {
-		await rm(base, { recursive: true, force: true });
-		throw new Error(`Sandbox would overlap the vault: ${root}`);
-	}
-
-	const paths: string[] = [];
-	const from = subtree === '' ? vaultReal : join(vaultReal, subtree);
-	await copyTree(from, root, vaultReal, paths);
-
-	return {
-		root,
-		paths,
-		dispose: async () => {
-			await rm(base, { recursive: true, force: true });
-		}
-	};
-}
-
-async function copyTree(from: string, into: string, vaultReal: string, paths: string[]): Promise<void> {
-	let entries;
-	try {
-		entries = await readdir(from, { withFileTypes: true });
-	} catch {
-		// A subtree that does not exist yields an empty sandbox, not an error:
-		// asking about a folder you have not made yet is a normal mistake.
-		return;
-	}
-	await mkdir(into, { recursive: true });
-
-	for (const entry of entries) {
-		if (NEVER_COPIED.includes(entry.name)) continue;
-		const source = join(from, entry.name);
-
-		// Follow nothing. A symlink in the vault pointing at ~/.ssh would
-		// otherwise be copied into a directory the CLI can read.
-		const info = await stat(source).catch(() => null);
-		const link = await realpath(source).catch(() => null);
-		if (!info || link === null) continue;
-		if (link !== source) continue;
-
-		if (info.isDirectory()) {
-			await copyTree(source, join(into, entry.name), vaultReal, paths);
-		} else if (entry.isFile() && entry.name.endsWith('.md')) {
-			await cp(source, join(into, entry.name), { dereference: false });
-			paths.push(relative(vaultReal, source).split(sep).join('/'));
-		}
-	}
-}
-
-interface SandboxChange {
-	/** Vault-relative path, as the rest of the codebase spells paths. */
-	path: string;
-	/** Contents inside the sandbox after the run. */
-	text: string;
-	/** True when the file did not exist in the copy handed to the run. */
-	created: boolean;
-}
-
-/**
- * Read back every file a tool run changed inside the sandbox.
- *
- * Inputs: the sandbox, and the contents it started with keyed by
- * vault-relative path. Output: one entry per file whose bytes differ, which is
- * what `proposal.ts` turns into a list of edits.
- *
- * Side effects: reads the sandbox. Never reads or writes the vault, so a
- * comparison cannot be poisoned by the vault changing underneath, and never
- * reports a deletion: a file the run removed inside the copy is simply not
- * mentioned, because nothing in this phase deletes a note.
- */
-export async function readSandboxChanges(
-	sandbox: Sandbox,
-	before: Map<string, string>
-): Promise<SandboxChange[]> {
-	const out: SandboxChange[] = [];
-
-	const walk = async (dir: string): Promise<void> => {
-		const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
-		for (const entry of entries) {
-			const absolute = join(dir, entry.name);
-			if (entry.isDirectory()) {
-				await walk(absolute);
-				continue;
-			}
-			if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-			const path = relative(sandbox.root, absolute).split(sep).join('/');
-			const text = await readFile(absolute, 'utf8').catch(() => null);
-			if (text === null) continue;
-			const was = before.get(path);
-			if (was === text) continue;
-			out.push({ path, text, created: was === undefined });
-		}
-	};
-	await walk(sandbox.root);
-	return out.sort((a, b) => a.path.localeCompare(b.path));
-}
 
 /**
  * Whether a vault-relative path resolves to a real location inside the vault.
@@ -280,6 +146,8 @@ export async function listSnapshots(undoPath: string = config.undoPath): Promise
 
 /**
  * Delete snapshots older than `days`, which the spec fixes at seven.
+ * `proposal.apply` calls it after every snapshot, which is what makes the
+ * settings page's "kept for seven days" true.
  *
  * Inputs: a retention window. Output: how many were removed.
  * Side effects: removes directories under `config.undoPath` only. Never

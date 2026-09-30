@@ -1,5 +1,5 @@
 /**
- * The ten guardrails of SPEC 7.2, as code paths rather than prompt text.
+ * The nine guardrails of SPEC 7.2, as code paths rather than prompt text.
  *
  * Every function here answers one question: may this happen? They are pure
  * and take everything they need as arguments, so each one can be tested on
@@ -20,7 +20,6 @@ import {
 	type BlastCaps,
 	type BudgetLimits,
 	type FeatureId,
-	type PermissionMode,
 	type Proposal,
 	type ProposalEdit,
 	type Refusal,
@@ -47,8 +46,6 @@ export function requireHumanAccept(
 	proposal: Proposal,
 	acceptedIds: string[]
 ): { edits: ProposalEdit[]; refusals: Refusal[] } {
-	if (briefingException(proposal)) return { edits: proposal.edits, refusals: [] };
-
 	const wanted = new Set(acceptedIds);
 	const edits = proposal.edits.filter((e) => wanted.has(e.id));
 	const refusals: Refusal[] = [];
@@ -63,131 +60,37 @@ export function requireHumanAccept(
 	return { edits, refusals };
 }
 
-export const BRIEFING_MARKER = 'hub:briefing';
-
-/**
- * G1's one exception, exactly as SPEC 7.2.1 words it: the morning briefing may
- * replace the text between the `hub:briefing` markers in today's note without
- * a click, because it runs at 07:00 while nobody is watching.
- *
- * Deliberately narrow. It is true only for a proposal that is one edit, of
- * kind `replace-region`, with that exact marker, from the `briefing` feature.
- * Anything else - two edits, a different marker, a create alongside it - falls
- * through to the normal accept step. Which note counts as today's is settled
- * by G4's allowlist and G5's writable days, not here, so this exception
- * cannot be used to reach last March.
- *
- * Inputs: a proposal. Output: the single edit, or null.
- * Side effects: none.
- */
-export function briefingException(proposal: Proposal): ProposalEdit | null {
-	if (proposal.feature !== 'briefing') return null;
-	if (proposal.edits.length !== 1) return null;
-	const [edit] = proposal.edits;
-	if (edit.kind !== 'replace-region') return null;
-	if (edit.marker !== BRIEFING_MARKER) return null;
-	return edit;
-}
-
 /* ------------------------------------------------------------------ G2 ---- */
 
-interface ToolPolicy {
-	/** Tools the run may use. Empty means the model has no tools at all. */
-	allowed: string[];
-	/** Tools refused even if something else allows them. Always non-empty. */
-	disallowed: string[];
-	/** True when the run needs a sandbox directory. */
-	needsSandbox: boolean;
-}
+/**
+ * Tools refused to every run: the network, the shell, and anything that can
+ * spawn more of itself. Listed rather than assumed, so a future CLI that
+ * gains a new default tool does not quietly gain it here. A run is given no
+ * tools at all as well; this list is the second lock on the same door.
+ */
+export const NEVER = ['Bash', 'BashOutput', 'KillShell', 'WebFetch', 'WebSearch', 'Task', 'Agent', 'NotebookEdit'];
 
 /**
- * Tools that are never available in any mode: the network, the shell, and
- * anything that can spawn more of itself. Listed rather than assumed, so a
- * future CLI that gains a new default tool does not quietly gain it here.
+ * G2, read-only, always: the CLI never runs inside the vault.
+ *
+ * Every run is given an empty tool list and the notes in its prompt, so an
+ * instruction hidden in a note has nothing to act with. This is the check on
+ * where the process sits: prevents the single worst outcome available to this
+ * code, the `claude` process being handed the user's vault as a working
+ * directory. Checked on the actual strings that are about to be passed to
+ * `spawn`, so it holds even when the caller computed them wrongly.
+ *
+ * Inputs: the working directory a run intends to use and the absolute vault
+ * path. Output: refusals, empty when it is safe. Side effects: none. Never
+ * resolves symlinks; this catches the textual case.
  */
-const NEVER = ['Bash', 'BashOutput', 'KillShell', 'WebFetch', 'WebSearch', 'Task', 'Agent', 'NotebookEdit'];
-
-/**
- * G2, read-only by default: what the model is allowed to touch, by mode.
- *
- * Prevents an instruction hidden in a note from having anything to act on. In
- * read-only mode the model gets no tools whatsoever - the server has already
- * put the notes in the prompt - so "delete every file" is a sentence with
- * nowhere to go. In the two tool modes the allowlist is explicit and the
- * network is off, so the worst an injected instruction achieves is a strange
- * diff inside a sandbox copy that a human then rejects.
- *
- * Inputs: a permission mode. Output: the tool policy for it.
- * Side effects: none. Never returns a policy that allows a network or shell
- * tool, and has no branch that could produce "all tools".
- */
-export function toolPolicyFor(mode: PermissionMode): ToolPolicy {
-	if (mode === 'read-only') return { allowed: [], disallowed: NEVER, needsSandbox: false };
-	return { allowed: ['Read', 'Grep', 'Glob', 'Edit', 'Write'], disallowed: NEVER, needsSandbox: true };
-}
-
-/* ------------------------------------------------------------------ G3 ---- */
-
-/**
- * G3, sandbox for tool runs: the CLI never sees the real vault.
- *
- * Prevents the single worst outcome available to this code - the `claude`
- * process being handed the user's vault as a working directory, where its
- * Write tool would edit the real notes with no proposal and no diff. Checked
- * on the actual strings that are about to be passed to `spawn`, so it holds
- * even when the caller computed them wrongly.
- *
- * A run with tools is held to the strict rule: neither the working directory
- * nor any `--add-dir` may be the vault, be inside it, or contain it, and
- * there must be a sandbox to point at. A read-only run has no tools at all,
- * so the only thing that matters is that it is not sitting in the vault, and
- * naming a directory it cannot open is a bug worth refusing over.
- *
- * Inputs: the working directory and `--add-dir` values a run intends to use,
- * the absolute vault path, and the permission mode. Output: refusals, empty
- * when it is safe. Side effects: none. Never resolves symlinks - that is
- * `sandbox.ts`'s job; this catches the textual case.
- */
-export function requireSandboxRoot(
-	run: { cwd: string; addDirs: string[] },
-	vaultPath: string,
-	mode: PermissionMode
-): Refusal[] {
-	const out: Refusal[] = [];
+export function requireOutsideVault(cwd: string, vaultPath: string): Refusal[] {
+	if (cwd.trim() === '') {
+		return [refuse('G2', 'A run with no working directory would inherit the server\'s.')];
+	}
 	const v = normaliseAbsolute(vaultPath);
-	const inside = (candidate: string): boolean => {
-		const a = normaliseAbsolute(candidate);
-		return a === v || a.startsWith(`${v}/`);
-	};
-	const overlaps = (candidate: string): boolean => {
-		const a = normaliseAbsolute(candidate);
-		return inside(candidate) || v.startsWith(`${a}/`) || a === '/';
-	};
-
-	if (run.cwd.trim() === '') {
-		out.push(refuse('G3', 'A run with no working directory would inherit the server\'s, which is not a sandbox.'));
-	}
-
-	if (mode === 'read-only') {
-		if (inside(run.cwd)) {
-			out.push(refuse('G3', `The CLI would run inside the vault: ${run.cwd}`));
-		}
-		for (const dir of run.addDirs) {
-			out.push(refuse('G3', `A read-only run has no tools and must name no directory: ${dir}`));
-		}
-		return out;
-	}
-
-	if (run.cwd.trim() !== '' && overlaps(run.cwd)) {
-		out.push(refuse('G3', `The CLI would run with the vault as its working directory: ${run.cwd}`));
-	}
-	if (run.addDirs.length === 0) {
-		out.push(refuse('G3', 'A run with tools needs a sandbox copy to point at.'));
-	}
-	for (const dir of run.addDirs) {
-		if (dir.trim() === '' || overlaps(dir)) out.push(refuse('G3', `--add-dir would expose the vault: ${dir}`));
-	}
-	return out;
+	const a = normaliseAbsolute(cwd);
+	return a === v || a.startsWith(`${v}/`) ? [refuse('G2', `The CLI would run inside the vault: ${cwd}`)] : [];
 }
 
 /** Collapse `.` and `..` segments and trailing slashes in an absolute path. */
@@ -240,7 +143,7 @@ export interface PathPolicy {
  * used POSIX-style) escaping the vault entirely. A write to `.obsidian/` or
  * `.git/` breaking the editor or the sync layer. A write to `_hub/ai.md`,
  * `_hub/.state/` or `CLAUDE.md` letting the model rewrite its own limits, its
- * own audit trail or the queue of what is waiting to be accepted - checked
+ * own audit trail or the app's own state - checked
  * case-insensitively, because the vault is also mounted on a case-insensitive
  * Mac volume where `claude.MD` is the same file. And, through the per-feature
  * allowlist, a feature reaching outside its remit: the briefing may touch
@@ -510,16 +413,8 @@ function walk(value: unknown, schema: Schema, at: string, problems: string[]): v
 
 /* ------------------------------------------------------------------ G7 ---- */
 
-interface Spend {
-	/** Dollars already spent today, from the audit log. */
-	todayUsd: number;
-	/** Runs in flight right now. */
-	running: number;
-}
-
 export const DEFAULT_BUDGET: BudgetLimits = {
 	dailyUsd: 5,
-	maxConcurrent: 2,
 	maxTimeoutSeconds: 600,
 	maxRunUsd: 2
 };
@@ -530,32 +425,29 @@ export const DEFAULT_BUDGET: BudgetLimits = {
  *
  * Prevents money and machine disappearing into a loop. The per-run cap stops
  * one question costing a day's budget, the daily cap stops a scheduled job
- * retrying forever, the concurrency cap stops the dev box being buried under
- * CLI processes, and clamping the timeout stops a hand-edited settings file
- * saying `timeout_s: 99999` from parking a process indefinitely.
+ * retrying forever, and clamping the timeout stops a hand-edited settings
+ * file saying `timeout_s: 99999` from parking a process indefinitely.
  *
- * Inputs: the run's settings, what has been spent, the limits.
+ * Inputs: the run's settings, the dollars already spent today (from the audit
+ * log), the limits.
  * Output: refusals, plus the settings clamped to what is permitted, so a
  * caller cannot use the unclamped values by accident.
  * Side effects: none. Never records the spend - that is `audit.ts`.
  */
 export function checkBudget(
 	settings: RunSettings,
-	spend: Spend,
+	todayUsd: number,
 	limits: BudgetLimits = DEFAULT_BUDGET
 ): { refusals: Refusal[]; settings: RunSettings } {
 	const refusals: Refusal[] = [];
 
-	if (spend.todayUsd >= limits.dailyUsd) {
+	if (todayUsd >= limits.dailyUsd) {
 		refusals.push(refuse('G7', `Today's AI budget of $${limits.dailyUsd.toFixed(2)} is spent. It resets tomorrow.`));
-	}
-	if (spend.running >= limits.maxConcurrent) {
-		refusals.push(refuse('G7', `${spend.running} runs already in flight; at most ${limits.maxConcurrent} at once.`));
 	}
 	if (!(settings.budgetUsd > 0)) refusals.push(refuse('G7', 'A run needs a budget above zero.'));
 	if (!(settings.timeoutSeconds > 0)) refusals.push(refuse('G7', 'A run needs a timeout above zero.'));
 
-	const remaining = Math.max(0, limits.dailyUsd - spend.todayUsd);
+	const remaining = Math.max(0, limits.dailyUsd - todayUsd);
 	const budgetUsd = Math.min(Math.max(settings.budgetUsd, 0), limits.maxRunUsd, remaining);
 	return {
 		refusals,
@@ -581,8 +473,8 @@ const DATA_CLOSE = '</note-content>';
  * so: the content is fenced, the fence markers are escaped out of the content
  * itself so nothing can close the envelope early and speak as the system, and
  * the preamble states plainly that what follows is quoted material. Together
- * with G2 this is belt and braces - in read-only mode an obeyed instruction
- * still has no tool to act with.
+ * with G2 this is belt and braces - an obeyed instruction still has no tool
+ * to act with.
  *
  * Inputs: passages, each with its path. Output: one prompt-safe string.
  * Side effects: none. Never changes what is stored in the vault; the escaping
@@ -631,9 +523,9 @@ export function requireUndoSnapshot(paths: string[], snapshotted: string[]): Ref
  * G10, kill switch: one setting stops every surface and every job.
  *
  * Prevents the situation where something is visibly going wrong and there is
- * no single place to make it stop. Checked at the top of every entry point -
- * chat, widget, scheduled briefing, proposal apply - so switching off is
- * immediate and total, rather than "no new runs, but the queued ones finish".
+ * no single place to make it stop. Checked by the runner before every model
+ * run and by `proposal.apply` before every write, so switching off is
+ * immediate and total.
  *
  * Inputs: whether the AI layer is enabled. Output: refusals, empty when on.
  * Side effects: none.

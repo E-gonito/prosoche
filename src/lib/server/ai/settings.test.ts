@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { defaultSettings, fromFrontmatter, loadSettings, saveSettings, SETTINGS_PATH, toFrontmatter } from './settings';
+import { defaultSettings, fromFrontmatter, loadSettings, saveSettings, SETTINGS_PATH, toFrontmatter, unknownFeatureRows } from './settings';
 
 let root: string;
 let vault: Vault;
@@ -19,12 +19,6 @@ afterEach(async () => {
 describe('defaults', () => {
 	it('lives in _hub so it travels with the vault', () => {
 		expect(SETTINGS_PATH).toBe('_hub/ai.md');
-	});
-
-	it('starts every feature at read-only or propose, never apply', () => {
-		for (const [name, run] of Object.entries(defaultSettings().features)) {
-			expect(run.permission, name).not.toBe('apply');
-		}
 	});
 
 	it('is off until the user turns it on, and capped once they do', () => {
@@ -51,7 +45,7 @@ describe('fromFrontmatter', () => {
 		expect(settings.features.briefing.model).toBe('claude-opus-5');
 		expect(settings.features.briefing.effort).toBe('high');
 		// Untouched fields keep the shipped value.
-		expect(settings.features.briefing.permission).toBe('read-only');
+		expect(settings.features.briefing.budgetUsd).toBe(0.25);
 		expect(settings.features['glossary-lookup'].model).toBe('claude-sonnet-5');
 	});
 
@@ -64,9 +58,9 @@ describe('fromFrontmatter', () => {
 		expect(settings.features['glossary-lookup'].model).toBe('claude-opus-5');
 	});
 
-	it('falls back to the safe value for a permission mode it does not know', () => {
+	it('ignores a permission line, from an older file or a hopeful edit', () => {
 		const settings = fromFrontmatter({ features: { 'glossary-lookup': { permission: 'bypassPermissions' } } });
-		expect(settings.features['glossary-lookup'].permission).toBe('propose');
+		expect(settings.features['glossary-lookup']).not.toHaveProperty('permission');
 	});
 
 	it('falls back for a model or effort it does not know', () => {
@@ -97,7 +91,7 @@ describe('the round trip through the vault', () => {
 		wanted.enabled = false;
 		wanted.features.briefing.model = 'claude-opus-5';
 		wanted.features.briefing.effort = 'xhigh';
-		wanted.features['glossary-lookup'].permission = 'read-only';
+		wanted.features['glossary-lookup'].timeoutSeconds = 60;
 		wanted.budget.dailyUsd = 3;
 
 		await saveSettings(vault, wanted);
@@ -110,7 +104,41 @@ describe('the round trip through the vault', () => {
 		expect(note.content.startsWith('---\n')).toBe(true);
 		expect(note.content).toContain('# AI settings');
 		expect(note.content).toContain('kill switch');
-		expect(note.content).toContain('| Feature | Model | Effort | Permission |');
+		expect(note.content).toContain('| Feature | Model | Effort |');
+		expect(note.content).not.toMatch(/^\s*permission:/m);
+	});
+
+	it('keeps the rows of features it does not know, byte for byte', async () => {
+		const old = [
+			'---',
+			'enabled: true',
+			'features:',
+			'  ask:',
+			'    model: claude-opus-5-5',
+			'    permission: read-only',
+			'  briefing:',
+			'    model: claude-opus-5',
+			'  capture:',
+			'    model: claude-haiku-4-5-20251001  # the cheap one',
+			'    permission: propose',
+			'---',
+			'',
+			'# AI settings',
+			''
+		].join('\n');
+		await vault.write(SETTINGS_PATH, old);
+		await saveSettings(vault, { ...(await loadSettings(vault)), enabled: false });
+		const content = (await vault.read(SETTINGS_PATH)).content;
+		expect(content).toContain('  ask:\n    model: claude-opus-5-5\n    permission: read-only\n');
+		expect(content).toContain('  capture:\n    model: claude-haiku-4-5-20251001  # the cheap one\n    permission: propose\n---');
+		expect(content.match(/ {2}briefing:/g)).toHaveLength(1);
+		expect((await loadSettings(vault)).enabled).toBe(false);
+	});
+
+	it('finds no unknown rows in a file it wrote itself, or in no file', async () => {
+		await saveSettings(vault, defaultSettings());
+		expect(unknownFeatureRows((await vault.read(SETTINGS_PATH)).content)).toBe('');
+		expect(unknownFeatureRows('')).toBe('');
 	});
 
 	it('says in the file that permissions are never skipped', async () => {

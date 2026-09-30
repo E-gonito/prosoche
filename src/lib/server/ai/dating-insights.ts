@@ -1,8 +1,8 @@
 /**
  * Insights: a read on patterns in the dating log, on demand.
  *
- * Read-only in every sense that matters here, not just by the permission
- * mode: this file never touches the Vault at all. `dating.ts`'s
+ * Read-only like every run, and more: this file never touches the Vault at
+ * all. `dating.ts`'s
  * `gatherInsightsSource` is the only thing that reads `Private/Dating`, and
  * it hands back plain data — day counts, a person's stage, their dates log —
  * which is all `buildPrompt` is given to work with. There is no retrieval
@@ -13,19 +13,15 @@
  * else; there is no proposal, because there is nothing to accept.
  */
 
-import { today } from '../daily';
 import type { InsightsSource } from '../dating';
 import type { Vault } from '../vault/index';
-import { logRun, spentOn } from './audit';
-import { runClaude, type CliDeps } from './cli';
-import { checkBudget, checkKillSwitch, wrapAsData } from './guardrails';
-import { loadSettings } from './settings';
-import type { RunStamp } from '$lib/shared/ai';
+import type { CliDeps } from './cli';
+import { wrapAsData } from './guardrails';
+import { runDraft } from './run';
 
 interface DatingInsightsResult {
 	text: string;
 	problem: string | null;
-	stamp: RunStamp | null;
 }
 
 /**
@@ -72,7 +68,7 @@ export function buildPrompt(source: InsightsSource): string {
 }
 
 /**
- * Run Insights once.
+ * Run Insights once, through the shared runner.
  *
  * Inputs: the vault (for settings, budget and the audit log only — never for
  * dating data) and a source already gathered by `dating.ts`. Output: the
@@ -84,54 +80,18 @@ export function buildPrompt(source: InsightsSource): string {
 export async function runDatingInsights(
 	vault: Vault,
 	source: InsightsSource,
-	overrides: Partial<CliDeps> = {}
+	cli: Partial<CliDeps> = {}
 ): Promise<DatingInsightsResult> {
-	const settings = await loadSettings(vault);
-	const chosen = settings.features['dating-insights'];
-	const startedAt = new Date().toISOString();
-	const day = today();
-
-	const killed = checkKillSwitch(settings.enabled);
-	if (killed.length) return { text: '', problem: killed[0].message, stamp: null };
-
-	const spend = await spentOn(vault, day);
-	const budget = checkBudget(chosen, { todayUsd: spend.usd, running: 0 }, settings.budget);
-	if (budget.refusals.length) return { text: '', problem: budget.refusals[0].message, stamp: null };
-
-	const result = await runClaude(
-		{
-			prompt: buildPrompt(source),
-			settings: { ...budget.settings, permission: 'read-only' },
-			systemPrompt:
-				"You are reading one person's private dating log, given to you directly as data. " +
-				'Answer only from it; do not assume anything it does not say.'
-		},
-		overrides
-	);
-
-	const stamp: RunStamp = {
-		...budget.settings,
+	const run = await runDraft(vault, {
 		feature: 'dating-insights',
-		startedAt,
-		durationMs: result.durationMs,
-		costUsd: result.ok ? result.costUsd : 0
-	};
-
-	await logRun(vault, {
-		at: startedAt,
-		feature: 'dating-insights',
-		model: stamp.model,
-		effort: stamp.effort,
-		permission: stamp.permission,
+		prompt: buildPrompt(source),
+		system:
+			"You are reading one person's private dating log, given to you directly as data. " +
+			'Answer only from it; do not assume anything it does not say.',
 		// No paths: Private/Dating never appears in the public audit trail.
 		paths: [],
-		decision: result.ok ? 'answered' : result.reason === 'refused' ? 'refused' : 'failed',
-		guardrails: result.ok ? [] : [...new Set(result.refusals.map((r) => r.guardrail))],
-		costUsd: stamp.costUsd,
-		durationMs: stamp.durationMs,
-		note: result.ok ? 'dating insights requested' : result.message
+		note: 'dating insights requested',
+		cli
 	});
-
-	if (!result.ok) return { text: '', problem: result.message, stamp };
-	return { text: result.text.trim(), problem: null, stamp };
+	return run.ok ? { text: run.value, problem: null } : { text: '', problem: run.problem };
 }

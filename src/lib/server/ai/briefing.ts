@@ -1,15 +1,13 @@
 /**
  * The morning briefing: what today looks like, drafted for today's note.
  *
- * `docs/plan-rebuild.md`'s Today section replaces SPEC 7.2.1's old exception
- * for this feature - "the briefing is shown on screen, and written into the
- * note only after Save to note is pressed" - which is also CLAUDE.md's rule
- * against a model writing without an explicit accept step. So this module
- * only ever proposes: it emits a `replace-region` edit and lets
+ * The briefing is shown on screen, and written into the note only after Save
+ * to note is pressed, which is CLAUDE.md's rule against a model writing
+ * without an explicit accept step; there is no exception for it. So this
+ * module only ever proposes: it emits a `replace-region` edit and lets
  * `proposal.replaceRegion` rebuild the note as head, marker, new body,
  * marker, tail, with all four of those pieces taken verbatim from the file,
- * but the edit is applied by the caller through the ordinary accept step,
- * never by this module.
+ * and the edit is applied through the ordinary accept step.
  *
  * The facts come from the index, not from a model: what is scheduled, what is
  * overdue, what is blocked, what yesterday left unfinished are all queries.
@@ -27,14 +25,16 @@ import { displayText, isDone, isOpen, matchKey, type Task } from '$lib/shared/ta
 import { compareCards, type OpenCard } from '$lib/shared/kanban';
 import { openCards } from '../kanban';
 import { loadWorkspaces } from '../workspaces';
-import { BRIEFING_MARKER, checkBudget, checkKillSwitch } from './guardrails';
+import { wrapAsData } from './guardrails';
 import { markerBlock, newId, readRegion } from './proposal';
-import { loadSettings } from './settings';
-import { logRun, spentOn } from './audit';
-import { runClaude, type CliDeps } from './cli';
-import type { BriefingRun, BudgetLimits, Proposal, RunSettings, RunStamp } from '$lib/shared/ai';
+import { runDraft } from './run';
+import type { CliDeps } from './cli';
+import type { BriefingRun, Proposal, RunStamp } from '$lib/shared/ai';
 
 export type { BriefingRun };
+
+/** The comment pair in a daily note that the briefing's text sits between. */
+export const BRIEFING_MARKER = 'hub:briefing';
 
 interface BriefingFacts {
 	day: DayKey;
@@ -169,15 +169,12 @@ function link(path: string): string {
  * edit. Side effects: reads today's note.
  *
  * Two shapes, and which one comes back is decided by the note rather than by
- * a flag. When the markers are there it is a `replace-region` edit, which is
- * the only thing G1's exception permits to apply itself. When they are not it
- * is an `append` edit that adds a `## Briefing` heading and the markers, and
- * that one is an ordinary proposal needing a click - because putting a new
- * heading into someone's note is exactly the sort of change they should see
- * first.
+ * a flag. When the markers are there it is a `replace-region` edit. When they
+ * are not it is an `append` edit that adds a `## Briefing` heading and the
+ * markers. Both wait for Save to note, like every proposal.
  *
  * Never targets any note but the day's own, and never produces more than one
- * edit, which is what keeps it inside the exception.
+ * edit.
  */
 export async function propose(
 	vault: Vault,
@@ -216,8 +213,6 @@ export async function propose(
 			? `Briefing for ${day}: ${facts.scheduled.length} scheduled, ${facts.overdue.length} overdue, ${facts.unfinished.length} left from yesterday.`
 			: `Add the briefing markers to ${path}.`,
 		edits: [edit],
-		// The marker form applies itself under G1's exception; the other form
-		// waits for a human, so nothing is pre-accepted here either way.
 		accepted: []
 	};
 }
@@ -228,7 +223,8 @@ export async function propose(
  * Inputs: the facts. Output: a prompt. Side effects: none. Never asks for
  * anything but prose - the lists are already written, so there is nothing for
  * a malformed answer to corrupt, and the worst case is a sentence that gets
- * dropped.
+ * dropped. The task text is the user's own writing, so it goes in as data
+ * (G8), never as part of the instruction.
  */
 export function openerPrompt(facts: BriefingFacts): string {
 	return [
@@ -239,7 +235,7 @@ export function openerPrompt(facts: BriefingFacts): string {
 		`Scheduled: ${facts.scheduled.length}. Overdue: ${facts.overdue.length}.`,
 		`Blocked: ${facts.blocked.length}. Unfinished yesterday: ${facts.unfinished.length}.`,
 		'',
-		facts.scheduled.map((t) => `- ${displayText(t.text)}`).join('\n')
+		wrapAsData([{ path: dailyNotePath(facts.day), text: facts.scheduled.map((t) => `- ${displayText(t.text)}`).join('\n') }])
 	].join('\n');
 }
 
@@ -251,114 +247,50 @@ interface BriefingDeps {
 }
 
 /**
- * Produce today's briefing, and draft it as a proposal rather than writing it.
+ * Produce the day's briefing, and draft it as a proposal rather than writing it.
  *
- * Inputs: the vault and index, the day, and whether this was asked for again
- * having already run once. Output: what the card should show, including a
- * proposal when there is fresh text to offer. Side effects: spawns the CLI
- * for the opening sentence, appends to the audit log. Never writes to the
- * vault - `docs/plan-rebuild.md`'s Today section and CLAUDE.md's rule against
- * a model writing without an explicit accept step both replace SPEC 7.2.1's
- * old exception for this feature. The caller applies the proposal through the
- * ordinary `/api/ai/proposal` accept step, the same as every other feature.
+ * Inputs: the vault and index, and the day. Output: a proposal for the card
+ * to offer, or the problem that stopped one. Side effects: spawns the CLI for
+ * the opening sentence through the shared runner, which logs the run. Never
+ * writes to the vault; the caller applies the proposal through the ordinary
+ * `/api/ai/proposal` accept step, the same as every other feature.
  *
  * Never throws and never leaves the card empty. The facts come from the
  * index, so a CLI that is missing, refused or over budget costs the sentence
- * and nothing else - the lists still get proposed. That is the whole reason
- * the model's part is one paragraph at the top rather than the briefing
- * itself.
+ * and nothing else - the lists still get proposed. Only the kill switch stops
+ * the briefing outright, because off means off. That is the whole reason the
+ * model's part is one paragraph at the top rather than the briefing itself.
  *
  * When the note has no markers yet, the proposal only adds them; the body
  * text is not written until a second draft, run after that proposal is
  * accepted, finds them there and offers the `replace-region` edit instead.
- * That is `propose`'s own rule, kept exactly as it was written.
  */
-export async function run(
-	deps: BriefingDeps,
-	day: DayKey,
-	options: { regenerate?: boolean; cli?: Partial<CliDeps> } = {}
-): Promise<BriefingRun> {
-	const settings = await loadSettings(deps.vault);
-	const chosen = settings.features.briefing;
-	const startedAt = new Date().toISOString();
-	const stamp: RunStamp = { ...chosen, feature: 'briefing', startedAt, durationMs: 0, costUsd: 0 };
+export async function run(deps: BriefingDeps, day: DayKey, options: { cli?: Partial<CliDeps> } = {}): Promise<BriefingRun> {
 	const path = dailyNotePath(day);
-
-	const note = await deps.vault.read(path);
-	const existing = readRegion(note.content, BRIEFING_MARKER);
-	if (existing !== null && !options.regenerate) {
-		return { day, text: existing, proposal: null, problem: null, stamp };
-	}
 	// Only Obsidian makes daily notes, so a briefing has nowhere to be saved
 	// until it has. Refused before the model is called, so it costs nothing.
-	if (!note.exists) {
-		return { day, text: null, proposal: null, problem: 'Today’s note is not here yet. Open it in Obsidian, then Brief me once it has synced.', stamp };
-	}
-
-	const stop = checkKillSwitch(settings.enabled);
-	if (stop.length) {
-		return { day, text: existing, proposal: null, problem: stop[0].message, stamp };
+	if (!(await deps.vault.read(path)).exists) {
+		return { proposal: null, problem: 'Today’s note is not here yet. Open it in Obsidian, then Brief me once it has synced.' };
 	}
 
 	// Read here rather than taken as a dependency: a route handing this
 	// module a vault and an index is enough, and a workspace file is a note
 	// in that vault like any other.
 	const facts = gather(deps.index, day, await openCards(deps.vault, await loadWorkspaces(deps.vault)));
-	const opener = await openingSentence(deps.vault, facts, chosen, settings.budget, options.cli);
-	const proposal = await propose(deps.vault, day, facts, opener.text, { ...stamp, ...opener.spent });
-
-	await logRun(deps.vault, {
-		at: startedAt,
+	const opener = await runDraft(deps.vault, {
 		feature: 'briefing',
-		model: chosen.model,
-		effort: chosen.effort,
-		permission: chosen.permission,
-		paths: proposal.edits.map((e) => e.path),
-		decision: 'proposed',
-		guardrails: [],
-		costUsd: opener.spent.costUsd,
-		durationMs: opener.spent.durationMs,
-		note: proposal.summary
+		prompt: openerPrompt(facts),
+		system: 'Write plainly. Two sentences at most. No preamble, no sign-off, no lists.',
+		paths: [path],
+		note: 'briefing opener',
+		cli: options.cli
 	});
+	if (!opener.ok && opener.refusals.some((r) => r.guardrail === 'G10')) return { proposal: null, problem: opener.problem };
 
-	return {
-		day,
-		text: existing,
-		proposal,
-		problem: null,
-		stamp: { ...stamp, ...opener.spent }
-	};
-}
-
-/**
- * The one sentence a model contributes, or an empty one.
- *
- * A refusal, a missing CLI and a spent budget are all the same answer here:
- * no sentence. Deliberately not reported to the caller as a problem, because
- * a briefing without its opening line is a briefing, and a red message above
- * a perfectly good list would train the user to ignore red messages.
- */
-async function openingSentence(
-	vault: Vault,
-	facts: BriefingFacts,
-	settings: RunSettings,
-	limits: BudgetLimits,
-	cli: Partial<CliDeps> = {}
-): Promise<{ text: string; spent: { durationMs: number; costUsd: number } }> {
-	const spend = await spentOn(vault, facts.day);
-	const budget = checkBudget(settings, { todayUsd: spend.usd, running: 0 }, limits);
-	if (budget.refusals.length) return { text: '', spent: { durationMs: 0, costUsd: 0 } };
-
-	const result = await runClaude(
-		{
-			prompt: openerPrompt(facts),
-			settings: { ...budget.settings, permission: 'read-only' },
-			systemPrompt: 'Write plainly. Two sentences at most. No preamble, no sign-off, no lists.'
-		},
-		cli
-	);
-	return {
-		text: result.ok ? result.text.trim() : '',
-		spent: { durationMs: result.durationMs, costUsd: result.ok ? result.costUsd : 0 }
-	};
+	// Any other failure is the same answer here: no sentence. Deliberately not
+	// reported as a problem, because a briefing without its opening line is a
+	// briefing, and a red message above a perfectly good list would train the
+	// user to ignore red messages.
+	const proposal = await propose(deps.vault, day, facts, opener.ok ? opener.value : '', opener.stamp);
+	return { proposal, problem: null };
 }

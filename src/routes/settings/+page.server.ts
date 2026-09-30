@@ -2,7 +2,7 @@ import { hub } from '$server/hub';
 import { today } from '$server/daily';
 import { recentRuns, spentOn } from '$server/ai/audit';
 import { loadSettings, SETTINGS_PATH } from '$server/ai/settings';
-import { listSnapshots } from '$server/ai/sandbox';
+import { listSnapshots } from '$server/ai/undo';
 import { cliConfig } from '$server/ai/cli';
 import type { PageServerLoad } from './$types';
 

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { defaultSettings, saveSettings } from './settings';
 import { buildPrompt, runDatingInsights } from './dating-insights';
+import { logPath } from './audit';
 import type { InsightsSource } from '../dating';
 
 const SOURCE: InsightsSource = {
@@ -75,7 +76,7 @@ describe('runDatingInsights', () => {
 		expect(result.problem).toBeNull();
 		expect(result.text).toBe('A steady week; Ada looks promising.');
 
-		const log = await vault.read('_hub/ai-log/2026-09.md');
+		const log = await vault.read(logPath(new Date().toISOString()));
 		expect(log.content).not.toContain('Private');
 		expect(log.content).not.toContain('Ada');
 		expect(log.content).toContain('dating-insights');

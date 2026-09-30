@@ -4,18 +4,17 @@
  * The requirement, in the user's words: "For any feature that uses claude
  * code, ensure that I can pick the effort level, permissions and model being
  * used, and that by default there are guardrails in place and enforced to
- * prevent mistakes from the LLM." So every feature has its own model, effort
- * and permission mode, the defaults are the cautious ones, and the file that
+ * prevent mistakes from the LLM." So every feature has its own model, effort,
+ * budget and timeout, the defaults are the cautious ones, and the file that
  * holds them is `_hub/ai.md` - readable markdown frontmatter, editable in
  * Obsidian, versioned with the vault, because it is the user's settings and
- * not the app's database.
+ * not the app's database. Permissions are not a setting: every run is
+ * read-only, and a `permission:` line in an older file is ignored.
  *
  * This module is deliberately forgiving on read and strict on write. A value
  * the user has mistyped falls back to the default for that field rather than
- * taking the whole page down; an unknown permission mode falls back to
- * `read-only`, never to something more permissive. It is also the reason
- * `_hub/ai.md` is in G4's always-denied set: the settings page writes it, a
- * model never can.
+ * taking the whole page down. It is also the reason `_hub/ai.md` is in G4's
+ * always-denied set: the settings page writes it, a model never can.
  */
 
 import { parseNote } from '../parse/note';
@@ -28,11 +27,9 @@ import {
 	FEATURE_DEFAULTS,
 	FEATURE_LABELS,
 	MODELS,
-	PERMISSION_MODES,
 	type Effort,
 	type FeatureId,
 	type Model,
-	type PermissionMode,
 	type RunSettings
 } from '$lib/shared/ai';
 
@@ -42,11 +39,9 @@ export type { AiSettings };
 
 const FEATURES = Object.keys(FEATURE_DEFAULTS) as FeatureId[];
 const MODEL_IDS = MODELS.map((m) => m.id) as readonly string[];
-const MODE_IDS = PERMISSION_MODES.map((m) => m.id) as readonly string[];
 
 /**
- * The settings a vault with no `_hub/ai.md` gets: off, everything read-only,
- * small budgets.
+ * The settings a vault with no `_hub/ai.md` gets: off, small budgets.
  *
  * Off is the important one. A vault that has never had this file is a vault
  * whose owner has not seen the settings page, and the alternative — spending
@@ -71,8 +66,8 @@ export function defaultSettings(): AiSettings {
  * writes, so opening the settings page does not create a file.
  *
  * Never throws and never returns a value outside the allowed sets: a model id
- * this version does not know, an effort of `maximum`, a permission mode of
- * `bypass` all become the default for that field. Failing towards the
+ * this version does not know or an effort of `maximum` becomes the default
+ * for that field. Failing towards the
  * cautious value is the whole point - a typo must not widen what a model may
  * do.
  */
@@ -99,7 +94,6 @@ export function fromFrontmatter(fm: Record<string, unknown>): AiSettings {
 		enabled: bool(fm.enabled, base.enabled),
 		budget: {
 			dailyUsd: num(fm.daily_budget_usd, base.budget.dailyUsd, 0, 100),
-			maxConcurrent: Math.round(num(fm.max_concurrent, base.budget.maxConcurrent, 1, 4)),
 			maxTimeoutSeconds: Math.round(num(fm.max_timeout_s, base.budget.maxTimeoutSeconds, 5, 900)),
 			maxRunUsd: num(fm.max_run_usd, base.budget.maxRunUsd, 0, 10)
 		},
@@ -119,7 +113,6 @@ function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings
 	return {
 		model: pick(fm.model, MODEL_IDS, shipped.model) as Model,
 		effort: pick(fm.effort, EFFORTS, shipped.effort) as Effort,
-		permission: pick(fm.permission, MODE_IDS, shipped.permission) as PermissionMode,
 		budgetUsd: num(fm.budget_usd, shipped.budgetUsd, 0, 10),
 		timeoutSeconds: Math.round(num(fm.timeout_s, shipped.timeoutSeconds, 5, 900))
 	};
@@ -132,17 +125,50 @@ function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings
  * `unknown` on purpose, because the caller is a form post and pretending
  * otherwise would only move the validation somewhere less careful. Output:
  * the settings as stored, after the same clamping a read applies, so the page
- * always shows what is really in force. Side effects: writes that one note.
+ * always shows what is really in force. Side effects: reads and writes that
+ * one note.
+ *
+ * The file is re-rendered whole, so hand edits to its prose and any key this
+ * version does not write (a `defaults:` block, a comment) are replaced. The
+ * one exception is `features:` entries this version does not know, such as a
+ * feature since removed: those are carried over byte for byte, after the
+ * known ones, so saving never deletes a row someone may still want.
  *
  * This is a human action from the settings page, which is why it may write
  * the one file every AI code path is forbidden to touch. Nothing under `ai/`
- * calls it. Never stores a value outside the allowed sets, so a crafted
- * request cannot install `permission: bypass` for next time.
+ * calls it. Never stores a value outside the allowed sets.
  */
 export async function saveSettings(vault: Vault, settings: unknown): Promise<AiSettings> {
 	const stored = normalise(settings);
-	await vault.write(SETTINGS_PATH, render(stored));
+	const existing = await vault.read(SETTINGS_PATH);
+	await vault.write(SETTINGS_PATH, render(stored, unknownFeatureRows(existing.content)));
 	return stored;
+}
+
+/**
+ * The `features:` entries of an `_hub/ai.md` that this version does not know,
+ * verbatim: each one's key line at two spaces of indent and every more deeply
+ * indented line under it, joined by newlines. Pure; an absent file or one with
+ * no such entries gives `''`.
+ */
+export function unknownFeatureRows(content: string): string {
+	const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
+	if (!frontmatter) return '';
+	const out: string[] = [];
+	let inFeatures = false;
+	let keep = false;
+	for (const line of frontmatter[1].split('\n')) {
+		if (/^\S/.test(line)) {
+			inFeatures = /^features:\s*$/.test(line);
+			keep = false;
+			continue;
+		}
+		if (!inFeatures) continue;
+		const key = /^ {2}(['"]?)([^\s'":]+)\1:/.exec(line);
+		if (key) keep = !(FEATURES as string[]).includes(key[2]);
+		if (keep && line.trim() !== '') out.push(line);
+	}
+	return out.join('\n');
 }
 
 /**
@@ -161,7 +187,6 @@ export function normalise(value: unknown): AiSettings {
 	return fromFrontmatter({
 		enabled: raw.enabled,
 		daily_budget_usd: budget.dailyUsd,
-		max_concurrent: budget.maxConcurrent,
 		max_timeout_s: budget.maxTimeoutSeconds,
 		max_run_usd: budget.maxRunUsd,
 		max_files: blast.maxFiles,
@@ -169,7 +194,7 @@ export function normalise(value: unknown): AiSettings {
 		features: Object.fromEntries(
 			FEATURES.map((f) => {
 				const row = record(features[f]);
-				return [f, { model: row.model, effort: row.effort, permission: row.permission, budget_usd: row.budgetUsd, timeout_s: row.timeoutSeconds }];
+				return [f, { model: row.model, effort: row.effort, budget_usd: row.budgetUsd, timeout_s: row.timeoutSeconds }];
 			})
 		)
 	});
@@ -180,7 +205,6 @@ export function toFrontmatter(settings: AiSettings): Record<string, unknown> {
 	return {
 		enabled: settings.enabled,
 		daily_budget_usd: settings.budget.dailyUsd,
-		max_concurrent: settings.budget.maxConcurrent,
 		max_timeout_s: settings.budget.maxTimeoutSeconds,
 		max_run_usd: settings.budget.maxRunUsd,
 		max_files: settings.blast.maxFiles,
@@ -191,7 +215,6 @@ export function toFrontmatter(settings: AiSettings): Record<string, unknown> {
 				{
 					model: settings.features[f].model,
 					effort: settings.features[f].effort,
-					permission: settings.features[f].permission,
 					budget_usd: settings.features[f].budgetUsd,
 					timeout_s: settings.features[f].timeoutSeconds
 				}
@@ -200,29 +223,32 @@ export function toFrontmatter(settings: AiSettings): Record<string, unknown> {
 	};
 }
 
-/** The file as a person reads it: frontmatter first, then what it all means. */
-function render(settings: AiSettings): string {
+/**
+ * The file as a person reads it: frontmatter first, then what it all means.
+ * `unknownRows` is `unknownFeatureRows` of the file being replaced.
+ */
+function render(settings: AiSettings, unknownRows = ''): string {
 	const rows = FEATURES.map((f) => {
 		const run = settings.features[f];
 		return [
 			`  ${f}:`,
 			`    model: ${run.model}`,
 			`    effort: ${run.effort}`,
-			`    permission: ${run.permission}`,
 			`    budget_usd: ${run.budgetUsd}`,
 			`    timeout_s: ${run.timeoutSeconds}`
 		].join('\n');
-	}).join('\n');
+	})
+		.concat(unknownRows === '' ? [] : [unknownRows])
+		.join('\n');
 
 	const table = FEATURES.map((f) => {
 		const run = settings.features[f];
-		return `| ${FEATURE_LABELS[f]} | ${run.model} | ${run.effort} | ${run.permission} |`;
+		return `| ${FEATURE_LABELS[f]} | ${run.model} | ${run.effort} |`;
 	}).join('\n');
 
 	return `---
 enabled: ${settings.enabled}
 daily_budget_usd: ${settings.budget.dailyUsd}
-max_concurrent: ${settings.budget.maxConcurrent}
 max_timeout_s: ${settings.budget.maxTimeoutSeconds}
 max_run_usd: ${settings.budget.maxRunUsd}
 max_files: ${settings.blast.maxFiles}
@@ -237,16 +263,16 @@ Edit this file in Obsidian or from the hub's Settings page; both write the
 same frontmatter. \`enabled: false\` is the kill switch and stops every AI
 surface and every scheduled job at once.
 
-| Feature | Model | Effort | Permission |
-|---|---|---|---|
+| Feature | Model | Effort |
+|---|---|---|
 ${table}
 
-**Permission** is one of \`read-only\` (no tools at all; the server puts the
-notes in the prompt), \`propose\` (tools inside a throwaway copy of the vault,
-and the difference comes back as a diff to accept or reject) or \`apply\`
-(the same, with accept on one click). There is no mode that writes without
-you, and there never will be: the hub does not pass
-\`--dangerously-skip-permissions\`.
+Every run is **read-only**: the model gets no tools and no directory, runs
+outside the vault, and sees only the notes the server puts in its prompt.
+Anything that would change a note comes back as a proposal to accept or
+reject. There is no mode that writes without you, and there never will be:
+the hub does not pass \`--dangerously-skip-permissions\`. Feature entries this
+version does not know are kept as they are when the settings page saves.
 
 **Effort** is \`low\`, \`medium\`, \`high\` or \`xhigh\`. **Model** is one of
 ${MODEL_IDS.join(', ')}.

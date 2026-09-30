@@ -19,7 +19,7 @@
 
 import { config } from '../config';
 import type { Vault } from '../vault/index';
-import type { Effort, FeatureId, GuardrailId, Model, PermissionMode } from '$lib/shared/ai';
+import type { Effort, FeatureId, GuardrailId, Model } from '$lib/shared/ai';
 
 export interface AuditEntry {
 	/** ISO instant. A run is an event, so this is a time, not a day label. */
@@ -27,10 +27,9 @@ export interface AuditEntry {
 	feature: FeatureId;
 	model: Model;
 	effort: Effort;
-	permission: PermissionMode;
 	/** Vault-relative paths the run read, proposed or wrote. */
 	paths: string[];
-	decision: 'answered' | 'proposed' | 'applied' | 'refused' | 'failed';
+	decision: 'answered' | 'applied' | 'refused' | 'failed';
 	/** The guardrails that fired, when the decision was a refusal. */
 	guardrails: GuardrailId[];
 	costUsd: number;
@@ -80,7 +79,9 @@ export function row(entry: AuditEntry): string {
 		entry.feature,
 		entry.model,
 		entry.effort,
-		entry.permission,
+		// The mode every run is in. Written rather than dropped so the table
+		// keeps its columns and old months still read the same way.
+		'read-only',
 		entry.decision,
 		entry.guardrails.join(' ') || '-',
 		`$${entry.costUsd.toFixed(4)}`,
