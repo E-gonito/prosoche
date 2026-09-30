@@ -4,7 +4,7 @@ test.describe('the shell', () => {
 	test('the rail lists every module and the workspaces under Workspaces', async ({ page }) => {
 		await page.goto('/notes');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
-		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Glossary', 'Workspaces', 'Study', 'Date', 'Notes']);
+		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Glossary', 'Flashcards', 'Workspaces', 'Study', 'Date', 'Notes']);
 		// The fixture has a workspace called Study too; it sits under Workspaces.
 		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Study', 'Work']);
 		// The one glossary is Glossaries/Work.md, so it alone sits under Glossary.

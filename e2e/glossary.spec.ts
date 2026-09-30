@@ -154,25 +154,25 @@ test.describe('Glossary', () => {
 		expect(vaultFile('Glossaries/Work.md')).toBe(after);
 	});
 
-	test('linked to a study subject, every defined term is a card there, kept in step with the glossary', async ({ page }) => {
-		const CARDS = 'Study/Flashcards/Glossary/Work/ML.md';
+	test('with flashcards on, every defined term is a card in its deck, kept in step with the glossary', async ({ page }) => {
+		const CARDS = 'Flashcards/Work/ML (cards).md';
 		const header =
-			'---\ngoal:\nglossary: Work\ncategory: ML\n---\n\n#flashcards\n\nMade from [[Glossaries/Work|Work]] (ML). Edit the terms there; this file is\nkept in step with the glossary.\n';
+			'---\nglossary: Work\ncategory: ML\n---\n\n#flashcards\n\nMade from [[Glossaries/Work|Work]] (ML). Edit the terms there; this file is\nkept in step with the glossary.\n';
 		const dvcCard = (definition: string) => `DVC\n??\n${definition}\n→ For Work, it makes training data traceable.\n`;
 		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');
-		await expect(page.getByTestId('glossary-cards-state')).toContainText('Not linked');
-
-		await page.getByTestId('glossary-study').selectOption('study');
 		const state = page.getByTestId('glossary-cards-state');
-		await expect(state).toContainText('1 card in Study · up to date');
-		await expect(state.getByRole('link')).toHaveAttribute('href', '/study/study/flashcards');
-		expect(vaultFile('Glossaries/Work.md')).toBe(`---\nstudy: study\n---\n\n${before}`);
+		await expect(state).toContainText('Off');
+
+		await page.getByTestId('glossary-flashcards').check();
+		await expect(state).toContainText('1 card in its deck · up to date');
+		await expect(state.getByRole('link')).toHaveAttribute('href', '/flashcards#deck-work');
+		expect(vaultFile('Glossaries/Work.md')).toBe(`---\nflashcards: true\n---\n\n${before}`);
 		// DVC has a definition; MLflow, still to look up, has no card yet.
 		expect(vaultFile(CARDS)).toBe(`${header}\n${dvcCard('An open-source tool that versions datasets and models alongside git.')}`);
 
 		// A card's review comment stays when the definition changes.
-		const comment = '<!--fsrs:2030-01-01,3.21,5.8,4,0,review,2029-12-29!new-->';
+		const comment = '<!--fsrs:2030-01-01,3.21,5.8,4,0,review,2029-12-29-->';
 		writeFileSync(join(VAULT, CARDS), `${vaultFile(CARDS)}${comment}\n`);
 		const dvc = page.getByTestId('glossary-entry').filter({ hasText: 'DVC' });
 		await dvc.getByTestId('edit-term-open').click();
@@ -181,10 +181,10 @@ test.describe('Glossary', () => {
 		await expect(dvc).toContainText('Version control for data and models.');
 		expect(vaultFile(CARDS)).toBe(`${header}\n${dvcCard('Version control for data and models.')}${comment}\n`);
 
-		// Unlinking stops the syncing and leaves the cards.
-		await page.getByTestId('glossary-study').selectOption('');
-		await expect(page.getByTestId('glossary-cards-state')).toContainText('Not linked');
-		expect(vaultFile('Glossaries/Work.md').startsWith('---\nstudy:\n---\n')).toBe(true);
+		// Turning them off stops the syncing and leaves the cards.
+		await page.getByTestId('glossary-flashcards').uncheck();
+		await expect(state).toContainText('Off');
+		expect(vaultFile('Glossaries/Work.md').startsWith('---\nflashcards: false\n---\n')).toBe(true);
 		expect(vaultFile(CARDS)).toContain('Version control for data and models.');
 	});
 
@@ -294,19 +294,6 @@ test.describe('Glossary', () => {
 		await expect(page.getByTestId('glossary-entry').filter({ hasText: 'Binary search' })).toContainText('To look up');
 	});
 
-	test("a study subject links the glossary its cards come from, and the scan says where its terms go", async ({ page, request }) => {
-		await page.goto('/study/study');
-		await expect(page.getByTestId('subject-glossary')).toHaveCount(0);
-		await request.post('/api/glossary', { data: { action: 'set-study', glossary: 'work', study: 'study' } });
-
-		await page.goto('/study/study');
-		const hint = page.getByTestId('subject-glossary');
-		await expect(hint).toHaveText('Scan notes in the Work glossary for more cards.');
-		await hint.getByRole('link', { name: 'Scan notes' }).click();
-		await expect(page).toHaveURL(/\/glossary\/work#scan$/);
-		await expect(page.getByTestId('scan-cards')).toHaveText('Terms you add become cards in Study once they have a definition.');
-		await expect(page.getByTestId('scan-cards').getByRole('link')).toHaveAttribute('href', '/study/study/flashcards');
-	});
 
 	test('a phone gets the glossary in one column', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });

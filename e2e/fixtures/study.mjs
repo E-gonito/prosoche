@@ -2,8 +2,7 @@
  * Fixtures for the Study module: one subject, the base vault's `study`
  * subject (`_hub/subjects/study.md`, home `Study/`), with two goals and their
  * milestones, a session log with one entry yesterday and one today (both on
- * a goal) and an older one on a pre-goal `[[Topic]]`, a reading list, and a
- * card file under a goal holding one due card.
+ * a goal) and an older one on a pre-goal `[[Topic]]`, and a reading list.
  *
  * All under `Study/`, the subject's home, so these land in the same scope
  * the base vault's `Study/Algorithms.md` and `Study/Syllabus.md` already
@@ -81,20 +80,6 @@ export default function ({ TODAY }) {
 			'{"kanban-plugin":"board"}',
 			'```',
 			'%%'
-		].join('\n'),
-
-		// #flashcards, so the plugin — and the hub — count it; one card, overdue
-		// by three days at interval 4 and ease 270, so it comes up first. Its
-		// goal: puts it under the first goal.
-		'Study/Flashcards.md': [
-			'---',
-			'goal: Pass AWS Solutions Architect',
-			'---',
-			'#flashcards',
-			'',
-			'What does SM-2 schedule::The day a card is next due',
-			`<!--SR:!${day(TODAY, -3)},4,270-->`,
-			''
 		].join('\n')
 	};
 }
