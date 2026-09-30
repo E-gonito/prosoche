@@ -60,7 +60,7 @@ interface Choice {
 	reason: string;
 }
 
-export interface FileCaptureRequest {
+interface FileCaptureRequest {
 	/** The captured line, as it stands in the Inbox note. */
 	line: number;
 	/** What the browser last saw on that line, so a stale page is refused. */
@@ -69,7 +69,7 @@ export interface FileCaptureRequest {
 	path?: string;
 }
 
-export interface FileCaptureResult {
+interface FileCaptureResult {
 	proposal: Proposal | null;
 	/** The candidate destinations the model was given, for the empty case. */
 	candidates: string[];

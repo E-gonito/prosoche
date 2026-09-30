@@ -153,7 +153,7 @@ export function isCardSource(tags: string[], content: string): boolean {
 	return tagged || content.includes(SR_OPEN);
 }
 
-export interface DueQuery {
+interface DueQuery {
 	/** Folders and note tags that say what is in scope. Empty is the whole vault. */
 	scope?: StudyScope;
 	/** The day to schedule against, `YYYY-MM-DD`. */
@@ -171,7 +171,7 @@ export interface DueQuery {
 	 * the queue's stable order, and a card any quota lets in is ready. A
 	 * study subject's quota is its new cards per day less those already
 	 * begun today (see `new-cards.ts`). Absent means every unseen card is
-	 * ready, as for the Anki export.
+	 * ready.
 	 */
 	newCards?: Array<{ scope: StudyScope; allowance: number }>;
 }
@@ -270,7 +270,7 @@ function releaseNew(sources: Array<{ tags: string[]; cards: Card[] }>, quotas: D
 	return out;
 }
 
-export type GoalSet = { ok: true } | { ok: false; reason: 'no-note' | 'not-cards' | 'conflict' };
+type GoalSet = { ok: true } | { ok: false; reason: 'no-note' | 'not-cards' | 'conflict' };
 
 /**
  * Put a card file's cards under `goal`, or under none for null, by setting
@@ -294,7 +294,7 @@ export async function setCardFileGoal(vault: Vault, scope: StudyScope, path: str
 	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
 }
 
-export type Reviewed =
+type Reviewed =
 	| {
 			ok: true;
 			card: Card;

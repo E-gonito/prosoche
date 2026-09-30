@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { updateTask, moveBlock } from './tasks';
+import { updateTask } from './tasks';
 import { scanTasks } from './parse/task';
 
 const NOTE = [
@@ -90,23 +90,5 @@ describe('updateTask', () => {
 		const result = await updateTask(vault, 'day.md', 1, lines[1], { status: 'todo' });
 		expect(result.ok).toBe(true);
 		expect((await vault.read('day.md')).content).toBe(NOTE);
-	});
-});
-
-describe('moveBlock', () => {
-	it('carries sub-bullets with the task', () => {
-		const journal = scanTasks(NOTE).find((t) => t.text.startsWith('Write the daily log'))!;
-		const moved = moveBlock(NOTE, journal, 1).split('\n');
-		expect(moved.slice(1, 4)).toEqual([
-			'- [ ] 23:00 - 23:10 Write the daily log `Q1`',
-			'\t- What am I avoiding, and why',
-			'- [ ] 09:30 - 10:00 Morning stretch `Q1`'
-		]);
-	});
-
-	it('keeps every line, just in a different order', () => {
-		const first = scanTasks(NOTE)[0];
-		const moved = moveBlock(NOTE, first, 5);
-		expect(moved.split('\n').sort()).toEqual(NOTE.split('\n').sort());
 	});
 });

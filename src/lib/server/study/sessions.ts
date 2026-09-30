@@ -73,7 +73,7 @@ export function streak(sessions: Session[], today: string): number {
 	return count;
 }
 
-export interface GoalMinutes {
+interface GoalMinutes {
 	/**
 	 * The goal's name; for a session from before goals, its `[[Topic]]` link
 	 * as written; "Untracked" for a session that names neither.
@@ -109,7 +109,7 @@ export function monthRange(day: string): { from: string; to: string } {
 	return { from: `${day.slice(0, 7)}-01`, to: `${next}-01` };
 }
 
-export interface WeekMinutes {
+interface WeekMinutes {
 	/** Monday of the week, `YYYY-MM-DD`. */
 	start: string;
 	minutes: number;
@@ -126,7 +126,7 @@ export function weeklyMinutes(sessions: Session[], today: string, weeks = 8): We
 	return starts.map((s) => ({ start: s, minutes: minutesInWeek(sessions, s) }));
 }
 
-export type SessionWrite = { ok: true; entry: StudySession } | { ok: false; reason: 'conflict' };
+type SessionWrite = { ok: true; entry: StudySession } | { ok: false; reason: 'conflict' };
 
 /**
  * Append one session under its month's `## YYYY-MM` heading, creating both

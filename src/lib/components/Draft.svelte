@@ -23,7 +23,6 @@
 		request,
 		label,
 		title = '',
-		compact = false,
 		ondone
 	}: {
 		/** What to draft. Passed to the endpoint as written. */
@@ -31,7 +30,6 @@
 		label: string;
 		title?: string;
 		/** Smaller button, for a widget row rather than a page. */
-		compact?: boolean;
 		/** Called with the paths written, so the page can reload them. */
 		ondone?: (written: string[]) => void;
 	} = $props();
@@ -93,7 +91,7 @@
 	}
 </script>
 
-<div class="draft" class:compact>
+<div class="draft">
 	<button class="btn go" onclick={start} disabled={busy} {title} data-testid="draft-run">
 		{busy ? 'Working…' : label}
 	</button>
@@ -121,9 +119,8 @@
 
 <style>
 	/* An ordinary `.btn`, with the two differences this one has: it says when
-	   it is working, and a widget row wants a smaller one than a toolbar. */
+	   it is working. */
 	.go:disabled { cursor: default; opacity: 0.6; }
-	.compact .go { padding: 1px 6px; font-size: var(--t11); }
 	.hint { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--muted); }
 	.ok { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--ok); }
 	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }

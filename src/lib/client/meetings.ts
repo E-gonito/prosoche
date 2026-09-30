@@ -5,9 +5,9 @@
  * path written, or why not. Never throws; a lost connection is a result.
  */
 
-export type MeetingResult = { ok: true; path: string } | { ok: false; message: string };
+type MeetingResult = { ok: true; path: string } | { ok: false; message: string };
 
-export type MeetingAction =
+type MeetingAction =
 	| { action: 'assign'; title: string; slug: string }
 	| { action: 'start'; slug: string; type: 'meeting' | 'standup'; title: string; event?: string | null; attendees?: string[] }
 	| { action: 'capture'; slug: string; path: string; kind: string; text: string }

@@ -10,7 +10,7 @@
 
 import matter from 'gray-matter';
 
-export interface Wikilink {
+interface Wikilink {
 	/** Note name as written, without the heading or alias. */
 	target: string;
 	/** Text after `|`, or null. */

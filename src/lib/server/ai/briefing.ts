@@ -18,7 +18,8 @@
  * planner that goes blank because an API was slow is worse than a plain one.
  */
 
-import { dailyNotePath, formatMinutes, shiftDay, type DayKey } from '../daily';
+import { dailyNotePath, shiftDay, type DayKey } from '../daily';
+import { formatMinutes } from '$lib/shared/time';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { config } from '../config';
@@ -35,7 +36,7 @@ import type { BriefingRun, BudgetLimits, Proposal, RunSettings, RunStamp } from 
 
 export type { BriefingRun };
 
-export interface BriefingFacts {
+interface BriefingFacts {
 	day: DayKey;
 	/** Today's scheduled blocks, in clock order. */
 	scheduled: Task[];
@@ -244,7 +245,7 @@ export function openerPrompt(facts: BriefingFacts): string {
 
 /* -------------------------------------------------------------- running --- */
 
-export interface BriefingDeps {
+interface BriefingDeps {
 	vault: Vault;
 	index: NoteIndex;
 }

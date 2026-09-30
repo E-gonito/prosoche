@@ -15,7 +15,7 @@ import { parseTaskLine, rewriteTaskLine, toTask, type TaskEdit, type TaskLine } 
 import type { Task } from '$lib/shared/task';
 import type { Vault } from './vault/index';
 
-export type TaskUpdate =
+type TaskUpdate =
 	| { ok: true; task: Task }
 	| { ok: false; reason: 'no-note' }
 	| { ok: false; reason: 'not-a-task' }
@@ -53,22 +53,4 @@ export async function updateTask(
 	if (!result.ok) return { ok: false, reason: 'line-changed', current: null };
 
 	return { ok: true, task: toTask(parseTaskLine(rewritten, line)!, path) };
-}
-
-/**
- * Move a task's block to a new position in the same note, carrying its
- * indented sub-bullets with it. Used when a time block is dragged past
- * another on the timeline and the user asks to reorder.
- *
- * Not wired to the timeline: dragging changes the time range in place and
- * leaves the file order alone, per the project's no-reordering rule. This
- * exists for an explicit "reorder" action only.
- */
-export function moveBlock(content: string, task: TaskLine, beforeLine: number): string {
-	const lines = content.split('\n');
-	const block = lines.slice(task.line, task.blockEnd + 1);
-	const rest = [...lines.slice(0, task.line), ...lines.slice(task.blockEnd + 1)];
-	const target = beforeLine > task.blockEnd ? beforeLine - block.length : beforeLine;
-	rest.splice(Math.max(0, Math.min(target, rest.length)), 0, ...block);
-	return rest.join('\n');
 }

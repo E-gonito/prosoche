@@ -32,7 +32,7 @@ describe('TODAY_CARDS never names a private module', () => {
 		);
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs, note.hash);
+			index.put(path, note.content, note.mtimeMs);
 		}
 	});
 	afterEach(async () => {
@@ -109,7 +109,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		await vault.write('_hub/workspaces/fil.md', '---\nname: Filipino\ntemplate: study\nfolders:\n  - "Filipino"\n---\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs, note.hash);
+			index.put(path, note.content, note.mtimeMs);
 		}
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
 		expect(cards).toHaveLength(1);
@@ -123,7 +123,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		await vault.write('_hub/workspaces/cs.md', '---\nname: CS\ntemplate: study\nnew_per_day: 1\nfolders:\n  - "Study"\n---\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs, note.hash);
+			index.put(path, note.content, note.mtimeMs);
 		}
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
 		expect(cards[0].items[0]).toMatchObject({ text: '1 card ready to review', meta: '1 new today' });

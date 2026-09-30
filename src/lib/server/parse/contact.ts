@@ -38,7 +38,7 @@ export const CONTACT_KINDS = ['supplier', 'stakeholder', 'lead'] as const;
 export const CONTACT_FIELDS = ['kind', 'company', 'role', 'email', 'phone', 'links'] as const;
 export type ContactField = (typeof CONTACT_FIELDS)[number];
 
-export const HISTORY_HEADING = '## History';
+const HISTORY_HEADING = '## History';
 
 /** The details in a contact's frontmatter. A field that is absent or empty reads as null, or `[]` for links. */
 export interface ContactDetails {
@@ -59,7 +59,7 @@ export interface HistoryEntry {
 	text: string;
 }
 
-export interface ParsedContact extends ContactDetails {
+interface ParsedContact extends ContactDetails {
 	/** The body with the frontmatter and the `## History` section taken out, for rendering. */
 	notes: string;
 	/** History bullets in file order. */

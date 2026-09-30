@@ -37,16 +37,16 @@ export interface BoardFile {
 }
 
 /** Why a change was not written, when it was not. */
-export type BoardRefusal = Exclude<OpResult, { ok: true }>['reason'];
+type BoardRefusal = Exclude<OpResult, { ok: true }>['reason'];
 
-export type BoardFileChange =
+type BoardFileChange =
 	| { ok: true; file: BoardFile }
 	/** The file changed since `hash` was read. Nothing was written; `file` is what is there now. */
 	| { ok: false; reason: 'conflict'; file: BoardFile }
 	/** The op made no sense against this board. Nothing was written. */
 	| { ok: false; reason: BoardRefusal; message: string; file: BoardFile };
 
-export type BoardChange =
+type BoardChange =
 	| { ok: true; board: Board }
 	| { ok: false; reason: 'conflict'; board: Board }
 	| { ok: false; reason: BoardRefusal; message: string; board: Board };

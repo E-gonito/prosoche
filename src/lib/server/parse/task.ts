@@ -79,14 +79,14 @@ export interface TaskLine {
 }
 
 /** A Tasks-plugin emoji field and the range it occupies, marker included. */
-export interface TaskField extends Span {
+interface TaskField extends Span {
 	marker: string;
 	/** Text after the marker: a date, an id, a recurrence rule, or '' for a priority. */
 	value: string;
 }
 
 /** A tag and the range it occupies, `#` included. */
-export interface TaskTag extends Span {
+interface TaskTag extends Span {
 	tag: string;
 }
 
@@ -422,18 +422,6 @@ function field(
 	} else {
 		appended.push(`${marker} ${value}`);
 	}
-}
-
-/** Minutes since midnight, or null when the task is unscheduled. */
-export function startMinutes(task: TaskLine): number | null {
-	return task.start ? toMinutes(task.start) : null;
-}
-
-/** Duration in minutes, or null when the task has no range. */
-export function durationMinutes(task: TaskLine): number | null {
-	if (!task.start || !task.end) return null;
-	const d = toMinutes(task.end) - toMinutes(task.start);
-	return d < 0 ? d + 24 * 60 : d;
 }
 
 function toMinutes(hhmm: string): number {

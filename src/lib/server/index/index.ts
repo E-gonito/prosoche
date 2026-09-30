@@ -17,17 +17,14 @@ import { scanTasks } from '../parse/task';
 import type { Task, TaskStatus } from '$lib/shared/task';
 import { SCHEMA, SCHEMA_VERSION } from './schema';
 
-/** Kept as an alias so existing call sites read naturally. */
-export type IndexedTask = Task;
-
-export interface SearchHit {
+interface SearchHit {
 	path: string;
 	title: string;
 	/** Matching text with the query terms marked by «» so the UI can highlight. */
 	snippet: string;
 }
 
-export interface IndexHealth {
+interface IndexHealth {
 	notes: number;
 	tasks: number;
 	links: number;
@@ -36,28 +33,20 @@ export interface IndexHealth {
 	lastBuildMs: number | null;
 }
 
-export interface IndexedNote {
+interface IndexedNote {
 	path: string;
 	title: string;
 	mtimeMs: number;
-	bytes: number;
 }
 
 /** Shared by `notes()` and `notesCount()`, so the two can never disagree on scope. */
-export interface NoteFilter {
+interface NoteFilter {
 	under?: string[];
 	excludePrefixes?: string[];
 }
 
-export interface TaskQuery {
-	/** Membership by tag, including nested tags: `ws/work` matches `ws/work/api`. */
-	tags?: string[];
-	/** Membership by folder. A task under `Work/` belongs to `Work`. */
-	under?: string[];
-	/** Membership by whole note, for a workspace deck outside its folders. */
-	paths?: string[];
+interface TaskQuery {
 	statuses?: TaskStatus[];
-	quadrant?: number;
 	requireQuadrant?: boolean;
 	/** Only tasks with a due date at or before this `YYYY-MM-DD`. */
 	dueOnOrBefore?: string;
@@ -73,7 +62,6 @@ export interface TaskQuery {
 	 */
 	excludeDailyNotes?: boolean;
 	excludePrefixes?: string[];
-	includeFenced?: boolean;
 	limit?: number;
 }
 
@@ -107,7 +95,7 @@ export class NoteIndex {
 	}
 
 	/** Parse one note and replace everything the index holds about it. */
-	put(path: string, content: string, mtimeMs = Date.now(), hash = ''): void {
+	put(path: string, content: string, mtimeMs = Date.now()): void {
 		const run = this.db.transaction(() => {
 			this.forget(path);
 			let note;
@@ -121,8 +109,8 @@ export class NoteIndex {
 			}
 
 			this.db
-				.prepare('INSERT OR REPLACE INTO notes (path, title, hash, mtime_ms, bytes, frontmatter) VALUES (?,?,?,?,?,?)')
-				.run(path, note.title, hash, mtimeMs, Buffer.byteLength(content), JSON.stringify(note.frontmatter));
+				.prepare('INSERT OR REPLACE INTO notes (path, title, mtime_ms) VALUES (?,?,?)')
+				.run(path, note.title, mtimeMs);
 
 			const task = this.db.prepare(
 				`INSERT OR REPLACE INTO tasks (path,line,block_end,status,start_min,end_min,text,quadrant,fenced,raw,task_id,blocked_by,due)
@@ -148,14 +136,11 @@ export class NoteIndex {
 				for (const tag of t.tags) taskTag.run(path, t.line, tag);
 			}
 
-			const link = this.db.prepare('INSERT INTO links (path,target,line,embed) VALUES (?,?,?,?)');
-			for (const l of note.links) link.run(path, l.target, l.line, l.embed ? 1 : 0);
+			const link = this.db.prepare('INSERT INTO links (path,target,line) VALUES (?,?,?)');
+			for (const l of note.links) link.run(path, l.target, l.line);
 
 			const tag = this.db.prepare('INSERT OR REPLACE INTO tags (path,tag) VALUES (?,?)');
 			for (const t of note.tags) tag.run(path, t);
-
-			const heading = this.db.prepare('INSERT INTO headings (path,level,text,line) VALUES (?,?,?,?)');
-			for (const h of note.headings) heading.run(path, h.level, h.text, h.line);
 
 			this.db.prepare('INSERT INTO notes_fts (path,title,body) VALUES (?,?,?)').run(path, note.title, note.body);
 
@@ -173,25 +158,24 @@ export class NoteIndex {
 
 	/** Remove every trace of a note. Safe for a path that was never indexed. */
 	forget(path: string): void {
-		for (const table of ['notes', 'tasks', 'task_tags', 'links', 'tags', 'headings', 'problems']) {
+		for (const table of ['notes', 'tasks', 'task_tags', 'links', 'tags', 'problems']) {
 			this.db.prepare(`DELETE FROM ${table} WHERE path = ?`).run(path);
 		}
 		this.db.prepare('DELETE FROM notes_fts WHERE path = ?').run(path);
 	}
 
 	/** Replace the whole index from a list of notes. Returns how long it took. */
-	rebuild(notes: Iterable<{ path: string; content: string; mtimeMs?: number; hash?: string }>): number {
+	rebuild(notes: Iterable<{ path: string; content: string; mtimeMs?: number }>): number {
 		const started = Date.now();
 		const run = this.db.transaction(() => {
-			for (const table of ['notes', 'tasks', 'task_tags', 'links', 'tags', 'headings', 'problems', 'notes_fts']) {
+			for (const table of ['notes', 'tasks', 'task_tags', 'links', 'tags', 'problems', 'notes_fts']) {
 				this.db.prepare(`DELETE FROM ${table}`).run();
 			}
-			for (const n of notes) this.put(n.path, n.content, n.mtimeMs ?? Date.now(), n.hash ?? '');
+			for (const n of notes) this.put(n.path, n.content, n.mtimeMs ?? Date.now());
 		});
 		run();
 		const took = Date.now() - started;
 		this.setMeta('last_build_ms', String(took));
-		this.setMeta('last_build_at', new Date().toISOString());
 		return took;
 	}
 
@@ -225,7 +209,7 @@ export class NoteIndex {
 	}
 
 	/** Tasks in one note, in file order. */
-	tasksIn(path: string): IndexedTask[] {
+	tasksIn(path: string): Task[] {
 		return this.db
 			.prepare(`SELECT ${TASK_COLUMNS} FROM tasks t WHERE t.path = ? ORDER BY t.line`)
 			.all(path)
@@ -236,10 +220,8 @@ export class NoteIndex {
 	 * The one task query. Everything the app asks about tasks goes through it:
 	 * a day's open work, a workspace board, the blocked lens, a tag lens.
 	 *
-	 * `tags`, `under` and `paths` together say what counts as membership, and
-	 * they are ORed: a task belongs if it carries one of the tags, lives under
-	 * one of the folders, or sits in one of the notes. Every other option
-	 * narrows the result.
+	 * Tasks inside fenced code blocks are never returned. Every option narrows
+	 * the result.
 	 *
 	 * `excludePrefixes` exists for a specific reason: this vault's daily notes
 	 * are copies of one template, so every past day contributes the same
@@ -249,18 +231,14 @@ export class NoteIndex {
 	 * test plan is checklist notation, not a task. A quadrant is what marks a
 	 * line the user actually intends to do.
 	 */
-	findTasks(opts: TaskQuery = {}): IndexedTask[] {
+	findTasks(opts: TaskQuery = {}): Task[] {
 		const where: string[] = [];
 		const params: unknown[] = [];
 
-		if (!opts.includeFenced) where.push('t.fenced = 0');
+		where.push('t.fenced = 0');
 		if (opts.statuses?.length) {
 			where.push(`t.status IN (${opts.statuses.map(() => '?').join(',')})`);
 			params.push(...opts.statuses);
-		}
-		if (opts.quadrant) {
-			where.push('t.quadrant = ?');
-			params.push(opts.quadrant);
 		}
 		if (opts.requireQuadrant) where.push('t.quadrant IS NOT NULL');
 		if (opts.dueOnOrBefore) {
@@ -276,25 +254,6 @@ export class NoteIndex {
 			where.push('t.path NOT LIKE ? ESCAPE \'\\\'');
 			params.push(`${like(prefix)}%`);
 		}
-
-		const member: string[] = [];
-		if (opts.tags?.length) {
-			member.push(
-				`EXISTS (SELECT 1 FROM task_tags g WHERE g.path = t.path AND g.line = t.line AND (${opts.tags
-					.map(() => 'g.tag = ? OR g.tag LIKE ?')
-					.join(' OR ')}))`
-			);
-			for (const tag of opts.tags) params.push(tag, `${like(tag)}/%`);
-		}
-		for (const folder of opts.under ?? []) {
-			member.push('t.path LIKE ? ESCAPE \'\\\'');
-			params.push(`${like(folder.replace(/\/$/, ''))}/%`);
-		}
-		for (const path of opts.paths ?? []) {
-			member.push('t.path = ?');
-			params.push(path);
-		}
-		if (member.length) where.push(`(${member.join(' OR ')})`);
 
 		params.push(opts.limit ?? 500);
 		return this.db
@@ -318,7 +277,7 @@ export class NoteIndex {
 		const { where, params } = noteFilter(opts);
 		return this.db
 			.prepare(
-				`SELECT path, title, mtime_ms AS mtimeMs, bytes FROM notes
+				`SELECT path, title, mtime_ms AS mtimeMs FROM notes
 				 ${where}
 				 ORDER BY mtime_ms DESC LIMIT ?`
 			)
@@ -334,20 +293,6 @@ export class NoteIndex {
 	notesCount(opts: NoteFilter = {}): number {
 		const { where, params } = noteFilter(opts);
 		return (this.db.prepare(`SELECT count(*) AS n FROM notes ${where}`).get(...params) as { n: number }).n;
-	}
-
-	/**
-	 * Tasks carrying the given Tasks-plugin ids, for resolving `\u26D4`
-	 * dependencies. Unknown ids simply do not appear, so a blocker deleted from
-	 * the vault leaves a dangling reference the UI can report rather than a
-	 * crash.
-	 */
-	tasksByIds(ids: string[]): IndexedTask[] {
-		if (!ids.length) return [];
-		return this.db
-			.prepare(`SELECT ${TASK_COLUMNS} FROM tasks t WHERE t.task_id IN (${ids.map(() => '?').join(',')})`)
-			.all(...ids)
-			.map(toTask);
 	}
 
 	/** Notes linking to a note name, for the backlinks panel. */
@@ -434,7 +379,7 @@ export class NoteIndex {
 	}
 }
 
-function toTask(row: any): IndexedTask {
+function toTask(row: any): Task {
 	return {
 		tags: row.tags ? String(row.tags).split(' ').filter(Boolean) : [],
 		id: row.task_id ?? null,

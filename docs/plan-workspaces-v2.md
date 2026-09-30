@@ -16,6 +16,7 @@ author says otherwise.
 4. **Glossary.** Glossary leaves Meetings and becomes its own module in the
    rail, with one subsection per workspace. It uses the same UI as the
    meeting glossary had. It is still stored in `<home>/Glossary.md`.
+   (Superseded: glossaries moved to `Glossaries/` on 2026-09-29.)
 5. **Meetings opt-in.** A workspace has meetings only if its definition
    says `meetings: true`. For now that is Kaya Thai Therapy, Cusina Ko and
    eye2gene.

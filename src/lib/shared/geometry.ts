@@ -5,7 +5,7 @@
  * free of the DOM beyond the shape of a rectangle.
  */
 
-export interface Rect {
+interface Rect {
 	left: number;
 	top: number;
 	right: number;

@@ -31,7 +31,7 @@ export interface BoardCard {
 	done: boolean;
 }
 
-export interface BoardColumn {
+interface BoardColumn {
 	title: string;
 	/** The plugin's WIP limit, written `Doing (3)`; 0 for none. */
 	limit: number;

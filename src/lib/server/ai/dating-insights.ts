@@ -22,7 +22,7 @@ import { checkBudget, checkKillSwitch, wrapAsData } from './guardrails';
 import { loadSettings } from './settings';
 import type { RunStamp } from '$lib/shared/ai';
 
-export interface DatingInsightsResult {
+interface DatingInsightsResult {
 	text: string;
 	problem: string | null;
 	stamp: RunStamp | null;

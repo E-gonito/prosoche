@@ -59,11 +59,6 @@ describe('findTasks', () => {
 		expect(index.findTasks({ statuses: OPEN_STATUSES }).length).toBe(3);
 		expect(index.findTasks({ statuses: OPEN_STATUSES, excludePrefixes: ['Journal/'] }).map((t) => t.text)).toEqual(['Ship the thing']);
 	});
-
-	it('filters by quadrant', () => {
-		index.put('Work/Project.md', '- [ ] One `Q1`\n- [ ] Two `Q2`');
-		expect(index.findTasks({ statuses: OPEN_STATUSES, quadrant: 2 }).map((t) => t.text)).toEqual(['Two']);
-	});
 });
 
 describe('search', () => {
@@ -209,7 +204,7 @@ describe('resolveLink', () => {
 	});
 });
 
-describe('tags, dependencies and membership', () => {
+describe('dependencies and exclusions', () => {
 	const WORK = [
 		'# Work',
 		'- [ ] Ship the API `Q1` #ws/work 🆔 api1',
@@ -219,30 +214,10 @@ describe('tags, dependencies and membership', () => {
 
 	beforeEach(() => index.put('Work/plan.md', WORK));
 
-	it('finds a task by the tag on its line, nested tags included', () => {
-		expect(index.findTasks({ tags: ['ws'] }).length).toBe(2);
-		expect(index.findTasks({ tags: ['ws/work'] }).map((t) => t.text)).toEqual(['Ship the API', 'Write the docs']);
-	});
-
-	it('finds a task by the folder it lives in', () => {
-		expect(index.findTasks({ under: ['Work'] }).length).toBe(3);
-		expect(index.findTasks({ under: ['Somewhere else'] })).toEqual([]);
-	});
-
-	it('treats tag and folder as alternatives, not as both required', () => {
-		index.put('Journal/2026/09/21.md', '- [ ] Tagged elsewhere `Q1` #ws/work');
-		const found = index.findTasks({ tags: ['ws/work'], under: ['Work'] });
-		expect(found.map((t) => t.path)).toContain('Journal/2026/09/21.md');
-		expect(found.map((t) => t.path)).toContain('Work/plan.md');
-	});
-
 	it('carries the id and the dependency back out', () => {
 		const [docs] = index.findTasks({ blocked: true });
 		expect(docs.text).toBe('Write the docs');
 		expect(docs.blockedBy).toEqual(['api1']);
-		expect(index.tasksByIds(['api1'])[0].text).toBe('Ship the API');
-		expect(index.tasksByIds(['gone'])).toEqual([]);
-		expect(index.tasksByIds([])).toEqual([]);
 	});
 
 	it('leaves out the dated daily notes without leaving out the folder', () => {

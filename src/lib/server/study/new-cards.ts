@@ -36,7 +36,7 @@ import type { Vault } from '../vault/index';
 export const NEW_CARDS_PATH = `${config.hubFolder}/.state/new-cards.json`;
 
 /** How many unseen cards one part of the vault may still let in today. */
-export interface NewCardQuota {
+interface NewCardQuota {
 	scope: StudyScope;
 	allowance: number;
 }

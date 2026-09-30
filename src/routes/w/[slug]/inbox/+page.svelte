@@ -9,7 +9,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Capture from '$lib/components/Capture.svelte';
-	import TaskRow from '$lib/components/board/TaskRow.svelte';
+	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { editTask } from '$lib/client/api';
 	import type { Task } from '$lib/shared/task';
 

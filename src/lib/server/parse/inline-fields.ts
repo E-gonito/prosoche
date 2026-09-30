@@ -15,7 +15,7 @@
  * split into fields that do not exist.
  */
 
-export interface FieldHit<K extends string> {
+interface FieldHit<K extends string> {
 	key: K;
 	/** Where the key itself starts, so a caller can insert immediately before it. */
 	keyStart: number;

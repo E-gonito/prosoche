@@ -257,7 +257,7 @@ export type NewWorkspace = {
 	template?: string;
 };
 
-export type WorkspaceCreated =
+type WorkspaceCreated =
 	| { ok: true; workspace: Workspace }
 	| { ok: false; reason: 'no-name' | 'exists' };
 

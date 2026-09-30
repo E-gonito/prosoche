@@ -33,7 +33,7 @@ import type { Task } from '../shared/task';
 import type { Vault } from './vault/index';
 
 /** The card being planned, as the caller last saw it. */
-export interface TaskRef {
+interface TaskRef {
 	path: string;
 	/** 0-based line of the card in its note. */
 	line: number;
@@ -41,7 +41,7 @@ export interface TaskRef {
 	expectedRaw: string;
 }
 
-export type DayPlanned =
+type DayPlanned =
 	| {
 			ok: true;
 			/** The day's note the block was written to. */

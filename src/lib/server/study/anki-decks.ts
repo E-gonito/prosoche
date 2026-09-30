@@ -22,7 +22,7 @@ import type { DeckImport } from '$lib/shared/anki-import';
 export type { DeckImport };
 
 /** Where the Anki exports live, vault-relative. */
-export const ANKI_FOLDER = 'Flashcards';
+const ANKI_FOLDER = 'Flashcards';
 
 /**
  * Every deck under `Flashcards/` and what importing it does; with `apply`,

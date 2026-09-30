@@ -64,17 +64,17 @@ import { hashContent, type Vault } from '../vault/index';
 import type { Workspace } from '../workspaces';
 
 /** The folder under a subject's `Flashcards/` that glossaries' cards go in. */
-export const GLOSSARY_CARDS = 'Glossary';
+const GLOSSARY_CARDS = 'Glossary';
 
 /** The card file of the terms with no category, without `.md`. */
-export const UNCATEGORISED = 'Uncategorised';
+const UNCATEGORISED = 'Uncategorised';
 
 /**
  * Where the cards of glossary `glossary` go in `subject`:
  * `<home>/Flashcards/Glossary/<glossary>`. The glossary's name is in the
  * path so two glossaries linked to one subject never share a file. Pure.
  */
-export function glossaryCardsFolder(subject: Pick<Subject, 'files'>, glossary: string): string {
+function glossaryCardsFolder(subject: Pick<Subject, 'files'>, glossary: string): string {
 	return `${subject.files.flashcards}/${GLOSSARY_CARDS}/${glossary}`;
 }
 
@@ -106,7 +106,7 @@ export interface CardFileText {
 }
 
 /** One file whose text changes. */
-export interface CardFileChange {
+interface CardFileChange {
 	path: string;
 	/** The file as read, or null for one to create. */
 	before: string | null;
@@ -120,7 +120,7 @@ export interface CardFileChange {
 }
 
 /** What keeping a glossary's cards in step would change. */
-export interface Reconciliation {
+interface Reconciliation {
 	/** Only files that differ, by path. */
 	changes: CardFileChange[];
 	/** Terms that have a card: those with a definition that could be written. */
@@ -359,7 +359,7 @@ function leftAlone(path: string): string {
 }
 
 /** The study subject a glossary's cards go to, and where. */
-export interface CardLink {
+interface CardLink {
 	/** The subject's slug and name. */
 	subject: { slug: string; name: string };
 	folder: string;
@@ -373,13 +373,13 @@ export interface CardLink {
  * subject and folder, how many cards the folder holds, the files that
  * differ from the glossary (0 is up to date), and any problem.
  */
-export type CardState =
+type CardState =
 	| { state: 'unlinked' }
 	| { state: 'unknown'; study: string }
 	| ({ state: 'linked'; cards: number; pending: number; problems: string[] } & CardLink);
 
 /** What one sync did. `written` lists the files changed, `conflict` the one that changed underneath it. */
-export type CardSync = CardState & { written?: string[]; conflict?: string | null };
+type CardSync = CardState & { written?: string[]; conflict?: string | null };
 
 /**
  * Where the cards of the glossary at `path` stand, without writing: the

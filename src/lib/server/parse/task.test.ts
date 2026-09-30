@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTaskLine, scanTasks, rewriteTaskLine, durationMinutes } from './task';
+import { parseTaskLine, scanTasks, rewriteTaskLine } from './task';
 
 // These fixtures reproduce, character for character, the line shapes found in
 // a real Day Planner vault: the trailing spaces, the backticked quadrant, the
@@ -47,12 +47,6 @@ describe('parseTaskLine', () => {
 		expect(parseTaskLine('## Backlog')).toBeNull();
 		expect(parseTaskLine('- just a bullet')).toBeNull();
 		expect(parseTaskLine('Some prose [x] with brackets')).toBeNull();
-	});
-
-	it('computes duration, including a range crossing midnight', () => {
-		expect(durationMinutes(parseTaskLine(REAL.noQuadrant)!)).toBe(440);
-		expect(durationMinutes(parseTaskLine('- [ ] 23:30 - 00:30 Late')!)).toBe(60);
-		expect(durationMinutes(parseTaskLine(REAL.bare)!)).toBeNull();
 	});
 });
 

@@ -17,7 +17,7 @@ import type { NoteIndex } from '../index/index';
 import type { TreeNode, Vault } from '../vault/index';
 
 /** One note as the Notes tab shows it. */
-export interface SubjectNote {
+interface SubjectNote {
 	path: string;
 	title: string;
 	/** Rendered body, wikilinks resolved to `/notes/...`. */

@@ -20,7 +20,7 @@ import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { captureText } from '$lib/client/api';
 import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
 
-export interface PaletteRow {
+interface PaletteRow {
 	id: string;
 	/** Heading this row appears under. */
 	group: string;
@@ -261,19 +261,18 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 	return [
 		// The only binding that works while typing: it is a chord, so it cannot
 		// be part of anything the user is writing.
-		{ keys: 'mod+k', description: 'Command palette', group: 'Commands', whileTyping: true, run: () => palette.toggle() },
+		{ keys: 'mod+k', description: 'Command palette', whileTyping: true, run: () => palette.toggle() },
 		// One per module, so a new tab is reachable here without touching this
 		// file. The letters are the modules' own; a private module has none, so
 		// it is never one stray keystroke away on a shared screen.
-		...MODULES.map((m) => ({ keys: m.private ? '' : (GO_KEYS[m.id] ?? ''), description: `Go to ${m.title}`, group: 'Go', run: go(m.href) })),
-		...SYSTEM.map((m) => ({ keys: GO_KEYS[m.id] ?? '', description: `Go to ${m.title}`, group: 'Go', run: go(m.href) })),
+		...MODULES.map((m) => ({ keys: m.private ? '' : (GO_KEYS[m.id] ?? ''), description: `Go to ${m.title}`, run: go(m.href) })),
+		...SYSTEM.map((m) => ({ keys: GO_KEYS[m.id] ?? '', description: `Go to ${m.title}`, run: go(m.href) })),
 		// Only offered when HUB_T3_URL is set; opens in a new tab because the
 		// paired WebSocket session belongs to that origin, not this one.
-		...(t3Url ? [{ keys: '', description: 'T3 Code', group: 'Go', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),
+		...(t3Url ? [{ keys: '', description: 'T3 Code', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),
 		{
 			keys: 'c',
 			description: 'Quick capture',
-			group: 'Write',
 			run: () =>
 				palette.request({
 					title: 'Quick capture',
@@ -287,7 +286,6 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 		{
 			keys: 'k',
 			description: 'New card',
-			group: 'Write',
 			// A card is an ordinary task line, so capture writes it: the line
 			// lands in the inbox with a quadrant and stays a task wherever it
 			// is filed afterwards.
@@ -304,7 +302,6 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 		{
 			keys: '',
 			description: 'Rebuild index',
-			group: 'View',
 			run: async () => {
 				palette.busy = true;
 				try {

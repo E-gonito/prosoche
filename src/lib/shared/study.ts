@@ -251,7 +251,7 @@ export interface ReadingItem extends ReadingFields {
 }
 
 /** A column of the reading list, shown as a group. */
-export interface ReadingGroup {
+interface ReadingGroup {
 	title: string;
 	items: ReadingItem[];
 }
@@ -281,7 +281,7 @@ export type ReadingOp =
 	| { kind: 'delete'; line: number };
 
 /** One tab of a subject's own tab bar. Every one always shows. */
-export interface StudyTab {
+interface StudyTab {
 	title: string;
 	/** The path under `/study/<subject>`: '' for Overview. */
 	path: string;

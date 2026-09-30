@@ -1,14 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { loadSettings, saveSettings } from '$server/ai/settings';
+import { saveSettings } from '$server/ai/settings';
 import type { RequestHandler } from './$types';
-
-/** The settings as they stand, for a page that wants them without a reload. */
-export const GET: RequestHandler = async () => {
-	const { vault, ready } = hub();
-	await ready;
-	return json({ settings: await loadSettings(vault) });
-};
 
 /**
  * Save the AI settings to `_hub/ai.md`.

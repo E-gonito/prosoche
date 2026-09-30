@@ -164,7 +164,7 @@ export function refuse(guardrail: GuardrailId, message: string, path?: string): 
 }
 
 /** The fields of a task-line edit a proposal may ask for. Mirrors `TaskEdit`. */
-export interface TaskLineEdit {
+interface TaskLineEdit {
 	status?: 'todo' | 'done' | 'in-progress' | 'cancelled' | 'blocked';
 	time?: { start: string; end: string } | null;
 	quadrant?: number | null;
@@ -180,8 +180,8 @@ export interface TaskLineEdit {
  * One concrete change, as an intention rather than as bytes.
  *
  * The kinds are a closed set on purpose: the guardrails need to reason about
- * what a change *means* ("is this a deletion?", "is this a rename out of
- * Inbox?"), and a bag of character offsets cannot answer that. The bytes are
+ * what a change *means* ("is this a deletion?", "is this a whole-note
+ * rewrite?"), and a bag of character offsets cannot answer that. The bytes are
  * computed from the intention by our own code, never by the model, which is
  * also why there is no `delete` kind — nothing in this phase removes a file.
  */
@@ -189,7 +189,6 @@ export type ProposalEdit =
 	| { id: string; kind: 'create'; path: string; text: string; reason: string }
 	| { id: string; kind: 'append'; path: string; text: string; reason: string }
 	| { id: string; kind: 'rewrite-task'; path: string; line: number; expectedRaw: string; edit: TaskLineEdit; reason: string }
-	| { id: string; kind: 'move'; path: string; to: string; reason: string }
 	| { id: string; kind: 'replace-region'; path: string; marker: string; text: string; reason: string }
 	/**
 	 * A whole new version of an existing note, for a revision a human reads
@@ -200,13 +199,12 @@ export type ProposalEdit =
 	 */
 	| { id: string; kind: 'revise'; path: string; text: string; expectedHash: string; reason: string };
 
-export type EditKind = ProposalEdit['kind'];
+type EditKind = ProposalEdit['kind'];
 
 export const EDIT_KIND_LABELS: Record<EditKind, string> = {
 	create: 'New note',
 	append: 'Append',
 	'rewrite-task': 'Rewrite task line',
-	move: 'Move',
 	'replace-region': 'Replace marker region',
 	revise: 'Revise note'
 };
@@ -233,8 +231,6 @@ export interface EditPreview {
 	id: string;
 	kind: EditKind;
 	path: string;
-	/** Destination, for a move. */
-	to?: string;
 	reason: string;
 	before: string;
 	after: string;
@@ -263,7 +259,7 @@ export interface ApplyResult {
 	undoId: string | null;
 }
 
-export type DiffRow = { kind: 'same' | 'add' | 'remove'; text: string; line: number };
+type DiffRow = { kind: 'same' | 'add' | 'remove'; text: string; line: number };
 
 /**
  * Line diff of two versions of a file, for the review view.

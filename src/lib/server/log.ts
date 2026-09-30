@@ -15,7 +15,7 @@ import type { Vault } from './vault/index';
 const DAY_HEADING = /^##[ \t]+(\d{4}-\d{2}-\d{2})[ \t]*$/;
 const ANY_HEADING = /^#{1,6}[ \t]/;
 
-export interface LogEntry {
+interface LogEntry {
 	day: DayKey;
 	/** Bullet and prose lines under the heading, in file order, trimmed. */
 	lines: string[];

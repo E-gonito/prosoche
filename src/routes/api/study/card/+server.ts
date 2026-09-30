@@ -1,8 +1,7 @@
-import { json, text } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { dueCards, review, scanCards } from '$server/study/flashcards';
-import { ankiDeck, ankiFilename } from '$server/study/anki';
+import { review, scanCards } from '$server/study/flashcards';
 import { recordIntroduced } from '$server/study/new-cards';
 import { subjectsOf } from '$server/study/subjects';
 import { GRADES, type Grade } from '$lib/shared/sm2';
@@ -53,29 +52,4 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 	if (card.schedule === null) await recordIntroduced(vault, subjectsOf(await workspaces()), card.path, note.content, day);
 	return json({ ok: true, card: result.card, shift: result.shift });
-};
-
-/**
- * Download the cards in scope as an Anki-importable file.
- *
- * `deck` names the Anki deck; `folder` and `tag` repeat to give the scope, and
- * an empty scope is the whole vault. The response is a download: nothing is
- * written anywhere, least of all into `Flashcards/`, whose eighty existing
- * exports this never reads or touches.
- */
-export const GET: RequestHandler = async ({ url }) => {
-	const { vault, index, ready } = hub();
-	await ready;
-
-	const scope = { folders: url.searchParams.getAll('folder'), tags: url.searchParams.getAll('tag') };
-	const deck = url.searchParams.get('deck') || 'Flashcards';
-	// Every card in scope, not only what is due: an export is the whole deck.
-	const queue = await dueCards(vault, index, { on: '9999-12-31', scope, limit: 100_000 });
-
-	return text(ankiDeck(queue.cards, { name: deck, tags: scope.folders }), {
-		headers: {
-			'content-type': 'text/plain; charset=utf-8',
-			'content-disposition': `attachment; filename="${ankiFilename(deck)}"`
-		}
-	});
 };

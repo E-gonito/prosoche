@@ -14,7 +14,7 @@
 
 import type { IconName } from '$lib/components/Icon.svelte';
 
-export interface Module {
+interface Module {
 	/** Also the first segment of every route the module serves. */
 	id: string;
 	title: string;

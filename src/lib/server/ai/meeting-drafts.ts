@@ -19,7 +19,7 @@ import type { Vault } from '../vault/index';
 import type { Workspace } from '../workspaces';
 import type { CalendarEvent } from '../calendar';
 import { appendUnderHeading } from '../sections';
-import { formatMinutes } from '../daily';
+import { formatMinutes } from '$lib/shared/time';
 import { TALKING_POINTS_HEADING, meetingPath, newMeetingNote } from '../parse/meeting';
 import { currentMeeting, isMeetingNote, loadMeetings, notebookPaths, openActions, type Meeting } from '../meetings';
 import { glossaryOf } from '../glossary';
@@ -50,7 +50,7 @@ export interface Source {
 }
 
 /** How much of any one note goes into a prompt. */
-export const NOTE_CHARS = 8000;
+const NOTE_CHARS = 8000;
 
 /* ------------------------------------------------------------- primer -- */
 
@@ -148,7 +148,7 @@ const PREP_SCHEMA: Schema = {
 };
 
 /** The meeting a prep is for, as the prompt describes it. */
-export interface PrepMeeting {
+interface PrepMeeting {
 	title: string;
 	day: string | null;
 	startMin: number | null;

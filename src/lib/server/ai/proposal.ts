@@ -66,7 +66,7 @@ export interface Policy {
 }
 
 /** What a feature's policy depends on beyond the feature itself. */
-export interface PolicyContext {
+interface PolicyContext {
 	today: DayKey;
 	/** Extra paths this particular run may write: the destination capture
 	 *  proposed, the primer, meeting note or glossary a draft names. */
@@ -95,7 +95,6 @@ export function policyFor(
 	const base: BlastLimits = {
 		...settings.blast,
 		writableDays: [ctx.today, shiftDay(ctx.today, -1)],
-		renamableUnder: ['Inbox/'],
 		dailyFolder: config.dailyNote.folder
 	};
 	const wrap = (allow: string[], blast: Partial<BlastLimits> = {}): Policy => ({
@@ -109,7 +108,7 @@ export function policyFor(
 		// one file, one day, no renames. The overlap with the writable-days
 		// list is deliberate - a date bug has to get past both.
 		case 'briefing':
-			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today], renamableUnder: [] });
+			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today] });
 
 		// Capture files one thing into the inbox and, at most, one destination
 		// it names when it proposes.
@@ -122,11 +121,11 @@ export function policyFor(
 		// can at worst name another workspace's primer or meeting note, or
 		// another glossary in `Glossaries/`.
 		case 'primer-draft':
-			return wrap(extra.filter((p) => p.endsWith('/Primer.md')).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+			return wrap(extra.filter((p) => p.endsWith('/Primer.md')).slice(0, 1), { maxFiles: 1 });
 		case 'glossary-lookup':
-			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1 });
 		case 'meeting-prep':
-			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1, renamableUnder: [] });
+			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1 });
 
 		// Suggest flashcards drafts cards rather than a proposal, and the cards
 		// a person keeps are written by `study/card-files.ts`, so a proposal
@@ -169,10 +168,7 @@ interface Resolved {
 async function resolve(vault: Vault, edits: ProposalEdit[], policy: PathPolicy): Promise<Resolved[]> {
 	const out: Resolved[] = [];
 	for (const edit of edits) {
-		const pathRefusals = [
-			...checkPath(edit.path, policy),
-			...(edit.kind === 'move' ? checkPath(edit.to, policy) : [])
-		];
+		const pathRefusals = checkPath(edit.path, policy);
 		if (pathRefusals.length) {
 			out.push({ edit, before: '', after: '', expectedHash: '', fresh: true, refusals: pathRefusals });
 			continue;
@@ -270,20 +266,15 @@ async function resolve(vault: Vault, edits: ProposalEdit[], policy: PathPolicy):
 				break;
 			}
 
-			case 'move': {
-				// The vault module has no rename, and copying a note without
-				// removing the original would duplicate it, which is worse than
-				// refusing. Kept as an edit kind because G5 has a rule about
-				// renames and that rule should be testable; see the phase report.
+			default:
+				// A kind this build does not know, such as one in a hand-written
+				// request body: refuse it, never guess.
 				out.push({
 					...base,
 					after: note.content,
-					refusals: [
-						refuse('G5', 'Moving a note is not supported yet: the vault has no rename, and a copy would duplicate it.', edit.path)
-					]
+					refusals: [refuse('G5', `Unknown edit kind "${(edit as { kind: string }).kind}".`, base.edit.path)]
 				});
 				break;
-			}
 		}
 	}
 	return out;
@@ -324,11 +315,11 @@ function toPreview(item: Resolved): EditPreview {
 		after: item.after,
 		refusals: item.refusals
 	};
-	return item.edit.kind === 'move' ? { ...base, to: item.edit.to } : base;
+	return base;
 }
 
 /** Where `apply` puts its snapshots, and which ids the human ticked. */
-export interface ApplyOptions {
+interface ApplyOptions {
 	/** Edit ids the user accepted. Defaults to the proposal's own list. */
 	accepted?: string[];
 	/** The vault root, for the symlink check. Defaults to `config.vaultPath`. */

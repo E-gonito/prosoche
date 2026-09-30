@@ -31,7 +31,7 @@
  * what an empty palette box should show.
  */
 
-export interface FuzzyMatch {
+interface FuzzyMatch {
 	score: number;
 	/** Indexes into the original text, ascending, for highlighting. */
 	positions: number[];

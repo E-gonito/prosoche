@@ -61,7 +61,7 @@ export interface Span {
 }
 
 /** A card's first line, parsed. Positions are into that line. */
-export interface CardLine {
+interface CardLine {
 	/** The character inside the brackets. */
 	checkChar: string;
 	title: string;
@@ -101,7 +101,7 @@ export interface KanbanCard extends CardLine {
 	indent: string | null;
 }
 
-export interface KanbanColumn {
+interface KanbanColumn {
 	title: string;
 	limit: number;
 	complete: boolean;
@@ -439,7 +439,7 @@ export function applyOp(content: string, op: BoardOp, today: string): OpResult {
 	}
 }
 
-export interface QuickAdd {
+interface QuickAdd {
 	title: string;
 	due: string | null;
 	priority: number | null;

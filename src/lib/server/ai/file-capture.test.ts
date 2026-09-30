@@ -108,18 +108,18 @@ describe('destinations', () => {
 	});
 
 	it('offers the workspace folders and never the note it came from', () => {
-		index.put('Work/Atlas/Questions.md', '# Questions\n', Date.now(), 'a');
-		index.put('Work/Atlas/Notes.md', '# Notes\n', Date.now(), 'b');
-		index.put('Personal/Shopping.md', '# Shopping\n', Date.now(), 'c');
-		index.put(CAPTURE_PATH, CAPTURE, Date.now(), 'd');
+		index.put('Work/Atlas/Questions.md', '# Questions\n', Date.now());
+		index.put('Work/Atlas/Notes.md', '# Notes\n', Date.now());
+		index.put('Personal/Shopping.md', '# Shopping\n', Date.now());
+		index.put(CAPTURE_PATH, CAPTURE, Date.now());
 
 		const found = destinations({ index, workspaces: [WORKSPACE] }, CAPTURE_PATH);
 		expect(found).toEqual(['Work/Atlas/Notes.md', 'Work/Atlas/Questions.md']);
 	});
 
 	it('offers the whole vault when no workspace has folders', () => {
-		index.put('Personal/Shopping.md', '# Shopping\n', Date.now(), 'c');
-		index.put('_hub/workspaces/atlas.md', '# Atlas\n', Date.now(), 'e');
+		index.put('Personal/Shopping.md', '# Shopping\n', Date.now());
+		index.put('_hub/workspaces/atlas.md', '# Atlas\n', Date.now());
 		const found = destinations({ index, workspaces: [] }, CAPTURE_PATH);
 		expect(found).toEqual(['Personal/Shopping.md']);
 	});
@@ -140,9 +140,9 @@ describe('fileCapture', () => {
 		// about what happens once it is on.
 		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
 		await vault.write(CAPTURE_PATH, CAPTURE);
-		index.put(CAPTURE_PATH, CAPTURE, Date.now(), 'd');
+		index.put(CAPTURE_PATH, CAPTURE, Date.now());
 		await vault.write('Work/Atlas/Questions.md', '# Questions\n');
-		index.put('Work/Atlas/Questions.md', '# Questions\n', Date.now(), 'a');
+		index.put('Work/Atlas/Questions.md', '# Questions\n', Date.now());
 	});
 
 	afterEach(async () => {
@@ -182,7 +182,7 @@ describe('fileCapture', () => {
 
 	it('says so when there is nowhere to file anything', async () => {
 		const bare = new NoteIndex(':memory:');
-		bare.put(CAPTURE_PATH, CAPTURE, Date.now(), 'd');
+		bare.put(CAPTURE_PATH, CAPTURE, Date.now());
 		const result = await fileCapture(
 			{ vault, index: bare, workspaces: [] },
 			{ line: CAPTURE_LINE, expectedRaw: raw }

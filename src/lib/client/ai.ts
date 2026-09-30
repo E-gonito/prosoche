@@ -18,7 +18,7 @@ import type {
 import type { CardDraft } from '$lib/shared/study';
 import type { ScanDraft } from '$lib/shared/glossary';
 
-export type AiResult<T> =
+type AiResult<T> =
 	| { ok: true; value: T }
 	| { ok: false; kind: 'refused'; message: string; refusals: Refusal[] }
 	| { ok: false; kind: 'offline' | 'error'; message: string };
@@ -81,7 +81,7 @@ async function post<T>(url: string, body: unknown, pick: (body: any) => T, signa
 }
 
 /** A drafted briefing, with the paths `applyProposal` must be told about. */
-export interface DraftedBriefing {
+interface DraftedBriefing {
 	briefing: BriefingRun;
 	destinations: string[];
 }
@@ -94,17 +94,6 @@ export interface DraftedBriefing {
  */
 export async function draftBriefing(day: string): Promise<AiResult<DraftedBriefing>> {
 	return post('/api/ai/briefing', { day }, (body) => body as DraftedBriefing);
-}
-
-/**
- * Take a proposal out of the waiting queue without applying it.
- *
- * Also called after a successful apply, because the queue is "what is still
- * undecided" and an applied proposal is decided. Removing one that is not
- * there succeeds: two tabs deciding the same thing is normal.
- */
-export async function dismissProposal(id: string): Promise<AiResult<{ removed: boolean }>> {
-	return post('/api/ai/pending', { action: 'dismiss', id }, (body) => ({ removed: Boolean(body.removed) }));
 }
 
 /** A drafted change, with the paths `applyProposal` must be told about. */

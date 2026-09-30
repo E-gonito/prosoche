@@ -7,7 +7,7 @@
 	 * with no note reads exactly the same, minus the note.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import TaskRow from '$lib/components/board/TaskRow.svelte';
+	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { logContact } from '$lib/client/api';
 	import { noteHref } from '$lib/shared/links';
 	import type { Task } from '$lib/shared/task';

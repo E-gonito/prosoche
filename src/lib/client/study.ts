@@ -12,7 +12,7 @@
  */
 
 import type { Result, Task } from './api';
-import type { Card, CardsAdded, CardShift, Graded, NewCard, ReadingList, ReadingOp, StudyScope } from '$lib/shared/study';
+import type { Card, CardsAdded, CardShift, Graded, NewCard, ReadingList, ReadingOp } from '$lib/shared/study';
 import type { Grade } from '$lib/shared/sm2';
 import type { DeckImport } from '$lib/shared/anki-import';
 
@@ -118,14 +118,6 @@ export async function setCardFileGoal(subject: string, path: string, goal: strin
 /** Create a subject homed at `Study/<name>`. Returns its slug, for the redirect. */
 export async function createSubject(name: string, folders: string[]): Promise<Result<string>> {
 	return post('/api/study/subject', { name, folders }, (body) => body.slug as string);
-}
-
-/** Where to point a link so the browser downloads an Anki deck of `cards`. */
-export function ankiDeckUrl(scope: StudyScope, deck: string): string {
-	const params = new URLSearchParams({ deck });
-	for (const folder of scope.folders ?? []) params.append('folder', folder);
-	for (const tag of scope.tags ?? []) params.append('tag', tag);
-	return `/api/study/card?${params}`;
 }
 
 /**

@@ -11,7 +11,6 @@ import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
-import { migrateGlossaries } from './glossary-migration';
 import { followGlossaryCards, syncAllGlossaryCards } from './study/glossary-cards';
 
 /**
@@ -44,7 +43,7 @@ export function indexVault(vault: Vault, index: NoteIndex): () => Promise<number
 	// which is why a removal needs no case of its own.
 	const resync = async (path: string): Promise<void> => {
 		const note = await vault.read(path);
-		if (note.exists) index.put(path, note.content, note.mtimeMs, note.hash);
+		if (note.exists) index.put(path, note.content, note.mtimeMs);
 		else index.forget(path);
 	};
 
@@ -107,16 +106,6 @@ function start(): Hub {
 			console.log(`[hub] indexed ${index.health().notes} notes in ${ms} ms`);
 			const seeded = await seedWorkspaces(vault);
 			if (seeded.length) console.log(`[hub] created ${seeded.length} workspace files under _hub/workspaces/`);
-			// A failed migration is logged and leaves the old files in place; it
-			// must not keep the hub from starting.
-			try {
-				const migrated = await migrateGlossaries(vault, await loadWorkspaces(vault));
-				for (const m of migrated.moved) console.log(`[hub] moved glossary ${m.from} to ${m.to}`);
-				for (const l of migrated.linked) console.log(`[hub] workspace ${l.workspace} now captures terms into glossary ${l.glossary}`);
-				for (const l of migrated.left) console.warn(`[hub] left ${l.from} where it is: ${l.why}`);
-			} catch (e) {
-				console.error('[hub] glossary migration failed', e);
-			}
 			// Glossaries' cards follow every change to a glossary from here on,
 			// and catch up with any made while the hub was down. The catch-up
 			// runs behind `ready`, so a large first link does not hold up the
