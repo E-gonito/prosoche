@@ -171,7 +171,7 @@ export interface DueQuery {
 	 * the queue's stable order, and a card any quota lets in is ready. A
 	 * study subject's quota is its new cards per day less those already
 	 * begun today (see `new-cards.ts`). Absent means every unseen card is
-	 * ready, as for the Anki export.
+	 * ready.
 	 */
 	newCards?: Array<{ scope: StudyScope; allowance: number }>;
 }
