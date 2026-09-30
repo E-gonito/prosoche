@@ -406,6 +406,7 @@
 	@media (max-width: 720px) {
 		.go .btn:not(.small) { flex: 1 1 100%; min-height: 44px; }
 		.add { padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom)); }
-		.add .btn.primary { flex: 1; min-height: 44px; }
+		.add .btn.primary { flex: 1; min-height: 44px; white-space: nowrap; }
+		.add .hint { flex-basis: 100%; }
 	}
 </style>

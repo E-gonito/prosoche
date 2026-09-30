@@ -292,8 +292,8 @@ test.describe('Glossary', () => {
 
 		await page.goto('/study/study');
 		const hint = page.getByTestId('subject-glossary');
-		await expect(hint).toContainText('Terms in Work become cards here');
-		await hint.getByRole('link', { name: 'Work' }).click();
+		await expect(hint).toHaveText('Scan notes in the Work glossary for more cards.');
+		await hint.getByRole('link', { name: 'Scan notes' }).click();
 		await expect(page).toHaveURL(/\/glossary\/work#scan$/);
 		await expect(page.getByTestId('scan-cards')).toHaveText('Terms you add become cards in Study once they have a definition.');
 		await expect(page.getByTestId('scan-cards').getByRole('link')).toHaveAttribute('href', '/study/study/flashcards');

@@ -37,7 +37,7 @@
 			</div>
 			{#if data.study.due === 0}<p class="empty">Nothing due right now.</p>{/if}
 			{#each data.glossaries as g (g.slug)}
-				<p class="hint" data-testid="subject-glossary">Terms in <a href="/glossary/{g.slug}#scan">{g.name}</a> become cards here; scan your notes there for more.</p>
+				<p class="hint" data-testid="subject-glossary"><a href="/glossary/{g.slug}#scan">Scan notes</a> in the {g.name} glossary for more cards.</p>
 			{/each}
 		</section>
 
