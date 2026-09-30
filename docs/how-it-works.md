@@ -188,7 +188,86 @@ looked up from its terms alone.
 A look-up is a proposal like every Claude button's: it is shown as a diff
 first and writes only the glossary's own file, and only when you accept.
 
-Look-ups use the Glossary look-up's model settings.
+**Scan notes for new terms** is how notes become cards: Claude reads the
+notes in the folders you name for terms the glossary lacks, you tick and edit
+what it found, and the terms you add join the glossary, and so its cards
+once they have a definition. **Scan notes**, beside Add term, opens it; so
+does `#scan` at the end of the glossary's address, which is where a study
+subject's link goes (see Study). A glossary remembers where to scan in its
+frontmatter: `sources:`, a list of vault folders, and `scanned:`, the day of
+the last full scan.
+
+    ---
+    sources:
+      - Computer Science
+    scanned: "2026-09-29"
+    study: cs-study
+    ---
+
+The folders show as chips, each with × to remove it, and **Add** takes
+another (the field suggests the vault's folders; the private folder, `_hub/`
+and `Glossaries/` are never offered). Each change rewrites only the
+`sources:` lines; a glossary with no frontmatter gains a small block at the
+top, and its body is never touched. With no folder yet, there is nothing to
+scan. When the glossary is linked to a study subject, one line under the
+folders says the terms you add become cards there.
+
+One button then scans. Before a first scan it reads "Scan all 118 notes";
+after one, "Scan 12 notes changed since 29 Sep", counting the notes under
+the folders whose modified day is that day or later (a note edited on the
+day of a scan is read again rather than missed), with **Scan all 118 notes
+instead** beside it. Empty notes are not counted. The notes are split into
+batches of at most 60,000 characters (12,000 of any one note), and the page
+runs the batches one after another by itself, showing "Batch 3 of 9 · 41 new
+terms so far" and a **Stop** button. Stop drops the batch in flight; the
+terms found so far stay. Scanning again while a list is not yet added asks
+"Discard the 12 terms not yet added?" in place first.
+
+Each batch is one read-only run through the same runner as every AI
+feature: the kill switch and the budget are checked first, the CLI gets no
+tools, and the run is logged. Claude reads the notes as quoted data, and
+the glossary's own terms and categories, which it is told so it does not
+propose them again, are quoted data too. It drafts entries for the technical
+terms the notes define or use, each with a category, a definition, a `→`
+line, the note it came from and a sentence quoted from it. An entry is kept
+only if that sentence is in the note and the term is in that sentence (a
+bracketed part, either side of a slash, or a plural will do); the rest wait,
+collapsed, under **Left out**. Terms the glossary already has, or an earlier
+batch found, are left out of the list, compared ignoring case and spacing.
+
+Nothing is written until you add. Every candidate shows its term, category,
+definition, `→` line, the quoted sentence and a link to its note, with a
+tick box, ticked to start with, and fields to edit each part (the
+glossary's categories are suggested). A term the scan missed can be typed
+into the list under it. **Select all** and **None** tick or untick the terms
+shown, and a row of category chips shows one category at a time. A ticked
+term with no name, one the glossary has, one ticked twice, or a `→` line
+with no definition is marked, and **Add N terms**, which stays at the
+bottom of the screen, waits until it is fixed or unticked. **Discard** asks
+in place too.
+
+Add sends only the ticked terms, as edited, and the server checks them all
+again: the glossary must be there; each term needs a name that reads back as
+its heading, within length limits (120 characters for a term, 1,500 for a
+definition); no term may be one the glossary has now or be sent twice; and
+each note must be a markdown note under the glossary's `sources:` as the file
+says now. Any failure refuses the lot and says which terms. Each term is then
+appended after every byte already in the file: with a definition, as
+`- status:: looked-up` with its category, `- source:: [[<note>]]`,
+`- drafted:: Claude` when the definition is Claude's, then the definition
+and `→` line; with the definition left empty, as `- status:: to-look-up`,
+for **Look up with Claude** later. A term typed in has no source line. When
+the scan read every batch, `scanned:` is set to today; after a Stop, or with
+no scan at all, it is left alone, so the notes not read are still counted as
+changed next time. The result must read back as the old entries unchanged
+plus exactly the new ones, and it is written once, pinned to the file as it
+was read, so a glossary edited meanwhile is refused and nothing is written.
+The page then says "Added 23 terms" and the new entries appear in the list.
+A full scan that found nothing offers **Mark these notes scanned**, which
+sets only `scanned:`.
+
+Look-ups use the Glossary look-up's model settings, and scans the Glossary
+scan's, one run per batch.
 
 **Flashcards.** A glossary can be linked to a study subject, and then every
 term with a definition is a flashcard there, kept in step with the
@@ -279,7 +358,10 @@ folder, the first folder its workspace names: `Goals.md`, `Reading List.md`,
 it names, so reference notes kept elsewhere can sit beside the home as
 further folders, and from any note tagged with the workspace's tag.
 Folders, at the foot of a subject's page, adds or removes those (see
-Workspaces).
+Workspaces). A glossary whose `study:` names the subject also makes cards
+here, and the subject's Overview says so under its flashcards: "Scan notes
+in the Computer Science glossary for more cards", linking to that
+glossary's scan (see Glossary).
 
 **The Study page** shows one card per subject — its goals with milestones
 done out of total, this week's hours and the cards due — and the cards due

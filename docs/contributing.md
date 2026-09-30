@@ -45,7 +45,7 @@ flashcard scheduling.
 | `src/lib/server/workspaces.ts`, `kanban.ts` | Workspace definitions and membership, and the byte-exact `Board.md` edits. |
 | `src/lib/server/study/` | Flashcards, glossary cards, resources, goals and the session log, all read out of notes. |
 | `src/lib/server/dating.ts` | The ledger, person profiles and the `Private/` scope, read by one module only. |
-| `src/lib/server/ai/` | The nine guardrails, `run.ts` (the one read-only runner), the CLI bridge, and the three features. |
+| `src/lib/server/ai/` | The nine guardrails, `run.ts` (the one read-only runner), the CLI bridge, and the features that use it. |
 | `src/lib/server/hub.ts` | Wires those into one running instance; `hub()` resolves once the first index build is done. |
 | `src/lib/shared/` | Pure code both sides import, such as `scheduler.ts`, the one file that imports `ts-fsrs`. |
 | `src/lib/client/` | Browser-only code: the one `api()` transport, the palette and shortcuts, drag state. |

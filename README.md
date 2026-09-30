@@ -65,8 +65,8 @@ Six tabs, drawn from one registry (`src/lib/modules/index.ts`):
 
 - **Today** — the day and the week around it: the timeline, board cards to
   drag onto it, an inbox card and an evening review.
-- **Glossary** — one file per glossary, with Claude look-ups and flashcards
-  made from its terms.
+- **Glossary** — one file per glossary, with Claude look-ups, a scan of your
+  notes for new terms, and flashcards made from its terms.
 - **Workspaces** — a kanban board, overview, inbox, log, contacts and notes,
   each defined by one file in `_hub/workspaces/`.
 - **Study** — subjects with goals, a reading list, sessions and flashcards
@@ -116,9 +116,9 @@ to be used.
 
 Off by default, and it never writes without a click. Every model run is
 read-only: the CLI gets no tools and no directory and sees only the notes the
-server puts in its prompt. Three features use it (glossary look-up, the
-morning briefing and Date insights), and each returns a proposal you accept or
-reject before a byte is written. Nine guardrails enforce this in code, not in
+server puts in its prompt. Four features use it (glossary look-up and scan,
+the morning briefing and Date insights), and each returns a proposal or a list
+you accept or reject before a byte is written. Nine guardrails enforce this in code, not in
 prompt text. The details are in [`docs/how-it-works.md`](docs/how-it-works.md#settings).
 
 ## More
@@ -133,8 +133,8 @@ prompt text. The details are in [`docs/how-it-works.md`](docs/how-it-works.md#se
 - [x] Vault reading, full-text index, git sync, rendered notes
 - [x] Timeline with drag-and-drop, task ticking, conflict resolver
 - [x] Six modules, kanban boards, contacts, evening review, one inbox
-- [x] Read-only AI: glossary look-up, briefing and Date insights, behind an
-      accept step
+- [x] Read-only AI: glossary look-up and scan, briefing and Date insights,
+      behind an accept step
 - [x] Flashcards scheduled by FSRS, Anki import, cards from glossaries
 - [x] Command palette, phone and desktop, installable to the home screen
 - [ ] Multi-vault, and a second sync provider to prove the interface
