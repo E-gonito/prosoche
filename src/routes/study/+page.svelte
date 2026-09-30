@@ -76,7 +76,7 @@
 		<input class="field folders" bind:value={folders} placeholder="Reference folders, comma separated (optional)" aria-label="Reference folders" data-testid="subject-folders" />
 		<button class="btn primary" disabled={!name.trim() || saving} data-testid="create-subject">{saving ? 'Creating…' : 'Create'}</button>
 	</form>
-	<p class="hint">Its own files go in <code>Study/{name.trim() || '<name>'}</code>; cards come from there and from any reference folders.</p>
+	<p class="hint">Files go in <code>Study/{name.trim() || '<name>'}</code>, cards in <code>Study/{name.trim() || '<name>'}/Flashcards/</code>.</p>
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 </div>
 

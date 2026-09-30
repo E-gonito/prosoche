@@ -156,8 +156,7 @@ above the first heading is yours and is never touched.
 A glossary's page has a filter box and a row of tabs: **All**, one per
 category with its count, and **To look up** while any are still waiting.
 Each entry shows its category, the definition, where it came from and the `→`
-line. There is no "my guess": a `- guess::` line written by an older version
-is left in the file and not shown. Type a term in (with a category if you
+line. Type a term in (with a category if you
 like) to append an entry to look up; a term the glossary already has is
 refused rather than written twice. **Edit** on an entry opens its name,
 category, definition and `→` line in place; saving rewrites only that entry's
@@ -183,9 +182,7 @@ looked up from its terms alone.
 A look-up is a proposal like every Claude button's: it is shown as a diff
 first and writes only the glossary's own file, and only when you accept.
 
-Look-ups use the Glossary look-up's model settings. A `sources:` or
-`scanned:` line in a glossary's frontmatter, left by the scan for new terms
-this version no longer has, is ignored and left in the file.
+Look-ups use the Glossary look-up's model settings.
 
 **Flashcards.** A glossary can be linked to a study subject, and then every
 term with a definition is a flashcard there, kept in step with the
@@ -249,17 +246,6 @@ files is written into its new file before it is cut from the old one.
 Renaming a glossary here moves its folder of cards to the new name, review
 history and all; a rename made in Obsidian starts a new folder and leaves
 the old one.
-
-Glossaries used to be `Glossary.md` in a workspace's folder. At start the
-hub moves any such file it finds, once: for each folder of each workspace, a
-`Glossary.md` in it moves to `Glossaries/<folder's name>.md`, the name being
-the last part of the folder's path rather than the workspace's name, so
-`Computer Science/Glossary.md` becomes `Glossaries/Computer Science.md`
-whatever its workspace is called. The bytes are copied unchanged and the old
-file removed, so git history keeps it.  A file
-already in `Glossaries/` by that name is never overwritten: the old one is
-left where it is and the start-up log says so. Once no old file is left,
-this does nothing.
 
 ## Notes
 
@@ -329,8 +315,7 @@ those; then whatever points at no goal. Above them are the cards due in all,
 this week's time against a `weekly_hours:` target from `Goals.md`'s
 frontmatter, and the streak of consecutive days with a session logged.
 
-A card can hold a fenced code block, blank lines and all, as it can in the
-plugin.
+A card can hold a fenced code block, blank lines and all.
 
 **Import Anki decks**, linked from a subject's Flashcards tab
 (`/study/<subject>/import`), turns the Anki exports under `Flashcards/` into
@@ -460,15 +445,14 @@ as being on the board: the board is `Board.md` and nothing else, so a tagged
 task elsewhere stays in its note, untouched, and is not a card. The first
 folder is the workspace's home: it is where `Board.md`, `Overview.md`,
 `Log.md`, a `CRM/` folder and a `Pages/` folder of custom pages all live
-(and an older `Inbox.md`, read but no longer written). Glossaries are not kept here; they have their own folder (see
-Glossary).
+(and an older `Inbox.md`, read but no longer written). Glossaries are not
+kept here; they have their own folder (see Glossary).
 
 A line `glossary: <name>` points the workspace at the glossary of that name,
 `Glossaries/<name>.md`, matched ignoring case; the glossary's look-ups read
 the workspace's definition file for context. It is optional. Several
 workspaces may name the same glossary, and renaming a glossary rewrites this
-line in each of them. A `meetings:` line, from before Meetings was removed,
-is ignored.
+line in each of them.
 
 A study subject (`template: study`) may say `new_per_day: <number>`: how
 many cards never reviewed join its reviews each day. It is 20 without the

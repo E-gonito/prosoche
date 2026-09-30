@@ -6,6 +6,35 @@ stand unless the author says otherwise. Each phase is one branch and one
 `--no-ff` merge to main, in order; the model named for a phase is the one to
 hand it to.
 
+## Status
+
+Done. All nine phases merged to main on 2026-09-30, in order. Deviations the
+phase agents reported:
+
+1. Dead code sweep: as planned; unused exports were de-exported, and
+   the manifest shortcut and share target were pointed at real routes.
+2. Meetings and four AI features: as planned; the phone tab bar dropped to
+   three tabs plus More. No line count was reported against the estimate.
+3. One AI runner: `runDraft(vault, { feature, prompt, system, schema?, paths })`
+   won over a class per feature. Also fixed: snapshots are pruned after each
+   one, Settings keeps unknown `features:` rows byte for byte, and Today says
+   "events", not "meetings".
+4. One transport: about -900 lines net against -700. `api/ai/suggest` became
+   `api/glossary/lookup`. `hub()` resolves once the first index build is done,
+   rather than a hook awaiting it. Domain logic in five handlers moved into
+   their modules.
+5. One stylesheet: as planned; also `.caps`, `.remove` and `.problem` joined
+   the shared classes.
+6. Today plans the day: as planned. An old `<home>/Inbox.md` is still listed
+   read-only under a workspace's tab.
+7. Evening review: as planned. `[-]` is a third state in the summary, the
+   week bars, `TaskRow` and the timeline.
+8. FSRS: wrapped in `shared/scheduler.ts` as planned, but the tuning lives
+   there, not in `server/config.ts`, because the browser previews the buttons
+   too. Fuzz is on and seeded from noon UTC of the credited day.
+9. Docs for a new user: as planned. Decision 11 (hide Date on a vault with no
+   `Private/` folder) was never built; Date is always in the rail.
+
 ## Why
 
 The codebase is 45,000 lines, 13,000 of them tests. The audit found about

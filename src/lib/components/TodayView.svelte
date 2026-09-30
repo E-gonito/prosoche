@@ -181,6 +181,10 @@
 						<button class="btn primary" data-testid="create-note" disabled={creating} onclick={createNote}>
 							{creating ? 'Creating…' : data.isToday ? 'Create today’s note' : 'Create this day’s note'}
 						</button>
+						<div class="prose" data-testid="task-grammar">
+							<pre><code>- [ ] 09:30 - 10:00 Text `Q1`</code></pre>
+						</div>
+						<p class="hint"><code>[x]</code> done, <code>[-]</code> skipped; the time and <code>Q1</code> are optional.</p>
 					</div>
 				</div>
 			{:else}
