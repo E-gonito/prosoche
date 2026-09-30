@@ -5,8 +5,10 @@ test.describe('the shell', () => {
 		await page.goto('/notes');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
 		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Glossary', 'Flashcards', 'Workspaces', 'Study', 'Date', 'Notes']);
-		// The fixture has a workspace called Study too; it sits under Workspaces.
-		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Study', 'Work']);
+		// The fixture's Study subject is not a workspace: only Work sits under
+		// Workspaces, and Study sits under Study.
+		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Work']);
+		await expect(rail.getByTestId('sub-study').locator('a')).toHaveText(['Study']);
 		// The one glossary is Glossaries/Work.md, so it alone sits under Glossary.
 		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Work']);
 		await expect(rail.locator('.modules > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
