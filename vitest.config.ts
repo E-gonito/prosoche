@@ -20,8 +20,9 @@ const alias = {
 	$server: fileURLToPath(new URL('./src/lib/server', import.meta.url))
 };
 
+// No real Claude Code model catalog: the suite sees the shipped model list.
 export default defineConfig({
 	plugins: [svelte({ compilerOptions: { runes: true } })],
 	resolve: { alias },
-	test: { include: ['src/**/*.test.ts'], environment: 'node' }
+	test: { include: ['src/**/*.test.ts'], environment: 'node', env: { HUB_CLAUDE_CATALOG: '/nonexistent/model-catalog' } }
 });

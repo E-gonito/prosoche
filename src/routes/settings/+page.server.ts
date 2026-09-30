@@ -4,6 +4,7 @@ import { recentRuns, spentOn } from '$server/ai/audit';
 import { loadSettings, SETTINGS_PATH } from '$server/ai/settings';
 import { listSnapshots } from '$server/ai/undo';
 import { cliConfig } from '$server/ai/cli';
+import { availableModels } from '$server/ai/models';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -18,8 +19,9 @@ export const load: PageServerLoad = async () => {
 	const { vault } = await hub();
 
 	const day = today();
-	const [settings, spend, runs, snapshots] = await Promise.all([
+	const [settings, models, spend, runs, snapshots] = await Promise.all([
 		loadSettings(vault),
+		availableModels(),
 		spentOn(vault, day),
 		recentRuns(vault, day, 25),
 		listSnapshots()
@@ -27,6 +29,8 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		settings,
+		/** Claude Code's own model list, so a new model needs no release here. */
+		models,
 		spend,
 		runs,
 		day,

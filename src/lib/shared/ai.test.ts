@@ -4,19 +4,22 @@ import {
 	diffLines,
 	FEATURE_DEFAULTS,
 	GUARDRAILS,
-	MODELS,
+	SHIPPED_MODELS,
 	refuse
 } from './ai';
 
 describe('the pickers', () => {
-	it('offers the current model ids', () => {
-		expect(MODELS.map((m) => m.id)).toEqual([
+	it('ships the current model ids, and defaults every feature to one of them', () => {
+		const ids = SHIPPED_MODELS.map((m) => m.id);
+		expect(ids).toEqual([
 			'claude-opus-5-5',
-			'claude-opus-5',
-			'claude-sonnet-5',
+			'claude-sonnet-5-5',
+			'claude-fable-5-1',
 			'claude-haiku-4-5-20251001',
-			'claude-fable-5-1'
+			'claude-opus-5',
+			'claude-sonnet-5'
 		]);
+		for (const run of Object.values(FEATURE_DEFAULTS)) expect(ids).toContain(run.model);
 	});
 
 	it('offers no permission mode at all, because every run is read-only', () => {

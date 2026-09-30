@@ -46,7 +46,7 @@ describe('fromFrontmatter', () => {
 		expect(settings.features.briefing.effort).toBe('high');
 		// Untouched fields keep the shipped value.
 		expect(settings.features.briefing.budgetUsd).toBe(0.25);
-		expect(settings.features['glossary-lookup'].model).toBe('claude-sonnet-5');
+		expect(settings.features['glossary-lookup'].model).toBe('claude-sonnet-5-5');
 	});
 
 	it('lets a defaults block cover every feature, with a row overriding it', () => {
@@ -65,8 +65,14 @@ describe('fromFrontmatter', () => {
 
 	it('falls back for a model or effort it does not know', () => {
 		const settings = fromFrontmatter({ features: { briefing: { model: 'gpt-9', effort: 'maximum' } } });
-		expect(settings.features.briefing.model).toBe('claude-sonnet-5');
+		expect(settings.features.briefing.model).toBe('claude-sonnet-5-5');
 		expect(settings.features.briefing.effort).toBe('medium');
+	});
+
+	it('takes a model the catalog offers that this version was not shipped with', () => {
+		const offered = ['claude-sonnet-6', 'claude-sonnet-5-5'];
+		expect(fromFrontmatter({ features: { briefing: { model: 'claude-sonnet-6' } } }, offered).features.briefing.model).toBe('claude-sonnet-6');
+		expect(fromFrontmatter({ features: { briefing: { model: 'claude-sonnet-6' } } }).features.briefing.model).toBe('claude-sonnet-5-5');
 	});
 
 	it('clamps a hand-typed budget or timeout rather than trusting it', () => {
@@ -81,7 +87,7 @@ describe('fromFrontmatter', () => {
 
 	it('survives a file someone is halfway through editing', () => {
 		expect(() => fromFrontmatter({ features: 'not a map', enabled: 'maybe' })).not.toThrow();
-		expect(fromFrontmatter({ features: 'not a map' }).features.briefing.model).toBe('claude-sonnet-5');
+		expect(fromFrontmatter({ features: 'not a map' }).features.briefing.model).toBe('claude-sonnet-5-5');
 	});
 });
 

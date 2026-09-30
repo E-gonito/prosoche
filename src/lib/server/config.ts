@@ -15,6 +15,12 @@ export const config = {
 	dbPath: process.env.HUB_DB ?? join(homedir(), '.local/state/hub/index.db'),
 	/** Undo snapshots taken before any AI-applied change. Never synced. */
 	undoPath: process.env.HUB_UNDO ?? join(homedir(), '.local/state/hub/undo'),
+	/**
+	 * Where Claude Code caches the models it offers, refreshed by the CLI
+	 * itself. Read so the AI settings pick up a new model without a release;
+	 * see `ai/models.ts`.
+	 */
+	claudeCatalogPath: process.env.HUB_CLAUDE_CATALOG ?? join(homedir(), '.claude/cache/model-catalog'),
 	/** Folder inside the vault holding workspace definitions and hub settings. */
 	hubFolder: '_hub',
 	/**
