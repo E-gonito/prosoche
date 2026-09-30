@@ -175,6 +175,15 @@ describe('reconcileGlossaryCards', () => {
 		expect(run([VPC, CDK], files).changed).toEqual([]);
 	});
 
+	it('keeps prosoche’s own FSRS comment as it keeps the plugin’s, through an edit and a move', () => {
+		const FSRS = '<!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->';
+		const edited = run([term('VPC', 'Cloud', 'A private network.')], { [at('Cloud')]: made('Cloud', ['VPC\n??\nAn isolated virtual network.', FSRS]) });
+		expect(edited.after[at('Cloud')]).toBe(made('Cloud', ['VPC\n??\nA private network.', FSRS]));
+		const moved = run([term('VPC', 'Networking', 'A private network.')], edited.after);
+		expect(moved.problems).toEqual([]);
+		expect(moved.after[at('Networking')]).toBe(made('Networking', ['VPC\n??\nA private network.', FSRS]));
+	});
+
 	it('keeps a CRLF file’s line endings on the lines it rewrites', () => {
 		const file = made('Cloud', ['CDK\n??\nInfrastructure as code.', SR]).replace(/\n/g, '\r\n');
 		const { after } = run([term('CDK', 'Cloud', 'Infra as code.')], { [at('Cloud')]: file });

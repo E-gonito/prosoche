@@ -12,17 +12,15 @@
  *     _hub/.state/new-cards.json
  *     { "day": "2026-09-29", "introduced": { "cs-study": 7 } }
  *
- * Why a record rather than reading it off the review comments: a first
- * review writes nothing a later one could not. A new card graded Good today
- * reads `!<today + 3>,3,250`, exactly what a card on a one-day interval
- * graded Good today reads; one graded Again reads as due today at interval
- * 0, as any lapse does. The comments cannot say which cards were new this
- * morning, and without that every card graded would let another new one in.
+ * Why a record rather than reading it off the review comments: a card's
+ * comment says when it was last answered, not when it was first, and a
+ * legacy `<!--SR:…-->` comment says neither. The comments cannot say which
+ * cards were new this morning, and without that every card graded would let
+ * another new one in.
  *
  * The file is transient, like the proposals queue beside it: `_hub/.state/`
  * is never committed, it holds only today, and losing it only lets up to a
- * day's new cards in again. A card first reviewed in Obsidian is not
- * counted here; the plugin keeps its own daily limit.
+ * day's new cards in again.
  */
 
 import { config } from '../config';

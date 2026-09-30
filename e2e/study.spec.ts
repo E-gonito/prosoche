@@ -282,16 +282,24 @@ test.describe('Flashcards', () => {
 		await expect(page.getByTestId('card-group').filter({ hasText: CARDS })).toHaveAttribute('data-goal', PAPERS);
 	});
 
-	test('reviewing a goal grades its card and writes the plugin’s own comment', async ({ page }) => {
+	test('reviewing a goal grades its card and rewrites the legacy comment as FSRS state', async ({ page }) => {
+		const before = vaultFile(CARDS);
 		await page.getByTestId('review-goal').click();
 		await expect(page.getByTestId('card-question')).toContainText('What does SM-2 schedule');
 		await page.getByTestId('card').click();
 		await expect(page.getByTestId('card-answer')).toContainText('The day a card is next due');
+		// A review card lapses to a ten-minute relearning step; the rest are days.
+		await expect(page.getByTestId('grade-again')).toContainText('10 min');
+		await expect(page.getByTestId('grade-good')).toContainText(/\d+ (days|mo)/);
 
 		await page.getByTestId('grade-good').click();
 
-		// Three days late at interval 4, ease 270: (4 + 3/2) * 2.7 = 14.85 -> 15.
-		expect(await waitForFile(CARDS, (c) => c.includes(`<!--SR:!${shift(TODAY, 15)},15,270-->`))).toBe(true);
+		// The fixture's `<!--SR:…-->` line, and only it, becomes prosoche's own comment.
+		const fsrs = new RegExp(`<!--fsrs:(\\d{4}-\\d{2}-\\d{2}),[\\d.]+,[\\d.]+,2,0,review,${TODAY}-->`);
+		expect(await waitForFile(CARDS, (c) => fsrs.test(c))).toBe(true);
+		const after = vaultFile(CARDS);
+		expect(fsrs.exec(after)![1] > TODAY).toBe(true);
+		expect(after.replace(fsrs, 'COMMENT')).toBe(before.replace(/<!--SR:[^\n]*-->/, 'COMMENT'));
 		await expect(page.getByTestId('review-done')).toContainText('Done for today');
 	});
 

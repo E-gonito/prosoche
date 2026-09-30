@@ -228,7 +228,7 @@ function readsBackAs(block: string, kind: CardKind, card: AnkiCard): boolean {
  * something it reads as text. Code in a fence is kept exactly.
  */
 function side(field: string, html: boolean): string {
-	const markdown = (html ? htmlToMarkdown(field) : field).replace(/ /g, ' ').replace(/<!--SR:[\s\S]*?-->/g, '');
+	const markdown = (html ? htmlToMarkdown(field) : field).replace(/ /g, ' ').replace(/<!--(?:SR|fsrs):[\s\S]*?-->/g, '');
 	const out: string[] = [];
 	let fence: string | null = null;
 	for (const raw of markdown.split('\n')) {
@@ -297,7 +297,7 @@ function outsideCode(line: string, fn: (text: string) => string): string {
  * so it is text, and stays text.
  */
 export function htmlToMarkdown(html: string): string {
-	const source = html.replace(/&lt;br\s*\/?&gt;/gi, '<br>').replace(/&lt;!--SR:[\s\S]*?--&gt;/g, '');
+	const source = html.replace(/&lt;br\s*\/?&gt;/gi, '<br>').replace(/&lt;!--(?:SR|fsrs):[\s\S]*?--&gt;/g, '');
 	const stack: Frame[] = [{ tag: '', attrs: '', out: '', items: 0 }];
 	const top = () => stack[stack.length - 1];
 	const inPre = () => stack.some((f) => f.tag === 'pre');

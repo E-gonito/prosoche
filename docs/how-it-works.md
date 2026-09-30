@@ -167,7 +167,7 @@ starts
     ??
     An isolated virtual network within a cloud provider…
     → Where eye2gene's endpoints live.
-    <!--SR:!2026-10-02,3,250!2026-10-01,1,230-->
+    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->
 
 These files are prosoche's, as a workspace's `Board.md` is: their cards
 follow the glossary. A card is matched to its term by its front, ignoring
@@ -337,9 +337,23 @@ the goal their frontmatter names, `goal: <goal>`, which puts every card in
 the file under that goal; each file's picker sets it, rewriting that one
 frontmatter line and nothing else. Review all, or Review beside a goal,
 starts a session: `/study/<subject>/review`, or `?goal=<slug>` for one
-goal. Cards are graded with the keyboard or a tap, and the schedule is
-written back in the plugin's own comment, so a card reviewed here is due
-correctly in Obsidian too. Notes holding cards but no tag are listed
+goal. Cards are graded with the keyboard or a tap: Again, Hard, Good or
+Easy, each button showing when the card would come back. Scheduling is
+FSRS, the algorithm Anki uses, through its official TypeScript port
+`ts-fsrs`, with Anki's default parameters, 90% desired retention and one
+ten-minute learning step; a card due again today comes back at the end of
+the session. The state is written back on the line after the card in a
+comment of prosoche's own, one entry per card side:
+
+    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->
+
+that is the due day, stability, difficulty, reviews, lapses, state and the
+day last reviewed. The Obsidian Spaced Repetition plugin no longer
+maintains these cards: a card reviewed here is one it cannot read, so review
+them only in prosoche. An old `<!--SR:…-->` comment the plugin wrote is
+still read, as a review card whose stability is its interval and whose
+difficulty follows its ease, and is rewritten in the new form only when that
+card is next graded; a note nobody reviews is never touched. Notes holding cards but no tag are listed
 separately, since neither Obsidian nor Study reviews them until the tag is
 added. A glossary linked to the subject keeps its cards under
 `Flashcards/Glossary/<Glossary name>/`, one file per category, and they
@@ -359,7 +373,7 @@ and the subject's page say "20 new today · 206 waiting". A card's first
 review is counted per subject and day in `_hub/.state/new-cards.json`,
 which is never committed and holds only today; the review comments cannot
 tell a first review from a later one, so the count is kept rather than
-worked out. A card first reviewed in Obsidian is not counted here.
+worked out.
 
 ## Workspaces
 

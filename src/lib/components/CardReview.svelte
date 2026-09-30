@@ -10,7 +10,7 @@
 	 * reveals; 1 to 4 grade; the buttons are the same four in the same order,
 	 * big enough to hit without looking.
 	 */
-	import { GRADES, intervalLabel, schedule, type Grade } from '$lib/shared/sm2';
+	import { GRADES, outcomes, type Grade } from '$lib/shared/scheduler';
 	import { collapseBreadcrumb } from '$lib/shared/breadcrumb';
 	import { applyShift, gradeCard, type Card } from '$lib/client/study';
 	import Icon from '$lib/components/Icon.svelte';
@@ -58,10 +58,12 @@
 
 	const LABEL: Record<Grade, string> = { again: 'Again', hard: 'Hard', good: 'Good', easy: 'Easy' };
 
-	/** What each button will do, shown on it, straight from the same maths. */
-	const previews = $derived(
-		card ? GRADES.map((g) => ({ grade: g, label: LABEL[g], when: intervalLabel(schedule(card.schedule, g, today).interval) })) : []
-	);
+	/** What each button will do, shown on it, from the arithmetic the server grades with. */
+	const previews = $derived.by(() => {
+		if (!card) return [];
+		const next = outcomes(card.schedule, today);
+		return GRADES.map((g) => ({ grade: g, label: LABEL[g], when: next[g].label }));
+	});
 
 	async function grade(choice: Grade) {
 		if (!card || saving) return;
@@ -76,11 +78,13 @@
 		}
 
 		graded++;
+		if (choice === 'again') again++;
 		const rest = applyShift(queue, result.value.shift);
-		if (choice === 'again') {
-			// Interval zero means due today, so the card really does come back.
-			again++;
-			queue = [...rest.slice(0, at), ...rest.slice(at + 1), result.value.card];
+		const next = result.value.card;
+		if (next.schedule && next.schedule.due <= today) {
+			// A learning step is minutes, so the card is due again today: it
+			// comes back at the end of this session.
+			queue = [...rest.slice(0, at), ...rest.slice(at + 1), next];
 		} else {
 			queue = rest;
 			at++;

@@ -11,10 +11,10 @@
  *
  * Everything here is data. The browser's calls against these shapes are in
  * `$lib/client/study`, and the arithmetic that schedules a card is in
- * `$lib/shared/sm2`.
+ * `$lib/shared/scheduler`.
  */
 
-import type { Grade, Schedule } from './sm2';
+import type { Grade, Schedule } from './scheduler';
 
 export type { Grade, Schedule };
 

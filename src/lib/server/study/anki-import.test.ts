@@ -278,7 +278,8 @@ describe('cardBlock', () => {
 	it.each([
 		['an empty question', '  ', 'A'],
 		['an answer that is only blank lines', 'Q', '\n\n'],
-		['an answer that is only a review comment', 'Q', '<!--SR:!2026-01-01,1,250-->']
+		['an answer that is only a review comment', 'Q', '<!--SR:!2026-01-01,1,250-->'],
+		['an answer that is only prosoche’s review comment', 'Q', '<!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->']
 	])('refuses %s', (_, front, back) => {
 		expect(cardBlock(front, back)).toBeNull();
 	});

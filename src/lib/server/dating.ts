@@ -24,6 +24,7 @@ import { basename, parseNote } from './parse/note';
 import { personName } from './people';
 import { appendUnderHeading } from './sections';
 import { hashContent, type Vault } from './vault/index';
+import { daysBetween } from '$lib/shared/time';
 
 const DATING_FOLDER = 'Private/Dating';
 export const LEDGER_PATH = `${DATING_FOLDER}/Ledger.md`;
@@ -188,14 +189,6 @@ export function bestDayOfWeek(entries: LedgerLine[]): WeekdayStat | null {
 	let best = 0;
 	for (let i = 1; i < 7; i++) if (totals[i] > totals[best]) best = i;
 	return totals[best] > 0 ? { weekday: names[best], matches: totals[best] } : null;
-}
-
-/** Calendar days between two `YYYY-MM-DD` days, `b - a`, so same-day is 0. */
-function daysBetween(a: DayKey, b: DayKey): number {
-	const [ay, am, ad] = a.split('-').map(Number);
-	const [by, bm, bd] = b.split('-').map(Number);
-	const ms = Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad);
-	return Math.round(ms / 86_400_000);
 }
 
 /* -------------------------------------------------------------- People --- */
