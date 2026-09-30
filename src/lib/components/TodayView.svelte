@@ -297,12 +297,11 @@
 					{#each data.workspaces as group (group.slug)}
 						<div class="sheet" data-testid="workspace-card">
 							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<a class="right muted small" href="/w/{group.slug}/inbox">{group.inboxCount} in inbox</a>{/if}</h3>
-							<div class="rows">
+							<div class="rows scroll">
 								{#each group.cards as card (card.path + ':' + card.line)}
 									<CardRow {card} today={data.today} draggable={data.exists} onproblem={failed} />
 								{/each}
 							</div>
-							{#if group.more}<p class="hint">and {group.more} more</p>{/if}
 							{#if !group.cards.length}<p class="empty">Nothing open.</p>{/if}
 						</div>
 					{/each}
@@ -384,6 +383,9 @@
 	.inbox-card, .week { margin-bottom: var(--s3); }
 	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
+	/* Every open card is here; past three and a half rows the list scrolls,
+	   the half row showing there is more below. */
+	.workspaces .scroll { max-height: 145px; overflow-y: auto; overscroll-behavior: contain; }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }
 	a.module-item:hover { color: var(--accent); }
 
