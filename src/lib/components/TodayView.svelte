@@ -104,6 +104,17 @@
 		else failed(result.message);
 	}
 
+	/**
+	 * Inbox lines shown whole, by line number. Every line starts cut to one
+	 * row, so a pasted URL takes no more room than a word; a tap opens it.
+	 */
+	let openLines = $state(new Set<number>());
+	function toggleLine(line: number) {
+		const next = new Set(openLines);
+		if (!next.delete(line)) next.add(line);
+		openLines = next;
+	}
+
 	let creating = $state(false);
 	/** The one way a daily note is made here: a press of this button. */
 	async function createNote() {
@@ -159,7 +170,13 @@
 		{#if data.inbox.lines.length}
 			<div class="rows">
 				{#each data.inbox.lines as line (line.line)}
-					<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
+					<button
+						class="inbox-line"
+						class:open={openLines.has(line.line)}
+						aria-expanded={openLines.has(line.line)}
+						onclick={() => toggleLine(line.line)}
+						data-testid="inbox-line"
+					>{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</button>
 				{/each}
 			</div>
 			{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
@@ -359,7 +376,24 @@
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 	.inbox-card { margin-bottom: var(--s4); }
-	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
+	.inbox-line {
+		display: block;
+		width: 100%;
+		padding-left: 0;
+		padding-right: 0;
+		border: 0;
+		background: none;
+		font: inherit;
+		font-size: var(--t13);
+		color: var(--text);
+		text-align: left;
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.inbox-line + .inbox-line { border-top: 1px solid var(--line); }
+	.inbox-line.open { white-space: normal; overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	/* Every open card is here; past three and a half rows the list scrolls,
 	   the half row showing there is more below. */
