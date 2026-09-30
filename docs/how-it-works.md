@@ -19,7 +19,7 @@ The dashboard for one day. The title names the day
 you are looking at — "Tuesday 29 September", "3 days ago" beneath it — with
 arrows either side and a jump back to today when you have wandered off it. A
 one-line summary counts what the day did and is still owed: done against the
-total, time planned, meetings, and anything overdue.
+total, time planned, calendar events, and anything overdue.
 
 **Daily notes are made in Obsidian, never here.** When the day's note has not
 synced yet, Today says so and waits; nothing on this page, the briefing or a

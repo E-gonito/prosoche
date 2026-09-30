@@ -9,13 +9,13 @@ import type { Workspace } from './workspaces';
 
 describe('summaryLine', () => {
 	it('reads exactly as the brief example does', () => {
-		expect(summaryLine({ total: 9, done: 4, plannedMinutes: 330, meetings: 2, overdue: 3 })).toBe(
-			'4 of 9 done · 5h 30m planned · 2 meetings · 3 overdue'
+		expect(summaryLine({ total: 9, done: 4, plannedMinutes: 330, events: 2, overdue: 3 })).toBe(
+			'4 of 9 done · 5h 30m planned · 2 events · 3 overdue'
 		);
 	});
 
 	it('drops a clause once it is zero, but never the task count', () => {
-		expect(summaryLine({ total: 0, done: 0, plannedMinutes: 0, meetings: 0, overdue: 0 })).toBe('0 of 0 done');
+		expect(summaryLine({ total: 0, done: 0, plannedMinutes: 0, events: 0, overdue: 0 })).toBe('0 of 0 done');
 	});
 });
 
