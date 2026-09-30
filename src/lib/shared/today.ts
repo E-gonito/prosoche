@@ -70,8 +70,10 @@ export interface TodayData {
 	owners: Record<string, Owner>;
 	plannedMinutes: number;
 	overlaps: number;
-	doneCount: number;
-	totalCount: number;
+	/** The day's tasks, each in exactly one of the three. */
+	counts: { done: number; skipped: number; open: number };
+	/** Whether Today links to the evening review: a past day, or today from 18:00. */
+	offerReview: boolean;
 	/** The viewed day's calendar events, read-only blocks on the timeline. */
 	events: TodayEvent[];
 	/** Set only when the feed is configured and unreachable; absent is calm. */
@@ -85,8 +87,11 @@ export interface TodayData {
 	/** Open board cards overdue as of the real today, soonest first. */
 	overdueCards: OpenCard[];
 	workspaces: WorkspaceGroup[];
-	/** Monday to Sunday of the viewed day's week: each day's tasks done and in all. */
-	week: Array<{ day: string; done: number; total: number }>;
+	/**
+	 * Monday to Sunday of the viewed day's week: each day's tasks done, and
+	 * owed (done plus open). Skipped tasks are counted apart, in neither.
+	 */
+	week: Array<{ day: string; done: number; skipped: number; total: number }>;
 	/** `Inbox/Capture.md`'s unfiled lines: how many, and the newest few. */
 	inbox: { count: number; lines: InboxLine[] };
 	cards: TodayCard[];

@@ -24,7 +24,7 @@ import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';
 import { formatDuration } from '$lib/shared/duration';
 import { relativeDay } from '$lib/shared/links';
-import { compareTasks, isOpen, OPEN_STATUSES, type Task } from '$lib/shared/task';
+import { compareTasks, isOpen, OPEN_STATUSES, tally, type Task } from '$lib/shared/task';
 import { compareCards } from '$lib/shared/kanban';
 import type { Owner, TodayData, TodayEvent, WorkspaceGroup } from '$lib/shared/today';
 import type { Vault } from './vault/index';
@@ -61,21 +61,27 @@ function formatTitleDay(day: DayKey): string {
 }
 
 /**
- * The one-line summary under the title: "4 of 9 done · 5h 30m planned ·
- * 2 events · 3 overdue".
+ * The one-line summary under the title: "4 of 7 done · 2 skipped · 5h 30m
+ * planned · 2 events · 3 overdue". The evening review shows the same line.
  *
- * Every clause but the count of tasks is dropped once it is zero, because
- * "0 events" and "0 overdue" on an ordinary day is noise repeated every
- * morning. The task count never drops, even at 0 of 0, so the line always
- * says something about the day. Pure, so the rule is table-tested on its own.
+ * "Of" counts what the day owes, done plus open: a skipped task is let go,
+ * so it is its own clause rather than part of either number. Every clause
+ * but the count of tasks is dropped once it is zero, because "0 events" and
+ * "0 overdue" on an ordinary day is noise repeated every morning. The task
+ * count never drops, even at 0 of 0, so the line always says something about
+ * the day. Pure, so the rule is table-tested on its own.
  */
-export function summaryLine(input: { total: number; done: number; plannedMinutes: number; events: number; overdue: number }): string {
-	const parts = [`${input.done} of ${input.total} done`];
+export function summaryLine(input: { done: number; skipped: number; open: number; plannedMinutes: number; events: number; overdue: number }): string {
+	const parts = [`${input.done} of ${input.done + input.open} done`];
+	if (input.skipped > 0) parts.push(`${input.skipped} skipped`);
 	if (input.plannedMinutes > 0) parts.push(`${formatDuration(input.plannedMinutes, ' ')} planned`);
 	if (input.events > 0) parts.push(`${input.events} event${input.events === 1 ? '' : 's'}`);
 	if (input.overdue > 0) parts.push(`${input.overdue} overdue`);
 	return parts.join(' · ');
 }
+
+/** The hour, local to the server, from which Today offers to review the day. */
+const REVIEW_FROM_HOUR = 18;
 
 /**
  * The seven days, Monday to Sunday, of the week `day` falls in. Pure; days
@@ -170,14 +176,20 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		});
 	}
 
-	const doneCount = tasks.filter((t) => t.status === 'done' || t.status === 'cancelled').length;
+	const counts = tally(tasks);
 
-	// Done against planned for each day of the week, from each day's own note
-	// as the index has it: a day with no note is 0 of 0.
+	// Done against owed for each day of the week, from each day's own note as
+	// the index has it: a day with no note is 0 of 0. A skipped task is in
+	// neither number, so skipping shortens the bar rather than filling it.
 	const week = weekOf(day).map((d) => {
-		const own = index.tasksIn(dailyNotePath(d)).filter((t) => !t.fenced);
-		return { day: d, done: own.filter((t) => !isOpen(t)).length, total: own.length };
+		const own = tally(index.tasksIn(dailyNotePath(d)).filter((t) => !t.fenced));
+		return { day: d, done: own.done, skipped: own.skipped, total: own.done + own.open };
 	});
+
+	// A day is reviewed once it is over or nearly so: any past day, and today
+	// from the evening on. A day still ahead has nothing to review.
+	const now = options.now ?? new Date();
+	const offerReview = note.exists && (day < real || (day === real && now.getHours() >= REVIEW_FROM_HOUR));
 
 	return {
 		day,
@@ -195,8 +207,8 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		owners,
 		plannedMinutes: coveredMinutes(scheduled),
 		overlaps: overlappingCount(scheduled),
-		doneCount,
-		totalCount: tasks.length,
+		counts,
+		offerReview,
 		events: dayEvents.ok ? dayEvents.events.map(toTodayEvent) : [],
 		calendarProblem: dayEvents.ok || dayEvents.reason === 'not-configured' ? null : dayEvents.message,
 		aiEnabled: settings.enabled,
@@ -208,8 +220,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		inbox: { count: inbox.length, lines: inbox.slice(0, INBOX_LIMIT) },
 		week,
 		summary: summaryLine({
-			total: tasks.length,
-			done: doneCount,
+			...counts,
 			plannedMinutes: coveredMinutes(scheduled),
 			events: dayEvents.ok ? dayEvents.events.length : 0,
 			overdue: overdue.length + overdueCards.length

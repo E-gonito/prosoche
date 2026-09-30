@@ -46,7 +46,8 @@
 			label: WEEKDAYS[i],
 			value: d.done,
 			total: d.total,
-			text: d.total ? `${d.done} of ${d.total}` : 'no tasks',
+			// A skipped task is in neither number: it shortens the bar, and is named.
+			text: d.total || d.skipped ? `${d.done} of ${d.total}${d.skipped ? `, ${d.skipped} skipped` : ''}` : 'no tasks',
 			href: d.day === data.today ? '/today' : `/today/${d.day}`
 		}))
 	);
@@ -153,7 +154,10 @@
 			<a class="btn ghost small" href="/today/{data.next}" aria-label="Next day"><Icon name="chevron-right" size={14} /></a>
 			{#if !data.isToday}<a class="btn small" href="/today">Today</a>{/if}
 		</p>
-		<p class="summary" data-testid="today-summary">{data.summary}</p>
+		<p class="summary">
+			<span data-testid="today-summary">{data.summary}</span>
+			{#if data.offerReview}· <a data-testid="review-link" href={data.isToday ? '/today/review' : `/today/${data.day}/review`}>Review the day</a>{/if}
+		</p>
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}

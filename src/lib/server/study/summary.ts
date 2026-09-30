@@ -20,7 +20,7 @@ import { findGoal, goalRefs, readGoals, type Goal, type GoalsNote } from './goal
 import { readReadingList } from './reading';
 import { minutesByGoal, minutesInWeek, monthRange, readSessions, streak, weeklyMinutes, weekStart, type StudySession } from './sessions';
 import { shiftDay } from '../daily';
-import { isDone } from '$lib/shared/task';
+import { isDone, isOpen, isSkipped } from '$lib/shared/task';
 import type { CardFile, GoalRef, ReadingItem, ReadingList } from '$lib/shared/study';
 import type { NoteIndex } from '../index/index';
 import type { Subject } from './subjects';
@@ -128,12 +128,13 @@ export function progressByGoal(summary: StudySummary, today: string): { goals: G
 
 	const goals = summary.goals.goals.map((goal: Goal, i): GoalProgress => {
 		const ref = refs[i];
-		const next = goal.milestones.find((m) => !isDone(m)) ?? null;
+		const next = goal.milestones.find(isOpen) ?? null;
 		return {
 			...ref,
 			target: goal.target,
 			done: goal.milestones.filter(isDone).length,
-			total: goal.milestones.length,
+			// A skipped milestone is owed by nobody, so it is out of the total.
+			total: goal.milestones.filter((m) => !isSkipped(m)).length,
 			next: next ? { text: next.text, due: next.due } : null,
 			weekMinutes: week.filter((m) => m.goal && owner(m.label) === ref.name).reduce((sum, m) => sum + m.minutes, 0),
 			reading: reading.filter((item) => owner(item.goal) === ref.name),
@@ -193,7 +194,7 @@ export function subjectCard(summary: StudySummary, today: string): SubjectCard {
 		slug: subject.slug,
 		name: subject.name,
 		color: subject.color,
-		goals: goals.goals.map((g) => ({ name: g.title, done: g.milestones.filter(isDone).length, total: g.milestones.length })),
+		goals: goals.goals.map((g) => ({ name: g.title, done: g.milestones.filter(isDone).length, total: g.milestones.filter((m) => !isSkipped(m)).length })),
 		weekMinutes: minutesInWeek(sessions, weekStart(today)),
 		due: cards.files.reduce((sum, f) => sum + f.due, 0),
 		streak: streak(sessions, today)

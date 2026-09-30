@@ -5,16 +5,16 @@
 	 * One list, `MODULES`, drawn twice. On a desktop it is a rail down the
 	 * left, with each module's sub-items from the loader nested under it: the
 	 * workspaces under Workspaces, the glossaries under Glossary. On a phone
-	 * it is a bar under the header, pinned to the top with it, holding the
-	 * modules marked `tab` and More, which opens a sheet with everything
-	 * else, workspaces included.
+	 * it is a bar under the header, pinned to the top with it, holding
+	 * `TABS` (the modules marked `tab`, and the evening review) and More,
+	 * which opens a sheet with everything else, workspaces included.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
 	import SyncBadge from '$lib/components/SyncBadge.svelte';
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { MODULES, SYSTEM, moduleFor, subItemFor } from '$lib/modules';
+	import { MODULES, SYSTEM, TABS, moduleFor, subItemFor, tabFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
 
@@ -35,7 +35,7 @@
 	});
 
 	const current = $derived(moduleFor(page.url.pathname));
-	const tabs = MODULES.filter((m) => m.tab);
+	const tab = $derived(tabFor(page.url.pathname));
 </script>
 
 <div class="shell">
@@ -85,8 +85,8 @@
 			<SyncBadge />
 		</div>
 		<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
-			{#each tabs as m (m.id)}
-				<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
+			{#each TABS as m (m.href)}
+				<a href={m.href} aria-current={tab === m ? 'page' : undefined}>
 					<Icon name={m.icon} size={20} /><span>{m.title}</span>
 				</a>
 			{/each}

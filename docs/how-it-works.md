@@ -18,8 +18,17 @@ The workspaces are also listed in the More sheet.
 The dashboard for one day. The title names the day
 you are looking at — "Tuesday 29 September", "3 days ago" beneath it — with
 arrows either side and a jump back to today when you have wandered off it. A
-one-line summary counts what the day did and is still owed: done against the
-total, time planned, calendar events, and anything overdue.
+one-line summary counts what the day did and is still owed: done against
+what the day owes, how many were skipped, time planned, calendar events, and
+anything overdue. From 18:00 on today, and on any past day with a note, the
+line ends with **Review the day** (see Review, below).
+
+**Done, skipped, open.** A task line is in one of three states: open (`[ ]`,
+or `[/]` and `[!]`), done (`[x]`), or skipped (`[-]`, Obsidian's cancelled
+checkbox). Skipped means the day let it go: it is struck through wherever a
+task is shown, with a dash in its box, and it counts as neither done nor
+owed, so "4 of 7 done · 2 skipped" is a day of nine lines. Its box takes it
+back to open.
 
 **A daily note is made only when you press for it.** When the day's note is
 not there, Today names the path it would create and offers **Create today's
@@ -72,8 +81,10 @@ grip or the timeline, it moves to the timeline and leaves this list.
 (see Inbox). It is not shown when there are none.
 
 **This week** is seven small bars, Monday to Sunday of the week the day is
-in: each day's tasks in the pale bar, the done ones in the teal inside it,
-read from each day's own note. A bar opens its day.
+in: each day's owed tasks (done and open) in the pale bar, the done ones in
+the teal inside it, read from each day's own note. A skipped task is in
+neither, so skipping shortens the bar rather than filling it; the bar's
+label names how many were skipped. A bar opens its day.
 
 **Overdue** lists two kinds of thing whose due date has passed. First the
 open cards on any workspace's board, each with its workspace's dot; tick one
@@ -99,6 +110,25 @@ Date's appears here, or anywhere outside its own screen.
 A note that still has git conflict markers in it says so, with a link to the
 sync page. Resolving a merge is yours to do, in Obsidian or there; nothing in
 the app rewrites those lines for you.
+
+### Review
+
+The evening review, at `/today/review` for today and `/today/<day>/review`
+for any other day. It is reached from Today's **Review the day**, the
+palette's `r`, and on a phone its own tab beside Today; the rail keeps Today
+lit, because it is Today's page. It lists every task in the day's note, the
+timed ones first by start as the timeline has them and then the rest in note
+order, each with a large tick, its time, its workspace's dot and a **Skip**.
+
+A tick writes `[x]` and a skip writes `[-]`; pressing either again puts the
+line back to `[ ]`. Each is one character on one line, sent with the line as
+the page last saw it, so a line changed elsewhere since is refused and the
+list reloads. With a row focused, space or Enter ticks, `s` skips, and the
+arrow keys walk the list. Nothing is ticked without a press.
+
+The top carries the same summary line as Today, and the bottom how many
+lines wait in the inbox, linked to its triage page, so closing the day
+includes emptying it.
 
 ## Glossary
 
@@ -573,8 +603,9 @@ or anything outside its frame.
 
 The triage page for `Inbox/Capture.md`: every line not yet dealt with,
 grouped under the day it was captured, newest day first and in the order
-written within a day. It is reached from Today's Inbox card, the palette's
-`i` and the rail's foot, and it is done when it is empty.
+written within a day. It is reached from Today's Inbox card, the evening
+review, the palette's `i` and the rail's foot, and it is done when it is
+empty.
 
 Each line leaves by one of three doors, as a button or, with the row
 focused, a key:

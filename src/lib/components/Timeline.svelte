@@ -19,7 +19,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatMinutes } from '$lib/shared/time';
 	import { editTask, planOnDay } from '$lib/client/api';
-	import { displayText, isDone, type Task } from '$lib/shared/task';
+	import { displayText, isDone, isSkipped, type Task } from '$lib/shared/task';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { TodayEvent } from '$lib/shared/today';
@@ -530,7 +530,7 @@
 					</div>
 				{:else}
 				{@const task = p.item.task}
-				{@const done = isDone(task)}
+				{@const done = isDone(task) || isSkipped(task)}
 				{@const owner = ownerOf(task)}
 				<div
 					class="block q{task.quadrant ?? 0}"

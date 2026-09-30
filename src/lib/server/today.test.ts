@@ -8,14 +8,13 @@ import { loadToday, summaryLine, weekOf } from './today';
 import type { Workspace } from './workspaces';
 
 describe('summaryLine', () => {
-	it('reads exactly as the brief example does', () => {
-		expect(summaryLine({ total: 9, done: 4, plannedMinutes: 330, events: 2, overdue: 3 })).toBe(
-			'4 of 9 done · 5h 30m planned · 2 events · 3 overdue'
-		);
-	});
-
-	it('drops a clause once it is zero, but never the task count', () => {
-		expect(summaryLine({ total: 0, done: 0, plannedMinutes: 0, events: 0, overdue: 0 })).toBe('0 of 0 done');
+	it.each([
+		['the brief example', { done: 4, skipped: 0, open: 5, plannedMinutes: 330, events: 2, overdue: 3 }, '4 of 9 done · 5h 30m planned · 2 events · 3 overdue'],
+		['a clause at zero dropped, never the task count', { done: 0, skipped: 0, open: 0, plannedMinutes: 0, events: 0, overdue: 0 }, '0 of 0 done'],
+		// Skipped is owed by nobody, so it is out of the "of" and a clause of its own.
+		['skipped apart from done and owed', { done: 4, skipped: 2, open: 3, plannedMinutes: 0, events: 1, overdue: 0 }, '4 of 7 done · 2 skipped · 1 event']
+	])('%s', (_name, input, expected) => {
+		expect(summaryLine(input)).toBe(expected);
 	});
 });
 
@@ -158,14 +157,32 @@ describe('loadToday', () => {
 		expect(data.inbox.lines.map((l) => l.text)).toEqual(['capture 5', 'capture 4', 'capture 3', 'capture 2', 'capture 1']);
 	});
 
-	it("counts done against planned for each day of the viewed day's week", async () => {
+	it("counts done against owed for each day of the viewed day's week, skipped in neither", async () => {
 		index.put(DAY_PATH, DAY_NOTE.replace('- [ ] 09:30', '- [x] 09:30'));
-		index.put(FUTURE_PATH, FUTURE_NOTE);
+		index.put(FUTURE_PATH, FUTURE_NOTE.replace('- [ ] Prep', '- [-] Prep'));
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		expect(data.week.map((d) => d.day)).toEqual(weekOf(DAY));
-		expect(data.week.find((d) => d.day === DAY)).toEqual({ day: DAY, done: 1, total: 2 });
-		expect(data.week.find((d) => d.day === FUTURE)).toEqual({ day: FUTURE, done: 1, total: 2 });
-		expect(data.week.find((d) => d.day === '2026-09-28')).toEqual({ day: '2026-09-28', done: 0, total: 0 });
+		expect(data.week.find((d) => d.day === DAY)).toEqual({ day: DAY, done: 1, skipped: 0, total: 2 });
+		expect(data.week.find((d) => d.day === FUTURE)).toEqual({ day: FUTURE, done: 1, skipped: 1, total: 1 });
+		expect(data.week.find((d) => d.day === '2026-09-28')).toEqual({ day: '2026-09-28', done: 0, skipped: 0, total: 0 });
+	});
+
+	it('counts a skipped task apart, in the counts and the summary', async () => {
+		index.put(DAY_PATH, DAY_NOTE.replace('- [ ] Walk', '- [-] Walk'));
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.counts).toEqual({ done: 0, skipped: 1, open: 1 });
+		expect(data.summary).toMatch(/^0 of 1 done · 1 skipped/);
+	});
+
+	it.each([
+		['today in the morning', DAY, new Date(2026, 8, 29, 17, 59), false],
+		['today from six in the evening', DAY, new Date(2026, 8, 29, 18, 0), true],
+		['a past day, at any hour', DAY, new Date(2026, 8, 30, 8, 0), true],
+		['a day still ahead', FUTURE, new Date(2026, 8, 29, 20, 0), false],
+		['a past day with no note', '2026-09-20', new Date(2026, 8, 29, 20, 0), false]
+	])('offers the review on %s', async (_name, day, at, offered) => {
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, day, { now: at });
+		expect(data.offerReview).toBe(offered);
 	});
 
 	it('reads a missing inbox as empty', async () => {

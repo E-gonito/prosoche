@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
 import Icon, { ICON_NAMES, type IconName } from './Icon.svelte';
-import { MODULES, SYSTEM, moduleFor, subItemFor } from '$lib/modules';
+import { MODULES, SYSTEM, TABS, moduleFor, subItemFor, tabFor } from '$lib/modules';
 
 /**
  * The pairing this file exists to hold is nav item to icon.
@@ -51,6 +51,25 @@ describe('the navigation', () => {
 
 	it('puts three modules on the phone bar, leaving room for More', () => {
 		expect(MODULES.filter((m) => m.tab).map((m) => m.title)).toEqual(['Today', 'Workspaces', 'Notes']);
+	});
+
+	it('puts the evening review on the phone bar beside Today, and no more than four tabs', () => {
+		expect(TABS.map((t) => t.title)).toEqual(['Today', 'Review', 'Workspaces', 'Notes']);
+		for (const tab of TABS) expect(ICON_NAMES, tab.title).toContain(tab.icon);
+	});
+
+	it.each([
+		['/today', 'Today'],
+		['/today/2026-09-29', 'Today'],
+		['/today/review', 'Review'],
+		['/today/2026-09-29/review', 'Review'],
+		['/w/work', 'Workspaces'],
+		['/study', null],
+		['/inbox', null]
+	])('lights the tab for %s', (path, title) => {
+		expect(tabFor(path)?.title ?? null).toBe(title);
+		// The rail has no review entry: Today stays lit there.
+		if (title === 'Review') expect(moduleFor(path)?.id).toBe('today');
 	});
 
 	it('never puts a private module on the phone bar', () => {
