@@ -49,11 +49,13 @@ test.describe('Today', () => {
 		expect(after[changed[0]!]).toBe('- [ ] 15:00 - 15:30 Read a book `Q2`');
 	});
 
-	test('quick capture appends to the inbox', async ({ page }) => {
+	test('the Unscheduled box adds a task to the day’s note, not the inbox', async ({ page }) => {
+		const inbox = vaultFile('Inbox/Capture.md');
 		const capture = page.getByTestId('unscheduled').getByTestId('capture-row');
 		await capture.getByLabel('Quick capture').fill('buy stamps');
 		await capture.getByRole('button', { name: 'Add' }).click();
-		expect(await waitForFile('Inbox/Capture.md', (c) => c.includes('buy stamps'))).toBe(true);
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('\n- [ ] buy stamps\n'))).toBe(true);
+		expect(vaultFile('Inbox/Capture.md')).toBe(inbox);
 	});
 
 	test('overdue lists a past-due task from a workspace note, and can plan it for today', async ({ page }) => {

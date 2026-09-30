@@ -71,6 +71,14 @@ describe('routeCapture', () => {
 		expect(routeCapture(text, ALL, { day: DAY })).toEqual(want);
 	});
 
+	it("the box on a day's Unscheduled list sends everything to that day, timed or not", () => {
+		expect(routeCapture('buy stamps', ALL, { day: DAY, toDay: true })).toEqual({ to: 'day', line: '- [ ] buy stamps', startMin: null, endMin: null });
+		expect(routeCapture('10:00 - 10:30 Dentist', ALL, { day: DAY, toDay: true })).toEqual({ to: 'day', line: '- [ ] 10:00 - 10:30 Dentist', startMin: 600, endMin: 630 });
+		// A workspace tag stays on the line: on a daily task it is the workspace membership.
+		expect(routeCapture('Order menus #ws/kaya', ALL, { day: DAY, toDay: true })).toEqual({ to: 'day', line: '- [ ] Order menus #ws/kaya', startMin: null, endMin: null });
+		expect(routeCapture('- [x] done already', ALL, { day: DAY, toDay: true })).toEqual({ to: 'day', line: '- [x] done already', startMin: null, endMin: null });
+	});
+
 	it("a workspace's own box tags the inbox line instead of filing it", () => {
 		expect(routeCapture('Call the printer', ALL, { day: DAY, workspace: KAYA })).toEqual({ to: 'inbox', text: 'Call the printer #ws/kaya' });
 		expect(routeCapture('Call #ws/kaya', ALL, { day: DAY, workspace: KAYA })).toEqual({ to: 'inbox', text: 'Call #ws/kaya' });
@@ -125,6 +133,27 @@ describe('capture', () => {
 	it('stamps anything else into the inbox under today', async () => {
 		expect(await capture(vault, ALL, 'buy stamps', { now })).toEqual({ path: 'Inbox/Capture.md', to: 'inbox', message: 'Saved to Inbox/Capture.md' });
 		expect(await read('Inbox/Capture.md')).toBe('# Capture\n\n## 2026-09-30\n- 08:15 buy stamps\n');
+	});
+
+	it("given a day, adds an untimed task to that day's note and nowhere else", async () => {
+		await vault.write(NOTE, '# Tasks\n- [ ] Walk\n\n## Backlog\n');
+		const result = await capture(vault, ALL, 'buy stamps', { now, day: '2026-09-30' });
+		expect(result).toEqual({ path: NOTE, to: 'day', message: "Added to today's unscheduled list" });
+		expect(await read(NOTE)).toBe('# Tasks\n- [ ] Walk\n- [ ] buy stamps\n\n## Backlog\n');
+		expect((await vault.read('Inbox/Capture.md')).exists).toBe(false);
+	});
+
+	it('given another day, names it, and a timed line keeps its time', async () => {
+		await vault.write('Journal/2026/10/01.md', '# Tasks\n');
+		const result = await capture(vault, ALL, '10:00 - 10:30 Dentist', { now, day: '2026-10-01' });
+		expect(result).toEqual({ path: 'Journal/2026/10/01.md', to: 'day', message: 'Added to 2026-10-01, 10:00–10:30' });
+	});
+
+	it('given a day with no note, falls back to the inbox and creates nothing', async () => {
+		const result = await capture(vault, ALL, 'buy stamps', { now, day: '2026-09-30' });
+		expect(result).toMatchObject({ to: 'inbox', message: 'Today has no note yet, so it went to Inbox/Capture.md' });
+		expect((await vault.read(NOTE)).exists).toBe(false);
+		expect(await read('Inbox/Capture.md')).toBe('# Capture\n\n## 2026-09-30\n- [ ] buy stamps\n');
 	});
 
 	it("tags a workspace box's line and leaves the workspace's own Inbox.md alone", async () => {
