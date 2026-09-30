@@ -89,6 +89,36 @@ export interface Hub {
 
 let instance: Promise<Hub> | null = null;
 
+/** How long a stopping server waits for its last commit and push. */
+const SHUTDOWN_GRACE_MS = 10_000;
+
+/**
+ * Let the process exit when it is asked to stop.
+ *
+ * On SIGTERM adapter-node closes the HTTP server, emits
+ * `sveltekit:shutdown` and expects the process to exit once nothing else is
+ * running. The vault's file watcher is still running, so without this the
+ * process would sit until systemd kills it 90 seconds later: every restart
+ * would be a minute and a half of "No connection", and saves not yet
+ * committed would be left behind uncommitted.
+ *
+ * On that event: commits and pushes what this app wrote, stops the watcher,
+ * closes the index and exits. A push that hangs is given
+ * `SHUTDOWN_GRACE_MS`; anything it leaves uncommitted stays on disk and
+ * shows on the Sync page. Never runs before the server has stopped taking
+ * requests, so no save can land after the last commit.
+ */
+function stopOnShutdown(vault: Vault, index: NoteIndex): void {
+	process.once('sveltekit:shutdown', () => {
+		const grace = new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS).unref());
+		const closed = vault.close().catch((e) => console.error('[hub] could not commit before stopping', e));
+		void Promise.race([closed, grace]).finally(() => {
+			index.close();
+			process.exit(0);
+		});
+	});
+}
+
 /**
  * The hub, once its first full index build has finished.
  *
@@ -108,6 +138,7 @@ function start(): Promise<Hub> {
 	const index = new NoteIndex(config.dbPath);
 
 	const rebuild = indexVault(vault, index);
+	stopOnShutdown(vault, index);
 
 	const built = rebuild().then(
 		async (ms) => {
