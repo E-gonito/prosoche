@@ -15,7 +15,7 @@
  */
 
 import { goto } from '$app/navigation';
-import { MODULES, SYSTEM } from '$lib/modules';
+import { MODULES, REVIEW, SYSTEM } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
 import { noteHref } from '$lib/shared/links';
@@ -256,6 +256,8 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 		// it is never one stray keystroke away on a shared screen.
 		...MODULES.map((m) => ({ keys: m.private ? '' : (GO_KEYS[m.id] ?? ''), description: `Go to ${m.title}`, run: go(m.href) })),
 		...SYSTEM.map((m) => ({ keys: GO_KEYS[m.id] ?? '', description: `Go to ${m.title}`, run: go(m.href) })),
+		// Today's own second page, so not in the loops above.
+		{ keys: 'r', description: 'Review the day', run: go(REVIEW.href) },
 		// Only offered when HUB_T3_URL is set; opens in a new tab because the
 		// paired WebSocket session belongs to that origin, not this one.
 		...(t3Url ? [{ keys: '', description: 'T3 Code', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),

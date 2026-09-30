@@ -154,7 +154,10 @@
 			<a class="btn ghost small" href="/today/{data.next}" aria-label="Next day"><Icon name="chevron-right" size={14} /></a>
 			{#if !data.isToday}<a class="btn small" href="/today">Today</a>{/if}
 		</p>
-		<p class="summary" data-testid="today-summary">{data.summary}</p>
+		<p class="summary">
+			<span data-testid="today-summary">{data.summary}</span>
+			{#if data.offerReview}· <a data-testid="review-link" href={data.isToday ? '/today/review' : `/today/${data.day}/review`}>Review the day</a>{/if}
+		</p>
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}

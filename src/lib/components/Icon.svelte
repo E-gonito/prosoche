@@ -24,6 +24,7 @@
 		'briefcase',
 		'calendar',
 		'check',
+		'check-check',
 		'chevron-down',
 		'chevron-left',
 		'chevron-right',
@@ -64,6 +65,7 @@
 			'M3 10h18'
 		],
 		check: ['M20 6 9 17l-5-5'],
+		'check-check': ['M18 6 7 17l-5-5', 'm22 10-7.5 7.5L13 16'],
 		'chevron-down': ['m6 9 6 6 6-6'],
 		'chevron-left': ['m15 18-6-6 6-6'],
 		'chevron-right': ['m9 18 6-6-6-6'],

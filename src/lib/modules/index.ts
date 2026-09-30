@@ -57,11 +57,41 @@ export const MODULES: Module[] = [
 /** The system pages, pinned to the foot of the rail, away from the modules. */
 export const SYSTEM: Module[] = [
 	// Not a module of its own: the one inbox, reached from Today's Inbox card,
-	// the palette's `i` and, later, the evening review.
+	// the palette's `i` and the evening review.
 	{ id: 'inbox', title: 'Inbox', icon: 'inbox', href: '/inbox' },
 	{ id: 'sync', title: 'Sync', icon: 'arrow-up-down', href: '/sync' },
 	{ id: 'settings', title: 'Settings', icon: 'settings', href: '/settings' }
 ];
+
+/** One destination on a phone's tab bar. */
+interface Tab {
+	href: string;
+	title: string;
+	icon: IconName;
+}
+
+/**
+ * The evening review, `/today/[[day]]/review`. Its routes are Today's, so it
+ * is not a module and the rail keeps Today lit on it; on a phone, where the
+ * review is most often done, it is a tab of its own beside Today.
+ */
+export const REVIEW: Tab = { href: '/today/review', title: 'Review', icon: 'check-check' };
+
+/** The phone's tab bar, ahead of More: the modules marked `tab`, and the review after Today. */
+export const TABS: Tab[] = MODULES.filter((m) => m.tab).flatMap((m) => (m.id === 'today' ? [m, REVIEW] : [m]));
+
+const REVIEW_PATH = /^\/today(\/\d{4}-\d{2}-\d{2})?\/review\/?$/;
+
+/**
+ * The tab a path is on, for lighting it on the phone's tab bar: the review
+ * for any day's review, otherwise the path's module when it has a tab. Null
+ * on a page reached through More. Pure.
+ */
+export function tabFor(pathname: string): Tab | null {
+	if (REVIEW_PATH.test(pathname)) return REVIEW;
+	const module = moduleFor(pathname);
+	return TABS.find((tab) => tab === module) ?? null;
+}
 
 /**
  * The module a path belongs to, for highlighting it in the navigation. The
