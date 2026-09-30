@@ -129,6 +129,7 @@ prompt text. The details are in [`docs/how-it-works.md`](docs/how-it-works.md#se
 - [`docs/how-it-works.md`](docs/how-it-works.md): what each screen does.
 - [`docs/design.md`](docs/design.md): the token scale and shared classes.
 - [`docs/contributing.md`](docs/contributing.md): tests and how the code is put together.
+- [`docs/deploy.md`](docs/deploy.md): where the live copy runs and how it deploys.
 
 ## Roadmap
 
