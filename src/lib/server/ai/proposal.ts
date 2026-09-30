@@ -42,6 +42,7 @@ import {
 	type BlastLimits,
 	type PathPolicy
 } from './guardrails';
+import { logRun } from './audit';
 import { appliedResult, pruneSnapshots, recordApplied, readSnapshot, resolvesInsideVault, snapshot } from './undo';
 import {
 	refuse,
@@ -268,7 +269,8 @@ interface ApplyOptions {
  * Inputs: the vault, the proposal, the policy, and the edit ids the user
  * ticked. Output: what was written, what was refused, and the id of the undo
  * snapshot. Side effects: writes notes through `Vault.write`, writes an undo
- * snapshot and a receipt under `config.undoPath`.
+ * snapshot and a receipt under `config.undoPath`, and appends the decision,
+ * applied or refused, to the audit log.
  *
  * Safe to call twice. The second call finds the receipt and returns the first
  * result unchanged, so a double-clicked Accept or a replayed POST cannot
@@ -286,6 +288,24 @@ export async function apply(
 	policy: Policy,
 	options: ApplyOptions = {}
 ): Promise<ApplyResult> {
+	const result = await writeAccepted(vault, proposal, policy, options);
+	await logRun(vault, {
+		at: new Date().toISOString(),
+		feature: proposal.feature,
+		model: proposal.stamp.model,
+		effort: proposal.stamp.effort,
+		paths: result.written.length ? result.written : proposal.edits.map((e) => e.path),
+		decision: result.written.length ? 'applied' : 'refused',
+		guardrails: [...new Set(result.refusals.map((r) => r.guardrail))],
+		costUsd: 0,
+		durationMs: 0,
+		note: result.written.length ? proposal.summary : (result.refusals[0]?.message ?? 'rejected')
+	});
+	return result;
+}
+
+/** `apply` without the audit line. */
+async function writeAccepted(vault: Vault, proposal: Proposal, policy: Policy, options: ApplyOptions): Promise<ApplyResult> {
 	const acceptedIds = options.accepted ?? proposal.accepted;
 	const vaultPath = options.vaultPath ?? config.vaultPath;
 	const undoPath = options.undoPath ?? config.undoPath;

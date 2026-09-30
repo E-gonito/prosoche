@@ -43,6 +43,8 @@ import { basename, parseNote } from '../parse/note';
 import { setFrontmatterField } from '../parse/frontmatter';
 import { goalOf } from './goals';
 import { inScope, scopedNotes } from './scope';
+import { recordIntroduced } from './new-cards';
+import type { Subject } from './subjects';
 import { fromSm2, outcomes, type CardState, type Grade, type Schedule } from '$lib/shared/scheduler';
 import { slugify } from '$lib/shared/slug';
 import type { Card, CardFile, CardKind, CardQueue, StudyScope } from '$lib/shared/study';
@@ -318,6 +320,33 @@ type Reviewed =
 			shift: { path: string; afterLine: number; by: number } | null;
 	  }
 	| { ok: false; reason: 'no-note' | 'changed'; current: string | null };
+
+/**
+ * Grade the card at `at` as the browser last saw it, and count a first review
+ * against today's new cards of every subject in `subjects` holding it.
+ *
+ * The card, and its current schedule, are read back out of the note, so a
+ * stale page cannot post a schedule of its own; `at.expectedRaw` is a
+ * conflict token, not data. Writes as `review` does. Refuses with `no-note`,
+ * `no-card` for a card no longer in the note, or `changed` with the line now
+ * there.
+ */
+export async function gradeAt(
+	vault: Vault,
+	subjects: Subject[],
+	at: { path: string; line: number; index: number; expectedRaw?: string },
+	grade: Grade,
+	day: string
+): Promise<Reviewed | { ok: false; reason: 'no-card' }> {
+	const note = await vault.read(at.path);
+	if (!note.exists) return { ok: false, reason: 'no-note', current: null };
+	const card = scanCards(note.content, at.path).find((c) => c.line === at.line && c.index === at.index);
+	if (!card) return { ok: false, reason: 'no-card' };
+	if (at.expectedRaw !== undefined && card.expectedRaw !== at.expectedRaw) return { ok: false, reason: 'changed', current: card.expectedRaw };
+	const result = await review(vault, card, grade, day);
+	if (result.ok && card.schedule === null) await recordIntroduced(vault, subjects, card.path, note.content, day);
+	return result;
+}
 
 /**
  * Grade a card and write its new schedule into the note.

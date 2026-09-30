@@ -308,14 +308,17 @@ export function changedLines(before: string, after: string): { removed: number; 
 }
 
 /**
- * What a briefing run produced, as the card needs it.
+ * What every drafting feature returns: the briefing and the glossary look-up.
  *
- * Here rather than beside the module that builds it because the browser shows
- * this and a component may not import from `$server`. `proposal` is the fresh
- * briefing (or, when the note has no markers yet, the markers) waiting for
- * Save to note; `problem` says why there is none.
+ * Here rather than beside the runner because the browser shows this and a
+ * component may not import from `$server`. `proposal` waits for a human to
+ * accept it, or is null with `problem` saying why (null for "nothing to do").
+ * `destinations` are the paths the proposal may write, which the browser
+ * passes back to `/api/ai/proposal` for the per-run path policy.
  */
-export interface BriefingRun {
+export interface DraftResult {
 	proposal: Proposal | null;
 	problem: string | null;
+	refusals: Refusal[];
+	destinations: string[];
 }

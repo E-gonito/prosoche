@@ -53,7 +53,7 @@ export function subjectsOf(workspaces: Workspace[]): Subject[] {
 }
 
 /** The subject with this slug, or null when there is none. Pure. */
-export function subjectOf(workspaces: Workspace[], slug: string): Subject | null {
+export function subjectOf(workspaces: Workspace[], slug: unknown): Subject | null {
 	return subjectsOf(workspaces).find((s) => s.slug === slug) ?? null;
 }
 
@@ -63,7 +63,7 @@ export function subjectOf(workspaces: Workspace[], slug: string): Subject | null
  * a slug that is not a subject. Pure; the one answer every writer of a
  * subject's own files should ask for.
  */
-export function studyHome(workspaces: Workspace[], slug: string): string | null {
+export function studyHome(workspaces: Workspace[], slug: unknown): string | null {
 	return subjectOf(workspaces, slug)?.home ?? null;
 }
 
