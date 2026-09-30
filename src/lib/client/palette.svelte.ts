@@ -18,6 +18,7 @@ import { goto } from '$app/navigation';
 import { MODULES, SYSTEM } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
+import { noteHref } from '$lib/shared/links';
 import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
 
 interface PaletteRow {
@@ -53,8 +54,6 @@ const EMPTY: VaultRows = { notes: [], tasks: [], workspaces: [] };
 
 /** How long to wait after a keystroke before asking the server. */
 const DEBOUNCE_MS = 120;
-
-const noteHref = (path: string) => `/notes/${path.split('/').map(encodeURIComponent).join('/')}`;
 
 class PaletteState {
 	open = $state(false);

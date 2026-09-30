@@ -21,18 +21,8 @@
 	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, type Task } from '$lib/shared/task';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
-
-	/**
-	 * A calendar event, drawn on the grid beside the tasks. Deliberately not a
-	 * `Task`: it has no line to rewrite, so it carries only what a read-only
-	 * block needs to place and label itself.
-	 */
-	export interface TimelineEvent {
-		id: string;
-		title: string;
-		startMin: number | null;
-		endMin: number | null;
-	}
+	import { SvelteSet } from 'svelte/reactivity';
+	import type { TodayEvent } from '$lib/shared/today';
 
 	let {
 		tasks,
@@ -47,8 +37,8 @@
 		owners = {}
 	}: {
 		tasks: Task[];
-		/** Calendar events for this day. Only the timed ones are placed on the grid. */
-		events?: TimelineEvent[];
+		/** Calendar events for this day, not `Task`s: no line to rewrite. Only the timed ones are placed on the grid. */
+		events?: TodayEvent[];
 		isToday?: boolean;
 		/**
 		 * The day this timeline shows and the note that holds it. Given both, a
@@ -140,7 +130,8 @@
 		leaving: string | null;
 	};
 	let drag = $state<Drag | null>(null);
-	let busy = $state<Set<number>>(new Set());
+	/** Lines with an edit in flight; their blocks are dimmed. */
+	const busy = new SvelteSet<number>();
 
 	// Finite check as well as null: a task arriving without usable numbers used
 	// to make the whole timeline collapse, which is a bad way to find out.
@@ -149,7 +140,7 @@
 	);
 	/** All-day events have nowhere to sit on a grid of minutes. */
 	const timedEvents = $derived(
-		events.filter((e): e is TimelineEvent & { startMin: number; endMin: number } => e.startMin !== null && e.endMin !== null)
+		events.filter((e): e is TodayEvent & { startMin: number; endMin: number } => e.startMin !== null && e.endMin !== null)
 	);
 
 	/** The range each block occupies, with the dragged one showing its preview. */
@@ -166,7 +157,7 @@
 	 * other. An event carries no line to rewrite, so it is never draggable and
 	 * never the target of `start`.
 	 */
-	type Block = { kind: 'task'; task: Task } | { kind: 'event'; event: TimelineEvent & { startMin: number; endMin: number } };
+	type Block = { kind: 'task'; task: Task } | { kind: 'event'; event: TodayEvent & { startMin: number; endMin: number } };
 	const blocks = $derived<Block[]>([
 		...scheduled.map((task) => ({ kind: 'task' as const, task })),
 		...timedEvents.map((event) => ({ kind: 'event' as const, event }))
@@ -422,31 +413,23 @@
 			return;
 		}
 
-		busy = new Set(busy).add(current.task.line);
-		const result = await editTask(
+		await setTime(
 			current.task,
-			unschedule
-				? { time: null }
-				: { time: { start: formatMinutes(current.startMin), end: formatMinutes(current.endMin) } }
+			unschedule ? null : { start: formatMinutes(current.startMin), end: formatMinutes(current.endMin) }
 		);
-		const next = new Set(busy);
-		next.delete(current.task.line);
-		busy = next;
+	}
 
+	/** Write a task's time (null takes it off) with its block dimmed until it lands. */
+	async function setTime(task: Task, time: { start: string; end: string } | null) {
+		busy.add(task.line);
+		const result = await editTask(task, { time });
+		busy.delete(task.line);
 		if (result.ok) onchange?.(result.value);
 		else onproblem?.(result.message);
 	}
 
 	/** Take the time off a block, leaving it in the note as an unscheduled task. */
-	async function unschedule(task: Task) {
-		busy = new Set(busy).add(task.line);
-		const result = await editTask(task, { time: null });
-		const next = new Set(busy);
-		next.delete(task.line);
-		busy = next;
-		if (result.ok) onchange?.(result.value);
-		else onproblem?.(result.message);
-	}
+	const unschedule = (task: Task) => setTime(task, null);
 
 	/**
 	 * Keyboard equivalent, so the timeline is usable without a pointer.

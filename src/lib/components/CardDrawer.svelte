@@ -13,6 +13,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { displayText, workspaceTags, type Task, type TaskStatus } from '$lib/shared/task';
+	import { noteHref } from '$lib/shared/links';
 	import { api, editTask, type TaskEdit } from '$lib/client/api';
 	import type { CardContext } from '$lib/shared/task';
 
@@ -46,7 +47,6 @@
 	// may name a workspace the folder or an alias gave it, but this control
 	// writes tags and so reports tags.
 	const tagged = $derived(workspaceTags(current)[0] ?? '');
-	const href = $derived(`/notes/${current.path.split('/').map(encodeURIComponent).join('/')}`);
 
 	$effect(() => {
 		if (!dialog?.open) dialog?.showModal();
@@ -244,7 +244,7 @@
 
 		<footer>
 			<code>{current.path}</code>
-			<a class="btn" data-testid="drawer-open-note" href={href}>Open note (line {current.line + 1})</a>
+			<a class="btn" data-testid="drawer-open-note" href={noteHref(current.path)}>Open note (line {current.line + 1})</a>
 		</footer>
 	</div>
 </dialog>
