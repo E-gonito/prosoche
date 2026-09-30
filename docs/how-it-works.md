@@ -366,7 +366,9 @@ glossary's scan (see Glossary).
 **The Study page** shows one card per subject — its goals with milestones
 done out of total, this week's hours and the cards due — and the cards due
 across every subject, with Review everything due, which reviews them all in
-one session; Today's flashcards card leads there too. New subject takes a
+one session. Today's flashcards card instead gives each subject its own
+line, with its count and new cards, leading to that subject's review, so a
+day can take one subject's cards rather than all of them. New subject takes a
 name and, optionally, reference folders, and writes the workspace file with
 `template: study`, homed at `Study/<name>`; a name another workspace
 already has is refused, and so is "Review", which that page already is. The
