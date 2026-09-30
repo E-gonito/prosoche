@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Today dashboard: one day's plan, and the week around it.
+	 * The Today dashboard: one day's plan.
 	 *
 	 * Rendered by `/today/[[day]]` for `/today` and `/today/<day>` alike,
 	 * which differ only in which day the load asks `loadToday` for.
@@ -13,7 +13,6 @@
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import WeekBars from '$lib/components/WeekBars.svelte';
 	import { api, editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
@@ -38,19 +37,6 @@
 	const all = $derived([...merge(data.scheduled), ...merge(data.unscheduled)]);
 	const scheduled = $derived(all.filter((t) => t.startMin !== null).sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0)));
 	const unscheduled = $derived(all.filter((t) => t.startMin === null));
-
-	const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-	const weekBars = $derived(
-		data.week.map((d, i) => ({
-			key: d.day,
-			label: WEEKDAYS[i],
-			value: d.done,
-			total: d.total,
-			// A skipped task is in neither number: it shortens the bar, and is named.
-			text: d.total || d.skipped ? `${d.done} of ${d.total}${d.skipped ? `, ${d.skipped} skipped` : ''}` : 'no tasks',
-			href: d.day === data.today ? '/today' : `/today/${d.day}`
-		}))
-	);
 
 	const timelineEvents = $derived(data.events.map((e) => ({ id: e.id, title: e.title, startMin: e.startMin, endMin: e.endMin })));
 	const allDayEvents = $derived(data.events.filter((e) => e.startMin === null));
@@ -286,11 +272,6 @@
 				{/if}
 			</div>
 
-			<p class="label">This week</p>
-			<div class="sheet week" data-testid="week-bars">
-				<WeekBars bars={weekBars} marked={data.day} width={300} label="Tasks done against planned, Monday to Sunday" />
-			</div>
-
 			{#if data.workspaces.length}
 				<p class="label">From your workspaces</p>
 				<div class="workspaces" data-testid="today-workspaces">
@@ -381,7 +362,7 @@
 	}
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-	.inbox-card, .week { margin-bottom: var(--s3); }
+	.inbox-card { margin-bottom: var(--s3); }
 	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }

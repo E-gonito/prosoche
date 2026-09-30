@@ -75,8 +75,8 @@ test.describe('Today', () => {
 		await expect(page.getByTestId('overdue').getByTestId('board-card-row').filter({ hasText: 'Draft the proposal' })).toHaveCount(0);
 	});
 
-	test('has no rest-of-the-week section; another day opens through Next day', async ({ page }) => {
-		await expect(page.getByTestId('week')).toHaveCount(0);
+	test('has no week section; another day opens through Next day', async ({ page }) => {
+		await expect(page.getByTestId('week-bars')).toHaveCount(0);
 		await page.goto(`/today/${FUTURE}`);
 		await expect(page.getByTestId('unscheduled')).toContainText('Prep the demo for Thursday');
 	});
