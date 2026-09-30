@@ -137,9 +137,11 @@ export async function changeBoard(
  * contributes nothing, not the default board's nothing-in-particular.
  */
 export async function openCards(vault: Vault, workspaces: Workspace[]): Promise<OpenCard[]> {
-	const boards = await Promise.all(workspaces.map((w) => readBoard(vault, w)));
-	return boards.flatMap((board, i) => {
+	const notes = await Promise.all(workspaces.map((w) => vault.read(boardPath(w))));
+	return notes.flatMap((note, i) => {
 		const w = workspaces[i];
+		const board = toBoard(w, toFile(note.path, note.hash, note, DEFAULT_BOARD));
+		const lines = note.content.split('\n');
 		return board.columns.flatMap((column) =>
 			column.cards
 				.filter((card) => !card.done)
@@ -148,6 +150,7 @@ export async function openCards(vault: Vault, workspaces: Workspace[]): Promise<
 					workspace: { slug: w.slug, name: w.name, color: w.color },
 					path: board.path,
 					hash: board.hash,
+					raw: lines[card.line] ?? '',
 					column: column.title
 				}))
 		);

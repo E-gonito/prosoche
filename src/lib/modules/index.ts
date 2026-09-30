@@ -56,6 +56,9 @@ export const MODULES: Module[] = [
 
 /** The system pages, pinned to the foot of the rail, away from the modules. */
 export const SYSTEM: Module[] = [
+	// Not a module of its own: the one inbox, reached from Today's Inbox card,
+	// the palette's `i` and, later, the evening review.
+	{ id: 'inbox', title: 'Inbox', icon: 'inbox', href: '/inbox' },
 	{ id: 'sync', title: 'Sync', icon: 'arrow-up-down', href: '/sync' },
 	{ id: 'settings', title: 'Settings', icon: 'settings', href: '/settings' }
 ];

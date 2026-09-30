@@ -11,6 +11,7 @@
 
 import type { Task } from './task';
 import type { OpenCard } from './kanban';
+import type { InboxLine } from './inbox';
 
 export interface Owner {
 	slug: string;
@@ -38,7 +39,7 @@ export interface WorkspaceGroup {
 	cards: OpenCard[];
 	/** How many more open cards the workspace has beyond those shown. */
 	more: number;
-	/** Open lines in `<home>/Inbox.md`. */
+	/** Unfiled lines of `Inbox/Capture.md` carrying the workspace's tag or an alias. */
 	inboxCount: number;
 }
 
@@ -84,6 +85,10 @@ export interface TodayData {
 	/** Open board cards overdue as of the real today, soonest first. */
 	overdueCards: OpenCard[];
 	workspaces: WorkspaceGroup[];
+	/** Monday to Sunday of the viewed day's week: each day's tasks done and in all. */
+	week: Array<{ day: string; done: number; total: number }>;
+	/** `Inbox/Capture.md`'s unfiled lines: how many, and the newest few. */
+	inbox: { count: number; lines: InboxLine[] };
 	cards: TodayCard[];
 	summary: string;
 }

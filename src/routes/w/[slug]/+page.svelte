@@ -15,7 +15,7 @@
 	let { data } = $props();
 
 	/** The newest six captures and the latest log entry, from the layout's reads. */
-	const inboxPreview = $derived(data.inbox.lines.slice(-6).reverse());
+	const inboxPreview = $derived(data.inbox.lines.slice(0, 6));
 	const latestLog = $derived(data.log.entries[0] ?? null);
 
 	const slug = $derived(data.workspace?.slug);

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NoteIndex } from './index/index';
 import { Vault } from './vault/index';
-import { loadToday, summaryLine } from './today';
+import { loadToday, summaryLine, weekOf } from './today';
 import type { Workspace } from './workspaces';
 
 describe('summaryLine', () => {
@@ -16,6 +16,20 @@ describe('summaryLine', () => {
 
 	it('drops a clause once it is zero, but never the task count', () => {
 		expect(summaryLine({ total: 0, done: 0, plannedMinutes: 0, events: 0, overdue: 0 })).toBe('0 of 0 done');
+	});
+});
+
+describe('weekOf', () => {
+	it.each([
+		['a Wednesday', '2026-09-30', '2026-09-28', '2026-10-04'],
+		['a Monday', '2026-09-28', '2026-09-28', '2026-10-04'],
+		['a Sunday', '2026-10-04', '2026-09-28', '2026-10-04'],
+		['across a year', '2026-01-01', '2025-12-29', '2026-01-04']
+	])('%s', (_name, day, monday, sunday) => {
+		const week = weekOf(day);
+		expect(week).toHaveLength(7);
+		expect([week[0], week[6]]).toEqual([monday, sunday]);
+		expect(week).toContain(day);
 	});
 });
 
@@ -128,13 +142,35 @@ describe('loadToday', () => {
 
 	it('gives each workspace its most urgent open cards and its inbox count', async () => {
 		await vault.write('Work/Board.md', BOARD);
-		await vault.write('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
-		index.put('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
+		await vault.write('Inbox/Capture.md', '## 2026-09-29\n- [ ] Triage this #ws/work\n- [x] Already triaged #ws/work\n- 09:00 Someone else\n');
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		const work = data.workspaces.find((w) => w.slug === 'work');
 		expect(work?.inboxCount).toBe(1);
 		expect(work?.cards.map((c) => c.title)).toEqual(['Renew the lease', 'Due today', 'Send the invoice']);
 		expect(work?.more).toBe(1);
+	});
+
+	it('reads the inbox newest first, capped at five, and hides nothing it counts', async () => {
+		const lines = ['## 2026-09-28', '- 08:00 oldest', '- [x] 08:05 filed', '## 2026-09-29', ...[1, 2, 3, 4, 5].map((n) => `- 09:0${n} capture ${n}`)];
+		await vault.write('Inbox/Capture.md', lines.join('\n'));
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.inbox.count).toBe(6);
+		expect(data.inbox.lines.map((l) => l.text)).toEqual(['capture 5', 'capture 4', 'capture 3', 'capture 2', 'capture 1']);
+	});
+
+	it("counts done against planned for each day of the viewed day's week", async () => {
+		index.put(DAY_PATH, DAY_NOTE.replace('- [ ] 09:30', '- [x] 09:30'));
+		index.put(FUTURE_PATH, FUTURE_NOTE);
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.week.map((d) => d.day)).toEqual(weekOf(DAY));
+		expect(data.week.find((d) => d.day === DAY)).toEqual({ day: DAY, done: 1, total: 2 });
+		expect(data.week.find((d) => d.day === FUTURE)).toEqual({ day: FUTURE, done: 1, total: 2 });
+		expect(data.week.find((d) => d.day === '2026-09-28')).toEqual({ day: '2026-09-28', done: 0, total: 0 });
+	});
+
+	it('reads a missing inbox as empty', async () => {
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.inbox).toEqual({ count: 0, lines: [] });
 	});
 
 	it('reads the calendar as not configured without failing the page', async () => {

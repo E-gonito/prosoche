@@ -54,7 +54,7 @@ type DayPlanned =
 			task: Task;
 	  }
 	| { ok: false; reason: 'no-note' }
-	/** The day has no note. Only Obsidian makes daily notes, so nothing is written. */
+	/** The day has no note. Only `createDayNote`, on a click, makes one, so nothing is written. */
 	| { ok: false; reason: 'no-day' }
 	| { ok: false; reason: 'not-a-task' }
 	| { ok: false; reason: 'line-changed'; current: string | null };
@@ -70,8 +70,9 @@ type DayPlanned =
  *
  * Inserts under `config.dailyNote.tasksHeading`, which puts the block at the
  * end of the plan and above whatever heading follows it. Never creates the
- * day's note: daily notes are made in Obsidian, and a server-made copy of the
- * same file is what makes two devices' git histories collide.
+ * day's note: that is `createDayNote`'s, on an explicit click, because a
+ * server-made copy of a file Obsidian also makes is what makes two devices'
+ * git histories collide.
  *
  * Refuses rather than writes when the card's note is gone, when its line is no
  * longer the line the caller saw, or when that line is not a task. It never
@@ -95,6 +96,21 @@ export async function addToDay(
 	if (!card) return { ok: false, reason: 'not-a-task' };
 
 	const raw = blockLine(card.text, card.quadrant, task.path, workspaceFor(workspaces, { path: task.path, tags: card.tags }), time);
+	return appendToDay(vault, day, raw);
+}
+
+/**
+ * Append `raw`, one task line, under `# Tasks` in `day`'s note, and return
+ * where it landed, parsed back. The one writer of a new line into a day's
+ * plan: `addToDay` composes a linked block for it, `capture.ts` hands it a
+ * captured line that already carries a time.
+ *
+ * Refuses with `no-day` when the note is absent and never creates it. `raw`
+ * must parse as a task line; a caller passing anything else gets `not-a-task`
+ * and nothing is written. Never edits or reorders a line already there.
+ */
+export async function appendToDay(vault: Vault, day: DayKey, raw: string): Promise<DayPlanned> {
+	if (!parseTaskLine(raw)) return { ok: false, reason: 'not-a-task' };
 	const path = dailyNotePath(day);
 	if (!(await vault.read(path)).exists) return { ok: false, reason: 'no-day' };
 
@@ -113,6 +129,45 @@ export async function addToDay(
 	return { ok: false, reason: 'line-changed', current: null };
 }
 
+type DayCreated =
+	| { ok: true; path: string; fromTemplate: boolean }
+	| { ok: false; reason: 'exists'; path: string };
+
+/**
+ * Create `day`'s note from `config.dailyNote.template`, the one way prosoche
+ * ever makes a daily note, and only when a person pressed "Create today's
+ * note".
+ *
+ * The template is copied byte for byte, through `fillTemplate`, which only
+ * touches Obsidian's `{{date}}` and `{{title}}` placeholders when there are
+ * any. A missing template gives a note holding only the tasks heading, and
+ * `fromTemplate: false` says so. Refuses with `exists` when the note is
+ * already there, whatever it holds: nothing is ever overwritten. Writes one
+ * file and nothing else.
+ */
+export async function createDayNote(vault: Vault, day: DayKey): Promise<DayCreated> {
+	const path = dailyNotePath(day);
+	if ((await vault.read(path)).exists) return { ok: false, reason: 'exists', path };
+	const template = await vault.read(config.dailyNote.template);
+	const content = template.exists ? fillTemplate(template.content, day) : `${config.dailyNote.tasksHeading}
+`;
+	await vault.write(path, content);
+	return { ok: true, path, fromTemplate: template.exists };
+}
+
+/**
+ * The template's text for `day`: every `{{date}}` and `{{title}}` (any case,
+ * spaces allowed inside the braces) becomes the day's `YYYY-MM-DD`. Any other
+ * placeholder, such as `{{time}}` or `{{date:dddd}}`, is kept verbatim, since
+ * guessing at Moment formats would write something Obsidian would not; a
+ * template with no placeholders comes back unchanged, byte for byte. `title`
+ * is the day too, not Obsidian's file name (`30`), because the day is what a
+ * title placeholder in a journal template means. Pure.
+ */
+export function fillTemplate(template: string, day: DayKey): string {
+	return template.replace(/\{\{\s*(date|title)\s*\}\}/gi, day);
+}
+
 /**
  * Compose the block. The card's words are copied exactly as they are written,
  * markdown and all, so the day's note says what the card says rather than a
@@ -127,16 +182,19 @@ function blockLine(
 ): string {
 	const parts = ['- [ ]'];
 	if (time) parts.push(`${formatMinutes(time.startMin)} - ${formatMinutes(time.endMin)}`);
-	// A card can be nothing but a link and a tag; skipping its empty words keeps
-	// the block from carrying a stray double space.
-	if (text) parts.push(text);
+	// A leading lone `HH:MM` is when a capture arrived, not when to do it, and
+	// Day Planner would read it as the block's start; the day's note gets the
+	// words without it. A card can be nothing but a link and a tag; skipping
+	// its empty words keeps the block from carrying a stray double space.
+	const words = text.replace(/^\d{1,2}:\d{2}[ \t]+/, '');
+	if (words) parts.push(words);
 	parts.push(`[[${path.replace(/\.md$/, '')}]]`);
 	if (quadrant) parts.push(`\`Q${quadrant}\``);
 	if (workspace && !carries(text, workspace.tag)) parts.push(`#${workspace.tag}`);
 	return parts.join(' ');
 }
 
-/** Whether the card's own words already carry `tag`, or a tag nested under it. */
-function carries(text: string, tag: string): boolean {
+/** Whether `text` already carries `tag`, or a tag nested under it. Pure. */
+export function carries(text: string, tag: string): boolean {
 	return scanTags(text).some((t) => t.tag === tag || t.tag.startsWith(`${tag}/`));
 }

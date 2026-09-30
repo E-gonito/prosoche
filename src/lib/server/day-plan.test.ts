@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { addToDay } from './day-plan';
+import { addToDay, appendToDay, createDayNote, fillTemplate } from './day-plan';
 import type { Workspace } from './workspaces';
 
 const DAY = '2026-09-21';
@@ -164,5 +164,65 @@ describe('addToDay', () => {
 			'# [[Journal 2026]]\n\nNo plan today.\n\n# Tasks\n- [ ] Finish chapter 3 [[Study/Algorithms]] `Q2` #ws/study\n'
 		);
 		expect(result.ok).toBe(true);
+	});
+});
+
+describe('fillTemplate', () => {
+	it.each([
+		['no placeholders', '# Tasks\n- [ ] Meditate `Q1` \n', '# Tasks\n- [ ] Meditate `Q1` \n'],
+		['{{date}}', '# {{date}}\n', '# 2026-09-21\n'],
+		['{{title}} with spaces and case', '# {{ Title }}\n{{DATE}}', '# 2026-09-21\n2026-09-21'],
+		['other placeholders kept', '{{time}} {{date:dddd}}', '{{time}} {{date:dddd}}'],
+		['empty', '', '']
+	])('%s', (_name, template, want) => {
+		expect(fillTemplate(template, DAY)).toBe(want);
+	});
+});
+
+describe('createDayNote and appendToDay', () => {
+	let root: string;
+	let vault: Vault;
+	beforeEach(async () => {
+		root = await mkdtemp(join(tmpdir(), 'hub-day-note-'));
+		vault = new Vault(root);
+	});
+	afterEach(async () => {
+		await vault.close();
+		await rm(root, { recursive: true, force: true });
+	});
+
+	it('copies the template byte for byte', async () => {
+		const template = '# [[Journal]]\r\n# Tasks\n- [ ] Walk `Q1`  \n\n';
+		await vault.write('Journal/Journal Template.md', template);
+		expect(await createDayNote(vault, DAY)).toEqual({ ok: true, path: PATH, fromTemplate: true });
+		expect((await vault.read(PATH)).content).toBe(template);
+	});
+
+	it('makes a note with only the tasks heading when the template is missing', async () => {
+		expect(await createDayNote(vault, DAY)).toEqual({ ok: true, path: PATH, fromTemplate: false });
+		expect((await vault.read(PATH)).content).toBe('# Tasks\n');
+	});
+
+	it('never overwrites a note that is already there', async () => {
+		await vault.write('Journal/Journal Template.md', '# Tasks\n');
+		await vault.write(PATH, 'mine\n');
+		expect(await createDayNote(vault, DAY)).toEqual({ ok: false, reason: 'exists', path: PATH });
+		expect((await vault.read(PATH)).content).toBe('mine\n');
+	});
+
+	it('appends a task line under # Tasks, and refuses a day with no note', async () => {
+		expect(await appendToDay(vault, DAY, '- [ ] 10:00 - 11:00 Dentist')).toEqual({ ok: false, reason: 'no-day' });
+		await vault.write(PATH, NOTE);
+		expect(await appendToDay(vault, DAY, 'not a task')).toEqual({ ok: false, reason: 'not-a-task' });
+		const result = await appendToDay(vault, DAY, '- [ ] 10:00 - 11:00 Dentist');
+		expect(result).toMatchObject({ ok: true, line: 5, task: { startMin: 600, endMin: 660 } });
+		expect((await vault.read(PATH)).content.split('\n')[5]).toBe('- [ ] 10:00 - 11:00 Dentist');
+	});
+
+	it("leaves a capture's lone HH:MM stamp out of a planned block", async () => {
+		await vault.write(PATH, NOTE);
+		await vault.write('Inbox/Capture.md', '## 2026-09-21\n- [ ] 09:05 Call the plumber\n');
+		const result = await addToDay(vault, [], DAY, { path: 'Inbox/Capture.md', line: 1, expectedRaw: '- [ ] 09:05 Call the plumber' });
+		expect(result).toMatchObject({ ok: true, raw: '- [ ] Call the plumber [[Inbox/Capture]]' });
 	});
 });

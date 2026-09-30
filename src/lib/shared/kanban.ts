@@ -13,6 +13,8 @@
  * line number can never land on a card someone else has since moved.
  */
 
+import type { Task } from './task';
+
 /** One card: a `- [ ]` item and its indented notes. */
 export interface BoardCard {
 	/** 0-based line of the card's `- [ ]` line in `Board.md`. */
@@ -95,6 +97,33 @@ export interface OpenCard extends BoardCard {
 	hash: string;
 	/** Title of the column the card sits in. */
 	column: string;
+	/** The card's `- [ ]` line exactly as written, the conflict token for planning it onto a day. */
+	raw: string;
+}
+
+/**
+ * An open card as the `Task` the Today drag carries, so a card picked up
+ * from "From your workspaces" drops on the timeline like any task from
+ * another note: `planOnDay` reads only its path, line and raw line, and the
+ * drag ghost its words. Nothing here is written back to the board. Pure.
+ */
+export function cardAsTask(card: OpenCard): Task {
+	return {
+		path: card.path,
+		line: card.line,
+		blockEnd: card.line,
+		status: 'todo',
+		startMin: null,
+		endMin: null,
+		text: card.title,
+		quadrant: card.priority,
+		fenced: false,
+		raw: card.raw,
+		tags: card.labels,
+		id: null,
+		blockedBy: [],
+		due: card.due
+	};
 }
 
 /**

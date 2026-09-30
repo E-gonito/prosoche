@@ -13,7 +13,8 @@
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { editTask, planOnDay } from '$lib/client/api';
+	import WeekBars from '$lib/components/WeekBars.svelte';
+	import { api, editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
 	import type { TodayData } from '$lib/shared/today';
@@ -37,6 +38,18 @@
 	const all = $derived([...merge(data.scheduled), ...merge(data.unscheduled)]);
 	const scheduled = $derived(all.filter((t) => t.startMin !== null).sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0)));
 	const unscheduled = $derived(all.filter((t) => t.startMin === null));
+
+	const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+	const weekBars = $derived(
+		data.week.map((d, i) => ({
+			key: d.day,
+			label: WEEKDAYS[i],
+			value: d.done,
+			total: d.total,
+			text: d.total ? `${d.done} of ${d.total}` : 'no tasks',
+			href: d.day === data.today ? '/today' : `/today/${d.day}`
+		}))
+	);
 
 	const timelineEvents = $derived(data.events.map((e) => ({ id: e.id, title: e.title, startMin: e.startMin, endMin: e.endMin })));
 	const allDayEvents = $derived(data.events.filter((e) => e.startMin === null));
@@ -68,7 +81,9 @@
 		return registerDropZone({
 			id: 'unscheduled',
 			element: unscheduledCard,
-			drop: (task) => void clearTime(task)
+			// A task from another note (a board card) is planned onto the day
+			// with no time; one already in the day's note loses its time.
+			drop: (task) => void (task.path === data.path ? clearTime(task) : planHere(task))
 		});
 	});
 
@@ -94,6 +109,24 @@
 		const result = await editTask(task, { time: null });
 		if (result.ok) applied(result.value);
 		else failed(result.message);
+	}
+
+	async function planHere(task: Task) {
+		problem = '';
+		const result = await planOnDay(data.day, task);
+		if (result.ok) await invalidateAll();
+		else failed(result.message);
+	}
+
+	let creating = $state(false);
+	/** The one way a daily note is made here: a press of this button. */
+	async function createNote() {
+		creating = true;
+		const result = await api<{ path: string; fromTemplate: boolean }>(`/api/day/${data.day}/note`, {});
+		creating = false;
+		if (!result.ok) return failed(result.message);
+		problem = result.value.fromTemplate ? '' : `There was no journal template, so ${result.value.path} holds only a # Tasks heading.`;
+		await invalidateAll();
 	}
 
 	/**
@@ -138,9 +171,12 @@
 
 			{#if !data.exists}
 				<div class="sheet">
-					<div class="empty big">
-						<p><b>{data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}</b></p>
-						<p>Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced.</p>
+					<div class="empty big" data-testid="no-note">
+						<h2>{data.isToday ? 'Today’s note is not here yet' : 'No note for this day'}</h2>
+						<p class="muted">Create <code>{data.path}</code> from your journal template, or open the day in Obsidian.</p>
+						<button class="btn primary" data-testid="create-note" disabled={creating} onclick={createNote}>
+							{creating ? 'Creating…' : data.isToday ? 'Create today’s note' : 'Create this day’s note'}
+						</button>
 					</div>
 				</div>
 			{:else}
@@ -181,10 +217,10 @@
 						</div>
 					</div>
 
-					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && drag.task.startMin !== null} bind:this={unscheduledCard}>
+					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && (drag.task.startMin !== null || drag.task.path !== data.path)} bind:this={unscheduledCard}>
 						<div class="sheet">
 							<h3 class="caps">Unscheduled <span class="right num">{unscheduled.length}</span></h3>
-							<Capture onproblem={failed} />
+							<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
 							<div class="rows">
 								{#each unscheduled as task (task.path + ':' + task.line)}
 									<TaskRow
@@ -228,15 +264,32 @@
 		</div>
 
 		<div class="side">
+			{#if data.inbox.count}
+				<div class="sheet inbox-card" data-testid="today-inbox">
+					<h3 class="caps">Inbox <a class="right small" href="/inbox">{data.inbox.count} to triage</a></h3>
+					<div class="rows">
+						{#each data.inbox.lines as line (line.line)}
+							<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
+						{/each}
+					</div>
+					{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
+				</div>
+			{/if}
+
+			<p class="label">This week</p>
+			<div class="sheet week" data-testid="week-bars">
+				<WeekBars bars={weekBars} marked={data.day} width={300} label="Tasks done against planned, Monday to Sunday" />
+			</div>
+
 			{#if data.workspaces.length}
 				<p class="label">From your workspaces</p>
 				<div class="workspaces" data-testid="today-workspaces">
 					{#each data.workspaces as group (group.slug)}
 						<div class="sheet" data-testid="workspace-card">
-							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<span class="right muted small">{group.inboxCount} in inbox</span>{/if}</h3>
+							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<a class="right muted small" href="/w/{group.slug}/inbox">{group.inboxCount} in inbox</a>{/if}</h3>
 							<div class="rows">
 								{#each group.cards as card (card.path + ':' + card.line)}
-									<CardRow {card} today={data.today} onproblem={failed} />
+									<CardRow {card} today={data.today} draggable={data.exists} onproblem={failed} />
 								{/each}
 							</div>
 							{#if group.more}<p class="hint">and {group.more} more</p>{/if}
@@ -318,6 +371,8 @@
 	}
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
+	.inbox-card, .week { margin-bottom: var(--s3); }
+	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }
 	a.module-item:hover { color: var(--accent); }

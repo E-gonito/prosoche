@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { vaultFile, waitForFile, TODAY } from './helpers';
+import { vaultFile, TODAY } from './helpers';
 
 test.describe('Workspaces', () => {
 	test('the index lists every workspace with its figures', async ({ page }) => {
@@ -8,16 +8,6 @@ test.describe('Workspaces', () => {
 		await expect(row).toBeVisible();
 		await expect(row).toContainText('open');
 		await expect(page.getByTestId('new-workspace')).toBeVisible();
-	});
-
-	test('capture into the workspace inbox lands in Work/Inbox.md', async ({ page }) => {
-		await page.goto('/w/work/inbox');
-		await page.getByLabel('Quick capture').fill('Call the printer about the leaflets');
-		await page.getByRole('button', { name: 'Add' }).click();
-		await expect(page.getByText('Saved to Work/Inbox.md')).toBeVisible();
-		expect(vaultFile('Work/Inbox.md')).toContain('Call the printer about the leaflets');
-		// Never touches the vault-wide inbox.
-		expect(vaultFile('Inbox/Capture.md')).not.toContain('Call the printer');
 	});
 
 	test('Overview points the workspace at another folder, and stops again', async ({ page }) => {

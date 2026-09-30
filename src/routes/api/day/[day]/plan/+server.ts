@@ -21,5 +21,5 @@ export const POST = route(
 			typeof body.startMin === 'number' && typeof body.endMin === 'number' ? { startMin: body.startMin, endMin: body.endMin } : undefined;
 		return addToDay(hub.vault, await hub.workspaces(), params.day, { path, line: body.line, expectedRaw }, time);
 	},
-	{ 'no-day': 'That day has no note yet. Open it in Obsidian first; daily notes are made there.' }
+	{ 'no-day': 'That day has no note yet. Create it on Today first.' }
 );

@@ -8,6 +8,13 @@
 
 	let { data } = $props();
 
+	const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	/** `Sep 7`, short enough to sit under an 8-bar chart without crowding. */
+	const weekLabel = (day: string) => `${MONTHS[Number(day.slice(5, 7)) - 1]} ${Number(day.slice(8, 10))}`;
+	const weeks = $derived(
+		data.study.weeks.map((w) => ({ key: w.start, label: weekLabel(w.start), value: w.minutes, text: formatDuration(w.minutes, ' ') }))
+	);
+
 	let goal = $state('');
 	let minutes = $state('');
 	let note = $state('');
@@ -60,7 +67,7 @@
 
 	<p class="label">Last 8 weeks</p>
 	<div class="sheet">
-		<WeekBars weeks={data.study.weeks} />
+		<WeekBars bars={weeks} label="Study time, the last {weeks.length} weeks" />
 	</div>
 
 	{#if data.study.goalHours.length > 0}

@@ -1,73 +1,46 @@
 <script lang="ts">
 	/**
-	 * A workspace's inbox: capture here, then either tick it (it was already a
-	 * task) or make it one (it was just a thought).
+	 * A workspace's inbox: the lines of `Inbox/Capture.md` that carry its tag
+	 * or an alias, with the same three exits as the triage page, and `b`
+	 * filing straight to this workspace's board. The capture box here writes
+	 * the same file with the workspace's tag appended.
 	 *
-	 * Nothing here ever deletes a line: ticking a plain capture only adds a
-	 * checkbox to it, and "make it a task" copies its words onto the board's
-	 * first column rather than moving them.
+	 * An old `<home>/Inbox.md` is no longer written; its open lines are
+	 * listed read-only below until they are dealt with in Obsidian.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Capture from '$lib/components/Capture.svelte';
-	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { api, editTask } from '$lib/client/api';
-	import type { Task } from '$lib/shared/task';
+	import InboxRows from '$lib/components/InboxRows.svelte';
+	import { noteHref } from '$lib/shared/links';
+	import { displayText } from '$lib/shared/task';
 
 	let { data } = $props();
-
 	let problem = $state('');
-	let filing = $state<number | null>(null);
-
-	async function toggleTask(task: Task) {
-		const result = await editTask(task, { status: task.status === 'done' ? 'todo' : 'done' });
-		if (result.ok) await invalidateAll();
-		else problem = result.message;
-	}
-
-	async function makeTask(line: { line: number; raw: string }) {
-		if (filing !== null) return;
-		filing = line.line;
-		const result = await api('/api/inbox', { workspace: data.workspace.slug, line: line.line, expectedRaw: line.raw });
-		filing = null;
-		if (!result.ok) {
-			problem = result.message;
-			return;
-		}
-		problem = '';
-		await invalidateAll();
-	}
 </script>
 
 <p class="label">Capture</p>
-<Capture workspace={data.workspace.slug} onproblem={(m) => (problem = m)} />
+<Capture workspace={data.workspace.slug} oncaptured={() => invalidateAll()} onproblem={(m) => (problem = m)} />
 
 {#if problem}<p class="problem">{problem}</p>{/if}
 
-<p class="label">Inbox <span class="right">{data.inbox.lines.filter((l) => !l.done).length} open</span></p>
-<div class="sheet rows">
-	{#each data.inbox.lines as line (line.line)}
-		<div class="row">
-			{#if line.task}
-				<div class="task-cell"><TaskRow task={line.task} onchange={() => invalidateAll()} onproblem={(m) => (problem = m)} /></div>
-			{:else}
-				<span class="bullet" class:done={line.done}>{line.text}</span>
-			{/if}
-			{#if !line.done}
-				<button class="btn ghost small" disabled={filing === line.line} onclick={() => makeTask(line)}>
-					{filing === line.line ? 'Filing…' : 'Make it a task'}
-				</button>
-			{/if}
-		</div>
-	{:else}
-		<p class="empty">Nothing captured yet.</p>
-	{/each}
-</div>
+<p class="label">Inbox <span class="right"><span class="num">{data.inbox.lines.length}</span> open · <a href="/inbox">All captures</a></span></p>
+<InboxRows
+	lines={data.inbox.lines}
+	workspaces={[data.workspace]}
+	fileTo={data.workspace.slug}
+	onproblem={(m) => (problem = m)}
+/>
+
+{#if data.inbox.legacy.lines.length}
+	<p class="label">Older, read-only <span class="right"><a href={noteHref(data.inbox.legacy.path)}><code>{data.inbox.legacy.path}</code></a></span></p>
+	<div class="sheet rows" data-testid="legacy-inbox">
+		{#each data.inbox.legacy.lines as line (line.line)}
+			<p class="legacy">{displayText(line.text)}</p>
+		{/each}
+	</div>
+	<p class="hint">Nothing writes this file any more. Tick or move these lines in Obsidian.</p>
+{/if}
 
 <style>
-	.row { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s2); border-top: 1px solid var(--line); }
-	.row:first-child { border-top: 0; }
-	.task-cell { flex: 1; min-width: 0; }
-	.task-cell :global(.task) { border-top: 0; padding: 0; }
-	.bullet { flex: 1; min-width: 0; padding: 7px 0; font-size: var(--t14); }
-	.bullet.done { text-decoration: line-through; color: var(--muted); }
+	.legacy { margin: 0; font-size: var(--t14); }
 </style>

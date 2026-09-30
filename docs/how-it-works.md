@@ -21,11 +21,17 @@ arrows either side and a jump back to today when you have wandered off it. A
 one-line summary counts what the day did and is still owed: done against the
 total, time planned, calendar events, and anything overdue.
 
-**Daily notes are made in Obsidian, never here.** When the day's note has not
-synced yet, Today says so and waits; nothing on this page, the briefing or a
-card planned onto a day will create it. Two devices each making the same new
-file is the one clash git cannot merge on its own, and Obsidian already makes
-the note the moment you open the day.
+**A daily note is made only when you press for it.** When the day's note is
+not there, Today names the path it would create and offers **Create today's
+note**. Pressing it copies `Journal/Journal Template.md` to that path byte
+for byte; the template's `{{date}}` and `{{title}}`, if it has any, become
+the day's `YYYY-MM-DD`, and any other placeholder is left as written. With no
+template, the note gets only a `# Tasks` heading, and Today says so. A note
+that is already there is never overwritten. Nothing else creates one: not a
+timer, not the briefing, not a card or a capture planned onto the day. Two
+devices each making the same new file is the one clash git cannot merge on
+its own, so if Obsidian on another device may already have made the day,
+let it sync first.
 
 **Briefing.** Press "Brief me" for a short read on today and the rest of the
 week. It is shown on screen as a draft, never written until you press **Save
@@ -47,11 +53,27 @@ task. Your Google Calendar events for the day sit on the same grid as sand
 blocks rather than teal ones, read-only, and linking nowhere. On a phone, a segmented control switches between the timeline and
 the plain list; the choice is remembered on that device.
 
-Capture appends to `Inbox/Capture.md` under today's date. A line written as a
-task stays a task, so a captured to-do is immediately schedulable rather than
-needing to be retyped later. The unscheduled list is exactly what it says:
-once a task gets a time, from the grip or the timeline, it moves to the
-timeline and leaves this list.
+The capture box at the top of the list sends a line where its words say.
+One with a time range, `10:00 - 11:00 Dentist`, goes straight into today's
+note under `# Tasks` and onto the timeline. One that names a workspace by its
+tag (`#ws/kaya`) or one of its aliases goes onto that workspace's board, at
+the bottom of the first column, read the way the board's quick-add reads it;
+the tag itself is left off the card. Anything else lands in
+`Inbox/Capture.md` under today's date, a bare thought stamped with the time
+and a line written as a task kept as a task. A timed line on a day with no
+note, or a line naming a workspace that has no board yet, goes to the inbox
+instead; nothing is lost and nothing is created. The same rule holds for
+every capture box, the `c` and `k` keys and the phone's share sheet. The
+unscheduled list is exactly what it says: once a task gets a time, from the
+grip or the timeline, it moves to the timeline and leaves this list.
+
+**Inbox** is a card listing the newest five unfiled lines of
+`Inbox/Capture.md`, with how many are waiting and a link to the triage page
+(see Inbox). It is not shown when there are none.
+
+**This week** is seven small bars, Monday to Sunday of the week the day is
+in: each day's tasks in the pale bar, the done ones in the teal inside it,
+read from each day's own note. A bar opens its day.
 
 **Overdue** lists two kinds of thing whose due date has passed. First the
 open cards on any workspace's board, each with its workspace's dot; tick one
@@ -62,10 +84,13 @@ unfinished checklist; each of those rows has a button to plan it onto today.
 
 **From your workspaces** shows each workspace's most urgent open board cards
 — priority first, then the soonest due date — collapsed beyond the first
-three, plus how many captures are waiting untriaged in its inbox. A card's
+three, plus how many lines of the inbox carry its tag or an alias. A card's
 title opens its workspace, where the board is; its checkbox ticks it in
-`Board.md`. A card on a board is not planned onto the day from here: the
-board is where it moves.
+`Board.md`. Its ⠿ grip drags it onto the day: dropped on the timeline, a
+block such as `- [ ] 10:00 - 10:30 Book the venue [[Work/Board]] #ws/work`
+is appended under `# Tasks` in the day's note; dropped on the unscheduled
+list, the same block with no time. The card stays where it is on its board,
+untouched; the block is the time spent on it.
 
 Beyond that, any module may add a card of its own — Study offers one for
 flashcards due, once something is. A private module never does: nothing of
@@ -213,9 +238,10 @@ whole vault, shows what changed recently, and offers the folder tree. A note
 shows its rendered text beside its properties, tags, the notes that link to
 it and the notes it links to; Browse opens the folder tree as a side sheet.
 
-The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
-heading. A line that is already a task is kept as written; anything else is
-stamped with the time. That file is the only thing the Notes module writes.
+The capture box is Today's (see Today): a timed line goes to today's note,
+one naming a workspace to its board, and anything else to
+`Inbox/Capture.md` under a `## <day>` heading. Those are the only things the
+Notes module writes.
 
 The private folder, `Private/`, never appears here: not in search, the tree,
 backlinks or recent notes. A link straight to a private note is a 404.
@@ -403,8 +429,8 @@ and counts a time block as that workspace's time. Belonging is not the same
 as being on the board: the board is `Board.md` and nothing else, so a tagged
 task elsewhere stays in its note, untouched, and is not a card. The first
 folder is the workspace's home: it is where `Board.md`, `Overview.md`,
-`Inbox.md`, `Log.md`, a `CRM/` folder and a `Pages/` folder of custom pages
-all live. Glossaries are not kept here; they have their own folder (see
+`Log.md`, a `CRM/` folder and a `Pages/` folder of custom pages all live
+(and an older `Inbox.md`, read but no longer written). Glossaries are not kept here; they have their own folder (see
 Glossary).
 
 A line `glossary: <name>` points the workspace at the glossary of that name,
@@ -425,7 +451,8 @@ block "10:30 - 18:00 Work on eye2gene" counts as eye2gene's time although no
 tag says so. The match is whole-word and ignores case, and it is tried only
 after the tag, the folder and a `workspace:` field have all come up empty, so
 a note sitting in one workspace's folder is never reassigned by a word in its
-text — in practice only daily notes and the Inbox are ever claimed this way.
+text — in practice only daily notes and the Inbox are ever claimed this way,
+and a capture naming an alias goes straight onto that workspace's board.
 The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
@@ -480,12 +507,14 @@ nothing is written and it says so, so copy what you typed and Cancel to see
 the newer version. With no `Overview.md` yet there is a "Write an overview"
 button instead, and the first save creates the file.
 
-**Inbox** is a capture box over `Inbox.md`: a bullet already written as a task
-is ticked in place through the ordinary task rewrite; "make it a task" adds
-any line's words as a card at the bottom of the board's first column, read
-the way quick-add reads them and without the capture time, and ticks the
-inbox line to show it has been filed. Nothing is ever deleted, only marked
-done. An old `Tasks.md` is an ordinary note now, not the board.
+**Inbox** is the one inbox, `Inbox/Capture.md`, filtered to the lines that
+carry the workspace's tag or name it by an alias, with the same three exits
+as the triage page (see Inbox); **Board** files straight onto this
+workspace's board. Its capture box writes the same file with the
+workspace's tag appended, so the line shows here. `<home>/Inbox.md` is no
+longer written; while an old one still has open lines they are listed
+read-only under the tab, to tick or move in Obsidian. An old `Tasks.md` is
+an ordinary note now, not the board.
 
 **Log** is `Log.md`, a `## YYYY-MM-DD` heading per session. Sessions are shown
 newest first; the file itself only ever grows downward, because "add an
@@ -539,6 +568,30 @@ read-only, from the folders named in the workspace file.
 `sandbox="allow-scripts"` and nothing more — never `allow-same-origin` — so a
 page's own script can run but can never reach this origin's cookies, storage
 or anything outside its frame.
+
+## Inbox
+
+The triage page for `Inbox/Capture.md`: every line not yet dealt with,
+grouped under the day it was captured, newest day first and in the order
+written within a day. It is reached from Today's Inbox card, the palette's
+`i` and the rail's foot, and it is done when it is empty.
+
+Each line leaves by one of three doors, as a button or, with the row
+focused, a key:
+
+- **Today** (`t`) plans it onto today as a block with no time, linked back
+  to `[[Inbox/Capture]]`, ready to drag onto the timeline. A bare bullet is
+  first rewritten in place as a task line, `- 09:05 Call` becoming
+  `- [ ] 09:05 Call`; the capture time is left out of the block. It needs
+  today's note, and says so when there is none.
+- **Board** (`b`) files its words as a card at the bottom of a board's first
+  column, read the way quick-add reads them and without the capture time.
+  The workspaces are offered to pick from, the one the line names first.
+- **Drop** (`x`) does nothing else.
+
+All three tick the line in the inbox, so the file stays a record of what
+came in and the row leaves the list. Nothing is deleted. A line that changed
+in the file since the page loaded is refused and the list reloads.
 
 ## Date
 
