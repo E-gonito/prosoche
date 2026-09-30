@@ -30,8 +30,6 @@
 </div>
 
 <style>
-	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-
 	/* See the same rule in `study/[subject]/review/+page.svelte`. */
 	@media (max-width: 720px) {
 		.page { height: 100%; min-height: 0; display: flex; flex-direction: column; }

@@ -28,8 +28,6 @@
 </div>
 
 <style>
-	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-
 	/*
 	 * On a phone, `.page` is exactly the room `main` leaves under the shell
 	 * header and its tab bar (see the height comment on `.session` in

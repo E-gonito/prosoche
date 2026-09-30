@@ -295,7 +295,7 @@ dialog::backdrop { background: rgba(42, 38, 34, 0.35); }
 
 /* A word that deletes: red text on no fill, for an in-place "Delete this?". */
 .remove,
-.btn.ghost.remove:hover { color: var(--bad); }
+.btn.ghost.remove { color: var(--bad); }
 
 /* A line of input with its button: type, then Add. */
 .add-row { display: flex; gap: var(--s2); }
@@ -391,7 +391,8 @@ textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
  */
 .empty { color: var(--muted); font-size: var(--t14); margin: 0; }
 .empty.big { text-align: center; padding: 60px var(--s4); }
-.empty.big h2 { margin: var(--s2) 0; font-size: var(--t20); }
+.empty.big h2 { margin: var(--s2) 0; font-size: var(--t20); color: var(--text); }
+.empty.big .tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
 .empty.big .muted { margin-bottom: 18px; }
 
 .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t14); }
