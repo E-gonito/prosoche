@@ -53,6 +53,7 @@
  */
 
 import type { BoardOp } from '$lib/shared/kanban';
+import { addDays } from '$lib/shared/time';
 
 /** Half-open character range into one line, without its `\r`. */
 export interface Span {
@@ -789,11 +790,6 @@ function isDate(value: string): boolean {
 function weekday(day: string): number {
 	const [y, m, d] = day.split('-').map(Number);
 	return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-function addDays(day: string, n: number): string {
-	const [y, m, d] = day.split('-').map(Number);
-	return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
 function oneLine(text: string): string {
