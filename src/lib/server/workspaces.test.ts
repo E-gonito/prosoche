@@ -107,18 +107,6 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect((await loadWorkspaces(vault))[0].glossary).toBe(expected);
 	});
 
-	it.each([
-		['new_per_day: 10', 10],
-		['new_per_day: 0', 0],
-		['new_per_day: "15"', 15],
-		['new_per_day: -1', undefined],
-		['new_per_day: 2.5', undefined],
-		['new_per_day: lots', undefined],
-		['new_per_day:', undefined]
-	])('reads %j as new cards a day %j', async (line, expected) => {
-		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
-		expect((await loadWorkspaces(vault))[0].newPerDay).toBe(expected);
-	});
 });
 
 describe('workspaceFor', () => {

@@ -4,13 +4,12 @@ import { linkHref, renderNote } from '$server/render';
 import { findGlossary, loadGlossary, noteFolders } from '$server/glossary';
 import { scanPlan } from '$server/ai/glossary-drafts';
 import { loadSettings } from '$server/ai/settings';
-import { glossaryCardsState } from '$server/study/glossary-cards';
-import { subjectsOf } from '$server/study/subjects';
+import { glossaryCardsState } from '$server/flashcards/glossary-cards';
 import type { PageServerLoad } from './$types';
 
 /**
- * One glossary: every entry of its file ready to draw, the study subject its
- * cards go to with how they stand, the subjects it could go to, what a scan
+ * One glossary: every entry of its file ready to draw, whether its terms
+ * are flashcards and how they stand, what a scan
  * for new terms would read now, the vault's folders it may be scanned from,
  * and whether AI is on. Reads its card folder, and every note under its
  * sources to count them. Only an unknown slug is a 404. Writes nothing.
@@ -43,8 +42,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		glossary: { name: ref.name, slug: ref.slug, color: ref.color, path: ref.path },
 		entries,
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))],
-		cards: await glossaryCardsState(vault, all, ref.path),
-		subjects: subjectsOf(all).map((s) => ({ slug: s.slug, name: s.name })),
+		cards: await glossaryCardsState(vault, ref.path),
 		folders: await noteFolders(vault),
 		scan: await scanPlan(vault, ref),
 		aiEnabled: (await loadSettings(vault)).enabled

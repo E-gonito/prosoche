@@ -14,10 +14,11 @@
  * insertion, a span edit or the removal of one entry's lines through the
  * grammar in `parse/glossary.ts`; nothing here re-serialises a note.
  *
- * A glossary may name the study subject its terms become flashcards in,
- * `study: <subject slug>`, set here by `setGlossaryStudy` the same way. The
- * cards themselves are `study/glossary-cards.ts`'s business; this module
- * only reads and writes the link.
+ * A glossary may make its terms flashcards, `flashcards: true`, set here by
+ * `setGlossaryFlashcards`, and may cap the new ones a day with
+ * `new_per_day:`. The cards themselves are `glossary-cards.ts`'s business,
+ * and reviewing them `decks.ts`'s; this module only reads and writes the
+ * settings.
  *
  * A glossary may also name, in its frontmatter, the folders of notes it is
  * scanned for new terms (`sources:`) and the day of its last full scan
@@ -28,7 +29,7 @@
  *     sources:
  *       - Computer Science
  *     scanned: "2026-09-29"
- *     study: cs-study
+ *     flashcards: true
  *     ---
  *
  * Nothing here writes on a model's behalf. Look-ups are proposals and a scan
@@ -46,7 +47,6 @@ import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { slugify } from '$lib/shared/slug';
-import { subjectsOf } from './study/subjects';
 import type { Workspace } from './workspaces';
 import { hashContent, type Vault } from './vault/index';
 
@@ -162,44 +162,42 @@ export async function loadGlossary(vault: Vault, path: string): Promise<Glossary
 }
 
 /**
- * The study subject a glossary's terms become cards in: its frontmatter's
- * `study:`, trimmed, or null when there is none or it is not a string. It is
- * a subject's slug, but this does not check that the subject exists. Pure.
- */
-export function studyLink(content: string): string | null {
-	const study = parseNote(content).frontmatter.study;
-	return typeof study === 'string' && study.trim() ? study.trim() : null;
-}
-
-/**
- * Link a glossary to the study subject `slug`, or unlink it with `''`, by
- * setting its frontmatter's `study:` through `setFrontmatterField`: only that
- * key's line changes, and a glossary without frontmatter gains a minimal
- * block. Unlinking leaves an empty `study:` in place and the cards where
- * they are.
+ * Whether a glossary's terms are flashcards, and the most new ones a day,
+ * from its frontmatter. Pure; never throws.
  *
- * Refuses anything but a string, and a slug that is not a study subject's
- * among `workspaces`. A clash with an edit made a moment earlier is retried
- * once. Never touches the glossary's body or its cards.
+ * `flashcards: true` turns them on and anything else there off. A glossary
+ * without the key that still names a study subject, `study: <slug>`, from
+ * when cards lived in Study, reads as on, so its cards carry on. `perDay`
+ * is `new_per_day:` as a whole number, or null for none or anything else.
  */
-export async function setGlossaryStudy(vault: Vault, glossary: GlossaryRef, workspaces: Workspace[], slug: unknown): Promise<Written> {
-	if (typeof slug !== 'string') return invalid('Send the study subject as its slug.');
-	const wanted = slug.trim();
-	if (wanted && !subjectsOf(workspaces).some((s) => s.slug === wanted)) return invalid(`There is no study subject “${wanted}”.`);
-	return rewrite(vault, glossary.path, (content) => setFrontmatterField(content, 'study', wanted), 2);
+export function cardSettings(content: string): { on: boolean; perDay: number | null } {
+	const fm = parseNote(content).frontmatter;
+	const on = 'flashcards' in fm ? fm.flashcards === true || fm.flashcards === 'true' : typeof fm.study === 'string' && fm.study.trim() !== '';
+	const n = typeof fm.new_per_day === 'number' ? fm.new_per_day : typeof fm.new_per_day === 'string' && /^\s*\d+\s*$/.test(fm.new_per_day) ? Number(fm.new_per_day) : NaN;
+	return { on, perDay: Number.isInteger(n) && n >= 0 ? n : null };
 }
 
 /**
- * The glossaries linked to the study subject `subject`, by name and slug,
- * in name order: those whose `study:` names it. Reads each glossary. Never
- * writes.
+ * Turn a glossary's flashcards on or off by setting `flashcards:` in its
+ * frontmatter through `setFrontmatterField`; an old `study:` link is
+ * cleared with it, leaving the bare key. Only those lines change, and a
+ * glossary without frontmatter gains a minimal block. Turning them off
+ * leaves the cards where they are.
+ *
+ * Refuses anything but a boolean. A clash with an edit made a moment
+ * earlier is retried once. Never touches the glossary's body or its cards.
  */
-export async function glossariesFor(vault: Vault, workspaces: Workspace[], subject: string): Promise<Array<{ name: string; slug: string }>> {
-	const out: Array<{ name: string; slug: string }> = [];
-	for (const g of await glossaries(vault, workspaces)) {
-		if (studyLink((await vault.read(g.path)).content) === subject) out.push({ name: g.name, slug: g.slug });
-	}
-	return out;
+export async function setGlossaryFlashcards(vault: Vault, glossary: GlossaryRef, on: unknown): Promise<Written> {
+	if (typeof on !== 'boolean') return invalid('Send whether the glossary makes flashcards, true or false.');
+	return rewrite(
+		vault,
+		glossary.path,
+		(content) => {
+			const set = setFrontmatterField(content, 'flashcards', on);
+			return 'study' in parseNote(set).frontmatter ? setFrontmatterField(set, 'study', '') : set;
+		},
+		2
+	);
 }
 
 /* -------------------------------------------------------------- scan -- */

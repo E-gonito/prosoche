@@ -73,8 +73,7 @@ describe('the reading list file', () => {
 		color: '#000',
 		home: 'Study/CS',
 		scope: { folders: ['Study/CS'] },
-		newPerDay: 20,
-		files: { goals: 'Study/CS/Goals.md', reading: 'Study/CS/Reading List.md', sessions: 'Study/CS/Sessions.md', flashcards: 'Study/CS/Flashcards' }
+		files: { goals: 'Study/CS/Goals.md', reading: 'Study/CS/Reading List.md', sessions: 'Study/CS/Sessions.md' }
 	};
 	const PATH = SUBJECT.files.reading;
 	const LIST = [

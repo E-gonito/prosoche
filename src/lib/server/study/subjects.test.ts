@@ -29,20 +29,13 @@ describe('subjectsOf', () => {
 			files: {
 				goals: 'Study/Computer Science/Goals.md',
 				reading: 'Study/Computer Science/Reading List.md',
-				sessions: 'Study/Computer Science/Sessions.md',
-				flashcards: 'Study/Computer Science/Flashcards'
+				sessions: 'Study/Computer Science/Sessions.md'
 			}
 		});
 		// A subject naming no folder still has one place for its files.
 		expect(bare.home).toBe('Inbox');
 	});
 
-	it('lets twenty new cards a day join a subject’s reviews unless its file says otherwise', () => {
-		const [cs] = subjectsOf(all);
-		expect(cs.newPerDay).toBe(20);
-		const [quiet] = subjectsOf([{ ...workspace('quiet', ['Q'], 'study'), newPerDay: 0 }]);
-		expect(quiet.newPerDay).toBe(0);
-	});
 
 	it('finds one subject, and its study home, by slug', () => {
 		expect(subjectOf(all, 'cs-study')?.name).toBe('cs-study');
@@ -83,10 +76,9 @@ describe('createSubject', () => {
 		expect(first.ok && second.ok && first.subject.color !== second.subject.color).toBe(true);
 	});
 
-	it('refuses no name, a taken name, and the review page’s', async () => {
+	it('refuses no name and a taken name', async () => {
 		expect(await createSubject(vault, [], { name: ' / ' })).toMatchObject({ ok: false, reason: 'no-name' });
 		await createSubject(vault, [], { name: 'Filipino' });
 		expect(await createSubject(vault, [], { name: 'filipino' })).toMatchObject({ ok: false, reason: 'exists' });
-		expect(await createSubject(vault, [], { name: 'Review' })).toMatchObject({ ok: false, reason: 'reserved' });
 	});
 });

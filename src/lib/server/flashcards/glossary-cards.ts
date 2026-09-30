@@ -1,17 +1,16 @@
 /**
  * Flashcards made from a glossary, kept in step with it.
  *
- * A glossary names a study subject once, `study: <subject slug>` in its
- * frontmatter, and from then on every term with a definition is one card in
- * that subject, reviewed both ways: the term, a `??` line, then the
- * definition and the `→` line. The cards live in one file per category,
+ * A glossary turns its cards on once, `flashcards: true` in its frontmatter,
+ * and from then on every term with a definition is one card, reviewed both
+ * ways: the term, a `??` line, then the definition and the `→` line. The
+ * cards are the glossary's deck (see `decks.ts`), one file per category:
  *
- *     <subject home>/Flashcards/Glossary/<Glossary name>/<Category>.md
+ *     Flashcards/<Glossary name>/<Category>.md
  *
  * (`Uncategorised.md` for a term with none), and a new file starts:
  *
  *     ---
- *     goal:
  *     glossary: Computer Science
  *     category: Cloud
  *     ---
@@ -27,9 +26,15 @@
  *     → Where eye2gene's endpoints live.
  *     <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->
  *
+ * `Flashcards/` also holds the `.txt` decks another tool generates; only
+ * `.md` files are read or written here, so those are never touched. Cards
+ * used to live in a study subject, under
+ * `<subject home>/Flashcards/Glossary/<Glossary name>/`; a sync first moves
+ * any files still there into the deck's folder, review history and all.
+ *
  * These files are prosoche's, as a workspace's `Board.md` is: their cards
  * follow the glossary. What the author or a review adds is theirs and is
- * kept: `goal:` and any other frontmatter, every review comment (prosoche's
+ * kept: any frontmatter, every review comment (prosoche's
  * `<!--fsrs:…-->` or the plugin's legacy `<!--SR:…-->`), a card for a term
  * since deleted or renamed, and any card that matches no term.
  *
@@ -44,44 +49,42 @@
  * cards expected, or it is left as it is and the problem reported.
  *
  * The rest of this module is when that runs and how it writes: after each
- * write the app makes to a linked glossary, on any change to one from
- * outside (debounced), and for every linked glossary at hub start, one
+ * write the app makes to a glossary with cards, on any change to one from
+ * outside (debounced), and for every such glossary at hub start, one
  * glossary at a time. Writes are guarded by the hash each file was read
  * with, and happen only when something differs. It never writes the
  * glossary, never writes outside the glossary's own folder of cards, and
  * never runs a model.
  */
 
+import { config } from '../config';
 import { setFrontmatterField } from '../parse/frontmatter';
 import { parseNote } from '../parse/note';
 import { parseGlossary } from '../parse/glossary';
 import { normaliseTerm } from '$lib/shared/glossary';
-import { cardBlock } from './anki-import';
-import { FLASHCARD_TAG, scanCards, type Card } from './flashcards';
-import { subjectOf, type Subject } from './subjects';
-import { GLOSSARY_FOLDER, glossaries, isGlossaryPath, studyLink } from '../glossary';
+import { cardBlock } from './card-block';
+import { FLASHCARD_TAG, scanCards, type Card } from './cards';
+import { cardSettings, GLOSSARY_FOLDER, glossaries, isGlossaryPath } from '../glossary';
 import { hashContent, type Vault } from '../vault/index';
-import type { Workspace } from '../workspaces';
 
-/** The folder under a subject's `Flashcards/` that glossaries' cards go in. */
-const GLOSSARY_CARDS = 'Glossary';
+/** Where the old study subjects kept a glossary's cards, under their home folder. */
+const LEGACY_FOLDER = /^(.+\/Flashcards\/Glossary\/[^/]+)\/[^/]+\.md$/;
 
 /** The card file of the terms with no category, without `.md`. */
 const UNCATEGORISED = 'Uncategorised';
 
 /**
- * Where the cards of glossary `glossary` go in `subject`:
- * `<home>/Flashcards/Glossary/<glossary>`. The glossary's name is in the
- * path so two glossaries linked to one subject never share a file. Pure.
+ * Where the cards of the glossary called `glossary` go:
+ * `Flashcards/<glossary>`, so two glossaries never share a file. Pure.
  */
-function glossaryCardsFolder(subject: Pick<Subject, 'files'>, glossary: string): string {
-	return `${subject.files.flashcards}/${GLOSSARY_CARDS}/${glossary}`;
+export function deckFolder(glossary: string): string {
+	return `${config.flashcardFolder}/${glossary}`;
 }
 
 /**
  * The card file name, without `.md`, for a category: anything a file name
- * or a wikilink cannot hold becomes a space, as `cardFilePath` does for a
- * goal, and no category (or one with nothing left) is `Uncategorised`. Pure.
+ * or a wikilink cannot hold becomes a space, and no category (or one with
+ * nothing left) is `Uncategorised`. Pure.
  */
 export function categoryFileName(category: string | null): string {
 	const name = (category ?? '')
@@ -149,9 +152,8 @@ interface Reconciliation {
  * - A term with no card gets one at the end of its category's file, which
  *   is created with `cardFileHeader` when it is not there. A category's file
  *   is matched ignoring case.
- * - Nothing else in any file changes: frontmatter (`goal:` included), the
- *   text above the cards, cards of deleted or renamed terms, cards that
- *   match no term.
+ * - Nothing else in any file changes: frontmatter, the text above the
+ *   cards, cards of deleted or renamed terms, cards that match no term.
  *
  * Each file's `staged` and `after` text must read back through `scanCards`
  * as the cards it had, edited, less those cut, plus those appended, in that
@@ -173,15 +175,14 @@ export function reconcileGlossaryCards(glossary: string, folder: string, entries
 }
 
 /**
- * The opening of a new card file: `goal:` (empty, for the Flashcards tab's
- * picker), `glossary:` and `category:` (empty for none) in its frontmatter,
- * the `#flashcards` tag, and a line saying where the cards come from. It
- * holds no card. Pure.
+ * The opening of a new card file: `glossary:` and `category:` (empty for
+ * none) in its frontmatter, the `#flashcards` tag, and a line saying where
+ * the cards come from. It holds no card. Pure.
  */
 export function cardFileHeader(glossary: string, category: string | null): string {
 	const link = /[[\]|#^]/.test(glossary) ? glossary : `[[${glossary}]]`;
 	const intro = `Made from ${link}${category ? ` (${category})` : ''}. Edit the terms there; this file is\nkept in step with the glossary.`;
-	const blank = `---\ngoal:\nglossary:\ncategory:\n---\n\n#${FLASHCARD_TAG}\n\n${intro}\n`;
+	const blank = `---\nglossary:\ncategory:\n---\n\n#${FLASHCARD_TAG}\n\n${intro}\n`;
 	const named = setFrontmatterField(blank, 'glossary', glossary);
 	return category ? setFrontmatterField(named, 'category', category) : named;
 }
@@ -202,7 +203,7 @@ function wantedCards(entries: TermEntry[], problems: string[]): Wanted[] {
 		const definition = entry.definition.trim();
 		if (!definition) continue;
 		const why = (entry.relevance ?? '').replace(/\s+/g, ' ').trim();
-		const block = cardBlock(entry.term, why ? `${definition}\n→ ${why}` : definition, 'reversed');
+		const block = cardBlock(entry.term, why ? `${definition}\n→ ${why}` : definition);
 		if (!block) {
 			problems.push(`“${entry.term}” could not be written as a card.`);
 			continue;
@@ -358,65 +359,59 @@ function leftAlone(path: string): string {
 	return `${path} would not read back as the glossary’s cards, so it was left as it is.`;
 }
 
-/** The study subject a glossary's cards go to, and where. */
-interface CardLink {
-	/** The subject's slug and name. */
-	subject: { slug: string; name: string };
-	folder: string;
-}
-
 /**
  * Where a glossary's cards stand.
  *
- * `unlinked`: no `study:` in its frontmatter. `unknown`: `study:` names no
- * study subject, which reads as unlinked; nothing is synced. `linked`: the
- * subject and folder, how many cards the folder holds, the files that
- * differ from the glossary (0 is up to date), and any problem.
+ * `off`: its frontmatter does not turn them on (see `cardSettings`); any
+ * cards already made stay where they are. `on`: its deck's folder, how many
+ * cards the folder holds, the files that differ from the glossary (0 is up
+ * to date), and any problem.
  */
-type CardState =
-	| { state: 'unlinked' }
-	| { state: 'unknown'; study: string }
-	| ({ state: 'linked'; cards: number; pending: number; problems: string[] } & CardLink);
+type CardState = { state: 'off' } | { state: 'on'; folder: string; cards: number; pending: number; problems: string[] };
 
 /** What one sync did. `written` lists the files changed, `conflict` the one that changed underneath it. */
 type CardSync = CardState & { written?: string[]; conflict?: string | null };
 
 /**
- * Where the cards of the glossary at `path` stand, without writing: the
- * link, the cards in its folder now, and how many files a sync would
+ * Where the cards of the glossary at `path` stand, without writing: whether
+ * they are on, the cards in its folder now, and how many files a sync would
  * change. Reads the glossary and its card folder. Never writes.
  */
-export async function glossaryCardsState(vault: Vault, workspaces: Workspace[], path: string): Promise<CardState> {
-	const found = await examine(vault, workspaces, path);
+export async function glossaryCardsState(vault: Vault, path: string): Promise<CardState> {
+	const found = await examine(vault, path);
 	if (found.state !== 'found') return found;
-	const { link, files, plan } = found;
+	const { folder, files, plan } = found;
 	const cards = files.reduce((sum, f) => sum + scanCards(f.content, f.path).length, 0);
-	return { state: 'linked', ...link, cards, pending: plan.changes.length, problems: plan.problems };
+	return { state: 'on', folder, cards, pending: plan.changes.length, problems: plan.problems };
 }
 
 /**
  * Bring the cards of the glossary at `path` in step with it, and log what
  * happened.
  *
- * Reads the glossary; when its `study:` names a study subject, reads the
- * files in its card folder, reconciles, and writes each file that differs:
- * first every file's `staged` text, then the final text of those that lose
- * a card, each write guarded by the hash of what it replaces (an empty file
- * for one being created). A clash stops the sync where it is, with every
- * card still in at least one file; the next change or the next start tries
- * again. `renamedFrom`, the glossary's old name, first moves the files of
- * the old name's folder to the new one (see `moveCardFolder`).
+ * Reads the glossary; when its cards are on, first moves in any of its card
+ * files an old study subject still holds, and after a rename (`renamedFrom`,
+ * the old name) the old name's deck folder (see `moveCardFiles`); then reads
+ * the files in its deck folder, reconciles, and writes each file that
+ * differs: first every file's `staged` text, then the final text of those
+ * that lose a card, each write guarded by the hash of what it replaces (an
+ * empty file for one being created). A clash stops the sync where it is,
+ * with every card still in at least one file; the next change or the next
+ * start tries again.
  *
  * Runs one at a time per vault: a call made while another is running waits
- * for it. Never writes the glossary or outside its card folder; never
- * throws for a clash.
+ * for it. Never writes the glossary, or any file but its cards' old and new
+ * places; never throws for a clash.
  */
-export function syncGlossaryCards(vault: Vault, workspaces: Workspace[], path: string, opts: { renamedFrom?: string } = {}): Promise<CardSync> {
+export function syncGlossaryCards(vault: Vault, path: string, opts: { renamedFrom?: string } = {}): Promise<CardSync> {
 	const run = async (): Promise<CardSync> => {
-		if (opts.renamedFrom) await moveCardFolder(vault, workspaces, path, opts.renamedFrom);
-		const found = await examine(vault, workspaces, path);
+		if (!cardSettings((await vault.read(path)).content).on) return { state: 'off' };
+		const name = glossaryName(path);
+		if (opts.renamedFrom) await moveCardFiles(vault, deckFolder(opts.renamedFrom), deckFolder(name), opts.renamedFrom, name);
+		for (const legacy of await legacyFolders(vault, name)) await moveCardFiles(vault, legacy, deckFolder(name));
+		const found = await examine(vault, path);
 		if (found.state !== 'found') return found;
-		const { link, files, plan } = found;
+		const { folder, files, plan } = found;
 		const hashes = new Map(files.map((f) => [f.path, f.hash]));
 		const written: string[] = [];
 		let conflict: string | null = null;
@@ -437,9 +432,9 @@ export function syncGlossaryCards(vault: Vault, workspaces: Workspace[], path: s
 			if (change.after !== change.staged && !(await put(change, change.after))) conflict = change.path;
 		}
 
-		const now = await Promise.all((await vault.files(link.folder, 'md')).map((name) => vault.read(`${link.folder}/${name}`)));
+		const now = await Promise.all((await vault.files(folder, 'md')).map((file) => vault.read(`${folder}/${file}`)));
 		const cards = now.reduce((sum, n) => sum + scanCards(n.content, n.path).length, 0);
-		const result: CardSync = { state: 'linked', ...link, cards, pending: conflict ? plan.changes.length - written.length : 0, problems: plan.problems, written, conflict };
+		const result: CardSync = { state: 'on', folder, cards, pending: conflict ? plan.changes.length - written.length : 0, problems: plan.problems, written, conflict };
 		report(path, result);
 		return result;
 	};
@@ -459,12 +454,12 @@ export function syncGlossaryCards(vault: Vault, workspaces: Workspace[], path: s
 const queues = new WeakMap<Vault, Promise<unknown>>();
 
 /**
- * Sync every glossary that names a study subject, one after another, as
- * the hub does at start. Returns what each did, in glossary order.
+ * Sync every glossary whose cards are on, one after another, as the hub
+ * does at start. Returns what each did, in glossary order.
  */
-export async function syncAllGlossaryCards(vault: Vault, workspaces: Workspace[]): Promise<CardSync[]> {
+export async function syncAllGlossaryCards(vault: Vault): Promise<CardSync[]> {
 	const out: CardSync[] = [];
-	for (const g of await glossaries(vault, workspaces)) out.push(await syncGlossaryCards(vault, workspaces, g.path));
+	for (const g of await glossaries(vault, [])) out.push(await syncGlossaryCards(vault, g.path));
 	return out;
 }
 
@@ -473,12 +468,11 @@ export async function syncAllGlossaryCards(vault: Vault, workspaces: Workspace[]
  * Obsidian, a git pull, or a write of the app's own.
  *
  * Subscribes to the vault. A change to a glossary file (not a removal) syncs
- * that glossary `delayMs` after the last change to it, reading the
- * workspaces afresh. Changes to card files are not glossary changes, so a
- * sync's own writes never set off another. Returns the unsubscribe, which
- * also drops any sync not yet started.
+ * that glossary `delayMs` after the last change to it. Changes to card files
+ * are not glossary changes, so a sync's own writes never set off another.
+ * Returns the unsubscribe, which also drops any sync not yet started.
  */
-export function followGlossaryCards(vault: Vault, workspaces: () => Promise<Workspace[]>, delayMs = 1000): () => void {
+export function followGlossaryCards(vault: Vault, delayMs = 1000): () => void {
 	const timers = new Map<string, ReturnType<typeof setTimeout>>();
 	const unsubscribe = vault.subscribe((change) => {
 		if (change.kind === 'removed' || !isGlossaryPath(change.path)) return;
@@ -487,9 +481,7 @@ export function followGlossaryCards(vault: Vault, workspaces: () => Promise<Work
 			change.path,
 			setTimeout(() => {
 				timers.delete(change.path);
-				workspaces()
-					.then((ws) => syncGlossaryCards(vault, ws, change.path))
-					.catch((e) => console.error(`[glossary cards] ${change.path}`, e));
+				syncGlossaryCards(vault, change.path).catch((e) => console.error(`[glossary cards] ${change.path}`, e));
 			}, delayMs)
 		);
 	});
@@ -515,23 +507,19 @@ export function renamedCardFile(content: string, from: string, to: string): stri
 }
 
 /**
- * After a rename, move the files in the old name's card folder to the new
- * name's, so the cards keep their review history. Each file is copied,
- * with `renamedCardFile`, and the old one removed only if it is unchanged;
- * a file whose new place is taken is left where it is. Does nothing for a
- * glossary that names no subject.
+ * Move the card files in `source` to `target`, so the cards keep their
+ * review history; with `from` and `to`, a renamed glossary's old and new
+ * names, each is rewritten by `renamedCardFile` on the way. Each file is
+ * copied and the old one removed only if it is unchanged; a file whose new
+ * place is taken is left where it is. Only `.md` files move. Does nothing
+ * when the two are the same folder.
  */
-async function moveCardFolder(vault: Vault, workspaces: Workspace[], path: string, from: string): Promise<void> {
-	const note = await vault.read(path);
-	const subject = subjectOf(workspaces, studyLink(note.content) ?? '');
-	if (!note.exists || !subject) return;
-	const to = glossaryName(path);
-	const source = glossaryCardsFolder(subject, from);
-	const target = glossaryCardsFolder(subject, to);
+async function moveCardFiles(vault: Vault, source: string, target: string, from?: string, to?: string): Promise<void> {
 	if (source === target) return;
 	for (const name of await vault.files(source, 'md')) {
 		const old = await vault.read(`${source}/${name}`);
-		const copied = await vault.write(`${target}/${name}`, renamedCardFile(old.content, from, to), hashContent(''));
+		const text = from && to ? renamedCardFile(old.content, from, to) : old.content;
+		const copied = await vault.write(`${target}/${name}`, text, hashContent(''));
 		if (!copied.ok) {
 			console.warn(`[glossary cards] left ${source}/${name} where it is: ${target}/${name} is already there`);
 			continue;
@@ -541,27 +529,37 @@ async function moveCardFolder(vault: Vault, workspaces: Workspace[], path: strin
 	}
 }
 
-/** The glossary's link, card files and reconciliation, read once. */
+/**
+ * The folders where an old study subject still holds cards of the glossary
+ * called `name`: `<home>/Flashcards/Glossary/<name>`, found by listing the
+ * vault. Usually none. Never writes.
+ */
+async function legacyFolders(vault: Vault, name: string): Promise<string[]> {
+	const found = new Set<string>();
+	for (const path of await vault.list()) {
+		const folder = LEGACY_FOLDER.exec(path)?.[1];
+		if (folder && folder.endsWith(`/Flashcards/Glossary/${name}`)) found.add(folder);
+	}
+	return [...found];
+}
+
+/** The glossary's card settings, card files and reconciliation, read once. */
 async function examine(
 	vault: Vault,
-	workspaces: Workspace[],
 	path: string
-): Promise<Extract<CardState, { state: 'unlinked' | 'unknown' }> | { state: 'found'; link: CardLink; files: Array<CardFileText & { hash: string }>; plan: Reconciliation }> {
+): Promise<{ state: 'off' } | { state: 'found'; folder: string; files: Array<CardFileText & { hash: string }>; plan: Reconciliation }> {
 	const note = await vault.read(path);
-	const study = note.exists ? studyLink(note.content) : null;
-	if (!study) return { state: 'unlinked' };
-	const subject = subjectOf(workspaces, study);
-	if (!subject) return { state: 'unknown', study };
+	if (!note.exists || !cardSettings(note.content).on) return { state: 'off' };
 
 	const name = glossaryName(path);
-	const folder = glossaryCardsFolder(subject, name);
+	const folder = deckFolder(name);
 	const files = [];
 	for (const file of await vault.files(folder, 'md')) {
 		const read = await vault.read(`${folder}/${file}`);
 		if (read.exists) files.push({ path: read.path, content: read.content, hash: read.hash });
 	}
 	const plan = reconcileGlossaryCards(name, folder, parseGlossary(note.content), files);
-	return { state: 'found', link: { subject: { slug: subject.slug, name: subject.name }, folder }, files, plan };
+	return { state: 'found', folder, files, plan };
 }
 
 /** `Glossaries/<name>.md` → `<name>`. */
@@ -570,7 +568,7 @@ function glossaryName(path: string): string {
 }
 
 function report(path: string, result: CardSync): void {
-	if (result.state !== 'linked') return;
+	if (result.state !== 'on') return;
 	if (result.written?.length) console.log(`[glossary cards] ${path}: wrote ${result.written.join(', ')}`);
 	if (result.conflict) console.warn(`[glossary cards] ${path}: ${result.conflict} changed while it was being written; trying again on the next change`);
 	for (const problem of result.problems) console.warn(`[glossary cards] ${path}: ${problem}`);

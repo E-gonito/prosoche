@@ -23,10 +23,10 @@ import matter from 'gray-matter';
 /**
  * Set one top-level frontmatter key, leaving every other byte as it was.
  *
- * `value` is a string for a scalar field or a list of strings for a list
- * field. An empty string, or a list with nothing in it, clears the field: the
- * key stays with no value (`company:`), so it keeps its place in the block for
- * the next edit.
+ * `value` is a string, a number or a boolean for a scalar field, or a list
+ * of strings for a list field. An empty string, or a list with nothing in
+ * it, clears the field: the key stays with no value (`company:`), so it
+ * keeps its place in the block for the next edit.
  *
  * - An existing one-line key keeps its spacing after the colon; only the value
  *   is replaced.
@@ -40,17 +40,19 @@ import matter from 'gray-matter';
  *
  * A value is written plain when YAML reads it back as the same string and
  * double-quoted otherwise, so `+447700900123` stays a phone number rather
- * than becoming an integer, and `2026-09-29` stays text. Runs of whitespace,
+ * than becoming an integer, and `2026-09-29` stays text; a number or a boolean
+ * is always written plain, as what it is. Runs of whitespace,
  * newlines included, collapse to one space: a value is one line. Pure; never
  * throws.
  */
-export function setFrontmatterField(content: string, key: string, value: string | readonly string[]): string {
-	const list = typeof value === 'string' ? null : value.map(oneLine).filter(Boolean);
-	const scalar = typeof value === 'string' ? oneLine(value) : '';
+export function setFrontmatterField(content: string, key: string, value: string | number | boolean | readonly string[]): string {
+	const plain = typeof value === 'number' || typeof value === 'boolean';
+	const list = typeof value === 'string' || plain ? null : value.map(oneLine).filter(Boolean);
+	const scalar = typeof value === 'string' ? oneLine(value) : plain ? String(value) : '';
 	const clearing = list ? list.length === 0 : scalar === '';
 	// The scalar as YAML text, quoted only if YAML would otherwise read it as
 	// something other than this string.
-	const encoded = clearing || list ? '' : yamlScalar(scalar, 'value');
+	const encoded = clearing || list ? '' : plain ? scalar : yamlScalar(scalar, 'value');
 
 	const lines = content.split('\n');
 	const close = lines[0]?.replace(/\r$/, '') === '---' ? lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---') : -1;

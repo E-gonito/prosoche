@@ -29,7 +29,11 @@ describe('setFrontmatterField', () => {
 		['replaces a multi-line scalar with one line', lines('---', 'role: >', '  Head of', '  sales', 'email: a@b.c', '---'), 'role', 'CEO', lines('---', 'role: CEO', 'email: a@b.c', '---')],
 		['keeps a CRLF note CRLF', '---\r\nstage: talking\r\n---\r\n', 'stage', 'dating', '---\r\nstage: dating\r\n---\r\n'],
 		['inserts with the note’s own line ending', '---\r\ntype: person\r\n---\r\n', 'stage', 'dating', '---\r\ntype: person\r\nstage: dating\r\n---\r\n'],
-		['still quotes the string "true"', lines('---', 'x:', '---'), 'x', 'true', lines('---', 'x: "true"', '---')]
+		['still quotes the string "true"', lines('---', 'x:', '---'), 'x', 'true', lines('---', 'x: "true"', '---')],
+		['writes a number plain', lines('---', 'new_per_day: 20', '---'), 'new_per_day', 15, lines('---', 'new_per_day: 15', '---')],
+		['writes zero rather than clearing', lines('---', 'n: 3', '---'), 'n', 0, lines('---', 'n: 0', '---')],
+		['writes a boolean plain', lines('---', 'flashcards:', '---'), 'flashcards', true, lines('---', 'flashcards: true', '---')],
+		['writes false rather than clearing', lines('---', 'flashcards: true', '---'), 'flashcards', false, lines('---', 'flashcards: false', '---')]
 	])('%s', (_name, before, key, value, after) => {
 		expect(setFrontmatterField(before, key, value)).toBe(after);
 	});

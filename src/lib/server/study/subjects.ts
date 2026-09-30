@@ -4,28 +4,21 @@
  * A subject is a workspace whose file says `template: study` — CS, Filipino,
  * whatever comes next — and there can be any number. Nothing is shared
  * between two subjects but the code: each has its own home folder holding
- * its own `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/`,
- * and its own scope, the workspace's folders and tag, for its cards.
+ * its own `Goals.md`, `Reading List.md` and `Sessions.md`, and its own
+ * scope, the workspace's folders and tag, for its notes. Flashcards are not
+ * Study's; they are the glossaries' (see `flashcards/decks.ts`).
  *
  * This module is the one place that turns a workspace into a subject, so a
- * page, a route and the Anki import all agree on where a subject's files
- * are. It never reads a note; it only says where they live.
+ * page and a route agree on where a subject's files are. It never reads a note; it only says where they live.
  */
 
 import { createWorkspace, homeFolder, type Workspace } from '../workspaces';
 import { scopeOf } from './scope';
-import { slugify } from '$lib/shared/slug';
 import type { StudyScope, SubjectRef } from '$lib/shared/study';
 import type { Vault } from '../vault/index';
 
 /** The `template:` value that makes a workspace a subject. */
 const STUDY_TEMPLATE = 'study';
-
-/**
- * How many never-reviewed cards join a subject's reviews each day when its
- * workspace file does not say, with `new_per_day:`.
- */
-const NEW_PER_DAY = 20;
 
 /** The folder new subjects are homed under: `Study/<Name>`. */
 const STUDY_ROOT = 'Study';
@@ -33,14 +26,10 @@ const STUDY_ROOT = 'Study';
 /** A subject, with where its files are and which notes it covers. */
 export interface Subject extends SubjectRef {
 	scope: StudyScope;
-	/** Cards never reviewed that may join its reviews each day; 0 for none. */
-	newPerDay: number;
 	files: {
 		goals: string;
 		reading: string;
 		sessions: string;
-		/** The folder card files are written to. */
-		flashcards: string;
 	};
 }
 
@@ -59,7 +48,7 @@ export function subjectOf(workspaces: Workspace[], slug: unknown): Subject | nul
 
 /**
  * The study home of subject `slug`: the folder its `Goals.md`, `Reading
- * List.md`, `Sessions.md` and `Flashcards/` live in, vault-relative. Null for
+ * List.md` and `Sessions.md` live in, vault-relative. Null for
  * a slug that is not a subject. Pure; the one answer every writer of a
  * subject's own files should ask for.
  */
@@ -69,17 +58,16 @@ export function studyHome(workspaces: Workspace[], slug: unknown): string | null
 
 type SubjectCreated =
 	| { ok: true; subject: Subject }
-	| { ok: false; reason: 'no-name' | 'exists' | 'reserved'; message: string };
+	| { ok: false; reason: 'no-name' | 'exists'; message: string };
 
 /**
  * Create a subject: a workspace file with `template: study`, homed at
  * `Study/<name>`, with `extraFolders` after the home as reference folders
- * whose notes count for its cards.
+ * whose notes are its too.
  *
  * Writes one file, `_hub/workspaces/<slug>.md`, through `createWorkspace`,
  * and never overwrites one. The home folder itself appears with the
- * subject's first write. Refuses a name that makes no folder or no slug, and
- * `review`, which `/study/review` already means.
+ * subject's first write. Refuses a name that makes no folder or no slug.
  */
 export async function createSubject(
 	vault: Vault,
@@ -90,7 +78,6 @@ export async function createSubject(
 	// Obsidian refuses in a file name, nothing a wikilink would read.
 	const name = spec.name.replace(/[\\/:*?"<>|#^[\]]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+|\.+$/g, '');
 	if (!name) return { ok: false, reason: 'no-name', message: 'A subject needs a name.' };
-	if (slugify(name) === 'review') return { ok: false, reason: 'reserved', message: '"Review" is taken by the review page. Pick another name.' };
 
 	const home = `${STUDY_ROOT}/${name}`;
 	const folders = [home, ...(spec.extraFolders ?? []).map((f) => f.trim().replace(/^\/+|\/+$/g, '')).filter((f) => f && f !== home)];
@@ -115,12 +102,10 @@ function toSubject(workspace: Workspace): Subject {
 		color: workspace.color,
 		home,
 		scope: scopeOf(workspace),
-		newPerDay: workspace.newPerDay ?? NEW_PER_DAY,
 		files: {
 			goals: `${home}/Goals.md`,
 			reading: `${home}/Reading List.md`,
-			sessions: `${home}/Sessions.md`,
-			flashcards: `${home}/Flashcards`
+			sessions: `${home}/Sessions.md`
 		}
 	};
 }

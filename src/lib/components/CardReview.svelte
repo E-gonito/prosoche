@@ -12,20 +12,17 @@
 	 */
 	import { GRADES, outcomes, type Grade } from '$lib/shared/scheduler';
 	import { collapseBreadcrumb } from '$lib/client/breadcrumb';
-	import { applyShift, gradeCard } from '$lib/client/study';
-	import type { Card } from '$lib/shared/study';
+	import { applyShift, gradeCard } from '$lib/client/flashcards';
+	import type { Card } from '$lib/shared/flashcards';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let {
 		cards,
 		today,
-		back = '/study',
 		onfinish
 	}: {
 		cards: Card[];
 		today: string;
-		/** Where "Back to study" goes once the session is done. */
-		back?: string;
 		onfinish?: () => void;
 	} = $props();
 
@@ -156,7 +153,7 @@
 		<p class="tick"><Icon name="check" size={40} /></p>
 		<h2>Done for today</h2>
 		<p class="muted">{graded} {graded === 1 ? 'answer' : 'answers'}{again > 0 ? `, ${again} to see again` : ''}.</p>
-		<a class="btn primary" href={back}>Back to study</a>
+		<a class="btn primary" href="/flashcards">Back to flashcards</a>
 	</div>
 {/if}
 

@@ -334,10 +334,11 @@ describe('dueCards', () => {
 		]);
 	});
 
-	it('lets in only as many unseen cards as a quota allows, in a stable order, and counts the rest as waiting', async () => {
+	it('lets in only the unseen cards the plan does, and counts the rest as waiting', async () => {
 		const art = { folders: ['Art'] };
 		const cs = { folders: ['CS'] };
-		const one = await dueCards(vault, index, { on: '2026-09-21', newCards: [{ scope: cs, allowance: 0 }, { scope: art, allowance: 1 }] });
+		const plan = { left: 5, subjects: [{ scope: cs, begun: 0, room: 0 }, { scope: art, begun: 0, room: null }] };
+		const one = await dueCards(vault, index, { on: '2026-09-21', newCards: plan });
 		expect(one.cards.map((c) => c.question)).toEqual(['Overdue', 'Hue']);
 		expect(one).toMatchObject({ due: 1, fresh: 1, waiting: 1, total: 4 });
 		// A file's count is the same rule: CS's new card waits.
@@ -345,20 +346,38 @@ describe('dueCards', () => {
 			['Art/Colour.md', 1],
 			['CS/Due.md', 1]
 		]);
-		const none = await dueCards(vault, index, { on: '2026-09-21', newCards: [] });
+		const none = await dueCards(vault, index, { on: '2026-09-21', newCards: { left: 5, subjects: [] } });
 		expect(none).toMatchObject({ due: 1, fresh: 0, waiting: 2 });
 	});
 
 	it('picks a goal’s new cards from the subject’s, so the two reviews agree', async () => {
 		await vault.write('CS/Due.md', `---\ngoal: Systems\n---\n${(await vault.read('CS/Due.md')).content}More::new\n`);
 		await vault.write('CS/Aa.md', '#flashcards\n\nFirst::by path\n');
-		const quota = [{ scope: { folders: ['CS'] }, allowance: 1 }];
+		const quota = { left: 1, subjects: [{ scope: { folders: ['CS'] }, begun: 0, room: null }] };
 		const subject = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota });
 		expect(subject.cards.map((c) => c.question)).toEqual(['Overdue', 'First']);
 		// CS/Aa.md comes first by path and names no goal, so the goal gets no new card today.
 		const goal = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota, goal: 'systems' });
 		expect(goal.cards.map((c) => c.question)).toEqual(['Overdue']);
 		expect(goal).toMatchObject({ fresh: 0, waiting: 2 });
+	});
+
+	it('narrows to one subject after sharing the new cards out between them all', async () => {
+		const [art, cs] = [{ folders: ['Art'] }, { folders: ['CS'] }];
+		const plan = { left: 1, subjects: [{ scope: art, begun: 0, room: null }, { scope: cs, begun: 0, room: null }] };
+		// The day's one new card is Art's, so CS's review has none, and lists only its own file.
+		const mine = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['Art', 'CS'] }, within: cs, newCards: plan });
+		expect(mine.cards.map((c) => c.question)).toEqual(['Overdue']);
+		expect(mine).toMatchObject({ due: 1, fresh: 0, waiting: 1, total: 3 });
+		expect(mine.files.map((f) => f.path)).toEqual(['CS/Due.md']);
+	});
+
+	it('takes the subjects in turn, reviews before new cards', async () => {
+		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-10,4,250-->\n\nTint::light\n<!--SR:!2026-09-11,4,250-->\n');
+		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-02,4,250-->\n');
+		const plan = { left: 5, subjects: [{ scope: { folders: ['CS'] }, begun: 0, room: null }, { scope: { folders: ['Art'] }, begun: 0, room: null }] };
+		const queue = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['Art', 'CS'] }, newCards: plan });
+		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'Shade', 'Stale', 'Tint', 'New', 'Hue']);
 	});
 
 	it('reviews one goal’s files, matching the goal whatever its case, and still lists every file', async () => {

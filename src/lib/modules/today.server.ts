@@ -32,34 +32,26 @@ interface TodayCardContext {
 }
 
 /**
- * Flashcards due for review today, one line per study subject: each
- * subject's cards due and its own new cards for today, by the same rule as
- * that subject's review, which the line links to. Split so a day can take
- * one subject's twenty rather than every subject's at once.
+ * Flashcards due for review today, as one line leading to one review of
+ * every subject together, the subjects taking turns: the cards already
+ * reviewed that are due, and the new ones the day shares out between the
+ * subjects (see `study/new-cards.ts`). One line rather than one a subject,
+ * so linking another glossary adds to the mix, not to the list.
  *
- * Inputs: the viewed day and the hub. Output: a card with a line for each
- * subject with something ready, in workspace order, or null once no subject
- * has anything — a permanent "0 due" card would be noise on every day but
- * the ones it matters. Side effects: reads the vault and the index.
+ * Inputs: the viewed day and the hub. Output: the card, or null when nothing
+ * is ready — a permanent "0 due" card would be noise on every day but the
+ * ones it matters. Side effects: reads the vault and the index.
  */
 async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
-	const subjects = subjectsOf(await h.workspaces());
-	const queues = await Promise.all(subjects.map((s) => dueEverywhere(h.vault, h.index, [s], day, 0)));
-	const items = subjects.flatMap((subject, i) => {
-		const { due, fresh } = queues[i];
-		const ready = due + fresh;
-		if (ready === 0) return [];
-		return [
-			{
-				text: `${subject.name}: ${ready} card${ready === 1 ? '' : 's'}`,
-				meta: fresh ? `${fresh} new today` : undefined,
-				href: `/study/${subject.slug}/review`
-			}
-		];
-	});
-	if (!items.length) return null;
-
-	return { module: 'study', title: 'Flashcards due', href: '/study', items };
+	const { due, fresh } = await dueEverywhere(h.vault, h.index, subjectsOf(await h.workspaces()), day, 0);
+	const ready = due + fresh;
+	if (ready === 0) return null;
+	return {
+		module: 'study',
+		title: 'Flashcards due',
+		href: '/study',
+		items: [{ text: `${ready} card${ready === 1 ? '' : 's'} to review`, meta: fresh ? `${fresh} new today` : undefined, href: '/study/review' }]
+	};
 }
 
 /**

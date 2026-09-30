@@ -55,13 +55,6 @@ export interface Workspace {
 	 * workspaces may point at one.
 	 */
 	glossary?: string;
-	/**
-	 * For a study subject, how many cards never reviewed may join its reviews
-	 * each day, from `new_per_day:` in its file: a whole number, 0 for none.
-	 * Absent, or anything else written there, means the default (see
-	 * `study/subjects.ts`).
-	 */
-	newPerDay?: number;
 	path: string;
 }
 
@@ -150,14 +143,13 @@ export function homeFolder(workspace: Workspace): string {
 
 /**
  * Point a workspace at a new set of reference folders: every folder after
- * its home, whose notes count as the workspace's (and, for a Study subject,
- * feed its cards).
+ * its home, whose notes count as the workspace's.
  *
  * `refs` is the whole list wanted after the home, in order. Each is trimmed
  * of spaces and surrounding slashes, backslashes become `/`, and empties,
  * repeats and the home itself are dropped, so the caller can pass what a
  * person typed. The home never moves: it holds the board, the inbox and a
- * subject's goals and cards, and moving it would strand them. A workspace
+ * subject's goals, and moving it would strand them. A workspace
  * that names no folder yet has no home to keep, so its first ref becomes one.
  *
  * Writes only the `folders:` lines of `_hub/workspaces/<slug>.md`, through
@@ -207,15 +199,8 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		folders,
 		template: str(fm.template) ?? undefined,
 		...(str(fm.glossary) ? { glossary: str(fm.glossary)! } : {}),
-		...(count(fm.new_per_day) !== null ? { newPerDay: count(fm.new_per_day)! } : {}),
 		path
 	};
-}
-
-/** A whole number of zero or more, written as a number or a string of digits; otherwise null. */
-function count(value: unknown): number | null {
-	const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
-	return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 function str(value: unknown): string | null {

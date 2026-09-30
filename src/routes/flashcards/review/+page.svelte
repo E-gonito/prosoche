@@ -1,29 +1,35 @@
 <script lang="ts">
-	/** A subject's review session, or one goal's. One card at a time, comfortable on a phone. */
+	/**
+	 * A flashcard review: every deck, one deck, or one category of a deck.
+	 * One card at a time, comfortable on a phone.
+	 */
 	import CardReview from '$lib/components/CardReview.svelte';
-	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let { data } = $props();
-	const back = $derived(`/study/${data.subject.slug}/flashcards`);
+
+	const heading = $derived(data.deck ? (data.category ? `${data.deck.name}: ${data.category}` : data.deck.name) : 'Review');
+	const lede = $derived(data.deck ? (data.category ? `The ${data.category} cards due today.` : 'This deck’s cards due today.') : 'Everything due today, from every deck.');
 </script>
 
-<svelte:head><title>Review · {data.subject.name} · prosoche</title></svelte:head>
+<svelte:head><title>{heading} · Flashcards · prosoche</title></svelte:head>
 
 <div class="page">
-	<StudyTabs subject={data.subject} lede={data.goal ? `Reviewing ${data.goal}.` : ''} />
+	<div class="title">
+		<a class="crumb" href="/flashcards">Flashcards</a>
+		<h1>{heading}</h1>
+		<p>{lede}</p>
+	</div>
 
 	{#if data.cards.length === 0}
 		<div class="empty big" data-testid="nothing-due">
 			<p class="tick"><Icon name="check" size={40} /></p>
 			<h2>Nothing due</h2>
-			<p class="muted">
-				{data.total > 0 ? `${data.total} cards here, none scheduled for today.` : 'No cards here yet.'}
-			</p>
-			<a class="btn" href={back}>Back to flashcards</a>
+			<p class="muted">{data.total > 0 ? `${data.total} cards here, none to review today.` : 'No cards here yet.'}</p>
+			<a class="btn" href="/flashcards">Back to flashcards</a>
 		</div>
 	{:else}
-		<CardReview cards={data.cards} today={data.today} {back} />
+		<CardReview cards={data.cards} today={data.today} />
 	{/if}
 </div>
 

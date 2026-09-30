@@ -2,8 +2,7 @@
 	/**
 	 * A subject at a glance: the cards to review now, this week's time and the
 	 * streak, then each goal with its milestones, hours, reading and cards,
-	 * and last the folders its notes and cards come from. A glossary whose
-	 * terms become its cards is linked under the flashcards, to scan for more.
+	 * and last the folders its notes and cards come from.
 	 */
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -36,9 +35,6 @@
 				</span>
 			</div>
 			{#if data.study.due === 0}<p class="empty">Nothing due right now.</p>{/if}
-			{#each data.glossaries as g (g.slug)}
-				<p class="hint" data-testid="subject-glossary"><a href="/glossary/{g.slug}#scan">Scan notes</a> in the {g.name} glossary for more cards.</p>
-			{/each}
 		</section>
 
 		<section class="sheet">

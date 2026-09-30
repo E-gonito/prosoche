@@ -11,7 +11,7 @@ import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
-import { followGlossaryCards, syncAllGlossaryCards } from './study/glossary-cards';
+import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -149,10 +149,8 @@ function start(): Promise<Hub> {
 			// and catch up with any made while the hub was down. The catch-up
 			// runs after the hub resolves, so a large first link does not hold up the
 			// first page; syncs queue one at a time either way.
-			followGlossaryCards(vault, () => loadWorkspaces(vault));
-			void loadWorkspaces(vault)
-				.then((ws) => syncAllGlossaryCards(vault, ws))
-				.catch((e) => console.error('[hub] syncing glossary cards failed', e));
+			followGlossaryCards(vault);
+			void syncAllGlossaryCards(vault).catch((e) => console.error('[hub] syncing glossary cards failed', e));
 			vault.watch();
 			sync.start();
 		},

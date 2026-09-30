@@ -11,9 +11,9 @@
 	 * by its button or by `#scan` in the address), and neither changes
 	 * anything until the user accepts or adds.
 	 *
-	 * The Flashcards line links the glossary to a study subject, whose cards
-	 * the server then keeps in step with every term, and says how they
-	 * stand.
+	 * The Flashcards line turns the glossary's cards on or off, which the
+	 * server then keeps in step with every term as this glossary's deck on
+	 * the Flashcards page, and says how they stand.
 	 */
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
@@ -137,19 +137,15 @@
 	afterNavigate(({ to }) => {
 		if (to?.url.hash === '#scan') scanOpen = true;
 	});
-	const cardsIn = $derived(
-		data.cards.state === 'linked' ? { name: data.cards.subject.name, href: `/study/${data.cards.subject.slug}/flashcards` } : null
-	);
+	const deckHref = $derived(`/flashcards#deck-${data.glossary.slug}`);
+	const cardsIn = $derived(data.cards.state === 'on' ? { name: 'its deck', href: deckHref } : null);
+	let switching = $state(false);
 
-	/** The subject the picker shows: the linked one, the unknown slug, or none. */
-	const study = $derived(data.cards.state === 'linked' ? data.cards.subject.slug : data.cards.state === 'unknown' ? data.cards.study : '');
-	let linking = $state(false);
-
-	async function link(slug: string) {
-		linking = true;
+	async function setFlashcards(on: boolean) {
+		switching = true;
 		problem = '';
-		const result = await api('/api/glossary', { action: 'set-study', glossary: data.glossary.slug, study: slug });
-		linking = false;
+		const result = await api('/api/glossary', { action: 'set-flashcards', glossary: data.glossary.slug, flashcards: on });
+		switching = false;
 		if (!result.ok) problem = result.message;
 		await invalidateAll();
 	}
@@ -196,24 +192,26 @@
 	</div>
 
 	<div class="cards" data-testid="glossary-cards">
-		<label for="glossary-study">Flashcards</label>
-		<select id="glossary-study" class="field" value={study} disabled={linking} onchange={(e) => link(e.currentTarget.value)} data-testid="glossary-study">
-			<option value="">Not linked</option>
-			{#each data.subjects as subject (subject.slug)}<option value={subject.slug}>{subject.name}</option>{/each}
-			{#if data.cards.state === 'unknown'}<option value={data.cards.study}>{data.cards.study} (not a study subject)</option>{/if}
-		</select>
+		<label class="switch">
+			<input
+				type="checkbox"
+				checked={data.cards.state === 'on'}
+				disabled={switching}
+				onchange={(e) => setFlashcards(e.currentTarget.checked)}
+				data-testid="glossary-flashcards"
+			/>
+			<span>Flashcards</span>
+		</label>
 		<span class="small" data-testid="glossary-cards-state">
-			{#if data.cards.state === 'linked'}
-				<a href="/study/{data.cards.subject.slug}/flashcards">{data.cards.cards} {data.cards.cards === 1 ? 'card' : 'cards'} in {data.cards.subject.name}</a>
+			{#if data.cards.state === 'on'}
+				<a href={deckHref}>{data.cards.cards} {data.cards.cards === 1 ? 'card' : 'cards'} in its deck</a>
 				<span class="muted">· {data.cards.pending ? `${data.cards.pending} ${data.cards.pending === 1 ? 'file' : 'files'} to update` : 'up to date'}</span>
-			{:else if data.cards.state === 'unknown'}
-				<span class="muted">Not linked: “{data.cards.study}” is not a study subject, so no cards are kept.</span>
 			{:else}
-				<span class="muted">Not linked. Pick a study subject to make every term a card there.</span>
+				<span class="muted">Off. Turn on to make every term a card, reviewed on the Flashcards page.</span>
 			{/if}
 		</span>
 	</div>
-	{#if data.cards.state === 'linked' && data.cards.problems.length}
+	{#if data.cards.state === 'on' && data.cards.problems.length}
 		<ul class="hint card-problems" data-testid="glossary-cards-problems">
 			{#each data.cards.problems as p (p)}<li>{p}</li>{/each}
 		</ul>
@@ -340,8 +338,7 @@
 	h1 { display: flex; align-items: center; gap: 10px; }
 	code { font: var(--t13) var(--mono); }
 	.cards { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
-	.cards label { font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-	.cards .field { width: auto; flex: 0 1 220px; font-size: var(--t13); }
+	.cards .switch { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 	.card-problems { margin: 0 0 var(--s3); padding-left: var(--s4); }
 	.add { flex-wrap: wrap; margin-bottom: var(--s4); }
 	.add .field { flex: 1 1 140px; }

@@ -34,6 +34,13 @@ export const config = {
 	 * name being the glossary's name: `Glossaries/Computer Science.md`.
 	 */
 	glossaryFolder: 'Glossaries',
+	/**
+	 * Folder at the vault root holding each glossary's flashcards, one folder
+	 * per glossary: `Flashcards/Computer Science/Cloud.md`. It is shared with
+	 * the `.txt` decks another tool generates, so only `.md` files in it are
+	 * prosoche's.
+	 */
+	flashcardFolder: 'Flashcards',
 
 	git: {
 		/**
