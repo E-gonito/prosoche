@@ -10,9 +10,8 @@
  */
 
 import { parseNote, basename } from '../parse/note';
-import { renderMarkdown } from '../render';
+import { renderNote } from '../render';
 import { isMarkdown } from '../vault/paths';
-import { noteHref } from '$lib/shared/links';
 import type { NoteIndex } from '../index/index';
 import type { TreeNode, Vault } from '../vault/index';
 
@@ -62,10 +61,7 @@ export async function readSubjectNote(vault: Vault, index: NoteIndex, folders: s
 	return {
 		path,
 		title: parsed.title || basename(path),
-		html: renderMarkdown(parsed.body, (target) => {
-			const found = index.resolveLink(target);
-			return found ? noteHref(found) : null;
-		}),
+		html: renderNote(index, parsed.body),
 		tags: parsed.tags
 	};
 }
