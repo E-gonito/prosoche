@@ -13,7 +13,7 @@
 	// Seeded once as the form's default, not tracked: reloading the people
 	// list after adding someone must not reset what is mid-typed.
 	// svelte-ignore state_referenced_locally
-	let stage = $state<string>(data.stages[0]);
+	let stage = $state<string>(data.defaultStage);
 	let adding = $state(false);
 	let problem = $state('');
 
@@ -46,7 +46,7 @@
 			{#each g.people as p (p.path)}
 				<a class="person-row" href="/date/people/{encodeURIComponent(p.name)}">
 					<b>{p.name}</b>
-					<span class="muted small">{[p.app, p.place, p.job].filter(Boolean).join(' · ') || '—'}</span>
+					<span class="muted small">{[p.chance !== null ? `${p.chance}% she replies` : null, p.app, p.place, p.job].filter(Boolean).join(' · ') || '—'}</span>
 				</a>
 			{/each}
 		</div>

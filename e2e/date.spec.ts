@@ -122,6 +122,27 @@ test.describe.serial('Date', () => {
 		expect(searchBody.hits ?? []).toEqual([]);
 	});
 
+	test('logs a like sent with a chance, adding her to People at liked', async ({ page }) => {
+		await page.goto('/date');
+		await page.getByTestId('dating-like-name').fill('Iris');
+		await page.getByTestId('dating-like-chance').fill('70');
+		await expect(page.getByTestId('dating-like-chance-value')).toHaveText('70%');
+		await page.getByTestId('dating-like-submit').click();
+		await expect(page.getByTestId('dating-like-added')).toContainText('Iris');
+
+		const note = vaultFile('Private/Dating/People/Iris.md');
+		expect(note).toContain('stage: liked');
+		expect(note).toContain(`liked: ${TODAY}`);
+		expect(note).toContain('chance: 70');
+
+		await page.goto('/date/people');
+		await expect(page.getByRole('link', { name: /Iris/ })).toContainText('70% she replies');
+
+		await page.goto('/date/stats');
+		await expect(page.getByTestId('dating-odds-mean')).toHaveText('70%');
+		await expect(page.getByTestId('dating-odds-replied')).toHaveText('0');
+	});
+
 	test('phone layout: the day stepper and counters are comfortably tappable', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.goto('/date');

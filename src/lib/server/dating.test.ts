@@ -10,6 +10,7 @@ import {
 	addDatingPerson,
 	bestDayOfWeek,
 	gatherInsightsSource,
+	likeOdds,
 	loadDatingPerson,
 	loadDay,
 	loadLedger,
@@ -167,6 +168,25 @@ describe('People', () => {
 		expect(note.content).toContain('stage: talking');
 	});
 
+	it('logs a like sent as a person at stage liked, with the day and the chance', async () => {
+		const result = await addDatingPerson(vault, { name: 'Ada', stage: 'liked', liked: '2026-09-30', chance: 62.4 });
+		const note = await vault.read(result.ok ? result.path : '', { scope: 'private' });
+		expect(note.content).toBe(
+			'---\ntype: person\napp: \nage: \nplace: \njob: \nstage: liked\nliked: 2026-09-30\nchance: 62\n---\n\n# Ada\n'
+		);
+
+		const person = await loadDatingPerson(vault, 'Ada');
+		expect(person).toMatchObject({ stage: 'liked', liked: '2026-09-30', chance: 62 });
+	});
+
+	it('writes no liked or chance line for a person added by hand, and starts them at matched', async () => {
+		await addDatingPerson(vault, { name: 'Ada' });
+		const person = await loadDatingPerson(vault, 'Ada');
+		expect(person).toMatchObject({ stage: 'matched', liked: null, chance: null });
+		const note = await vault.read(person.path, { scope: 'private' });
+		expect(note.content).not.toMatch(/liked:|chance:/);
+	});
+
 	it('refuses to create a person who already has a note', async () => {
 		await addDatingPerson(vault, { name: 'Ada' });
 		const second = await addDatingPerson(vault, { name: 'Ada' });
@@ -208,6 +228,23 @@ describe('People', () => {
 	it('refuses to set a stage on a person with no note', async () => {
 		const result = await setStage(vault, 'Nobody', 'dating');
 		expect(result).toEqual({ ok: false, reason: 'no-note' });
+	});
+});
+
+describe('likeOdds', () => {
+	it('has nothing to say when no like carries a chance', () => {
+		expect(likeOdds([{ stage: 'talking', chance: null }])).toBeNull();
+	});
+
+	it('sets the guesses against who moved past liked', () => {
+		expect(
+			likeOdds([
+				{ stage: 'liked', chance: 20 },
+				{ stage: 'matched', chance: 60 },
+				{ stage: 'ended', chance: 70 },
+				{ stage: 'dating', chance: null }
+			])
+		).toEqual({ rated: 3, meanChance: 0.5, expected: 1.5, replied: 2, waiting: 1 });
 	});
 });
 
