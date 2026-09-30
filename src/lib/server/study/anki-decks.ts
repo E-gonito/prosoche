@@ -2,9 +2,12 @@
  * The one-time import of the user's Anki decks into the study area.
  *
  * The decks are the `.txt` exports under `Flashcards/`. Each becomes one card
- * file under one subject's own `Flashcards/` folder, at the same path, so
- * `Flashcards/CS/Networking/HTTP.txt` becomes
- * `Study/Computer Science/Flashcards/CS/Networking/HTTP.md`. Turning a deck into that file is
+ * file under one subject's own `Flashcards/` folder, at the same path with
+ * ` (cards)` added to its name, so `Flashcards/CS/Networking/HTTP.txt`
+ * becomes `Study/Computer Science/Flashcards/CS/Networking/HTTP (cards).md`.
+ * The decks were exported from notes and carry their names, so without the
+ * suffix every card file would share its name with the note it came from,
+ * and `[[HTTP]]` in Obsidian could open either. Turning a deck into that file is
  * `anki-import.ts`'s job; this module decides which files to write and writes
  * them.
  *
@@ -23,6 +26,9 @@ export type { DeckImport };
 
 /** Where the Anki exports live, vault-relative. */
 const ANKI_FOLDER = 'Flashcards';
+
+/** Added to a deck's name for its card file, so it never shares a note's name. */
+const CARD_FILE_SUFFIX = ' (cards)';
 
 /**
  * Every deck under `Flashcards/` and what importing it does; with `apply`,
@@ -50,7 +56,7 @@ export async function importAnkiDecks(
 	for (const below of await vault.files(ANKI_FOLDER, 'txt', { deep: true })) {
 		const source = `${ANKI_FOLDER}/${below}`;
 		const folder = home.replace(/\/+$/, '');
-		const target = `${folder ? `${folder}/` : ''}${ANKI_FOLDER}/${below.replace(/\.txt$/, '.md')}`;
+		const target = `${folder ? `${folder}/` : ''}${ANKI_FOLDER}/${below.replace(/\.txt$/, `${CARD_FILE_SUFFIX}.md`)}`;
 		const file = parseAnkiDeck((await vault.read(source)).content, source);
 		const base = {
 			source,

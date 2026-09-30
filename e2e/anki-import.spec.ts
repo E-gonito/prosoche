@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { resetVault, VAULT, vaultFile } from './helpers';
 
-const NETWORKING = 'Study/Flashcards/CS/Networking.md';
-const WISDOM = 'Study/Flashcards/Wisdom.md';
+const NETWORKING = 'Study/Flashcards/CS/Networking (cards).md';
+const WISDOM = 'Study/Flashcards/Wisdom (cards).md';
 
 test.describe('Anki import', () => {
 	test.beforeEach(async ({ request }) => {

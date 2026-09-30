@@ -241,7 +241,7 @@ describe('categoryFileName and cardFileHeader', () => {
 
 	it('writes the header of the spec, holding no card', () => {
 		expect(cardFileHeader('Computer Science', 'Cloud')).toBe(
-			'---\ngoal:\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Computer Science]] (Cloud). Edit the terms there; this file is\nkept in step with the glossary.\n'
+			'---\ngoal:\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Glossaries/Computer Science|Computer Science]] (Cloud). Edit the terms there; this file is\nkept in step with the glossary.\n'
 		);
 		expect(cardFileHeader('eye2gene', null)).toContain('category:\n---');
 		expect(scanCards(cardFileHeader('Computer Science', 'Cloud'), 'x.md')).toEqual([]);
@@ -249,10 +249,17 @@ describe('categoryFileName and cardFileHeader', () => {
 });
 
 describe('renamedCardFile', () => {
+	it('upgrades a bare Made from link, from before links went by path, to one by path', () => {
+		const before = '---\ngoal:\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Computer Science]] (Cloud). Edit the terms there.\n';
+		expect(renamedCardFile(before, 'Computer Science', 'CS Terms')).toBe(
+			before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('[[Computer Science]]', '[[Glossaries/CS Terms|CS Terms]]')
+		);
+	});
+
 	it('names the new glossary in the frontmatter and the Made from line, and nothing else', () => {
 		const before = made('Cloud', ['VPC\n??\nMade from [[Computer Science]] is not the header here.', SR]).replace('goal:\n', 'goal: AWS\n');
 		const after = renamedCardFile(before, 'Computer Science', 'CS Terms');
-		expect(after).toBe(before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('Made from [[Computer Science]] (Cloud)', 'Made from [[CS Terms]] (Cloud)'));
+		expect(after).toBe(before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('Made from [[Glossaries/Computer Science|Computer Science]] (Cloud)', 'Made from [[Glossaries/CS Terms|CS Terms]] (Cloud)'));
 	});
 });
 
@@ -332,7 +339,7 @@ describe('syncing a glossary’s cards', () => {
 		const result = await syncGlossaryCards(vault, [cs], 'Glossaries/CS Terms.md', { renamedFrom: 'Computer Science' });
 		expect(result).toMatchObject({ written: [], cards: 2 });
 		expect(await vault.files(FOLDER, 'md')).toEqual([]);
-		expect((await vault.read('Study/CS/Flashcards/Glossary/CS Terms/Cloud.md')).content).toContain('Made from [[CS Terms]] (Cloud)');
+		expect((await vault.read('Study/CS/Flashcards/Glossary/CS Terms/Cloud.md')).content).toContain('Made from [[Glossaries/CS Terms|CS Terms]] (Cloud)');
 	});
 
 	it('syncs every linked glossary at start, and a changed one when it changes', async () => {

@@ -18,7 +18,7 @@
  *
  *     #flashcards
  *
- *     Made from [[Computer Science]] (Cloud). Edit the terms there; this file is
+ *     Made from [[Glossaries/Computer Science|Computer Science]] (Cloud). Edit the terms there; this file is
  *     kept in step with the glossary.
  *
  *     VPC
@@ -173,13 +173,24 @@ export function reconcileGlossaryCards(glossary: string, folder: string, entries
 }
 
 /**
+ * The link a card file's "Made from" line makes to its glossary: by path,
+ * `[[Glossaries/Computer Science|Computer Science]]`, because a glossary
+ * often shares its name with a note (the vault has both
+ * `Glossaries/Computer Science.md` and `Computer Science/Computer
+ * Science.md`), and a bare `[[Computer Science]]` could open either. Pure.
+ */
+function glossaryLink(glossary: string): string {
+	return `[[${GLOSSARY_FOLDER}/${glossary}|${glossary}]]`;
+}
+
+/**
  * The opening of a new card file: `goal:` (empty, for the Flashcards tab's
  * picker), `glossary:` and `category:` (empty for none) in its frontmatter,
  * the `#flashcards` tag, and a line saying where the cards come from. It
  * holds no card. Pure.
  */
 export function cardFileHeader(glossary: string, category: string | null): string {
-	const link = /[[\]|#^]/.test(glossary) ? glossary : `[[${glossary}]]`;
+	const link = /[[\]|#^]/.test(glossary) ? glossary : glossaryLink(glossary);
 	const intro = `Made from ${link}${category ? ` (${category})` : ''}. Edit the terms there; this file is\nkept in step with the glossary.`;
 	const blank = `---\ngoal:\nglossary:\ncategory:\n---\n\n#${FLASHCARD_TAG}\n\n${intro}\n`;
 	const named = setFrontmatterField(blank, 'glossary', glossary);
@@ -502,15 +513,20 @@ export function followGlossaryCards(vault: Vault, workspaces: () => Promise<Work
 
 /**
  * A card file of a renamed glossary, naming the new name: its `glossary:`
- * when that named the old one, and the "Made from" line's link. Everything
- * else stays. Pure.
+ * when that named the old one, and the "Made from" line's link, written by
+ * path (see `glossaryLink`) whether the old one was or was bare, as files
+ * made before links went by path are. Everything else stays. Pure.
  */
 export function renamedCardFile(content: string, from: string, to: string): string {
 	const named = parseNote(content).frontmatter.glossary;
 	let text = typeof named === 'string' && normaliseTerm(named) === normaliseTerm(from) ? setFrontmatterField(content, 'glossary', to) : content;
-	const old = `Made from [[${from}]]`;
-	const at = text.indexOf(old);
-	if (at !== -1 && (at === 0 || text[at - 1] === '\n')) text = `${text.slice(0, at)}Made from [[${to}]]${text.slice(at + old.length)}`;
+	for (const old of [`Made from ${glossaryLink(from)}`, `Made from [[${from}]]`]) {
+		const at = text.indexOf(old);
+		if (at !== -1 && (at === 0 || text[at - 1] === '\n')) {
+			text = `${text.slice(0, at)}Made from ${glossaryLink(to)}${text.slice(at + old.length)}`;
+			break;
+		}
+	}
 	return text;
 }
 

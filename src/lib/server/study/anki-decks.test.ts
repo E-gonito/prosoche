@@ -39,9 +39,9 @@ describe('importAnkiDecks', () => {
 	it('plans every deck without writing anything', async () => {
 		const decks = await importAnkiDecks(vault, 'Study');
 		expect(decks.map((d) => [d.source, d.target, d.deck, d.cards, d.status])).toEqual([
-			['Flashcards/CS/Networking/HTTP.txt', 'Study/Flashcards/CS/Networking/HTTP.md', 'CS::Networking', 2, 'new'],
-			['Flashcards/Empty.txt', 'Study/Flashcards/Empty.md', 'Empty', 0, 'empty'],
-			['Flashcards/Wisdom.txt', 'Study/Flashcards/Wisdom.md', 'Wisdom', 1, 'new']
+			['Flashcards/CS/Networking/HTTP.txt', 'Study/Flashcards/CS/Networking/HTTP (cards).md', 'CS::Networking', 2, 'new'],
+			['Flashcards/Empty.txt', 'Study/Flashcards/Empty (cards).md', 'Empty', 0, 'empty'],
+			['Flashcards/Wisdom.txt', 'Study/Flashcards/Wisdom (cards).md', 'Wisdom', 1, 'new']
 		]);
 		expect(decks[0].sample).toEqual({ front: 'What is HTTP?', back: 'Hyper Text Transfer Protocol\n```\nGET /\n200 OK\n```' });
 		expect(decks[1].sample).toBeNull();
@@ -51,11 +51,11 @@ describe('importAnkiDecks', () => {
 	it('writes each new deck as a card file the card finder reads', async () => {
 		const decks = await importAnkiDecks(vault, 'Study', { apply: true });
 		expect(decks.map((d) => d.status)).toEqual(['created', 'empty', 'created']);
-		expect(await vault.list()).toEqual(['Study/Flashcards/CS/Networking/HTTP.md', 'Study/Flashcards/Wisdom.md']);
+		expect(await vault.list()).toEqual(['Study/Flashcards/CS/Networking/HTTP (cards).md', 'Study/Flashcards/Wisdom (cards).md']);
 
-		const note = (await vault.read('Study/Flashcards/CS/Networking/HTTP.md')).content;
+		const note = (await vault.read('Study/Flashcards/CS/Networking/HTTP (cards).md')).content;
 		expect(note.startsWith('---\ngoal:\nsource: Flashcards/CS/Networking/HTTP.txt\n---\n\n#flashcards/cs/networking\n')).toBe(true);
-		const cards = scanCards(note, 'Study/Flashcards/CS/Networking/HTTP.md');
+		const cards = scanCards(note, 'Study/Flashcards/CS/Networking/HTTP (cards).md');
 		expect(cards.map((c) => c.question)).toEqual(['What is HTTP?', 'What is TCP?']);
 		expect(cards.every((c) => c.schedule === null)).toBe(true);
 	});
@@ -67,27 +67,27 @@ describe('importAnkiDecks', () => {
 			['Flashcards/Empty.txt', 'empty'],
 			['Flashcards/Wisdom.txt', 'created']
 		]);
-		expect(await vault.list()).toEqual(['Study/Flashcards/Wisdom.md']);
+		expect(await vault.list()).toEqual(['Study/Flashcards/Wisdom (cards).md']);
 	});
 
 	it('never overwrites a card file that is already there, and says so', async () => {
 		await mkdir(join(root, 'Study/Flashcards'), { recursive: true });
-		await writeFile(join(root, 'Study/Flashcards/Wisdom.md'), 'mine\n');
+		await writeFile(join(root, 'Study/Flashcards/Wisdom (cards).md'), 'mine\n');
 
 		const planned = await importAnkiDecks(vault, 'Study');
 		expect(planned.find((d) => d.source === 'Flashcards/Wisdom.txt')?.status).toBe('exists');
 
 		const applied = await importAnkiDecks(vault, 'Study', { apply: true });
 		expect(applied.map((d) => d.status)).toEqual(['created', 'empty', 'exists']);
-		expect(await readFile(join(root, 'Study/Flashcards/Wisdom.md'), 'utf8')).toBe('mine\n');
+		expect(await readFile(join(root, 'Study/Flashcards/Wisdom (cards).md'), 'utf8')).toBe('mine\n');
 	});
 
 	it('is harmless to run twice', async () => {
 		await importAnkiDecks(vault, 'Study', { apply: true });
-		const first = (await vault.read('Study/Flashcards/Wisdom.md')).content;
+		const first = (await vault.read('Study/Flashcards/Wisdom (cards).md')).content;
 		const again = await importAnkiDecks(vault, 'Study', { apply: true });
 		expect(again.map((d) => d.status)).toEqual(['exists', 'empty', 'exists']);
-		expect((await vault.read('Study/Flashcards/Wisdom.md')).content).toBe(first);
+		expect((await vault.read('Study/Flashcards/Wisdom (cards).md')).content).toBe(first);
 	});
 
 	it('never touches a .txt deck', async () => {
@@ -100,7 +100,7 @@ describe('importAnkiDecks', () => {
 
 	it('files cards beside the decks when study has no home folder', async () => {
 		const decks = await importAnkiDecks(vault, '');
-		expect(decks[2].target).toBe('Flashcards/Wisdom.md');
+		expect(decks[2].target).toBe('Flashcards/Wisdom (cards).md');
 	});
 
 	it('reads as nothing to import when there is no Flashcards folder', async () => {
