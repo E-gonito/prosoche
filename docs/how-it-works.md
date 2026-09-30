@@ -583,13 +583,29 @@ rebase or reset to the remote, with `git rebase origin/<branch>` or
 
 ## Settings
 
-There is no mode that writes without you. prosoche never passes
-`--dangerously-skip-permissions` to the CLI, and the CLI is never given the
-vault itself as a working directory — both are enforced in code, not by a
-setting someone could toggle off. The limits section holds the daily budget,
-concurrency, and blast-radius caps that apply no matter what a feature itself
-asks for, which is also why its heading is just "Limits" rather than a
-sentence explaining that. The ten guardrails listed below are the same story:
-they are code paths, not instructions in a prompt, so they hold regardless of
-whatever the model itself says about what it is about to do.
+Every model run is read-only, always, and that is not a setting. The CLI is
+given an empty tool list and no directory, runs from the temp folder rather
+than the vault, and sees only the notes the server puts in its prompt;
+prosoche never passes `--dangerously-skip-permissions`. All three checks are
+made on the actual arguments just before the process starts. So the table
+per feature holds only model, effort, budget and timeout, and there is no
+permission column. Anything that would change a note, the morning briefing
+included, comes back as a proposal and is written only after you accept it.
 
+The limits section holds the daily budget and the blast-radius caps that
+apply no matter what a feature itself asks for. The nine guardrails listed
+below are the same story: they are code paths, not instructions in a prompt,
+so they hold regardless of whatever the model itself says about what it is
+about to do. Their numbers skip G3, "sandbox for tool runs", which went with
+the tool runs; the audit log keeps quoting the old numbers, so they were not
+renumbered. Undo lists the snapshots taken before each accepted write; each
+is kept seven days, and older ones are cleared the next time a proposal is
+applied.
+
+Save rewrites `_hub/ai.md` whole: its frontmatter and its explanatory text
+come from the form, so a hand edit to the prose or a key the page does not
+show (a `defaults:` block, a comment) is replaced. The exception is a
+`features:` entry for a feature this version does not know, such as one since
+removed: it is carried over byte for byte, after the known ones. A
+`permission:` line from an older file is ignored on read and dropped from the
+known features on save.
