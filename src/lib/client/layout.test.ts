@@ -50,21 +50,16 @@ describe('layoutBlocks', () => {
 });
 
 describe('timelineRange', () => {
-	it('defaults to the vault day start', () => {
-		expect(timelineRange([])).toEqual({ fromMin: 360, toMin: 1320 });
+	it('runs from the vault day start to midnight', () => {
+		expect(timelineRange([])).toEqual({ fromMin: 360, toMin: 1440 });
 	});
 
 	it('widens to fit an early block', () => {
 		expect(timelineRange([block(310, 400)]).fromMin).toBe(300);
 	});
 
-	it('widens to fit a late block', () => {
-		expect(timelineRange([block(1380, 1430)]).toMin).toBe(1440);
-	});
-
-	it('never returns an inverted or tiny range', () => {
-		const r = timelineRange([block(1400, 1430)]);
-		expect(r.toMin - r.fromMin).toBeGreaterThanOrEqual(120);
+	it('never starts before midnight', () => {
+		expect(timelineRange([block(0, 30)]).fromMin).toBe(0);
 	});
 });
 

@@ -62,16 +62,16 @@ export function layoutBlocks<T>(items: T[], at: (item: T) => { startMin: number;
 	return placed;
 }
 
-/** The hour range a timeline should show: the vault's day start, widened to fit. */
-export function timelineRange(blocks: Array<{ startMin: number; endMin: number }>, dayStartHour = 6): { fromMin: number; toMin: number } {
+/**
+ * The hour range a timeline shows: from the vault's day start, widened to
+ * fit an earlier block, always through to midnight. The end is never
+ * trimmed, because a block can only be dragged onto hours that are drawn,
+ * and an evening habit needs somewhere to land.
+ */
+export function timelineRange(blocks: Array<{ startMin: number }>, dayStartHour = 6): { fromMin: number; toMin: number } {
 	let fromMin = dayStartHour * 60;
-	let toMin = 22 * 60;
-	for (const b of blocks) {
-		fromMin = Math.min(fromMin, Math.floor(b.startMin / 60) * 60);
-		const end = b.endMin > b.startMin ? b.endMin : 1440;
-		toMin = Math.max(toMin, Math.ceil(end / 60) * 60);
-	}
-	return { fromMin: Math.max(0, fromMin), toMin: Math.min(1440, Math.max(toMin, fromMin + 120)) };
+	for (const b of blocks) fromMin = Math.min(fromMin, Math.floor(b.startMin / 60) * 60);
+	return { fromMin: Math.max(0, fromMin), toMin: 1440 };
 }
 
 /** Round to the nearest step, matching the vault's Day Planner snap setting. */
