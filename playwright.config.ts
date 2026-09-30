@@ -35,7 +35,7 @@ export default defineConfig({
 		actionTimeout: 10_000
 	},
 	webServer: {
-		command: `E2E_VAULT=${VAULT} E2E_REMOTE=${ROOT}/remote.git node e2e/make-vault.mjs && HUB_VAULT=${VAULT} HUB_DB=${ROOT}/index.db HUB_UNDO=${ROOT}/undo PORT=${PORT} HOST=127.0.0.1 node build/index.js`,
+		command: `E2E_VAULT=${VAULT} E2E_REMOTE=${ROOT}/remote.git node e2e/make-vault.mjs && HUB_VAULT=${VAULT} HUB_DB=${ROOT}/index.db HUB_UNDO=${ROOT}/undo HUB_CLAUDE_CATALOG=${ROOT}/model-catalog PORT=${PORT} HOST=127.0.0.1 node build/index.js`,
 		port: PORT,
 		reuseExistingServer: false,
 		timeout: 60_000

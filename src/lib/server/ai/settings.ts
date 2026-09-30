@@ -21,15 +21,15 @@ import { parseNote } from '../parse/note';
 import { config } from '../config';
 import type { Vault } from '../vault/index';
 import { DEFAULT_BLAST, DEFAULT_BUDGET } from './guardrails';
+import { availableModels } from './models';
 import {
 	EFFORTS,
 	type AiSettings,
 	FEATURE_DEFAULTS,
 	FEATURE_LABELS,
-	MODELS,
+	SHIPPED_MODELS,
 	type Effort,
 	type FeatureId,
-	type Model,
 	type RunSettings
 } from '$lib/shared/ai';
 
@@ -38,7 +38,7 @@ export const SETTINGS_PATH = `${config.hubFolder}/ai.md`;
 export type { AiSettings };
 
 const FEATURES = Object.keys(FEATURE_DEFAULTS) as FeatureId[];
-const MODEL_IDS = MODELS.map((m) => m.id) as readonly string[];
+const SHIPPED_IDS: readonly string[] = SHIPPED_MODELS.map((m) => m.id);
 
 /**
  * The settings a vault with no `_hub/ai.md` gets: off, small budgets.
@@ -66,19 +66,22 @@ export function defaultSettings(): AiSettings {
  * writes, so opening the settings page does not create a file.
  *
  * Never throws and never returns a value outside the allowed sets: a model id
- * this version does not know or an effort of `maximum` becomes the default
- * for that field. Failing towards the
+ * that is not on offer (`availableModels`) or an effort of `maximum` becomes
+ * the default for that field. Failing towards the
  * cautious value is the whole point - a typo must not widen what a model may
  * do.
  */
 export async function loadSettings(vault: Vault): Promise<AiSettings> {
 	const note = await vault.read(SETTINGS_PATH);
 	if (!note.exists) return defaultSettings();
-	return fromFrontmatter(parseNote(note.content, SETTINGS_PATH).frontmatter);
+	return fromFrontmatter(parseNote(note.content, SETTINGS_PATH).frontmatter, await modelIds());
 }
 
-/** Parse the frontmatter of `_hub/ai.md`. Exported because it is the part worth testing. */
-export function fromFrontmatter(fm: Record<string, unknown>): AiSettings {
+/**
+ * Parse the frontmatter of `_hub/ai.md`, allowing the models in `models`.
+ * Exported because it is the part worth testing.
+ */
+export function fromFrontmatter(fm: Record<string, unknown>, models: readonly string[] = SHIPPED_IDS): AiSettings {
 	const base = defaultSettings();
 	// A `defaults:` block applies to every feature; a feature's own row wins
 	// field by field, so "Opus for the weekly review" is one line to write.
@@ -86,7 +89,7 @@ export function fromFrontmatter(fm: Record<string, unknown>): AiSettings {
 	const features = Object.fromEntries(
 		FEATURES.map((feature) => [
 			feature,
-			readRun({ ...shared, ...record(record(fm.features)[feature]) }, FEATURE_DEFAULTS[feature])
+			readRun({ ...shared, ...record(record(fm.features)[feature]) }, FEATURE_DEFAULTS[feature], models)
 		])
 	) as Record<FeatureId, RunSettings>;
 
@@ -109,9 +112,9 @@ export function fromFrontmatter(fm: Record<string, unknown>): AiSettings {
  * One feature's row over the shipped default for that feature. Every field is
  * independent, so a partial row - the normal case - keeps the rest.
  */
-function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings {
+function readRun(fm: Record<string, unknown>, shipped: RunSettings, models: readonly string[]): RunSettings {
 	return {
-		model: pick(fm.model, MODEL_IDS, shipped.model) as Model,
+		model: pick(fm.model, models, shipped.model),
 		effort: pick(fm.effort, EFFORTS, shipped.effort) as Effort,
 		budgetUsd: num(fm.budget_usd, shipped.budgetUsd, 0, 10),
 		timeoutSeconds: Math.round(num(fm.timeout_s, shipped.timeoutSeconds, 5, 900))
@@ -139,9 +142,10 @@ function readRun(fm: Record<string, unknown>, shipped: RunSettings): RunSettings
  * calls it. Never stores a value outside the allowed sets.
  */
 export async function saveSettings(vault: Vault, settings: unknown): Promise<AiSettings> {
-	const stored = normalise(settings);
+	const models = await modelIds();
+	const stored = normalise(settings, models);
 	const existing = await vault.read(SETTINGS_PATH);
-	await vault.write(SETTINGS_PATH, render(stored, unknownFeatureRows(existing.content)));
+	await vault.write(SETTINGS_PATH, render(stored, unknownFeatureRows(existing.content), models));
 	return stored;
 }
 
@@ -179,7 +183,7 @@ export function unknownFeatureRows(content: string): string {
  * file speaks snake_case; this is the one place that knows both, so the
  * checking happens once rather than at each end.
  */
-export function normalise(value: unknown): AiSettings {
+export function normalise(value: unknown, models: readonly string[] = SHIPPED_IDS): AiSettings {
 	const raw = record(value);
 	const budget = record(raw.budget);
 	const blast = record(raw.blast);
@@ -197,7 +201,7 @@ export function normalise(value: unknown): AiSettings {
 				return [f, { model: row.model, effort: row.effort, budget_usd: row.budgetUsd, timeout_s: row.timeoutSeconds }];
 			})
 		)
-	});
+	}, models);
 }
 
 /** The frontmatter object, as a plain record, for round-trip testing. */
@@ -227,7 +231,7 @@ export function toFrontmatter(settings: AiSettings): Record<string, unknown> {
  * The file as a person reads it: frontmatter first, then what it all means.
  * `unknownRows` is `unknownFeatureRows` of the file being replaced.
  */
-function render(settings: AiSettings, unknownRows = ''): string {
+function render(settings: AiSettings, unknownRows: string, models: readonly string[]): string {
 	const rows = FEATURES.map((f) => {
 		const run = settings.features[f];
 		return [
@@ -275,7 +279,7 @@ the hub does not pass \`--dangerously-skip-permissions\`. Feature entries this
 version does not know are kept as they are when the settings page saves.
 
 **Effort** is \`low\`, \`medium\`, \`high\` or \`xhigh\`. **Model** is one of
-${MODEL_IDS.join(', ')}.
+${models.join(', ')}.
 
 The limits below the budgets are enforced whatever a feature asks for: at most
 ${settings.blast.maxFiles} files in one proposal, no file may lose more than
@@ -283,6 +287,11 @@ ${Math.round(settings.blast.maxLineLoss * 100)}% of its lines, and
 \`.obsidian/\`, \`.git/\`, \`.stversions/\`, this file and \`CLAUDE.md\` are
 never writable by an AI path. Every run is logged to \`_hub/ai-log/\`.
 `;
+}
+
+/** The ids `availableModels` offers, the set every read and write checks against. */
+async function modelIds(): Promise<string[]> {
+	return (await availableModels()).map((m) => m.id);
 }
 
 /* ---------------------------------------------------------------- values -- */

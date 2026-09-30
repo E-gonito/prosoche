@@ -14,7 +14,6 @@
 		EFFORTS,
 		FEATURE_LABELS,
 		GUARDRAILS,
-		MODELS,
 		type AiSettings,
 		type FeatureId
 	} from '$lib/shared/ai';
@@ -93,7 +92,7 @@
 					<th scope="row">{FEATURE_LABELS[feature]}</th>
 					<td>
 						<select bind:value={settings.features[feature].model} aria-label="{FEATURE_LABELS[feature]} model" data-testid="model-{feature}">
-							{#each MODELS as m (m.id)}<option value={m.id} title={m.hint}>{m.label}</option>{/each}
+							{#each data.models as m (m.id)}<option value={m.id} title={m.hint}>{m.label}</option>{/each}
 						</select>
 					</td>
 					<td>

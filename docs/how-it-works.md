@@ -767,6 +767,13 @@ per feature holds only model, effort, budget and timeout, and there is no
 permission column. Anything that would change a note, the morning briefing
 included, comes back as a proposal and is written only after you accept it.
 
+The model picker offers whatever Claude Code itself offers. The CLI keeps
+its model list in `~/.claude/cache/model-catalog/` and refreshes it on its
+own, so a newly released model appears here the next time the page loads,
+without updating prosoche. The models prosoche ships with are always offered
+too, so a setting that names an older model stays valid. A model that is not
+on offer falls back to that feature's default, which is Sonnet 5.5.
+
 The limits section holds the daily budget and the blast-radius caps that
 apply no matter what a feature itself asks for. The nine guardrails listed
 below are the same story: they are code paths, not instructions in a prompt,

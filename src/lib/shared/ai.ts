@@ -8,22 +8,37 @@
  * file only names them.
  */
 
+/** One entry in the model picker. */
+export interface ModelOption {
+	id: string;
+	label: string;
+	hint: string;
+}
+
 /**
- * Model ids the picker offers.
+ * The models this version knows, for when Claude Code's own catalog cannot be
+ * read. The picker normally offers that catalog instead (`ai/models.ts`), so
+ * a model released after this list was written shows up without a code
+ * change.
  *
  * Written out rather than using the CLI's `opus`/`sonnet` aliases, because a
  * run is stamped with what produced it and "sonnet" stops meaning anything
  * once the alias moves.
  */
-export const MODELS = [
+export const SHIPPED_MODELS: readonly ModelOption[] = [
 	{ id: 'claude-opus-5-5', label: 'Opus 5.5', hint: 'The newest Opus. Deep reasoning; slow and dear.' },
-	{ id: 'claude-opus-5', label: 'Opus 5', hint: 'The previous Opus. Deep reasoning; slow and dear.' },
-	{ id: 'claude-sonnet-5', label: 'Sonnet 5', hint: 'The default. Good at everything.' },
+	{ id: 'claude-sonnet-5-5', label: 'Sonnet 5.5', hint: 'The default. Good at everything.' },
+	{ id: 'claude-fable-5-1', label: 'Fable 5.1', hint: 'Design review and hard debugging.' },
 	{ id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', hint: 'Fast and cheap. Triage and sorting.' },
-	{ id: 'claude-fable-5-1', label: 'Fable 5.1', hint: 'Design review and hard debugging.' }
-] as const;
+	{ id: 'claude-opus-5', label: 'Opus 5', hint: 'The previous Opus.' },
+	{ id: 'claude-sonnet-5', label: 'Sonnet 5', hint: 'The previous Sonnet.' }
+];
 
-export type Model = (typeof MODELS)[number]['id'];
+/**
+ * A model id. A plain string, because the ids on offer are read at run time;
+ * `loadSettings` only ever hands out one that was on offer.
+ */
+export type Model = string;
 
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const;
 export type Effort = (typeof EFFORTS)[number];
@@ -66,12 +81,12 @@ export interface RunStamp extends RunSettings {
  * copies of this table would drift.
  */
 export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
-	briefing: { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
-	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 180 },
+	briefing: { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
+	'glossary-lookup': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 180 },
 	// Per batch: up to 60,000 characters of notes in, up to 25 entries out.
-	'glossary-scan': { model: 'claude-sonnet-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 240 },
+	'glossary-scan': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 240 },
 	// Kept low because a read on a private log is a small, occasional ask.
-	'dating-insights': { model: 'claude-sonnet-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 }
+	'dating-insights': { model: 'claude-sonnet-5-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
