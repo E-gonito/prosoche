@@ -3,7 +3,6 @@ import { hub } from '$server/hub';
 import { today } from '$server/daily';
 import { studySummary, subjectView } from '$server/study/summary';
 import { readLede } from '$server/parse/note';
-import { noteHref } from '$lib/shared/links';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -43,9 +42,8 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 		const definition = await vault.read(subject.path);
 		return {
 			subject,
-			// What the heading shows and its Edit changes: the subject's own file.
-			details: { name: subject.name, description: readLede(definition.content), color: subject.color, tag: subject.scope.tags?.[0] ?? '' },
-			definitionHref: noteHref(subject.path),
+			// What the heading shows, from the subject's own file.
+			details: { name: subject.name, description: readLede(definition.content), color: subject.color },
 			today: day,
 			study: subjectView(await studySummary(vault, subject), day)
 		};

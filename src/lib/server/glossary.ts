@@ -42,7 +42,7 @@ import { config } from './config';
 import { appendEntry, deleteEntry, editEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type EntryChange, type GlossaryEntry } from './parse/glossary';
 import { contactName } from './parse/contact';
 import { setFrontmatterField } from './parse/frontmatter';
-import { basename, parseNote, setLede } from './parse/note';
+import { basename, parseNote, readLede, setLede } from './parse/note';
 import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
@@ -85,7 +85,10 @@ export interface Glossary {
 interface GlossarySummary {
 	name: string;
 	slug: string;
+	path: string;
 	color: string;
+	/** The paragraph under its title (see `readLede`); '' when there is none. */
+	description: string;
 	terms: number;
 	/** Entries still to look up. */
 	pending: number;
@@ -137,17 +140,20 @@ export async function findGlossary(vault: Vault, workspaces: Workspace[], slug: 
 }
 
 /**
- * Every glossary with its size and the workspaces pointing at it, sorted by
- * name. Reads each file. Never writes.
+ * Every glossary with its size, its description and the workspaces pointing
+ * at it, sorted by name. Reads each file. Never writes.
  */
 export async function listGlossaries(vault: Vault, workspaces: Workspace[]): Promise<GlossarySummary[]> {
 	const out: GlossarySummary[] = [];
 	for (const g of await glossaries(vault, workspaces)) {
-		const entries = parseGlossary((await vault.read(g.path)).content);
+		const content = (await vault.read(g.path)).content;
+		const entries = parseGlossary(content);
 		out.push({
 			name: g.name,
 			slug: g.slug,
+			path: g.path,
 			color: g.color,
+			description: readLede(content),
 			terms: entries.length,
 			pending: entries.filter((e) => e.pending).length
 		});

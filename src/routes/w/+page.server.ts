@@ -4,11 +4,12 @@ import { openCards } from '$server/kanban';
 import { belongsTo, legacyInbox, readInbox, unfiled } from '$server/inbox';
 import { readLog } from '$server/log';
 import { readLede } from '$server/parse/note';
+import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /**
  * Every workspace, one row each: a glance at what needs attention before you
- * open one.
+ * open one, and what its Edit form starts from.
  */
 export const load: PageServerLoad = async () => {
 	const { vault, workspaces } = await hub();
@@ -26,6 +27,8 @@ export const load: PageServerLoad = async () => {
 				name: workspace.name,
 				color: workspace.color,
 				description: readLede(note.content),
+				tag: workspace.tag,
+				fileHref: noteHref(workspace.path),
 				openTasks: cards.filter((c) => c.workspace.slug === workspace.slug).length,
 				inboxCount: inbox.filter((l) => belongsTo(l, defs, workspace)).length + legacy.lines.length,
 				latestLog: readLog(log.content)[0]?.day ?? null

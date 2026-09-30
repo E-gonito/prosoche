@@ -41,37 +41,41 @@ test.describe('Glossary', () => {
 		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Computer Science', 'Work']);
 	});
 
-	test('a glossary is renamed in place, and the workspace pointing at it follows', async ({ page }) => {
+	test('a glossary is renamed from the list, and the workspace pointing at it follows', async ({ page }) => {
 		const content = vaultFile('Glossaries/Work.md');
 		const definition = vaultFile('_hub/workspaces/work.md');
-		await page.goto('/glossary/work');
-		await page.getByTestId('edit-details').click();
-		await page.getByTestId('details-name').fill('Eye2Gene');
-		await page.getByTestId('details-save').click();
-		await expect(page).toHaveURL(/\/glossary\/eye2gene$/);
-		await expect(page.locator('h1')).toHaveText('Eye2Gene');
+		await page.goto('/glossary');
+		const row = page.getByTestId('glossary-row').filter({ hasText: 'Work' });
+		await row.getByTestId('edit-details').click();
+		await row.getByTestId('details-name').fill('Eye2Gene');
+		await row.getByTestId('details-save').click();
+		await expect(page.getByTestId('glossary-row').filter({ hasText: 'Eye2Gene' })).toBeVisible();
 		expect(vaultFile('Glossaries/Eye2Gene.md')).toBe(content);
 		expect(vaultFile('Glossaries/Work.md')).toBe('');
 		expect(vaultFile('_hub/workspaces/work.md')).toBe(definition.replace('glossary: Work', 'glossary: Eye2Gene'));
 	});
 
-	test('a glossary’s description is the line under its title, edited like a workspace’s', async ({ page }) => {
-		await page.goto('/glossary/work');
-		await page.getByTestId('edit-details').click();
-		await page.getByTestId('details-description-field').fill('Words from the day job.');
-		await page.getByTestId('details-save').click();
-		await expect(page.getByTestId('details-description')).toHaveText('Words from the day job.');
+	test('a glossary’s description is edited from the list, and shown under its title', async ({ page }) => {
+		await page.goto('/glossary');
+		const row = page.getByTestId('glossary-row').filter({ hasText: 'Work' });
+		await row.getByTestId('edit-details').click();
+		await row.getByTestId('details-description-field').fill('Words from the day job.');
+		await row.getByTestId('details-save').click();
+		await expect(row).toContainText('Words from the day job.');
 		expect(vaultFile('Glossaries/Work.md')).toMatch(/^# Glossary\n\nWords from the day job\.\n/m);
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('details-description')).toHaveText('Words from the day job.');
+		await expect(page.getByTestId('edit-details')).toHaveCount(0);
 	});
 
-	test('a glossary is deleted after asking in place', async ({ page }) => {
-		await page.goto('/glossary/work');
-		await page.getByTestId('delete-glossary').click();
-		await expect(page.getByTestId('delete-glossary-ask')).toContainText('Delete this glossary and its 2 terms?');
-		await page.getByTestId('delete-glossary-confirm').click();
-		await expect(page).toHaveURL(/\/glossary$/);
+	test('a glossary is deleted from the list after asking in place', async ({ page }) => {
+		await page.goto('/glossary');
+		const row = page.getByTestId('glossary-row').filter({ hasText: 'Work' });
+		await row.getByTestId('delete-details').click();
+		await expect(row.getByTestId('delete-details-ask')).toContainText('Delete this glossary and its 2 terms?');
+		await row.getByTestId('delete-details-confirm').click();
+		await expect(page.getByTestId('glossary-row').filter({ hasText: 'Work' })).toHaveCount(0);
 		expect(vaultFile('Glossaries/Work.md')).toBe('');
-		await expect(page.getByTestId('glossaries')).toContainText('No glossary yet.');
 	});
 
 	test('filters by text and by category tab', async ({ page }) => {
