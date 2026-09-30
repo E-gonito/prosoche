@@ -101,7 +101,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		expect(cards).toEqual([]);
 	});
 
-	it('names the study module and links to the review screen once something is due', async () => {
+	it('gives each subject its own line, linking to its own review, once something is due', async () => {
 		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		await vault.write('Filipino/Words.md', '#flashcards\n\nAso::Dog\n');
 		await vault.write('Elsewhere/Cards.md', '#flashcards\n\nNot::a subject\n');
@@ -113,9 +113,12 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		}
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
 		expect(cards).toHaveLength(1);
-		expect(cards[0]).toMatchObject({ module: 'study', href: '/study/review' });
-		// One from each subject; the note in no subject's folders is not counted.
-		expect(cards[0].items[0].text).toContain('2 cards');
+		expect(cards[0]).toMatchObject({ module: 'study', href: '/study' });
+		// One line per subject; the note in no subject's folders is not counted.
+		expect(cards[0].items).toEqual([
+			{ text: 'CS: 1 card', meta: '1 new today', href: '/study/cs/review' },
+			{ text: 'Filipino: 1 card', meta: '1 new today', href: '/study/fil/review' }
+		]);
 	});
 
 	it('counts only each subject’s new cards for today, as Study does', async () => {
@@ -126,7 +129,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 			index.put(path, note.content, note.mtimeMs, note.hash);
 		}
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
-		expect(cards[0].items[0]).toMatchObject({ text: '1 card ready to review', meta: '1 new today' });
+		expect(cards[0].items).toEqual([{ text: 'CS: 1 card', meta: '1 new today', href: '/study/cs/review' }]);
 	});
 
 	it('counts nothing when there is no subject, rather than the whole vault', async () => {

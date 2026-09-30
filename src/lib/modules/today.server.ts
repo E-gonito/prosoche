@@ -31,37 +31,35 @@ export interface TodayCardContext {
 	hub: Hub;
 }
 
-/** How many due cards a contributor names before it just gives the total. */
-const SHOWN = 3;
-
 /**
- * Flashcards due for review today, across every study subject: those due
- * and each subject's new cards for today, by the same rule as Study's
- * counts and its review (`dueEverywhere`).
+ * Flashcards due for review today, one line per study subject: each
+ * subject's cards due and its own new cards for today, by the same rule as
+ * that subject's review, which the line links to. Split so a day can take
+ * one subject's twenty rather than every subject's at once.
  *
- * Inputs: the viewed day and the hub. Output: a card linking to the review
- * of everything due, or null once there is nothing due — a permanent "0 due"
- * card would be noise on every day but the ones it matters. Side effects:
- * reads the vault and the index.
+ * Inputs: the viewed day and the hub. Output: a card with a line for each
+ * subject with something ready, in workspace order, or null once no subject
+ * has anything — a permanent "0 due" card would be noise on every day but
+ * the ones it matters. Side effects: reads the vault and the index.
  */
 async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
 	const subjects = subjectsOf(await h.workspaces());
-	const queue = await dueEverywhere(h.vault, h.index, subjects, day, SHOWN);
-	const dueCount = queue.due + queue.fresh;
-	if (dueCount === 0) return null;
-
-	return {
-		module: 'study',
-		title: 'Flashcards due',
-		href: '/study/review',
-		items: [
+	const queues = await Promise.all(subjects.map((s) => dueEverywhere(h.vault, h.index, [s], day, 0)));
+	const items = subjects.flatMap((subject, i) => {
+		const { due, fresh } = queues[i];
+		const ready = due + fresh;
+		if (ready === 0) return [];
+		return [
 			{
-				text: `${dueCount} card${dueCount === 1 ? '' : 's'} ready to review`,
-				meta: queue.fresh ? `${queue.fresh} new today` : undefined,
-				href: '/study/review'
+				text: `${subject.name}: ${ready} card${ready === 1 ? '' : 's'}`,
+				meta: fresh ? `${fresh} new today` : undefined,
+				href: `/study/${subject.slug}/review`
 			}
-		]
-	};
+		];
+	});
+	if (!items.length) return null;
+
+	return { module: 'study', title: 'Flashcards due', href: '/study', items };
 }
 
 /**
