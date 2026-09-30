@@ -85,6 +85,8 @@ export interface TodayData {
 	/** Open board cards overdue as of the real today, soonest first. */
 	overdueCards: OpenCard[];
 	workspaces: WorkspaceGroup[];
+	/** Monday to Sunday of the viewed day's week: each day's tasks done and in all. */
+	week: Array<{ day: string; done: number; total: number }>;
 	/** `Inbox/Capture.md`'s unfiled lines: how many, and the newest few. */
 	inbox: { count: number; lines: InboxLine[] };
 	cards: TodayCard[];

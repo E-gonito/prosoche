@@ -77,6 +77,16 @@ export function summaryLine(input: { total: number; done: number; plannedMinutes
 	return parts.join(' · ');
 }
 
+/**
+ * The seven days, Monday to Sunday, of the week `day` falls in. Pure; days
+ * are labels, so this is calendar arithmetic on the key, not on an instant.
+ */
+export function weekOf(day: DayKey): DayKey[] {
+	const [y, m, d] = day.split('-').map(Number);
+	const fromMonday = (new Date(y, m - 1, d).getDay() + 6) % 7;
+	return Array.from({ length: 7 }, (_, i) => shiftDay(day, i - fromMonday));
+}
+
 interface TodayDeps {
 	vault: Vault;
 	index: NoteIndex;
@@ -162,6 +172,13 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 
 	const doneCount = tasks.filter((t) => t.status === 'done' || t.status === 'cancelled').length;
 
+	// Done against planned for each day of the week, from each day's own note
+	// as the index has it: a day with no note is 0 of 0.
+	const week = weekOf(day).map((d) => {
+		const own = index.tasksIn(dailyNotePath(d)).filter((t) => !t.fenced);
+		return { day: d, done: own.filter((t) => !isOpen(t)).length, total: own.length };
+	});
+
 	return {
 		day,
 		label: formatTitleDay(day),
@@ -189,6 +206,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		overdueCards,
 		workspaces: workspaceGroups,
 		inbox: { count: inbox.length, lines: inbox.slice(0, INBOX_LIMIT) },
+		week,
 		summary: summaryLine({
 			total: tasks.length,
 			done: doneCount,
