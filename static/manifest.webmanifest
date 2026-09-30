@@ -16,11 +16,11 @@
 	],
 	"shortcuts": [
 		{ "name": "Today", "url": "/" },
-		{ "name": "Search", "url": "/search" },
+		{ "name": "Search", "url": "/notes" },
 		{ "name": "Notes", "url": "/notes" }
 	],
 	"share_target": {
-		"action": "/share",
+		"action": "/today",
 		"method": "GET",
 		"params": {
 			"title": "share_title",
