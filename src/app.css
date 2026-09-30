@@ -116,6 +116,16 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 .title p { margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
 .title .crumb { font-size: var(--t13); color: var(--muted); display: inline-block; margin-bottom: var(--s1); }
 
+/* Small capitals: the type of a label, a card's heading, a column's. */
+.caps,
+.label,
+.card h3 {
+	font: 600 var(--t12)/1.2 var(--sans);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--muted);
+}
+
 /*
  * A section label: small capitals over a group, the way the primer's
  * "YOUR PRODUCT, IN THE PUBLISHED NUMBERS" sits over its list. Sections are
@@ -126,10 +136,6 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 	align-items: center;
 	gap: var(--s2);
 	margin: var(--s6) 0 var(--s3);
-	font: 600 var(--t12)/1.2 var(--sans);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--muted);
 }
 .label:first-child { margin-top: 0; }
 .label .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -222,6 +228,79 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 }
 .icon-btn:hover { background: var(--soft); color: var(--text); }
 
+/* A workspace's colour: a dot. `--dot` is the colour, `.lg` the size for a heading. */
+.dot {
+	flex: none;
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--dot);
+}
+.dot.lg { width: 11px; height: 11px; }
+
+/* A tick box: a button that says whether it is pressed. */
+.box {
+	flex: none;
+	width: var(--s4);
+	height: var(--s4);
+	padding: 0;
+	border: 1.5px solid #9aa0a6;
+	border-radius: 3px;
+	background: var(--field);
+	font-size: var(--t11);
+	line-height: 1;
+	color: #fff;
+	cursor: pointer;
+}
+.box:hover { border-color: var(--accent); }
+.box[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); }
+
+/* A dialog: the native element, centred, with one backdrop for all of them. */
+dialog::backdrop { background: rgba(42, 38, 34, 0.35); }
+.modal {
+	border: 0;
+	padding: 0;
+	border-radius: var(--r-lg);
+	max-width: 560px;
+	width: calc(100% - 40px);
+	background: var(--panel);
+	color: var(--text);
+	box-shadow: var(--shadow-lg);
+}
+
+/* What follows the pointer while something is dragged. */
+.drag-ghost {
+	position: fixed;
+	z-index: 50;
+	pointer-events: none;
+	background: var(--text);
+	color: #fff;
+	border-radius: var(--r-sm);
+	padding: var(--s1) 9px;
+	font-size: var(--t12);
+	max-width: 300px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	box-shadow: var(--shadow);
+}
+
+/* A link in a list of links, one line each. */
+.link { display: block; padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A small button that removes the thing it sits beside. */
+.x { border: 0; background: none; color: var(--muted); font-size: var(--t15); line-height: 1; padding: 0 2px; cursor: pointer; }
+.x:hover { color: var(--bad); }
+
+/* A word that deletes: red text on no fill, for an in-place "Delete this?". */
+.remove,
+.btn.ghost.remove { color: var(--bad); }
+
+/* A line of input with its button: type, then Add. */
+.add-row { display: flex; gap: var(--s2); }
+.add-row .field { flex: 1; min-width: 0; width: auto; }
+
 /* Text you type into. */
 .field,
 input[type='text'].field,
@@ -287,10 +366,6 @@ textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
 }
 .card h3 {
 	margin: 0 0 10px;
-	font: 600 var(--t12)/1.2 var(--sans);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--muted);
 	display: flex;
 	align-items: center;
 	gap: var(--s2);
@@ -308,9 +383,17 @@ textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
 .muted { color: var(--muted); }
 .small { font-size: var(--t13); }
 .hint { font-size: var(--t13); color: var(--muted); margin-top: var(--s2); }
-.empty { color: var(--muted); padding: var(--s5); text-align: center; }
 .problem { color: var(--bad); font-size: var(--t13); margin: var(--s2) 0 0; }
-.none { color: var(--muted); font-size: var(--t14); margin: 0; }
+
+/*
+ * The one empty state: a muted line saying what is missing and what to do.
+ * `.empty.big` is the same thing given a whole screen, centred, with a heading.
+ */
+.empty { color: var(--muted); font-size: var(--t14); margin: 0; }
+.empty.big { text-align: center; padding: 60px var(--s4); }
+.empty.big h2 { margin: var(--s2) 0; font-size: var(--t20); color: var(--text); }
+.empty.big .tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
+.empty.big .muted { margin-bottom: 18px; }
 
 .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px var(--s3); font-size: var(--t14); }
 .kv b { color: var(--muted); font-weight: 500; }

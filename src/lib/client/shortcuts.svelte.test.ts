@@ -1,64 +1,74 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { all, keyLabel, register, type Shortcut } from './shortcuts.svelte';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { all, install, keyLabel, press, type Shortcut } from './shortcuts.svelte';
 
-const shortcut = (keys: string, description = keys): Shortcut => ({
-	keys,
-	description,
-	run: () => {}
-});
+const shortcut = (keys: string, description = keys, run = () => {}): Shortcut => ({ keys, description, run });
 
-const cleanups: Array<() => void> = [];
-const add = (...s: Shortcut[]) => {
-	const off = register(s);
-	cleanups.push(off);
-	return off;
+let stop = () => {};
+const use = (...s: Shortcut[]) => {
+	stop = install(s);
 };
+afterEach(() => stop());
 
-afterEach(() => {
-	while (cleanups.length) cleanups.pop()!();
-});
-
-describe('the shortcut registry', () => {
-	it('lists what was registered', () => {
-		add(shortcut('t', 'Today'), shortcut('s', 'Search'));
+describe('the shortcut list', () => {
+	it('lists what was installed, in order', () => {
+		use(shortcut('t', 'Today'), shortcut('s', 'Search'));
 		expect(all().map((s) => s.description)).toEqual(['Today', 'Search']);
 	});
 
-	it('removes exactly what one registration added', () => {
-		add(shortcut('t', 'Today'));
-		const off = register([shortcut('s', 'Search')]);
-		expect(all()).toHaveLength(2);
-
-		off();
-		expect(all().map((s) => s.description)).toEqual(['Today']);
-	});
-
-	/**
-	 * The bug this file exists to prevent. When the registry was a `$state`
-	 * array it stored proxies, so `indexOf` never matched the raw object the
-	 * caller held and unregister silently did nothing. Every navigation then
-	 * left its bindings behind, and the list grew without bound.
-	 */
-	it('does not leak a registration when it is undone', () => {
-		for (let i = 0; i < 50; i++) register([shortcut('t', 'Today')])();
+	it('is empty once stopped', () => {
+		use(shortcut('t'));
+		stop();
 		expect(all()).toEqual([]);
 	});
 
-	it('gives a caller a new list each time, so the last one cannot go stale', () => {
-		const before = all();
-		add(shortcut('t'));
-		expect(all()).not.toBe(before);
-		expect(before).toHaveLength(0);
+	/** One registrant: a second install is a new list, not an addition to the first. */
+	it('replaces the earlier list when installed again', () => {
+		use(shortcut('t', 'Today'));
+		use(shortcut('s', 'Search'));
+		expect(all().map((s) => s.description)).toEqual(['Search']);
 	});
 
 	it('lower-cases the keys it stores, so a binding is spelt one way', () => {
-		add({ ...shortcut('Mod+K'), description: 'Palette' });
+		use(shortcut('Mod+K', 'Palette'));
 		expect(all()[0].keys).toBe('mod+k');
 	});
 
 	it('keeps a binding with no keys, which is a palette-only command', () => {
-		add(shortcut('', 'Review waiting changes'));
+		use(shortcut('', 'Review waiting changes'));
 		expect(all()[0].keys).toBe('');
+	});
+});
+
+describe('pressing a key', () => {
+	it('runs the binding and says so', () => {
+		const run = vi.fn();
+		use(shortcut('t', 'Today', run));
+		expect(press('t', false)).toBe(true);
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('does nothing for a key nobody bound', () => {
+		use(shortcut('t'));
+		expect(press('x', false)).toBe(false);
+	});
+
+	it('never fires while the user is typing, unless the binding opts in', () => {
+		const plain = vi.fn();
+		const chord = vi.fn();
+		use(shortcut('t', 'Today', plain), { ...shortcut('mod+k', 'Palette', chord), whileTyping: true });
+		expect(press('t', true)).toBe(false);
+		expect(plain).not.toHaveBeenCalled();
+		expect(press('mod+k', true)).toBe(true);
+		expect(chord).toHaveBeenCalledOnce();
+	});
+
+	it('runs the first of two bindings that share keys', () => {
+		const first = vi.fn();
+		const second = vi.fn();
+		use(shortcut('t', 'A', first), shortcut('t', 'B', second));
+		press('t', false);
+		expect(first).toHaveBeenCalledOnce();
+		expect(second).not.toHaveBeenCalled();
 	});
 });
 

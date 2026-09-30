@@ -34,7 +34,7 @@
 					{/if}
 				</span>
 			</div>
-			{#if data.study.due === 0}<p class="none">Nothing due right now.</p>{/if}
+			{#if data.study.due === 0}<p class="empty">Nothing due right now.</p>{/if}
 		</section>
 
 		<section class="sheet">
@@ -56,7 +56,7 @@
 
 	<p class="label">Goals<span class="right"><a href="{base}/goals">Open</a></span></p>
 	{#if data.study.progress.length === 0}
-		<p class="none">No goals yet. <a href="{base}/goals">Add the first one</a>: reading, sessions and cards all roll up by goal.</p>
+		<p class="empty">No goals yet. <a href="{base}/goals">Add the first one</a>: reading, sessions and cards all roll up by goal.</p>
 	{:else}
 		<div class="sheet rows" data-testid="goals-summary">
 			{#each data.study.progress as goal (goal.slug)}
@@ -121,7 +121,7 @@
 	.due-row .buttons { margin-left: auto; display: flex; gap: var(--s2); }
 	/* The one figure on the page meant to be read from across the room. */
 	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
-	.none { margin-top: var(--s2); }
+	.empty { margin-top: var(--s2); }
 
 	.bar { height: 6px; border-radius: var(--r-pill); background: var(--soft); overflow: hidden; margin-top: var(--s2); }
 	.bar i { display: block; height: 100%; background: var(--accent); }

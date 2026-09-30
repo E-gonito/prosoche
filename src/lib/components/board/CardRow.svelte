@@ -52,7 +52,7 @@
 		aria-pressed={done}
 		aria-label="Mark &quot;{card.title}&quot; done"
 	>{done ? '✓' : ''}</button>
-	{#if showWorkspace}<span class="ws" style="--dot: {card.workspace.color}" title={card.workspace.name}></span>{/if}
+	{#if showWorkspace}<span class="dot" style="--dot: {card.workspace.color}" title={card.workspace.name}></span>{/if}
 	<a class="text" href="/w/{card.workspace.slug}" title="On {card.workspace.name}'s board, in {card.column}">{card.title}</a>
 	{#if card.due}<span class="due num" class:overdue={card.due < today} data-testid="board-card-due">{dueLabel(card.due, today)}</span>{/if}
 	{#if card.priority}<span class="q q{card.priority}">Q{card.priority}</span>{/if}
@@ -60,24 +60,9 @@
 
 <style>
 	.card-row { position: relative; z-index: 1; display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t13); }
-	.box {
-		flex: none;
-		align-self: center;
-		width: 14px;
-		height: 14px;
-		padding: 0;
-		border: 1.5px solid #9aa0a6;
-		border-radius: 3px;
-		background: var(--field);
-		font-size: 10px;
-		line-height: 1;
-		color: #fff;
-		cursor: pointer;
-	}
-	.box:hover { border-color: var(--accent); }
-	.done .box { background: var(--accent); border-color: var(--accent); }
+	.box { align-self: center; }
 	.done .text { text-decoration: line-through; color: var(--muted); }
-	.ws { flex: none; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+	.dot { align-self: center; }
 	.text { flex: 1; min-width: 0; color: var(--text); overflow-wrap: anywhere; }
 	.text:hover { color: var(--accent); }
 	.due { flex: none; font-size: var(--t11); color: var(--muted); }

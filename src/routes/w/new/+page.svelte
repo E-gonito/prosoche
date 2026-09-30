@@ -58,7 +58,7 @@
 	<form onsubmit={submit} class="sheet form">
 		<label class="form-row">
 			<span>Name</span>
-			<input bind:value={name} data-testid="ws-name" placeholder="Riverside Clinic" autocomplete="off" />
+			<input class="field" bind:value={name} data-testid="ws-name" placeholder="Riverside Clinic" autocomplete="off" />
 		</label>
 
 		{#if slug}
@@ -91,7 +91,7 @@
 
 		<label class="form-row">
 			<span>Folders</span>
-			<input bind:value={folders} data-testid="ws-folders" placeholder="Work/Atlas, Notes/Atlas" autocomplete="off" />
+			<input class="field" bind:value={folders} data-testid="ws-folders" placeholder="Work/Atlas, Notes/Atlas" autocomplete="off" />
 		</label>
 		<p class="hint">Comma separated, vault-relative; anything tagged <code>#ws/{slug || 'slug'}</code> belongs here too.</p>
 
@@ -110,15 +110,6 @@
 	.form { max-width: 640px; padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
 	.form-row { display: flex; align-items: center; gap: var(--s3); }
 	.form-row > span { flex: none; width: 90px; font-size: var(--t12); color: var(--muted); }
-	.form-row input {
-		flex: 1;
-		min-width: 0;
-		border: 1px solid var(--line);
-		border-radius: var(--r-md);
-		padding: var(--s2) 10px;
-		font: inherit;
-		background: var(--field);
-	}
 	.swatches { display: flex; gap: var(--s2); }
 	.swatch {
 		width: var(--s5);

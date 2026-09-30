@@ -103,12 +103,12 @@
 							{#if milestone.due}<span class="due muted small num">📅 {milestone.due}</span>{/if}
 						</label>
 					{:else}
-						<p class="none">No milestones yet.</p>
+						<p class="empty">No milestones yet.</p>
 					{/each}
 				</div>
 			</div>
 		{:else}
-			<p class="none">No goals yet. Add the first one below.</p>
+			<p class="empty">No goals yet. Add the first one below.</p>
 		{/each}
 	</div>
 
@@ -149,7 +149,7 @@
 	.row .field { flex: 1; min-width: 160px; }
 	.row .date { flex: none; width: 160px; }
 
-	.problem { color: var(--bad); margin-bottom: var(--s3); }
+	.problem { margin-bottom: var(--s3); }
 
 	@media (max-width: 720px) {
 		.row .field, .row .date { flex-basis: 100%; width: auto; }

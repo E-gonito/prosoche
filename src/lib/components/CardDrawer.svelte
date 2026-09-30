@@ -13,6 +13,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { displayText, workspaceTags, type Task, type TaskStatus } from '$lib/shared/task';
+	import { noteHref } from '$lib/shared/links';
 	import { api, editTask, type TaskEdit } from '$lib/client/api';
 	import type { CardContext } from '$lib/shared/task';
 
@@ -46,7 +47,6 @@
 	// may name a workspace the folder or an alias gave it, but this control
 	// writes tags and so reports tags.
 	const tagged = $derived(workspaceTags(current)[0] ?? '');
-	const href = $derived(`/notes/${current.path.split('/').map(encodeURIComponent).join('/')}`);
 
 	$effect(() => {
 		if (!dialog?.open) dialog?.showModal();
@@ -113,6 +113,7 @@
 </script>
 
 <dialog
+	class="modal"
 	bind:this={dialog}
 	onclose={onclose}
 	onclick={maybeBackdrop}
@@ -133,6 +134,7 @@
 		<label class="row">
 			<span>Card</span>
 			<input
+				class="field"
 				bind:this={field}
 				bind:value={text}
 				data-testid="drawer-text"
@@ -151,6 +153,7 @@
 			<label class="row">
 				<span>Status</span>
 				<select
+					class="field"
 					data-testid="drawer-status"
 					value={current.status}
 					onchange={(e) => save({ status: e.currentTarget.value as TaskStatus })}
@@ -164,6 +167,7 @@
 			<label class="row">
 				<span>Quadrant</span>
 				<select
+					class="field"
 					data-testid="drawer-quadrant"
 					value={current.quadrant === null ? '' : String(current.quadrant)}
 					onchange={(e) => save({ quadrant: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
@@ -176,6 +180,7 @@
 			<label class="row">
 				<span>Workspace</span>
 				<select
+					class="field"
 					data-testid="drawer-workspace"
 					value={tagged}
 					onchange={(e) => setWorkspace(e.currentTarget.value)}
@@ -190,6 +195,7 @@
 			<label class="row">
 				<span>Due</span>
 				<input
+					class="field"
 					type="date"
 					data-testid="drawer-due"
 					value={current.due ?? ''}
@@ -214,6 +220,7 @@
 		<label class="row">
 			<span>Waiting on</span>
 			<input
+				class="field"
 				bind:value={blockedBy}
 				data-testid="drawer-blockedby"
 				placeholder="Task ids, comma separated"
@@ -237,43 +244,21 @@
 
 		<footer>
 			<code>{current.path}</code>
-			<a class="btn" data-testid="drawer-open-note" href={href}>Open note (line {current.line + 1})</a>
+			<a class="btn" data-testid="drawer-open-note" href={noteHref(current.path)}>Open note (line {current.line + 1})</a>
 		</footer>
 	</div>
 </dialog>
 
 <style>
-	dialog {
-		border: 0;
-		padding: 0;
-		border-radius: var(--r-lg);
-		max-width: 560px;
-		width: calc(100% - 40px);
-		background: var(--panel);
-		color: var(--text);
-		box-shadow: var(--shadow-lg);
-	}
-	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
 	.inner { padding: var(--s4) 18px 18px; display: flex; flex-direction: column; gap: 10px; }
 	header { display: flex; align-items: center; gap: 10px; }
 	h2 { margin: 0; font-size: 15px; }
 	.ws { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t12); color: var(--muted); }
-	.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
 	header .btn { margin-left: auto; }
 
 	.row { display: flex; align-items: center; gap: 10px; }
 	.row > span { flex: none; width: 82px; font-size: var(--t12); color: var(--muted); }
-	.row input,
-	.row select {
-		flex: 1;
-		min-width: 0;
-		border: 1px solid var(--line);
-		border-radius: var(--r-md);
-		padding: 6px var(--s2);
-		font: inherit;
-		font-size: var(--t13);
-		background: var(--field);
-	}
+	.row .field { flex: 1; min-width: 0; width: auto; }
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) 14px; }
 
 	.context-label { display: block; margin-bottom: var(--s1); font-size: var(--t12); color: var(--muted); }
@@ -291,7 +276,7 @@
 	footer { display: flex; align-items: center; gap: 10px; }
 	footer code { font: var(--t11) var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	footer .btn { margin-left: auto; flex: none; }
-	.problem { margin: 0; font-size: var(--t12); color: var(--bad); }
+	.problem { margin: 0; }
 
 	@media (max-width: 720px) {
 		.grid { grid-template-columns: 1fr; }

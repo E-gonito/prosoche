@@ -41,7 +41,7 @@
 			{#each inboxPreview as line (line.line)}
 				<p class="capture">{line.raw.replace(/^[ \t]*[-*+][ \t]+/, '')}</p>
 			{:else}
-				<p class="none">Nothing captured yet.</p>
+				<p class="empty">Nothing captured yet.</p>
 			{/each}
 		</div>
 	</section>
@@ -56,7 +56,7 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="sheet rows"><p class="none">No sessions logged yet.</p></div>
+			<div class="sheet rows"><p class="empty">No sessions logged yet.</p></div>
 		{/if}
 	</section>
 </div>
@@ -70,7 +70,7 @@
 				<span class="muted small">{note.day}</span>
 			</a>
 		{:else}
-			<p class="none">No notes in this workspace's folders yet.</p>
+			<p class="empty">No notes in this workspace's folders yet.</p>
 		{/each}
 	</div>
 </section>

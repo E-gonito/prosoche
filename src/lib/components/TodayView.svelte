@@ -138,7 +138,7 @@
 
 			{#if !data.exists}
 				<div class="sheet">
-					<div class="empty">
+					<div class="empty big">
 						<p><b>{data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}</b></p>
 						<p>Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced.</p>
 					</div>
@@ -183,7 +183,7 @@
 
 					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && drag.task.startMin !== null} bind:this={unscheduledCard}>
 						<div class="sheet">
-							<h3>Unscheduled <span class="right num">{unscheduled.length}</span></h3>
+							<h3 class="caps">Unscheduled <span class="right num">{unscheduled.length}</span></h3>
 							<Capture onproblem={failed} />
 							<div class="rows">
 								{#each unscheduled as task (task.path + ':' + task.line)}
@@ -233,14 +233,14 @@
 				<div class="workspaces" data-testid="today-workspaces">
 					{#each data.workspaces as group (group.slug)}
 						<div class="sheet" data-testid="workspace-card">
-							<h3><i style="background: {group.color}"></i>{group.name} {#if group.inboxCount}<span class="right muted small">{group.inboxCount} in inbox</span>{/if}</h3>
+							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<span class="right muted small">{group.inboxCount} in inbox</span>{/if}</h3>
 							<div class="rows">
 								{#each group.cards as card (card.path + ':' + card.line)}
 									<CardRow {card} today={data.today} onproblem={failed} />
 								{/each}
 							</div>
 							{#if group.more}<p class="hint">and {group.more} more</p>{/if}
-							{#if !group.cards.length}<p class="none">Nothing open.</p>{/if}
+							{#if !group.cards.length}<p class="empty">Nothing open.</p>{/if}
 						</div>
 					{/each}
 				</div>
@@ -250,7 +250,7 @@
 				<p class="label">More</p>
 				{#each data.cards as card (card.module)}
 					<div class="sheet" data-testid="module-card" data-module={card.module}>
-						<h3>{card.title}</h3>
+						<h3 class="caps">{card.title}</h3>
 						<div class="rows">
 							{#each card.items as item, i (i)}
 								{#if item.href}
@@ -291,7 +291,6 @@
 	.sub { display: flex; align-items: center; gap: var(--s2); margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
 	.sub .relative { text-transform: capitalize; }
 	.summary { margin: var(--s1) 0 0; color: var(--muted); font-size: var(--t14); }
-	.problem { color: var(--bad); font-size: var(--t13); margin: var(--s2) 0; }
 
 	.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s5); align-items: start; margin-top: var(--s3); }
 	.main, .side { display: flex; flex-direction: column; min-width: 0; }
@@ -313,39 +312,15 @@
 
 	h3 {
 		margin: 0 0 var(--s2);
-		font: 600 var(--t12)/1.2 var(--sans);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--muted);
 		display: flex;
 		align-items: center;
 		gap: var(--s2);
 	}
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
-	h3 i { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; }
 
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }
 	a.module-item:hover { color: var(--accent); }
-
-	/* Named `.drag-ghost` rather than `.ghost`, which the shared `.btn.ghost`
-	   variant already uses — the two collided under Svelte's scoping, since a
-	   scoped selector still matches by class token, not by the whole string. */
-	.drag-ghost {
-		position: fixed;
-		z-index: 50;
-		pointer-events: none;
-		background: var(--text);
-		color: #fff;
-		border-radius: var(--r-sm);
-		padding: var(--s1) 9px;
-		font-size: var(--t12);
-		max-width: 320px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		box-shadow: var(--shadow);
-	}
 
 	/* Too narrow for a side column: the workspaces move under the day and lay
 	   out across the page instead of down it. */

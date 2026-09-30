@@ -37,7 +37,7 @@
 		{#each data.workspaces as w (w.slug)}
 			<div class="line">
 				<a class="row" href="/w/{w.slug}" data-testid="workspace-row">
-					<span class="dot" style="--dot: {w.color}"></span>
+					<span class="dot lg" style="--dot: {w.color}"></span>
 					<span class="main">
 						<b>{w.name}</b>
 						{#if w.description}<span class="muted small desc">{w.description}</span>{/if}
@@ -51,7 +51,7 @@
 				<button class="btn ghost small remove" onclick={() => remove(w)} aria-label="Delete the {w.name} workspace" data-testid="delete-workspace">Delete</button>
 			</div>
 		{:else}
-			<p class="none">No workspaces yet.</p>
+			<p class="empty">No workspaces yet.</p>
 		{/each}
 	</div>
 
@@ -66,9 +66,7 @@
 	.row { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s2); color: var(--text); }
 	.remove { flex: none; color: var(--muted); }
 	.remove:hover { color: var(--bad); }
-	.problem { color: var(--bad); font-size: var(--t13); }
 	.row:hover { text-decoration: none; background: var(--soft); }
-	.dot { flex: none; width: 11px; height: 11px; border-radius: 50%; background: var(--dot); }
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 	.desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.figures { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: var(--t12); color: var(--muted); }

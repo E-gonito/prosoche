@@ -150,7 +150,7 @@
 			</div>
 
 			<input
-				class="subject"
+				class="field"
 				bind:value={message}
 				placeholder="Commit message (optional)"
 				aria-label="Commit message"
@@ -293,7 +293,6 @@
 	label.row { cursor: pointer; }
 
 	/* `.btn.small` and `.btn.danger` are shared, in app.css. */
-	.subject { width: 100%; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s2) 10px; font: inherit; font-size: var(--t13); background: var(--field); }
 	.buttons { border: 0; padding: 10px 0 0; justify-content: flex-start; font-family: inherit; }
 
 	.wide { grid-column: 1 / -1; }

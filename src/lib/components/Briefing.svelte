@@ -143,7 +143,7 @@
 	{#each list as lines, i (i)}
 		{@const head = heading(lines[0])}
 		{#if head}
-			<p class="section-label">{head}</p>
+			<p class="caps section-label">{head}</p>
 			<ul>
 				{#each lines.slice(1) as line, j (j)}<li>{item(line)}</li>{/each}
 			</ul>
@@ -239,10 +239,9 @@
 	.regen { margin-left: auto; flex: none; }
 	.regen:disabled { cursor: default; opacity: 0.6; }
 	.prose { margin: 0 0 10px; font-size: var(--t13); line-height: 1.5; }
-	.section-label { margin: 0 0 var(--s1); font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+	.section-label { margin: 0 0 var(--s1); }
 	ul { margin: 0 0 10px; padding-left: 18px; font-size: var(--t13); line-height: 1.5; }
 	li { margin: 0 0 2px; }
 	.draft { border-top: 1px dashed var(--line); padding-top: var(--s2); margin-top: var(--s1); }
 	.row { display: flex; gap: var(--s2); margin-top: var(--s1); }
-	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

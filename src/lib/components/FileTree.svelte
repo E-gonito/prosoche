@@ -3,6 +3,7 @@
 	// open note, which the parent expands by passing `openPath`. `hrefFor` says
 	// where a note links; the vault-wide reader unless a page wants its own.
 	import Self from './FileTree.svelte';
+	import { noteHref } from '$lib/shared/links';
 
 	type Node =
 		| { type: 'folder'; name: string; path: string; children: Node[] }
@@ -12,7 +13,7 @@
 		nodes,
 		openPath = '',
 		depth = 0,
-		hrefFor = (path: string) => `/notes/${path.split('/').map(encodeURIComponent).join('/')}`
+		hrefFor = noteHref
 	}: { nodes: Node[]; openPath?: string; depth?: number; hrefFor?: (path: string) => string } = $props();
 	const containsOpen = (node: Extract<Node, { type: 'folder' }>) => openPath.startsWith(node.path + '/');
 </script>

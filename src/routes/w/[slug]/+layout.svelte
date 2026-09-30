@@ -20,7 +20,7 @@
 
 <div class="page wide">
 	<div class="title">
-		<h1><span class="dot" style="--dot: {data.workspace.color}"></span>{data.workspace.name}</h1>
+		<h1><span class="dot lg" style="--dot: {data.workspace.color}"></span>{data.workspace.name}</h1>
 		<p>
 			<code class="tag">#{data.workspace.tag}</code>
 			· <a href={data.definitionHref}>edit definition</a>
@@ -38,6 +38,5 @@
 
 <style>
 	h1 { display: flex; align-items: center; gap: var(--s2); }
-	.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--dot); flex: none; }
 	.tag { font: var(--t12) var(--mono); color: var(--muted); }
 </style>

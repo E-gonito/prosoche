@@ -140,7 +140,7 @@
 				<div class="list" id="palette-list" role="listbox" aria-label="Results" bind:this={list}>
 					{#each palette.rows as item, i (item.id)}
 						{@const group = heading(i)}
-						{#if group}<h6>{group}</h6>{/if}
+						{#if group}<h6 class="caps">{group}</h6>{/if}
 						<button
 							type="button"
 							class="row"
@@ -161,7 +161,7 @@
 							{#if item.keys}<kbd>{keyLabel(item.keys)}</kbd>{/if}
 						</button>
 					{:else}
-						<p class="none">Nothing matched. Escape to close.</p>
+						<p class="empty">Nothing matched. Escape to close.</p>
 					{/each}
 				</div>
 			{/if}
@@ -207,13 +207,7 @@
 	.ask { display: block; font-size: var(--t12); color: var(--muted); margin: 2px var(--s1) 6px; }
 	.hint, .said { margin: var(--s2) var(--s1) 2px; font-size: var(--t12); color: var(--muted); }
 	.list { margin-top: var(--s2); overflow: auto; min-height: 0; }
-	h6 {
-		margin: 10px var(--s1) var(--s1);
-		font-size: var(--t11);
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-	}
+	h6 { margin: 10px var(--s1) var(--s1); }
 	.row {
 		display: grid;
 		grid-template-columns: 1fr auto;
@@ -250,7 +244,7 @@
 		padding: 1px 6px;
 	}
 	mark { background: #fef08a; color: inherit; border-radius: 2px; }
-	.none { margin: var(--s3) 6px; color: var(--muted); font-size: var(--t13); }
+	.empty { margin: var(--s3) 6px; }
 
 	@media (max-width: 720px) {
 		.scrim { padding: 6vh 8px 8px; }

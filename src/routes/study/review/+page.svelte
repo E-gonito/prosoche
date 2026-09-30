@@ -16,7 +16,7 @@
 	</div>
 
 	{#if data.cards.length === 0}
-		<div class="empty" data-testid="nothing-due">
+		<div class="empty big" data-testid="nothing-due">
 			<p class="tick"><Icon name="check" size={40} /></p>
 			<h2>Nothing due</h2>
 			<p class="muted">
@@ -30,15 +30,10 @@
 </div>
 
 <style>
-	.empty { text-align: center; padding: 60px var(--s4); }
-	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-	.empty h2 { margin: var(--s2) 0; font-size: var(--t20); }
-	.empty .muted { margin-bottom: 18px; }
-
 	/* See the same rule in `study/[subject]/review/+page.svelte`. */
 	@media (max-width: 720px) {
 		.page { height: 100%; min-height: 0; display: flex; flex-direction: column; }
-		.empty { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+		.empty.big { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
 		.page :global(.session) { flex: 1; min-height: 0; }
 	}
 </style>

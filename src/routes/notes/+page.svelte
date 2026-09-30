@@ -67,7 +67,7 @@
 					<span class="snippet">{@html marked(hit.snippet)}</span>
 				</a>
 			{:else}
-				<p class="none">Nothing matches “{query.trim()}”.</p>
+				<p class="empty">Nothing matches “{query.trim()}”.</p>
 			{/each}
 		</div>
 	{/if}
@@ -86,7 +86,7 @@
 						<span class="muted small">{note.folder || 'vault root'} · {relativeDay(note.day, data.today)}</span>
 					</a>
 				{:else}
-					<p class="none">No notes yet.</p>
+					<p class="empty">No notes yet.</p>
 				{/each}
 			</div>
 		</section>

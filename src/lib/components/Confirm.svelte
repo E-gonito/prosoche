@@ -40,7 +40,7 @@
 	}
 </script>
 
-<dialog bind:this={dialog} onclose={oncancel} onclick={maybeBackdrop} aria-label={title}>
+<dialog class="modal" bind:this={dialog} onclose={oncancel} onclick={maybeBackdrop} aria-label={title}>
 	<div class="inner">
 		<h2>{title}</h2>
 		{#if body}<p>{body}</p>{/if}
@@ -58,17 +58,6 @@
 </dialog>
 
 <style>
-	dialog {
-		border: 0;
-		padding: 0;
-		border-radius: var(--r-lg);
-		max-width: 520px;
-		width: calc(100% - 40px);
-		background: var(--panel);
-		color: var(--text);
-		box-shadow: var(--shadow-lg);
-	}
-	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
 	.inner { padding: 20px 22px; }
 	h2 { margin: 0 0 var(--s2); font-size: 17px; }
 	p { margin: 0 0 var(--s3); color: var(--muted); font-size: var(--t13); }

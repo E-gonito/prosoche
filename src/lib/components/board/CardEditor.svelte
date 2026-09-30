@@ -86,12 +86,11 @@
 	};
 </script>
 
-<dialog bind:this={dialog} onclose={onclose} onclick={maybeBackdrop} data-testid="card-editor" aria-label="Card: {card.title}">
+<dialog class="modal" bind:this={dialog} onclose={onclose} onclick={maybeBackdrop} data-testid="card-editor" aria-label="Card: {card.title}">
 	<div class="inner">
 		<header>
 			<button
 				class="box"
-				class:done={card.done}
 				data-testid="editor-done"
 				aria-pressed={card.done}
 				aria-label={card.done ? 'Mark not done' : 'Mark done'}
@@ -176,17 +175,6 @@
 </dialog>
 
 <style>
-	dialog {
-		border: 0;
-		padding: 0;
-		border-radius: var(--r-lg);
-		max-width: 560px;
-		width: calc(100% - 40px);
-		background: var(--panel);
-		color: var(--text);
-		box-shadow: var(--shadow-lg);
-	}
-	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
 	.inner { padding: var(--s4) 18px 18px; display: flex; flex-direction: column; gap: var(--s3); }
 	header { display: flex; align-items: center; gap: var(--s2); }
 	.title-field {
@@ -202,20 +190,6 @@
 	.title-field:hover { border-bottom-color: var(--line); }
 	.title-field:focus { outline: none; border-bottom-color: var(--accent); }
 
-	.box {
-		flex: none;
-		width: 18px;
-		height: 18px;
-		padding: 0;
-		border: 1.5px solid #9aa0a6;
-		border-radius: 3px;
-		background: var(--field);
-		font-size: var(--t11);
-		line-height: 1;
-		color: #fff;
-		cursor: pointer;
-	}
-	.box.done { background: var(--accent); border-color: var(--accent); }
 
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s4); }
 	.row { display: flex; align-items: center; gap: var(--s2); }
@@ -227,8 +201,6 @@
 	footer { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
 	.confirm { display: flex; align-items: center; gap: var(--s1); font-size: var(--t13); }
 	/* `.remove`, not `.danger`, which is the global filled red button. */
-	.remove { color: var(--bad); }
-	.remove:hover { background: var(--soft); color: var(--bad); }
 	.problem { margin: 0; }
 
 	@media (max-width: 720px) {

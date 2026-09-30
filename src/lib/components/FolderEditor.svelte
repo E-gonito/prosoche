@@ -54,10 +54,10 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="none">No folders yet. The first one you add becomes its home.</p>
+		<p class="empty">No folders yet. The first one you add becomes its home.</p>
 	{/if}
 
-	<form class="add" onsubmit={add}>
+	<form class="add-row" onsubmit={add}>
 		<input class="field" list="folders-{slug}" bind:value={adding} placeholder="Add a folder, e.g. Papers/ML" aria-label="Add a folder" data-testid="folder-input" />
 		<datalist id="folders-{slug}">
 			{#each offered as folder (folder)}<option value={folder}></option>{/each}
@@ -73,9 +73,5 @@
 	.chip { display: inline-flex; align-items: center; gap: 4px; cursor: default; }
 	.chip em { font-style: normal; color: var(--muted); font-size: var(--t11); }
 	.path { overflow-wrap: anywhere; }
-	.x { border: 0; background: none; color: var(--muted); font-size: var(--t15); line-height: 1; padding: 0 2px; cursor: pointer; }
-	.x:hover { color: var(--bad); }
-	.add { display: flex; gap: var(--s2); }
-	.add .field { flex: 1; min-width: 0; }
 	.hint { margin-bottom: 0; }
 </style>

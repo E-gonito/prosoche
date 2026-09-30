@@ -64,7 +64,7 @@
 			{#each uniqueBacklinks as link (link.path)}
 				<a class="link" href={noteHref(link.path)}>{link.title}</a>
 			{:else}
-				<p class="none">Nothing links here.</p>
+				<p class="empty">Nothing links here.</p>
 			{/each}
 
 			{#if data.outgoing.length}
@@ -92,7 +92,6 @@
 	article { min-width: 0; max-width: 760px; }
 	aside { position: sticky; top: var(--s5); font-size: var(--t14); }
 	aside .label:first-child { margin-top: 0; }
-	.link { display: block; padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	dl { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--s3); margin: 0 0 var(--s3); }
 	dt { color: var(--muted); }
 	dd { margin: 0; overflow-wrap: anywhere; }
@@ -108,7 +107,6 @@
 		background: var(--panel);
 		box-shadow: var(--shadow-lg);
 	}
-	dialog.files::backdrop { background: rgba(42, 38, 34, 0.3); }
 	.files-body { padding: var(--s5); }
 
 	@media (max-width: 1100px) {

@@ -107,7 +107,7 @@
 			{#if d.notes}<span class="muted small">{d.notes}</span>{/if}
 		</div>
 	{:else}
-		<p class="none">No dates logged yet.</p>
+		<p class="empty">No dates logged yet.</p>
 	{/each}
 </div>
 

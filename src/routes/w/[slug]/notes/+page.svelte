@@ -13,7 +13,7 @@
 			<span class="muted small">{note.folder} · {note.day}</span>
 		</a>
 	{:else}
-		<p class="none">No notes in this workspace's folders yet.</p>
+		<p class="empty">No notes in this workspace's folders yet.</p>
 	{/each}
 </div>
 

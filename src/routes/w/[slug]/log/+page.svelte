@@ -31,8 +31,8 @@
 </script>
 
 <p class="label">Add an update</p>
-<form class="add" onsubmit={add}>
-	<input bind:value={text} placeholder="What happened in this session?" aria-label="Log update" data-testid="log-text" />
+<form class="add-row add" onsubmit={add}>
+	<input class="field" bind:value={text} placeholder="What happened in this session?" aria-label="Log update" data-testid="log-text" />
 	<button class="btn primary" disabled={saving || !text.trim()} data-testid="log-add">{saving ? 'Saving…' : 'Add'}</button>
 </form>
 {#if problem}<p class="problem">{problem}</p>{/if}
@@ -46,13 +46,11 @@
 		{/each}
 	</div>
 {:else}
-	<p class="none">No sessions logged yet.</p>
+	<p class="empty">No sessions logged yet.</p>
 {/each}
 
 <style>
-	.add { display: flex; gap: var(--s2); margin-bottom: var(--s2); }
-	.add input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-md); padding: 7px 10px; font: inherit; background: var(--field); }
-	.problem { font-size: var(--t12); color: var(--bad); }
+	.add { margin-bottom: var(--s2); }
 	.entry { margin-bottom: var(--s3); }
 	.day { margin: 0; padding: var(--s2); font: 600 var(--t13) inherit; }
 	.line { margin: 0; padding: var(--s1) var(--s2); border-top: 1px solid var(--line); font-size: var(--t13); }

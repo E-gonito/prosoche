@@ -152,7 +152,7 @@
 		<p class="where"><a href="/notes/{card.path}">Open the note</a></p>
 	</div>
 {:else if done}
-	<div class="finish" data-testid="review-done">
+	<div class="empty big" data-testid="review-done">
 		<p class="tick"><Icon name="check" size={40} /></p>
 		<h2>Done for today</h2>
 		<p class="muted">{graded} {graded === 1 ? 'answer' : 'answers'}{again > 0 ? `, ${again} to see again` : ''}.</p>
@@ -217,13 +217,7 @@
 	.again { border-color: #e9c3c3; }
 	.easy { border-color: #bfe3cb; }
 
-	.problem { color: var(--bad); font-size: var(--t13); }
 	.where { font-size: var(--t12); margin-top: 14px; }
-
-	.finish { text-align: center; padding: 60px var(--s4); }
-	.tick { display: flex; justify-content: center; color: var(--ok); margin: 0; }
-	.finish h2 { margin: var(--s2) 0; font-size: var(--t20); }
-	.finish .muted { color: var(--muted); margin-bottom: 18px; }
 
 	/*
 	 * The phone's whole session is exactly the space `+layout.svelte` leaves

@@ -16,6 +16,7 @@
 	 */
 	import { diffLines, type EditPreview, type Proposal, type Refusal, type Validation } from '$lib/shared/ai';
 	import { EDIT_KIND_LABELS } from '$lib/shared/ai';
+	import { noteHref } from '$lib/shared/links';
 
 	let {
 		proposal,
@@ -48,7 +49,6 @@
 		ticked = ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id];
 	};
 
-	const href = (path: string) => `/notes/${path.split('/').map(encodeURIComponent).join('/')}`;
 	const rows = (preview: EditPreview) => diffLines(preview.before, preview.after);
 	const counts = (preview: EditPreview) => {
 		const r = rows(preview);
@@ -101,7 +101,7 @@
 					/>
 					<span class="kind">{EDIT_KIND_LABELS[preview.kind]}</span>
 				</label>
-				<a class="path" href={href(preview.path)}>{preview.path}</a>
+				<a class="path" href={noteHref(preview.path)}>{preview.path}</a>
 				<span class="counts muted">+{n.added} −{n.removed}</span>
 			</header>
 
