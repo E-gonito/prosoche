@@ -13,7 +13,7 @@
 	import Capture from '$lib/components/Capture.svelte';
 	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { editTask, planOnDay } from '$lib/client/api';
+	import { api, editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
 	import type { TodayData } from '$lib/shared/today';
@@ -96,6 +96,17 @@
 		else failed(result.message);
 	}
 
+	let creating = $state(false);
+	/** The one way a daily note is made here: a press of this button. */
+	async function createNote() {
+		creating = true;
+		const result = await api<{ path: string; fromTemplate: boolean }>(`/api/day/${data.day}/note`, {});
+		creating = false;
+		if (!result.ok) return failed(result.message);
+		problem = result.value.fromTemplate ? '' : `There was no journal template, so ${result.value.path} holds only a # Tasks heading.`;
+		await invalidateAll();
+	}
+
 	/**
 	 * Add a card to the real today with no time on it — "Add to today" from a
 	 * workspace's list, "Plan for today" from Overdue. The same action either
@@ -138,9 +149,12 @@
 
 			{#if !data.exists}
 				<div class="sheet">
-					<div class="empty big">
-						<p><b>{data.isToday ? 'Today’s note is not here yet.' : 'No note for this day.'}</b></p>
-						<p>Daily notes are made in Obsidian. Open the day there, and it shows here once it has synced.</p>
+					<div class="empty big" data-testid="no-note">
+						<h2>{data.isToday ? 'Today’s note is not here yet' : 'No note for this day'}</h2>
+						<p class="muted">Create <code>{data.path}</code> from your journal template, or open the day in Obsidian.</p>
+						<button class="btn primary" data-testid="create-note" disabled={creating} onclick={createNote}>
+							{creating ? 'Creating…' : data.isToday ? 'Create today’s note' : 'Create this day’s note'}
+						</button>
 					</div>
 				</div>
 			{:else}
