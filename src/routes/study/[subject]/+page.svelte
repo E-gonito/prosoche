@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * A subject at a glance: the cards to review now, this week's time and the
-	 * streak, then each goal with its milestones, hours, reading and cards,
-	 * and last the folders its notes and cards come from.
+	 * A subject at a glance: this week's time and the streak, then each goal
+	 * with its milestones, hours and reading, and last the folders its notes
+	 * come from.
 	 */
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -14,29 +14,15 @@
 	const base = $derived(`/study/${data.subject.slug}`);
 	const weekTarget = $derived(data.study.weeklyHours ? data.study.weeklyHours * 60 : null);
 	const weekPct = $derived(weekTarget ? Math.min(100, Math.round((data.study.weekMinutes / weekTarget) * 100)) : null);
-	const loose = $derived(data.study.unassigned.weekMinutes > 0 || data.study.unassigned.reading.length > 0 || data.study.unassigned.due > 0);
+	const loose = $derived(data.study.unassigned.weekMinutes > 0 || data.study.unassigned.reading.length > 0);
 </script>
 
 <svelte:head><title>{data.subject.name} · Study · prosoche</title></svelte:head>
 
 <div class="page">
-	<StudyTabs subject={data.subject} lede="Goals, reading, sessions and cards, all read straight from the vault." />
+	<StudyTabs subject={data.subject} lede="Goals, reading and sessions, all read straight from the vault." />
 
 	<div class="grid">
-		<section class="sheet">
-			<p class="label">Flashcards</p>
-			<div class="due-row">
-				<span class="count" data-testid="due-count">{data.study.due}</span>
-				<span class="muted">due now{data.study.fresh || data.study.waiting ? ` · ${data.study.fresh} new today · ${data.study.waiting} waiting` : ''}</span>
-				<span class="buttons">
-					{#if data.study.due > 0}
-						<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>
-					{/if}
-				</span>
-			</div>
-			{#if data.study.due === 0}<p class="empty">Nothing due right now.</p>{/if}
-		</section>
-
 		<section class="sheet">
 			<p class="label">
 				This week
@@ -56,7 +42,7 @@
 
 	<p class="label">Goals<span class="right"><a href="{base}/goals">Open</a></span></p>
 	{#if data.study.progress.length === 0}
-		<p class="empty">No goals yet. <a href="{base}/goals">Add the first one</a>: reading, sessions and cards all roll up by goal.</p>
+		<p class="empty">No goals yet. <a href="{base}/goals">Add the first one</a>: reading and sessions roll up by goal.</p>
 	{:else}
 		<div class="sheet rows" data-testid="goals-summary">
 			{#each data.study.progress as goal (goal.slug)}
@@ -73,11 +59,6 @@
 					{/if}
 					<p class="facts small">
 						<span class="num" data-testid="goal-hours">{formatDuration(goal.weekMinutes, ' ')} this week</span>
-						{#if goal.due > 0}
-							<a class="num" href="{base}/review?goal={goal.slug}" data-testid="goal-due">{goal.due} {goal.due === 1 ? 'card' : 'cards'} due</a>
-						{:else}
-							<span class="muted">no cards due</span>
-						{/if}
 					</p>
 					{#if goal.reading.length}
 						<ul class="reading" data-testid="goal-reading">
@@ -96,7 +77,6 @@
 					<div class="head"><span class="name muted">No goal</span></div>
 					<p class="facts small">
 						<span class="num">{formatDuration(data.study.unassigned.weekMinutes, ' ')} this week</span>
-						<span class="num muted">{data.study.unassigned.due} {data.study.unassigned.due === 1 ? 'card' : 'cards'} due</span>
 					</p>
 					{#if data.study.unassigned.reading.length}
 						<ul class="reading">
@@ -117,10 +97,6 @@
 <style>
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); align-items: start; }
 
-	.due-row { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
-	.due-row .buttons { margin-left: auto; display: flex; gap: var(--s2); }
-	/* The one figure on the page meant to be read from across the room. */
-	.count { font-size: 34px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
 	.empty { margin-top: var(--s2); }
 
 	.bar { height: 6px; border-radius: var(--r-pill); background: var(--soft); overflow: hidden; margin-top: var(--s2); }

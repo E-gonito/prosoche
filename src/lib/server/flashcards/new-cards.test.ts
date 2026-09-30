@@ -3,51 +3,53 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { newCardsPerDay, releaseNew, setNewCardsPerDay, STUDY_SETTINGS_PATH, type NewCardPlan } from './new-cards';
-import type { Card } from '$lib/shared/study';
+import { NEW_CARDS_PATH, newCardPlan, recordIntroduced, releaseNew, type NewCardPlan } from './new-cards';
+import type { Card } from '$lib/shared/flashcards';
 
 /** An unseen card in `folder`, named by its question. */
-const card = (folder: string, question: string): { card: Card; tags: string[] } => ({
-	card: {
-		path: `${folder}/${question}.md`,
-		line: 2,
-		endLine: 2,
-		kind: 'inline',
-		question,
-		answer: '',
-		context: '',
-		deck: folder,
-		schedule: null,
-		index: 0,
-		siblings: 1,
-		scheduleLine: 2,
-		scheduleExists: false,
-		expectedRaw: ''
-	},
-	tags: []
+const card = (folder: string, question: string): Card => ({
+	path: `${folder}/${question}.md`,
+	line: 2,
+	endLine: 2,
+	kind: 'inline',
+	question,
+	answer: '',
+	context: '',
+	deck: folder,
+	schedule: null,
+	index: 0,
+	siblings: 1,
+	scheduleLine: 2,
+	scheduleExists: false,
+	expectedRaw: ''
 });
 
-const subject = (folder: string, begun = 0, room: number | null = null) => ({ scope: { folders: [folder] }, begun, room });
+const pool = (folder: string, begun = 0, room: number | null = null) => ({ folder, begun, room });
 
 const UNSEEN = [card('A', 'a1'), card('A', 'a2'), card('A', 'a3'), card('A', 'a4'), card('B', 'b1'), card('B', 'b2'), card('C', 'c1')];
 
 describe('releaseNew', () => {
 	it.each<[string, NewCardPlan, string[]]>([
-		['shares the day out a card at a time', { left: 4, subjects: [subject('A'), subject('B'), subject('C')] }, ['a1', 'a2', 'b1', 'c1']],
-		['gives a subject with none left’s share to the rest', { left: 6, subjects: [subject('A'), subject('B'), subject('C')] }, ['a1', 'a2', 'a3', 'b1', 'b2', 'c1']],
-		['evens out what was begun earlier today', { left: 3, subjects: [subject('A', 2), subject('B'), subject('C')] }, ['b1', 'b2', 'c1']],
-		['holds a subject to its own cap', { left: 5, subjects: [subject('A', 0, 1), subject('B'), subject('C')] }, ['a1', 'b1', 'b2', 'c1']],
-		['lets none in once the day is used up', { left: 0, subjects: [subject('A')] }, []],
-		['lets in nothing outside every subject', { left: 5, subjects: [subject('Z')] }, []],
-		['lets a card two subjects share in once', { left: 2, subjects: [subject('A'), { scope: { folders: ['A', 'B'] }, begun: 0, room: null }] }, ['a1', 'a2']]
+		['shares the day out a card at a time', { left: 4, pools: [pool('A'), pool('B'), pool('C')] }, ['a1', 'a2', 'b1', 'c1']],
+		['gives a pool with none left’s share to the rest', { left: 6, pools: [pool('A'), pool('B'), pool('C')] }, ['a1', 'a2', 'a3', 'b1', 'b2', 'c1']],
+		['evens out what was begun earlier today', { left: 3, pools: [pool('A', 2), pool('B'), pool('C')] }, ['b1', 'b2', 'c1']],
+		['holds a pool to its own limit', { left: 5, pools: [pool('A', 0, 1), pool('B'), pool('C')] }, ['a1', 'b1', 'b2', 'c1']],
+		['with no shared limit, lets each pool take up to its own', { left: Infinity, pools: [pool('A', 0, 2), pool('B', 0, 1)] }, ['a1', 'a2', 'b1']],
+		['lets none in once the day is used up', { left: 0, pools: [pool('A')] }, []],
+		['lets in nothing outside every pool', { left: 5, pools: [pool('Z')] }, []]
 	])('%s', (_name, plan, expected) => {
 		expect([...releaseNew(plan, UNSEEN)].map((c) => c.question).sort()).toEqual(expected);
 	});
 });
 
-describe('new cards a day', () => {
+describe('the day’s count of first reviews', () => {
 	let root: string;
 	let vault: Vault;
+	const TODAY = '2026-09-30';
+	const POOLS = [
+		{ key: 'deck/cs', folder: 'Flashcards/CS', perDay: null },
+		{ key: 'deck/fil', folder: 'Flashcards/Filipino', perDay: 4 }
+	];
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-new-cards-'));
@@ -58,25 +60,24 @@ describe('new cards a day', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
-	it('is fifteen until the settings say otherwise', async () => {
-		expect(await newCardsPerDay(vault)).toBe(15);
-		await vault.write(STUDY_SETTINGS_PATH, '---\nnew_per_day: lots\n---\n');
-		expect(await newCardsPerDay(vault)).toBe(15);
-		await vault.write(STUDY_SETTINGS_PATH, '---\nnew_per_day: "8"\n---\n');
-		expect(await newCardsPerDay(vault)).toBe(8);
+	it('counts a first review for the pool holding it, and only today', async () => {
+		await recordIntroduced(vault, POOLS, 'Flashcards/CS/Cloud (cards).md', TODAY);
+		await recordIntroduced(vault, POOLS, 'Flashcards/CS/Web (cards).md', TODAY);
+		await recordIntroduced(vault, POOLS, 'Flashcards/Filipino/Words (cards).md', TODAY);
+		await recordIntroduced(vault, POOLS, 'Elsewhere/Cards.md', TODAY);
+		expect(JSON.parse((await vault.read(NEW_CARDS_PATH)).content)).toEqual({ day: TODAY, introduced: { 'deck/cs': 2, 'deck/fil': 1 } });
+
+		expect(await newCardPlan(vault, POOLS, TODAY, 15)).toEqual({ left: 12, pools: [pool('Flashcards/CS', 2), pool('Flashcards/Filipino', 1, 3)] });
+		expect((await newCardPlan(vault, POOLS, TODAY)).left).toBe(Infinity);
+		expect((await newCardPlan(vault, POOLS, '2026-10-01', 15)).left).toBe(15);
+
+		// A new day starts the count again rather than adding to yesterday's.
+		await recordIntroduced(vault, POOLS, 'Flashcards/CS/Cloud (cards).md', '2026-10-01');
+		expect(JSON.parse((await vault.read(NEW_CARDS_PATH)).content)).toEqual({ day: '2026-10-01', introduced: { 'deck/cs': 1 } });
 	});
 
-	it('creates the settings file, then changes only its one line', async () => {
-		expect(await setNewCardsPerDay(vault, 12)).toEqual({ ok: true, perDay: 12 });
-		expect(await newCardsPerDay(vault)).toBe(12);
-
-		await vault.write(STUDY_SETTINGS_PATH, '---\ntheme: x\nnew_per_day: 12 # mine\n---\n\nMy notes.\n');
-		expect(await setNewCardsPerDay(vault, '0')).toEqual({ ok: true, perDay: 0 });
-		expect((await vault.read(STUDY_SETTINGS_PATH)).content).toBe('---\ntheme: x\nnew_per_day: 0\n---\n\nMy notes.\n');
-	});
-
-	it.each([[-1], [2.5], [501], ['ten'], [null]])('refuses %s', async (value) => {
-		expect(await setNewCardsPerDay(vault, value)).toEqual({ ok: false, reason: 'invalid' });
-		expect((await vault.read(STUDY_SETTINGS_PATH)).exists).toBe(false);
+	it('reads a file it cannot parse as nothing begun', async () => {
+		await vault.write(NEW_CARDS_PATH, 'not json');
+		expect((await newCardPlan(vault, POOLS, TODAY, 15)).left).toBe(15);
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNote } from './note';
+import { parseNote, readLede, setLede } from './note';
 
 describe('parseNote', () => {
 	it('reads frontmatter and keeps the body separate', () => {
@@ -44,5 +44,38 @@ describe('parseNote', () => {
 			['Title', 3],
 			['Second', 4]
 		]);
+	});
+});
+
+describe('readLede', () => {
+	it.each([
+		['the first paragraph after the frontmatter', '---\nname: x\n---\n\nOne line\nand the next.\n\nSecond.\n', 'One line and the next.'],
+		['past a heading', '# Title\n\nThe lede.\n', 'The lede.'],
+		['none when the body opens on a list', '---\na: 1\n---\n\n- item\n\nLater prose.\n', ''],
+		['none in a note that is only frontmatter', '---\na: 1\n---\n', ''],
+		['a note with no frontmatter', 'Just prose.', 'Just prose.'],
+		['under the title of a glossary', '---\nstudy: cs\n---\n\n# Glossary\n\nTerms from the course.\n\n## CDK\n- category:: Cloud\n', 'Terms from the course.'],
+		['never from under a section heading', '---\na: 1\n---\n\n# Glossary\n\n## CDK\n\nInfrastructure as code.\n', ''],
+		['never past a second heading, even the first thing in the body', '## Section\n\nText.\n', '']
+	])('%s', (_, content, lede) => {
+		expect(readLede(content)).toBe(lede);
+	});
+});
+
+describe('setLede', () => {
+	it.each([
+		['replaces the paragraph, keeping the rest', '---\na: 1\n---\n\nOld one\nwrapped.\n\nKept.\n', 'New', '---\na: 1\n---\n\nNew\n\nKept.\n'],
+		['collapses the text to one line', '---\na: 1\n---\n\nOld\n', 'Two\n  lines', '---\na: 1\n---\n\nTwo lines\n'],
+		['adds one after bare frontmatter', '---\na: 1\n---\n', 'New', '---\na: 1\n---\n\nNew\n'],
+		['adds one before a list', '---\na: 1\n---\n\n- item\n', 'New', '---\na: 1\n---\n\nNew\n\n- item\n'],
+		['adds one set off from a section right under the frontmatter', '---\na: 1\n---\n## H\n', 'New', '---\na: 1\n---\n\nNew\n\n## H\n'],
+		['removes it with the blank line after', '---\na: 1\n---\n\nOld\n\nKept.\n', '', '---\na: 1\n---\n\nKept.\n'],
+		['removes a last paragraph with the blank line before', '---\na: 1\n---\n\nOld\n', '', '---\na: 1\n---\n'],
+		['adds one under the title, above the first section', '---\na: 1\n---\n\n# Glossary\n\n## CDK\n', 'New', '---\na: 1\n---\n\n# Glossary\n\nNew\n\n## CDK\n'],
+		['replaces the one under the title', '# Glossary\n\nOld.\n\n## CDK\n', 'New', '# Glossary\n\nNew\n\n## CDK\n'],
+		['keeps CRLF line endings', '---\r\na: 1\r\n---\r\n\r\nOld\r\n', 'New', '---\r\na: 1\r\n---\r\n\r\nNew\r\n'],
+		['changes nothing when it already reads the same', '---\na: 1\n---\n\nSame\ntext\n', 'Same text', '---\na: 1\n---\n\nSame\ntext\n']
+	])('%s', (_, content, text, expected) => {
+		expect(setLede(content, text)).toBe(expected);
 	});
 });

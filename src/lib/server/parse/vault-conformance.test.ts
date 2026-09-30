@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanTasks, rewriteTaskLine } from './task';
-import { parseEntries, scanCards } from '../study/flashcards';
+import { parseEntries, scanCards } from '../flashcards/cards';
 
 /**
  * Runs the parser over an entire real vault. Its job is not to check any one

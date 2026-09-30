@@ -75,8 +75,8 @@ test.describe('Today', () => {
 		await expect(page.getByTestId('overdue').getByTestId('board-card-row').filter({ hasText: 'Draft the proposal' })).toHaveCount(0);
 	});
 
-	test('has no rest-of-the-week section; another day opens through Next day', async ({ page }) => {
-		await expect(page.getByTestId('week')).toHaveCount(0);
+	test('has no week section; another day opens through Next day', async ({ page }) => {
+		await expect(page.getByTestId('week-bars')).toHaveCount(0);
 		await page.goto(`/today/${FUTURE}`);
 		await expect(page.getByTestId('unscheduled')).toContainText('Prep the demo for Thursday');
 	});
@@ -100,11 +100,11 @@ test.describe('Today', () => {
 		await expect(page.getByTestId('block')).toHaveCount(4);
 	});
 
-	test('AI being off shows a calm hint rather than a broken button', async ({ page }) => {
-		const briefing = page.getByTestId('briefing');
-		await expect(briefing).toContainText('AI is off');
-		await expect(briefing.getByRole('link', { name: /settings/i })).toBeVisible();
-		await expect(page.getByTestId('briefing-brief')).toHaveCount(0);
+	test('has no briefing, and the inbox sits above the day', async ({ page }) => {
+		await expect(page.getByTestId('briefing')).toHaveCount(0);
+		const inbox = await page.getByTestId('today-inbox').boundingBox();
+		const segment = await page.getByTestId('segment-timeline').or(page.getByTestId('unscheduled')).first().boundingBox();
+		expect(inbox!.y).toBeLessThan(segment!.y);
 	});
 });
 

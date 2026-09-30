@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { createWorkspace, deleteWorkspace, loadWorkspaces, seedWorkspaces, setReferenceFolders, workspaceFor, type Workspace } from './workspaces';
+import { createWorkspace, deleteWorkspace, loadWorkspaces, editWorkspace, seedWorkspaces, workspaceFor, type Workspace } from './workspaces';
 
 let root: string;
 let vault: Vault;
@@ -236,7 +236,7 @@ describe('createWorkspace', () => {
 	});
 });
 
-describe('setReferenceFolders', () => {
+describe('editWorkspace', () => {
 	const FILE = `---
 name: CS study
 # the subject's home comes first
@@ -258,7 +258,7 @@ Notes about the subject.
 	}
 
 	it('replaces only the folders: lines, keeping the home first and every other byte', async () => {
-		const result = await setReferenceFolders(vault, await cs(), ['Computer Science', 'Papers/ML']);
+		const result = await editWorkspace(vault, await cs(), { folders: ['Computer Science', 'Papers/ML'] });
 		expect(result).toEqual({ ok: true, path: '_hub/workspaces/cs-study.md' });
 		const content = (await vault.read('_hub/workspaces/cs-study.md')).content;
 		expect(content).toBe(FILE.replace('  - "Computer Science"\n', '  - Computer Science\n  - Papers/ML\n').replace('  - "Study/Computer Science"', '  - Study/Computer Science'));
@@ -270,19 +270,19 @@ Notes about the subject.
 		['typed paths are tidied', [' /Papers/ML/ ', 'Papers\\\\Vision', 'a//b'], ['Study/Computer Science', 'Papers/ML', 'Papers/Vision', 'a/b']],
 		['repeats, empties and the home itself are dropped', ['X', '', 'X', 'Study/Computer Science'], ['Study/Computer Science', 'X']]
 	])('%s', async (_, refs, folders) => {
-		await setReferenceFolders(vault, await cs(), refs);
+		await editWorkspace(vault, await cs(), { folders: refs });
 		expect((await loadWorkspaces(vault)).find((w) => w.slug === 'cs-study')!.folders).toEqual(folders);
 	});
 
 	it('makes the first folder the home of a workspace that names none', async () => {
 		const bare = await cs('---\nname: CS study\n---\n');
-		await setReferenceFolders(vault, bare, ['Computer Science', 'Papers']);
+		await editWorkspace(vault, bare, { folders: ['Computer Science', 'Papers'] });
 		expect((await vault.read(bare.path)).content).toBe('---\nname: CS study\nfolders:\n  - Computer Science\n  - Papers\n---\n');
 	});
 
 	it('refuses a path that climbs out, and writes nothing', async () => {
 		const ws = await cs();
-		const result = await setReferenceFolders(vault, ws, ['../Private']);
+		const result = await editWorkspace(vault, ws, { folders: ['../Private'] });
 		expect(result).toMatchObject({ ok: false, reason: 'invalid' });
 		expect((await vault.read(ws.path)).content).toBe(FILE);
 	});
@@ -290,7 +290,38 @@ Notes about the subject.
 	it('reports a definition that has gone', async () => {
 		const ws = await cs();
 		await vault.remove(ws.path);
-		expect(await setReferenceFolders(vault, ws, ['X'])).toMatchObject({ ok: false, reason: 'not-found' });
+		expect(await editWorkspace(vault, ws, { folders: ['X'] })).toMatchObject({ ok: false, reason: 'not-found' });
+	});
+
+	it('writes the name, colour, tag, kind and description in place, and only those', async () => {
+		const ws = await cs();
+		const result = await editWorkspace(vault, ws, { name: 'Computing', color: '#2E6B85', tag: '#ws/computing', template: 'project', description: 'Everything  about\ncomputers.' });
+		expect(result).toEqual({ ok: true, path: ws.path });
+		expect((await vault.read(ws.path)).content).toBe(
+			FILE.replace('name: CS study', 'name: Computing')
+				.replace('tag: ws/cs-study', 'tag: ws/computing')
+				.replace('  - title: Overview\n', '  - title: Overview\ncolor: "#2e6b85"\n')
+				.replace('template: study', 'template: project')
+				.replace('Notes about the subject.', 'Everything about computers.')
+		);
+		expect((await loadWorkspaces(vault)).find((w) => w.slug === 'cs-study')).toMatchObject({ name: 'Computing', color: '#2e6b85', tag: 'ws/computing', template: 'project' });
+	});
+
+	it('leaves a file alone when nothing is sent', async () => {
+		const ws = await cs();
+		expect(await editWorkspace(vault, ws, {})).toEqual({ ok: true, path: ws.path });
+		expect((await vault.read(ws.path)).content).toBe(FILE);
+	});
+
+	it.each([
+		['an empty name', { name: '  ' }],
+		['a colour that is not #rrggbb', { color: 'teal' }],
+		['a tag with a space', { tag: 'ws/cs study' }],
+		['a tag that starts with a digit', { tag: '2026' }]
+	])('refuses %s, and writes nothing', async (_, edit) => {
+		const ws = await cs();
+		expect(await editWorkspace(vault, ws, edit)).toMatchObject({ ok: false, reason: 'invalid' });
+		expect((await vault.read(ws.path)).content).toBe(FILE);
 	});
 });
 

@@ -2,8 +2,8 @@
  * Today: the dashboard for one day.
  *
  * This module composes the vault and the index through the existing core —
- * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar`, the AI proposal
- * layer — into the one object the `/today` routes render. Nothing here is a
+ * `daily`, `daily-note`, `kanban`, `workspaces`, `calendar` — into the one
+ * object the `/today` routes render. Nothing here is a
  * second copy of a rule: what counts as a workspace's open card is decided
  * once, in `kanban.ts`, and who owns a task in `workspaces.ts`; this module
  * only asks. Read-only throughout; the writes on this page — planning a task
@@ -17,9 +17,6 @@ import { workspaceFor, type Workspace } from './workspaces';
 import { belongsTo, readInbox, unfiled } from './inbox';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
-import { readRegion } from './ai/proposal';
-import { BRIEFING_MARKER } from './ai/briefing';
-import { loadSettings } from './ai/settings';
 import { CONFLICT_MARKERS, type NoteIndex } from './index/index';
 import { config } from './config';
 import { formatDuration } from '$lib/shared/duration';
@@ -81,16 +78,6 @@ export function summaryLine(input: { done: number; skipped: number; open: number
 /** The hour, local to the server, from which Today offers to review the day. */
 const REVIEW_FROM_HOUR = 18;
 
-/**
- * The seven days, Monday to Sunday, of the week `day` falls in. Pure; days
- * are labels, so this is calendar arithmetic on the key, not on an instant.
- */
-export function weekOf(day: DayKey): DayKey[] {
-	const [y, m, d] = day.split('-').map(Number);
-	const fromMonday = (new Date(y, m - 1, d).getDay() + 6) % 7;
-	return Array.from({ length: 7 }, (_, i) => shiftDay(day, i - fromMonday));
-}
-
 interface TodayDeps {
 	vault: Vault;
 	index: NoteIndex;
@@ -127,8 +114,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 	}
 
 	const dayEvents = await eventsBetween(day, day);
-
-	const settings = await loadSettings(vault);
 
 	// A board's cards are listed as cards below, so a Tasks-plugin due date
 	// written on one must not bring it in a second time as a task.
@@ -175,14 +160,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 
 	const counts = tally(tasks);
 
-	// Done against owed for each day of the week, from each day's own note as
-	// the index has it: a day with no note is 0 of 0. A skipped task is in
-	// neither number, so skipping shortens the bar rather than filling it.
-	const week = weekOf(day).map((d) => {
-		const own = tally(index.tasksIn(dailyNotePath(d)).filter((t) => !t.fenced));
-		return { day: d, done: own.done, skipped: own.skipped, total: own.done + own.open };
-	});
-
 	// A day is reviewed once it is over or nearly so: any past day, and today
 	// from the evening on. A day still ahead has nothing to review.
 	const now = options.now ?? new Date();
@@ -208,14 +185,11 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		offerReview,
 		events: dayEvents.ok ? dayEvents.events.map(toTodayEvent) : [],
 		calendarProblem: dayEvents.ok || dayEvents.reason === 'not-configured' ? null : dayEvents.message,
-		aiEnabled: settings.enabled,
-		briefingText: note.exists ? readRegion(note.content, BRIEFING_MARKER) : null,
 		overdue,
 		overdueOwners,
 		overdueCards,
 		workspaces: workspaceGroups,
 		inbox: { count: inbox.length, lines: inbox.slice(0, INBOX_LIMIT) },
-		week,
 		summary: summaryLine({
 			...counts,
 			plannedMinutes: coveredMinutes(scheduled),

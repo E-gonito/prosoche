@@ -30,7 +30,7 @@ import { config } from '../config';
 import { parseNote } from '../parse/note';
 import { setFrontmatterField } from '../parse/frontmatter';
 import { cardSettings, glossaries } from '../glossary';
-import { deckFolder } from './glossary-cards';
+import { categoryOfFile, deckFolder } from './glossary-cards';
 import { dueCards, inFolder, type CardQueue } from './cards';
 import { newCardPlan, type NewCardPool } from './new-cards';
 import type { Card } from '$lib/shared/flashcards';
@@ -63,7 +63,7 @@ interface Deck {
 
 /** One category of a deck: one card file. */
 interface CategoryView {
-	/** The file name without `.md`: the glossary's category, or `Uncategorised`. */
+	/** The glossary's category, or `Uncategorised`, as its file names it. */
 	name: string;
 	cards: number;
 	/** Cards ready to review today, new ones included. */
@@ -158,7 +158,7 @@ export async function flashcardsOverview(
 			due: ready.filter((c) => c.schedule !== null).length,
 			fresh: ready.filter((c) => c.schedule === null).length,
 			total: files.reduce((sum, f) => sum + f.cards, 0),
-			categories: files.map((f) => ({ name: categoryOf(f.path), cards: f.cards, ready: f.due }))
+			categories: files.map((f) => ({ name: categoryOfFile(f.path), cards: f.cards, ready: f.due }))
 		};
 	});
 	return { decks: views, due: queue.due, fresh: queue.fresh, perDay };
@@ -185,12 +185,12 @@ export async function deckReview(
 	if (!deck) return null;
 	const files = queue.files.filter((f) => inDeck(deck, f.path));
 	const wanted = filter.category?.trim().toLowerCase();
-	const file = wanted ? files.find((f) => categoryOf(f.path).toLowerCase() === wanted) : null;
+	const file = wanted ? files.find((f) => categoryOfFile(f.path).toLowerCase() === wanted) : null;
 	if (wanted && !file) return null;
 
 	const cards = queue.cards.filter((c) => (file ? c.path === file.path : inDeck(deck, c.path)));
 	const total = file ? file.cards : files.reduce((sum, f) => sum + f.cards, 0);
-	return { cards: cards.slice(0, SESSION), total, deck: { name: deck.name, slug: deck.slug }, category: file ? categoryOf(file.path) : null };
+	return { cards: cards.slice(0, SESSION), total, deck: { name: deck.name, slug: deck.slug }, category: file ? categoryOfFile(file.path) : null };
 }
 
 /**
@@ -210,11 +210,6 @@ function poolOf(deck: Deck): NewCardPool {
 
 function inDeck(deck: Deck, path: string): boolean {
 	return inFolder(path, deck.folder);
-}
-
-/** `Flashcards/CS/Cloud.md` → `Cloud`. */
-function categoryOf(path: string): string {
-	return path.slice(path.lastIndexOf('/') + 1, -'.md'.length);
 }
 
 /** A whole number of zero or more, written as a number or a string of digits; otherwise null. */

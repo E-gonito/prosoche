@@ -14,11 +14,10 @@
  */
 
 import type { Hub } from '$server/hub';
-import { subjectsOf } from '$server/study/subjects';
-import { dueEverywhere } from '$server/study/summary';
+import { flashcardsOverview } from '$server/flashcards/decks';
 
 export interface TodayCard {
-	/** The module this card speaks for, e.g. `study`. Must not be private. */
+	/** The module this card speaks for, e.g. `flashcards`. Must not be private. */
 	module: string;
 	title: string;
 	href: string;
@@ -33,24 +32,24 @@ interface TodayCardContext {
 
 /**
  * Flashcards due for review today, as one line leading to one review of
- * every subject together, the subjects taking turns: the cards already
- * reviewed that are due, and the new ones the day shares out between the
- * subjects (see `study/new-cards.ts`). One line rather than one a subject,
- * so linking another glossary adds to the mix, not to the list.
+ * every glossary's deck, the decks taking turns: the cards reviewed before
+ * that are due, and the new ones the day shares out between the decks (see
+ * `flashcards/decks.ts`). One line rather than one a deck, so turning
+ * another glossary's cards on adds to the mix, not to the list.
  *
  * Inputs: the viewed day and the hub. Output: the card, or null when nothing
  * is ready — a permanent "0 due" card would be noise on every day but the
- * ones it matters. Side effects: reads the vault and the index.
+ * ones it matters. Side effects: reads the vault.
  */
 async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
-	const { due, fresh } = await dueEverywhere(h.vault, h.index, subjectsOf(await h.workspaces()), day, 0);
+	const { due, fresh } = await flashcardsOverview(h.vault, await h.workspaces(), day);
 	const ready = due + fresh;
 	if (ready === 0) return null;
 	return {
-		module: 'study',
+		module: 'flashcards',
 		title: 'Flashcards due',
-		href: '/study',
-		items: [{ text: `${ready} card${ready === 1 ? '' : 's'} to review`, meta: fresh ? `${fresh} new today` : undefined, href: '/study/review' }]
+		href: '/flashcards',
+		items: [{ text: `${ready} card${ready === 1 ? '' : 's'} to review`, meta: fresh ? `${fresh} new today` : undefined, href: '/flashcards/review' }]
 	};
 }
 

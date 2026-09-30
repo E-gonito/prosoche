@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Today dashboard: one day's plan, and the week around it.
+	 * The Today dashboard: one day's plan.
 	 *
 	 * Rendered by `/today/[[day]]` for `/today` and `/today/<day>` alike,
 	 * which differ only in which day the load asks `loadToday` for.
@@ -11,9 +11,7 @@
 	import CardRow from '$lib/components/board/CardRow.svelte';
 	import CardDrawer from '$lib/components/CardDrawer.svelte';
 	import Capture from '$lib/components/Capture.svelte';
-	import Briefing from '$lib/components/Briefing.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import WeekBars from '$lib/components/WeekBars.svelte';
 	import { api, editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
@@ -38,19 +36,6 @@
 	const all = $derived([...merge(data.scheduled), ...merge(data.unscheduled)]);
 	const scheduled = $derived(all.filter((t) => t.startMin !== null).sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0)));
 	const unscheduled = $derived(all.filter((t) => t.startMin === null));
-
-	const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-	const weekBars = $derived(
-		data.week.map((d, i) => ({
-			key: d.day,
-			label: WEEKDAYS[i],
-			value: d.done,
-			total: d.total,
-			// A skipped task is in neither number: it shortens the bar, and is named.
-			text: d.total || d.skipped ? `${d.done} of ${d.total}${d.skipped ? `, ${d.skipped} skipped` : ''}` : 'no tasks',
-			href: d.day === data.today ? '/today' : `/today/${d.day}`
-		}))
-	);
 
 	const timelineEvents = $derived(data.events.map((e) => ({ id: e.id, title: e.title, startMin: e.startMin, endMin: e.endMin })));
 	const allDayEvents = $derived(data.events.filter((e) => e.startMin === null));
@@ -167,7 +152,19 @@
 		</p>
 	{/if}
 
-	<Briefing day={data.day} text={data.briefingText} isToday={data.isToday} aiEnabled={data.aiEnabled} />
+	<!-- Always shown: its capture row is where a thought goes, whether or not anything is waiting. -->
+	<div class="sheet inbox-card" data-testid="today-inbox">
+		<h3 class="caps">Inbox {#if data.inbox.count}<a class="right small" href="/inbox">{data.inbox.count} to triage</a>{/if}</h3>
+		<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
+		{#if data.inbox.lines.length}
+			<div class="rows">
+				{#each data.inbox.lines as line (line.line)}
+					<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
+				{/each}
+			</div>
+			{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
+		{/if}
+	</div>
 
 	<div class="grid">
 		<div class="main">
@@ -272,25 +269,6 @@
 		</div>
 
 		<div class="side">
-			<!-- Always shown: its capture row is where a thought goes, whether or not anything is waiting. -->
-			<div class="sheet inbox-card" data-testid="today-inbox">
-				<h3 class="caps">Inbox {#if data.inbox.count}<a class="right small" href="/inbox">{data.inbox.count} to triage</a>{/if}</h3>
-				<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
-				{#if data.inbox.lines.length}
-					<div class="rows">
-						{#each data.inbox.lines as line (line.line)}
-							<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
-						{/each}
-					</div>
-					{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
-				{/if}
-			</div>
-
-			<p class="label">This week</p>
-			<div class="sheet week" data-testid="week-bars">
-				<WeekBars bars={weekBars} marked={data.day} width={300} label="Tasks done against planned, Monday to Sunday" />
-			</div>
-
 			{#if data.workspaces.length}
 				<p class="label">From your workspaces</p>
 				<div class="workspaces" data-testid="today-workspaces">
@@ -380,7 +358,7 @@
 	}
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-	.inbox-card, .week { margin-bottom: var(--s3); }
+	.inbox-card { margin-bottom: var(--s4); }
 	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	/* Every open card is here; past three and a half rows the list scrolls,

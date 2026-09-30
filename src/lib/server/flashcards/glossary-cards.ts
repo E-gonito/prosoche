@@ -6,9 +6,12 @@
  * ways: the term, a `??` line, then the definition and the `→` line. The
  * cards are the glossary's deck (see `decks.ts`), one file per category:
  *
- *     Flashcards/<Glossary name>/<Category>.md
+ *     Flashcards/<Glossary name>/<Category> (cards).md
  *
- * (`Uncategorised.md` for a term with none), and a new file starts:
+ * (`Uncategorised (cards).md` for a term with none). The suffix keeps a card
+ * file from sharing its name with a note: the vault has notes called
+ * Networking and Git too, and a bare `[[Networking]]` could open either. A
+ * new file starts:
  *
  *     ---
  *     glossary: Computer Science
@@ -17,7 +20,7 @@
  *
  *     #flashcards
  *
- *     Made from [[Computer Science]] (Cloud). Edit the terms there; this file is
+ *     Made from [[Glossaries/Computer Science|Computer Science]] (Cloud). Edit the terms there; this file is
  *     kept in step with the glossary.
  *
  *     VPC
@@ -29,8 +32,9 @@
  * `Flashcards/` also holds the `.txt` decks another tool generates; only
  * `.md` files are read or written here, so those are never touched. Cards
  * used to live in a study subject, under
- * `<subject home>/Flashcards/Glossary/<Glossary name>/`; a sync first moves
- * any files still there into the deck's folder, review history and all.
+ * `<subject home>/Flashcards/Glossary/<Glossary name>/<Category>.md`; a sync
+ * first moves any files still there into the deck's folder, suffixed on the
+ * way, review history and all.
  *
  * These files are prosoche's, as a workspace's `Board.md` is: their cards
  * follow the glossary. What the author or a review adds is theirs and is
@@ -70,8 +74,11 @@ import { hashContent, type Vault } from '../vault/index';
 /** Where the old study subjects kept a glossary's cards, under their home folder. */
 const LEGACY_FOLDER = /^(.+\/Flashcards\/Glossary\/[^/]+)\/[^/]+\.md$/;
 
-/** The card file of the terms with no category, without `.md`. */
+/** The category of the terms with none, as its card file names it. */
 const UNCATEGORISED = 'Uncategorised';
+
+/** What every card file's name ends with, before `.md`. */
+const SUFFIX = ' (cards)';
 
 /**
  * Where the cards of the glossary called `glossary` go:
@@ -83,15 +90,25 @@ export function deckFolder(glossary: string): string {
 
 /**
  * The card file name, without `.md`, for a category: anything a file name
- * or a wikilink cannot hold becomes a space, and no category (or one with
- * nothing left) is `Uncategorised`. Pure.
+ * or a wikilink cannot hold becomes a space, no category (or one with
+ * nothing left) is `Uncategorised`, and ` (cards)` follows. Pure.
  */
 export function categoryFileName(category: string | null): string {
 	const name = (category ?? '')
 		.replace(/[\\/:*?"<>|#^[\]]+/g, ' ')
 		.replace(/\s+/g, ' ')
 		.replace(/^[.\s]+|[.\s]+$/g, '');
-	return name || UNCATEGORISED;
+	return `${name || UNCATEGORISED}${SUFFIX}`;
+}
+
+/**
+ * The category a card file at `path` holds, as its name says:
+ * `Flashcards/CS/Cloud (cards).md` is `Cloud`. A name without the suffix is
+ * read whole. Pure.
+ */
+export function categoryOfFile(path: string): string {
+	const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/, '');
+	return name.endsWith(SUFFIX) ? name.slice(0, -SUFFIX.length) : name;
 }
 
 /** The parts of a glossary entry a card is made of. */
@@ -175,12 +192,23 @@ export function reconcileGlossaryCards(glossary: string, folder: string, entries
 }
 
 /**
+ * The link a card file's "Made from" line makes to its glossary: by path,
+ * `[[Glossaries/Computer Science|Computer Science]]`, because a glossary
+ * often shares its name with a note (the vault has both
+ * `Glossaries/Computer Science.md` and `Computer Science/Computer
+ * Science.md`), and a bare `[[Computer Science]]` could open either. Pure.
+ */
+function glossaryLink(glossary: string): string {
+	return `[[${GLOSSARY_FOLDER}/${glossary}|${glossary}]]`;
+}
+
+/**
  * The opening of a new card file: `glossary:` and `category:` (empty for
  * none) in its frontmatter, the `#flashcards` tag, and a line saying where
  * the cards come from. It holds no card. Pure.
  */
 export function cardFileHeader(glossary: string, category: string | null): string {
-	const link = /[[\]|#^]/.test(glossary) ? glossary : `[[${glossary}]]`;
+	const link = /[[\]|#^]/.test(glossary) ? glossary : glossaryLink(glossary);
 	const intro = `Made from ${link}${category ? ` (${category})` : ''}. Edit the terms there; this file is\nkept in step with the glossary.`;
 	const blank = `---\nglossary:\ncategory:\n---\n\n#${FLASHCARD_TAG}\n\n${intro}\n`;
 	const named = setFrontmatterField(blank, 'glossary', glossary);
@@ -408,7 +436,7 @@ export function syncGlossaryCards(vault: Vault, path: string, opts: { renamedFro
 		if (!cardSettings((await vault.read(path)).content).on) return { state: 'off' };
 		const name = glossaryName(path);
 		if (opts.renamedFrom) await moveCardFiles(vault, deckFolder(opts.renamedFrom), deckFolder(name), opts.renamedFrom, name);
-		for (const legacy of await legacyFolders(vault, name)) await moveCardFiles(vault, legacy, deckFolder(name));
+		for (const legacy of await legacyFolders(vault, name)) await moveCardFiles(vault, legacy, deckFolder(name), undefined, undefined, true);
 		const found = await examine(vault, path);
 		if (found.state !== 'found') return found;
 		const { folder, files, plan } = found;
@@ -494,38 +522,45 @@ export function followGlossaryCards(vault: Vault, delayMs = 1000): () => void {
 
 /**
  * A card file of a renamed glossary, naming the new name: its `glossary:`
- * when that named the old one, and the "Made from" line's link. Everything
- * else stays. Pure.
+ * when that named the old one, and the "Made from" line's link, written by
+ * path (see `glossaryLink`) whether the old one was or was bare, as files
+ * made before links went by path are. Everything else stays. Pure.
  */
 export function renamedCardFile(content: string, from: string, to: string): string {
 	const named = parseNote(content).frontmatter.glossary;
 	let text = typeof named === 'string' && normaliseTerm(named) === normaliseTerm(from) ? setFrontmatterField(content, 'glossary', to) : content;
-	const old = `Made from [[${from}]]`;
-	const at = text.indexOf(old);
-	if (at !== -1 && (at === 0 || text[at - 1] === '\n')) text = `${text.slice(0, at)}Made from [[${to}]]${text.slice(at + old.length)}`;
+	for (const old of [`Made from ${glossaryLink(from)}`, `Made from [[${from}]]`]) {
+		const at = text.indexOf(old);
+		if (at !== -1 && (at === 0 || text[at - 1] === '\n')) {
+			text = `${text.slice(0, at)}Made from ${glossaryLink(to)}${text.slice(at + old.length)}`;
+			break;
+		}
+	}
 	return text;
 }
 
 /**
  * Move the card files in `source` to `target`, so the cards keep their
  * review history; with `from` and `to`, a renamed glossary's old and new
- * names, each is rewritten by `renamedCardFile` on the way. Each file is
- * copied and the old one removed only if it is unchanged; a file whose new
- * place is taken is left where it is. Only `.md` files move. Does nothing
- * when the two are the same folder.
+ * names, each is rewritten by `renamedCardFile` on the way, and with
+ * `suffix`, a name without ` (cards)` gains it. Each file is copied and the
+ * old one removed only if it is unchanged; a file whose new place is taken
+ * is left where it is. Only `.md` files move. Does nothing when the two are
+ * the same folder.
  */
-async function moveCardFiles(vault: Vault, source: string, target: string, from?: string, to?: string): Promise<void> {
+async function moveCardFiles(vault: Vault, source: string, target: string, from?: string, to?: string, suffix = false): Promise<void> {
 	if (source === target) return;
 	for (const name of await vault.files(source, 'md')) {
 		const old = await vault.read(`${source}/${name}`);
 		const text = from && to ? renamedCardFile(old.content, from, to) : old.content;
-		const copied = await vault.write(`${target}/${name}`, text, hashContent(''));
+		const renamed = suffix && !name.endsWith(`${SUFFIX}.md`) ? `${name.slice(0, -'.md'.length)}${SUFFIX}.md` : name;
+		const copied = await vault.write(`${target}/${renamed}`, text, hashContent(''));
 		if (!copied.ok) {
-			console.warn(`[glossary cards] left ${source}/${name} where it is: ${target}/${name} is already there`);
+			console.warn(`[glossary cards] left ${source}/${name} where it is: ${target}/${renamed} is already there`);
 			continue;
 		}
 		const removed = await vault.remove(`${source}/${name}`, old.hash);
-		if (!removed.ok) await vault.remove(`${target}/${name}`, copied.note.hash);
+		if (!removed.ok) await vault.remove(`${target}/${renamed}`, copied.note.hash);
 	}
 }
 

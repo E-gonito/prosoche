@@ -3,10 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { scanCards } from './flashcards';
+import { scanCards } from './cards';
 import {
 	cardFileHeader,
 	categoryFileName,
+	categoryOfFile,
 	followGlossaryCards,
 	glossaryCardsState,
 	reconcileGlossaryCards,
@@ -16,10 +17,9 @@ import {
 	type CardFileText,
 	type TermEntry
 } from './glossary-cards';
-import type { Workspace } from '../workspaces';
 
-const FOLDER = 'Study/CS/Flashcards/Glossary/Computer Science';
-const at = (name: string) => `${FOLDER}/${name}.md`;
+const FOLDER = 'Flashcards/Computer Science';
+const at = (name: string) => `${FOLDER}/${name} (cards).md`;
 const SR = '<!--SR:!2026-10-02,3,250!2026-10-01,1,230-->';
 
 const term = (name: string, category: string | null, definition: string, relevance: string | null = null): TermEntry => ({ term: name, category, definition, relevance });
@@ -229,19 +229,24 @@ describe('reconcileGlossaryCards', () => {
 
 describe('categoryFileName and cardFileHeader', () => {
 	it.each([
-		['Cloud', 'Cloud'],
-		[null, 'Uncategorised'],
-		['  ', 'Uncategorised'],
-		['C/C++', 'C C++'],
-		['[[Links]]', 'Links'],
-		['...', 'Uncategorised']
+		['Cloud', 'Cloud (cards)'],
+		[null, 'Uncategorised (cards)'],
+		['  ', 'Uncategorised (cards)'],
+		['C/C++', 'C C++ (cards)'],
+		['[[Links]]', 'Links (cards)'],
+		['...', 'Uncategorised (cards)']
 	])('names the file for %s %s', (category, name) => {
 		expect(categoryFileName(category)).toBe(name);
+		expect(categoryOfFile(`${FOLDER}/${name}.md`)).toBe(name.slice(0, -' (cards)'.length));
+	});
+
+	it('reads a file named before the suffix whole', () => {
+		expect(categoryOfFile(`${FOLDER}/Cloud.md`)).toBe('Cloud');
 	});
 
 	it('writes the header of the spec, holding no card', () => {
 		expect(cardFileHeader('Computer Science', 'Cloud')).toBe(
-			'---\ngoal:\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Computer Science]] (Cloud). Edit the terms there; this file is\nkept in step with the glossary.\n'
+			'---\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Glossaries/Computer Science|Computer Science]] (Cloud). Edit the terms there; this file is\nkept in step with the glossary.\n'
 		);
 		expect(cardFileHeader('eye2gene', null)).toContain('category:\n---');
 		expect(scanCards(cardFileHeader('Computer Science', 'Cloud'), 'x.md')).toEqual([]);
@@ -249,24 +254,30 @@ describe('categoryFileName and cardFileHeader', () => {
 });
 
 describe('renamedCardFile', () => {
+	it('upgrades a bare Made from link, from before links went by path, to one by path', () => {
+		const before = '---\ngoal:\nglossary: Computer Science\ncategory: Cloud\n---\n\n#flashcards\n\nMade from [[Computer Science]] (Cloud). Edit the terms there.\n';
+		expect(renamedCardFile(before, 'Computer Science', 'CS Terms')).toBe(
+			before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('[[Computer Science]]', '[[Glossaries/CS Terms|CS Terms]]')
+		);
+	});
+
 	it('names the new glossary in the frontmatter and the Made from line, and nothing else', () => {
-		const before = made('Cloud', ['VPC\n??\nMade from [[Computer Science]] is not the header here.', SR]).replace('goal:\n', 'goal: AWS\n');
+		const before = made('Cloud', ['VPC\n??\nMade from [[Computer Science]] is not the header here.', SR]);
 		const after = renamedCardFile(before, 'Computer Science', 'CS Terms');
-		expect(after).toBe(before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('Made from [[Computer Science]] (Cloud)', 'Made from [[CS Terms]] (Cloud)'));
+		expect(after).toBe(before.replace('glossary: Computer Science', 'glossary: CS Terms').replace('Made from [[Glossaries/Computer Science|Computer Science]] (Cloud)', 'Made from [[Glossaries/CS Terms|CS Terms]] (Cloud)'));
 	});
 });
 
 describe('syncing a glossary’s cards', () => {
 	let root: string;
 	let vault: Vault;
-	const cs: Workspace = { slug: 'cs', name: 'CS study', color: '#000', tag: 'ws/cs', aliases: [], folders: ['Study/CS'], template: 'study', path: '_hub/workspaces/cs.md' };
 	const GLOSSARY = 'Glossaries/Computer Science.md';
 	const entry = (name: string, category: string, definition: string) => `## ${name}\n- status:: looked-up\n- category:: ${category}\n\n${definition}\n\n`;
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-glossary-cards-'));
 		vault = new Vault(root);
-		await vault.write(GLOSSARY, `---\nstudy: cs\n---\n# Glossary\n\n${entry('VPC', 'Cloud', 'A network.')}${entry('TCP', 'Networking', 'A transport.')}`);
+		await vault.write(GLOSSARY, `---\nflashcards: true\n---\n# Glossary\n\n${entry('VPC', 'Cloud', 'A network.')}${entry('TCP', 'Networking', 'A transport.')}`);
 	});
 	afterEach(async () => {
 		await vault.close();
@@ -274,36 +285,54 @@ describe('syncing a glossary’s cards', () => {
 	});
 
 	it('writes one file per category, then nothing the second time', async () => {
-		const first = await syncGlossaryCards(vault, [cs], GLOSSARY);
-		expect(first).toMatchObject({ state: 'linked', cards: 2, written: [at('Cloud'), at('Networking')], conflict: null });
+		const first = await syncGlossaryCards(vault, GLOSSARY);
+		expect(first).toMatchObject({ state: 'on', folder: FOLDER, cards: 2, written: [at('Cloud'), at('Networking')], conflict: null });
 		const cloud = (await vault.read(at('Cloud'))).content;
 		expect(cloud).toBe(made('Cloud', ['VPC\n??\nA network.', null]));
-		const second = await syncGlossaryCards(vault, [cs], GLOSSARY);
+		const second = await syncGlossaryCards(vault, GLOSSARY);
 		expect(second).toMatchObject({ written: [], pending: 0 });
-		expect(await glossaryCardsState(vault, [cs], GLOSSARY)).toMatchObject({ state: 'linked', subject: { slug: 'cs', name: 'CS study' }, cards: 2, pending: 0 });
+		expect(await glossaryCardsState(vault, GLOSSARY)).toMatchObject({ state: 'on', cards: 2, pending: 0 });
 	});
 
 	it('keeps a schedule written in by hand when the definition changes', async () => {
-		await syncGlossaryCards(vault, [cs], GLOSSARY);
+		await syncGlossaryCards(vault, GLOSSARY);
 		const cloud = (await vault.read(at('Cloud'))).content;
 		await vault.write(at('Cloud'), cloud.replace('A network.\n', `A network.\n${SR}\n`));
 		const glossary = (await vault.read(GLOSSARY)).content;
 		await vault.write(GLOSSARY, glossary.replace('A network.', 'A private network.'));
-		await syncGlossaryCards(vault, [cs], GLOSSARY);
+		await syncGlossaryCards(vault, GLOSSARY);
 		expect((await vault.read(at('Cloud'))).content).toBe(made('Cloud', ['VPC\n??\nA private network.', SR]));
 	});
 
-	it('does nothing for a glossary with no subject, or an unknown one', async () => {
+	it('does nothing for a glossary whose cards are off', async () => {
 		const glossary = (await vault.read(GLOSSARY)).content;
-		await vault.write(GLOSSARY, glossary.replace('study: cs', 'study: nope'));
-		expect(await syncGlossaryCards(vault, [cs], GLOSSARY)).toEqual({ state: 'unknown', study: 'nope' });
-		await vault.write(GLOSSARY, glossary.replace('study: cs', 'study:'));
-		expect(await syncGlossaryCards(vault, [cs], GLOSSARY)).toEqual({ state: 'unlinked' });
+		await vault.write(GLOSSARY, glossary.replace('flashcards: true', 'flashcards: false'));
+		expect(await syncGlossaryCards(vault, GLOSSARY)).toEqual({ state: 'off' });
+		expect(await glossaryCardsState(vault, GLOSSARY)).toEqual({ state: 'off' });
 		expect(await vault.files(FOLDER, 'md')).toEqual([]);
 	});
 
+	it('carries on for a glossary still linked to a study subject, from before', async () => {
+		const glossary = (await vault.read(GLOSSARY)).content;
+		await vault.write(GLOSSARY, glossary.replace('flashcards: true', 'study: cs-study'));
+		expect(await syncGlossaryCards(vault, GLOSSARY)).toMatchObject({ state: 'on', cards: 2 });
+	});
+
+	it('moves in the files an old study subject held, suffixed, review history and all', async () => {
+		const old = 'Study/CS/Flashcards/Glossary/Computer Science';
+		const cloud = made('Cloud', ['VPC\n??\nA network.', SR]);
+		await vault.write(`${old}/Cloud.md`, cloud);
+		await vault.write('Study/CS/Flashcards/Glossary/Other/Hue.md', '#flashcards\n\nHue::A colour\n');
+		const result = await syncGlossaryCards(vault, GLOSSARY);
+		expect(result).toMatchObject({ state: 'on', cards: 2, written: [at('Networking')] });
+		expect((await vault.read(at('Cloud'))).content).toBe(cloud);
+		expect(await vault.files(old, 'md')).toEqual([]);
+		// Another glossary's old files are its own to move.
+		expect((await vault.read('Study/CS/Flashcards/Glossary/Other/Hue.md')).exists).toBe(true);
+	});
+
 	it('stops at a clash rather than overwrite a card file edited meanwhile', async () => {
-		await syncGlossaryCards(vault, [cs], GLOSSARY);
+		await syncGlossaryCards(vault, GLOSSARY);
 		const glossary = (await vault.read(GLOSSARY)).content;
 		await vault.write(GLOSSARY, glossary.replace('A network.', 'A private network.'));
 		// Someone edits the card file between the sync's read and its write.
@@ -316,35 +345,41 @@ describe('syncing a glossary’s cards', () => {
 			}
 			return write(path, content, hash, opts);
 		};
-		const result = await syncGlossaryCards(vault, [cs], GLOSSARY);
+		const result = await syncGlossaryCards(vault, GLOSSARY);
 		expect(result).toMatchObject({ conflict: at('Cloud') });
 		expect((await vault.read(at('Cloud'))).content).toContain('Mine::too');
 		vault.write = write;
-		expect(await syncGlossaryCards(vault, [cs], GLOSSARY)).toMatchObject({ written: [at('Cloud')], conflict: null });
+		expect(await syncGlossaryCards(vault, GLOSSARY)).toMatchObject({ written: [at('Cloud')], conflict: null });
 		expect((await vault.read(at('Cloud'))).content).toContain('A private network.');
 	});
 
 	it('moves the cards to the new name’s folder when the glossary is renamed', async () => {
-		await syncGlossaryCards(vault, [cs], GLOSSARY);
+		await syncGlossaryCards(vault, GLOSSARY);
 		const content = (await vault.read(GLOSSARY)).content;
 		await vault.write('Glossaries/CS Terms.md', content);
 		await vault.remove(GLOSSARY);
-		const result = await syncGlossaryCards(vault, [cs], 'Glossaries/CS Terms.md', { renamedFrom: 'Computer Science' });
+		const result = await syncGlossaryCards(vault, 'Glossaries/CS Terms.md', { renamedFrom: 'Computer Science' });
 		expect(result).toMatchObject({ written: [], cards: 2 });
 		expect(await vault.files(FOLDER, 'md')).toEqual([]);
-		expect((await vault.read('Study/CS/Flashcards/Glossary/CS Terms/Cloud.md')).content).toContain('Made from [[CS Terms]] (Cloud)');
+		expect((await vault.read('Flashcards/CS Terms/Cloud (cards).md')).content).toContain('Made from [[Glossaries/CS Terms|CS Terms]] (Cloud)');
 	});
 
-	it('syncs every linked glossary at start, and a changed one when it changes', async () => {
-		await vault.write('Glossaries/Other.md', `# Glossary\n\n${entry('Hue', 'Art', 'A colour.')}`);
-		const all = await syncAllGlossaryCards(vault, [cs]);
-		expect(all.map((r) => r.state)).toEqual(['linked', 'unlinked']);
+	it('never touches what else is in the Flashcards folder', async () => {
+		await vault.write(`${FOLDER}/Git/Basics.txt`, 'front\tback\n');
+		await syncGlossaryCards(vault, GLOSSARY);
+		expect(await vault.files(FOLDER, 'txt', { deep: true })).toEqual(['Git/Basics.txt']);
+	});
 
-		const stop = followGlossaryCards(vault, async () => [cs], 10);
+	it('syncs every glossary with cards at start, and a changed one when it changes', async () => {
+		await vault.write('Glossaries/Other.md', `# Glossary\n\n${entry('Hue', 'Art', 'A colour.')}`);
+		const all = await syncAllGlossaryCards(vault);
+		expect(all.map((r) => r.state)).toEqual(['on', 'off']);
+
+		const stop = followGlossaryCards(vault, 10);
 		const glossary = (await vault.read(GLOSSARY)).content;
 		await vault.write(GLOSSARY, `${glossary}${entry('DNS', 'Networking', 'Names to addresses.')}`);
 		await new Promise((r) => setTimeout(r, 100));
-		await syncGlossaryCards(vault, [cs], GLOSSARY); // waits for the one the change started
+		await syncGlossaryCards(vault, GLOSSARY); // waits for the one the change started
 		stop();
 		expect((await vault.read(at('Networking'))).content).toContain('DNS\n??\nNames to addresses.');
 	});

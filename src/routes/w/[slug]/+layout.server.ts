@@ -4,6 +4,7 @@ import { homeFolder } from '$server/workspaces';
 import { readLog } from '$server/log';
 import { belongsTo, legacyInbox, readInbox, unfiled } from '$server/inbox';
 import { CAPTURE_PATH } from '$server/capture';
+import { readLede } from '$server/parse/note';
 import { noteHref } from '$lib/shared/links';
 import type { LayoutServerLoad } from './$types';
 
@@ -35,7 +36,8 @@ export const load: LayoutServerLoad = async ({ params }) => {
 
 	const home = homeFolder(workspace);
 	const logPath = `${home}/Log.md`;
-	const [captured, legacy, logNote, pages, all] = await Promise.all([
+	const [definition, captured, legacy, logNote, pages, all] = await Promise.all([
+		vault.read(workspace.path),
 		readInbox(vault),
 		legacyInbox(vault, workspace),
 		vault.read(logPath),
@@ -64,6 +66,8 @@ export const load: LayoutServerLoad = async ({ params }) => {
 			name: workspace.name,
 			color: workspace.color,
 			tag: workspace.tag,
+			template: workspace.template ?? '',
+			description: readLede(definition.content),
 			folders: workspace.folders
 		},
 		definitionHref: noteHref(workspace.path),

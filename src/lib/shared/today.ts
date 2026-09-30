@@ -76,20 +76,12 @@ export interface TodayData {
 	events: TodayEvent[];
 	/** Set only when the feed is configured and unreachable; absent is calm. */
 	calendarProblem: string | null;
-	aiEnabled: boolean;
-	/** The note's own briefing region, read like any other text. */
-	briefingText: string | null;
 	/** Open tasks overdue as of the real today, from anywhere but a daily note or a board. */
 	overdue: Task[];
 	overdueOwners: Record<string, Owner>;
 	/** Open board cards overdue as of the real today, soonest first. */
 	overdueCards: OpenCard[];
 	workspaces: WorkspaceGroup[];
-	/**
-	 * Monday to Sunday of the viewed day's week: each day's tasks done, and
-	 * owed (done plus open). Skipped tasks are counted apart, in neither.
-	 */
-	week: Array<{ day: string; done: number; skipped: number; total: number }>;
 	/** `Inbox/Capture.md`'s unfiled lines: how many, and the newest few. */
 	inbox: { count: number; lines: InboxLine[] };
 	cards: TodayCard[];

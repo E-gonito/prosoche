@@ -191,8 +191,8 @@ export class Vault {
 	 * to let a private folder's non-markdown files through this door.
 	 *
 	 * Unlike `list`, this exists for the handful of formats the vault holds
-	 * beside markdown, such as a workspace's custom HTML pages or the Anki
-	 * decks under `Flashcards/`, named by the caller rather than assumed. A
+	 * beside markdown, such as a workspace's custom HTML pages, named by the
+	 * caller rather than assumed; it also lists a folder's markdown alone. A
 	 * folder that does not exist reads as empty, the same as an empty one,
 	 * because "no pages yet" is not an error.
 	 *
