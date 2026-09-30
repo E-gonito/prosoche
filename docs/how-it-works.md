@@ -62,19 +62,25 @@ task. Your Google Calendar events for the day sit on the same grid as sand
 blocks rather than teal ones, read-only, and linking nowhere. On a phone, a segmented control switches between the timeline and
 the plain list; the choice is remembered on that device.
 
-The capture box at the top of the list sends a line where its words say.
-One with a time range, `10:00 - 11:00 Dentist`, goes straight into today's
-note under `# Tasks` and onto the timeline. One that names a workspace by its
-tag (`#ws/kaya`) or one of its aliases goes onto that workspace's board, at
-the bottom of the first column, read the way the board's quick-add reads it;
-the tag itself is left off the card. Anything else lands in
-`Inbox/Capture.md` under today's date, a bare thought stamped with the time
-and a line written as a task kept as a task. A timed line on a day with no
-note, or a line naming a workspace that has no board yet, goes to the inbox
-instead; nothing is lost and nothing is created. The same rule holds for
-every capture box, the `c` and `k` keys and the phone's share sheet. The
-unscheduled list is exactly what it says: once a task gets a time, from the
-grip or the timeline, it moves to the timeline and leaves this list.
+The box at the top of the Unscheduled list adds a task to the day. What you
+type goes into the day's note under `# Tasks` as a `- [ ]` line: with a
+time range, `10:00 - 10:30 Dentist`, it lands on the timeline; without one
+it joins the unscheduled list, where its ⠿ grip can drag it onto the
+timeline. A `#ws/kaya` tag stays on the line, which is what puts a daily
+task in that workspace. On a day with no note the line goes to
+`Inbox/Capture.md` instead and the message says so; nothing is created.
+
+Every other capture box, the `c` and `k` keys and the phone's share sheet
+send a line where its words say. One with a time range goes into today's
+note and onto the timeline. One that names a workspace by its tag or one of
+its aliases goes onto that workspace's board, at the bottom of the first
+column, read the way the board's quick-add reads it; the tag itself is left
+off the card. Anything else lands in `Inbox/Capture.md` under today's date,
+a bare thought stamped with the time and a line written as a task kept as a
+task. A line naming a workspace that has no board yet goes to the inbox
+instead; nothing is lost and nothing is created. The unscheduled list is
+exactly what it says: once a task gets a time, from the grip or the
+timeline, it moves to the timeline and leaves this list.
 
 **Inbox** is a card listing the newest five unfiled lines of
 `Inbox/Capture.md`, with how many are waiting and a link to the triage page
@@ -254,8 +260,8 @@ whole vault, shows what changed recently, and offers the folder tree. A note
 shows its rendered text beside its properties, tags, the notes that link to
 it and the notes it links to; Browse opens the folder tree as a side sheet.
 
-The capture box is Today's (see Today): a timed line goes to today's note,
-one naming a workspace to its board, and anything else to
+The capture box routes by its words (see Today): a timed line goes to
+today's note, one naming a workspace to its board, and anything else to
 `Inbox/Capture.md` under a `## <day>` heading. Those are the only things the
 Notes module writes.
 

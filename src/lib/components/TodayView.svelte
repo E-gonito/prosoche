@@ -228,7 +228,7 @@
 					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && (drag.task.startMin !== null || drag.task.path !== data.path)} bind:this={unscheduledCard}>
 						<div class="sheet">
 							<h3 class="caps">Unscheduled <span class="right num">{unscheduled.length}</span></h3>
-							<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
+							<Capture day={data.day} oncaptured={() => invalidateAll()} onproblem={failed} />
 							<div class="rows">
 								{#each unscheduled as task (task.path + ':' + task.line)}
 									<TaskRow

@@ -64,35 +64,48 @@ test.describe('Board cards on Today', () => {
 });
 
 test.describe('Capture routing', () => {
-	const box = (page: import('@playwright/test').Page) => page.getByTestId('unscheduled').getByTestId('capture-row');
+	const todayBox = (page: import('@playwright/test').Page) => page.getByTestId('unscheduled').getByTestId('capture-row');
+	const notesBox = (page: import('@playwright/test').Page) => page.getByTestId('capture-row');
 
-	test('a time range goes into today’s note', async ({ page }) => {
+	test('the box on Today adds a task to the day’s unscheduled list', async ({ page }) => {
 		const inbox = vaultFile(CAPTURE);
 		await page.goto('/today');
-		await box(page).getByLabel('Quick capture').fill('16:00 - 16:30 Call the bank');
-		await box(page).getByRole('button', { name: 'Add' }).click();
+		await todayBox(page).getByLabel('Quick capture').fill('Buy stamps');
+		await todayBox(page).getByRole('button', { name: 'Add' }).click();
+		await expect(page.getByText("Added to today's unscheduled list")).toBeVisible();
+		expect(vaultFile(TODAY_NOTE)).toContain('\n- [ ] Buy stamps\n## Backlog');
+		expect(vaultFile(CAPTURE)).toBe(inbox);
+		await expect(page.getByTestId('unscheduled').getByTestId('task-row').filter({ hasText: 'Buy stamps' })).toBeVisible();
+	});
+
+	test('a time range typed on Today goes straight onto the timeline', async ({ page }) => {
+		const inbox = vaultFile(CAPTURE);
+		await page.goto('/today');
+		await todayBox(page).getByLabel('Quick capture').fill('16:00 - 16:30 Call the bank');
+		await todayBox(page).getByRole('button', { name: 'Add' }).click();
 		await expect(page.getByText('Added to today, 16:00–16:30')).toBeVisible();
 		expect(vaultFile(TODAY_NOTE)).toContain('\n- [ ] 16:00 - 16:30 Call the bank\n## Backlog');
 		expect(vaultFile(CAPTURE)).toBe(inbox);
 		await expect(page.getByTestId('block').filter({ hasText: 'Call the bank' })).toBeVisible();
 	});
 
-	test('a workspace tag goes onto that board', async ({ page }) => {
+	test('a workspace tag, from any other box, goes onto that board', async ({ page }) => {
 		const inbox = vaultFile(CAPTURE);
-		await page.goto('/today');
-		await box(page).getByLabel('Quick capture').fill('Order the banners #ws/work');
-		await box(page).getByRole('button', { name: 'Add' }).click();
+		await page.goto('/notes');
+		await notesBox(page).getByLabel('Quick capture').fill('Order the banners #ws/work');
+		await notesBox(page).getByRole('button', { name: 'Add' }).click();
 		await expect(page.getByText("Added to Work's board")).toBeVisible();
 		expect(vaultFile('Work/Board.md')).toContain('- [ ] Book the venue\n- [ ] Order the banners\n');
 		expect(vaultFile(CAPTURE)).toBe(inbox);
 	});
 
 	test('anything else lands in the inbox and shows on the Inbox card', async ({ page }) => {
-		await page.goto('/today');
-		await box(page).getByLabel('Quick capture').fill('buy a birthday card');
-		await box(page).getByRole('button', { name: 'Add' }).click();
+		await page.goto('/notes');
+		await notesBox(page).getByLabel('Quick capture').fill('buy a birthday card');
+		await notesBox(page).getByRole('button', { name: 'Add' }).click();
 		await expect(page.getByText('Saved to Inbox/Capture.md')).toBeVisible();
 		expect(vaultFile(CAPTURE)).toMatch(new RegExp(`## ${TODAY}\\n(- .*\\n)*- \\d{2}:\\d{2} buy a birthday card\\n`));
+		await page.goto('/today');
 		await expect(page.getByTestId('today-inbox').locator('.inbox-line').first()).toContainText('buy a birthday card');
 	});
 });

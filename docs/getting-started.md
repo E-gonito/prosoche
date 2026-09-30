@@ -73,11 +73,14 @@ workspace with that slug. A workspace can also list `aliases:` in its file, so
 
 ## 7. Capture from anywhere
 
-Press `c` for a capture box, or use the box on Today or the phone's share
-sheet. The line goes where its words say:
+The box at the top of Today's Unscheduled list adds a task to the day: with
+a time range (`10:00 - 10:30 Dentist`) it lands on the timeline, without one
+it waits in the list until you drag its ⠿ grip onto an hour.
 
-- a time range (`10:00 - 11:00 Dentist`) goes into today's note and onto the
-  timeline;
+Press `c` for a capture box anywhere, or share to the app from your phone.
+Those lines go where their words say:
+
+- a time range goes into today's note and onto the timeline;
 - `#ws/<slug>` or a workspace alias puts it on that workspace's board;
 - anything else lands in `Inbox/Capture.md` under today's date.
 
