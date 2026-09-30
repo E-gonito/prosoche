@@ -95,3 +95,16 @@ export async function planOnDay(day: string, task: Task, time?: { startMin: numb
 	const result = await api<{ task: Task }>(`/api/day/${day}/plan`, { ...locate(task), ...time });
 	return result.ok ? { ok: true, value: result.value.task } : result;
 }
+
+/**
+ * Write a workspace's (or study subject's) changed details: `kind` is its
+ * `template:`. Only the fields given are sent, and the server writes only
+ * those. Returns the server's result; never reloads the page.
+ */
+export async function saveWorkspace(
+	slug: string,
+	changed: { name?: string; description?: string; color?: string; tag?: string; kind?: string }
+): Promise<Result<unknown>> {
+	const { kind, ...rest } = changed;
+	return api('/api/workspace', { slug, ...rest, ...(kind === undefined ? {} : { template: kind }) }, { method: 'PATCH' });
+}

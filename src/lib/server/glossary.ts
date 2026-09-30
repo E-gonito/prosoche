@@ -41,7 +41,7 @@ import { config } from './config';
 import { appendEntry, deleteEntry, editEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type EntryChange, type GlossaryEntry } from './parse/glossary';
 import { contactName } from './parse/contact';
 import { setFrontmatterField } from './parse/frontmatter';
-import { basename, parseNote } from './parse/note';
+import { basename, parseNote, setLede } from './parse/note';
 import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
@@ -483,6 +483,25 @@ export async function renameGlossary(vault: Vault, glossary: GlossaryRef, rawNam
 		await rewrite(vault, w.path, (content) => setFrontmatterField(content, 'glossary', checked.name), 2);
 	}
 	return { ok: true, path: checked.path };
+}
+
+/**
+ * Change what a glossary says about itself: its description, the paragraph
+ * under its `# Glossary` title (see `setLede`), and its name, through
+ * `renameGlossary`. Each field left out is left alone.
+ *
+ * The description is written first, in place, so a rename then carries it
+ * across with the rest of the file's bytes. Answers the glossary's path as it
+ * now is. Refuses what `renameGlossary` refuses; a refused rename leaves the
+ * new description written. Never touches a term.
+ */
+export async function editGlossary(vault: Vault, glossary: GlossaryRef, edit: { name?: string; description?: string }): Promise<Written> {
+	if (edit.description !== undefined) {
+		const text = edit.description;
+		const written = await rewrite(vault, glossary.path, (content) => setLede(content, text), 2);
+		if (!written.ok) return written;
+	}
+	return edit.name === undefined ? { ok: true, path: glossary.path } : renameGlossary(vault, glossary, edit.name);
 }
 
 /**

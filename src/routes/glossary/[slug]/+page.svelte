@@ -17,6 +17,7 @@
 	 */
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
+	import DetailsHeader, { type Details } from '$lib/components/DetailsHeader.svelte';
 	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { api } from '$lib/client/api';
 	import { slugify } from '$lib/shared/slug';
@@ -25,22 +26,19 @@
 
 	const slug = $derived(data.glossary.slug);
 
-	/** The glossary's own name and existence: rename in place, delete asked twice. */
-	let renaming = $state<string | null>(null);
+	/** Deleting the glossary is asked twice. */
 	let confirmingDelete = $state(false);
 
-	async function rename(event: SubmitEvent) {
-		event.preventDefault();
-		if (renaming === null || !renaming.trim()) return;
-		problem = '';
-		const result = await api('/api/glossary', { action: 'rename-glossary', glossary: slug, name: renaming });
-		if (!result.ok) {
-			problem = result.message;
-			return;
-		}
-		const to = slugify(renaming);
-		renaming = null;
-		await goto(`/glossary/${to}`, { invalidateAll: true, replaceState: true });
+	/**
+	 * The heading's Edit: name and description. A new name is a new file and
+	 * a new URL, so the page moves there; otherwise it reloads in place.
+	 */
+	async function saveDetails(changed: Partial<Details>) {
+		const result = await api('/api/glossary', { action: 'edit-glossary', glossary: slug, name: changed.name, description: changed.description });
+		if (!result.ok) return result;
+		if (changed.name !== undefined) await goto(`/glossary/${slugify(changed.name)}`, { invalidateAll: true, replaceState: true });
+		else await invalidateAll();
+		return result;
 	}
 
 	async function removeGlossary() {
@@ -58,7 +56,6 @@
 	// half-done asks do not carry over.
 	$effect(() => {
 		void slug;
-		renaming = null;
 		confirmingDelete = false;
 	});
 
@@ -166,34 +163,27 @@
 <svelte:head><title>{data.glossary.name} · Glossary · prosoche</title></svelte:head>
 
 <div class="page">
-	<div class="title">
-		<a class="crumb" href="/glossary">Glossary</a>
-		{#if renaming !== null}
-			<form class="rename" onsubmit={rename} data-testid="rename-form">
-				<!-- svelte-ignore a11y_autofocus -->
-				<input class="field" bind:value={renaming} aria-label="Glossary name" autofocus data-testid="rename-name" />
-				<button class="btn primary small" type="submit" disabled={!renaming.trim()} data-testid="rename-save">Rename</button>
-				<button class="btn ghost small" type="button" onclick={() => (renaming = null)}>Cancel</button>
-			</form>
-		{:else}
-			<h1><i class="dot lg" style="--dot: {data.glossary.color}"></i>{data.glossary.name}</h1>
-		{/if}
-		<p class="sub">
-			<span>What each term means, and why it matters</span>
-			<span class="own">
+	{#key slug}
+		<DetailsHeader
+			crumb={{ href: '/glossary', label: 'Glossary' }}
+			details={{ name: data.glossary.name, description: data.glossary.description, color: data.glossary.color }}
+			fallback="What each term means, and why it matters"
+			fileHref={data.glossary.href}
+			save={saveDetails}
+		>
+			{#snippet actions()}
 				{#if confirmingDelete}
 					<span class="ask" data-testid="delete-glossary-ask">
 						Delete this glossary{data.entries.length ? ` and its ${data.entries.length} term${data.entries.length === 1 ? '' : 's'}` : ''}?
 						<button class="btn ghost small remove" onclick={removeGlossary} data-testid="delete-glossary-confirm">Delete</button>
 						<button class="btn ghost small" onclick={() => (confirmingDelete = false)}>Keep</button>
 					</span>
-				{:else if renaming === null}
-					<button class="btn ghost small" onclick={() => (renaming = data.glossary.name)} data-testid="rename-glossary">Rename</button>
-					<button class="btn ghost small remove" onclick={() => (confirmingDelete = true)} data-testid="delete-glossary">Delete</button>
+				{:else}
+					<button class="link-btn remove" onclick={() => (confirmingDelete = true)} data-testid="delete-glossary">Delete</button>
 				{/if}
-			</span>
-		</p>
-	</div>
+			{/snippet}
+		</DetailsHeader>
+	{/key}
 
 	<div class="cards" data-testid="glossary-cards">
 		<label for="glossary-study">Flashcards</label>
@@ -337,7 +327,6 @@
 </div>
 
 <style>
-	h1 { display: flex; align-items: center; gap: 10px; }
 	code { font: var(--t13) var(--mono); }
 	.cards { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
 	.cards label { font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
@@ -350,12 +339,10 @@
 	.count { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) 0 var(--s4); }
 	.count :global(.draft:has(.proposal)) { flex-basis: 100%; }
 	.entry h3 { font-size: var(--t16); margin: 0 0 var(--s1); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
-	.sub { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
-	.own { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
-	.own .remove, .ask .remove { color: var(--bad); }
+	.link-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+	.link-btn:hover { text-decoration: underline; }
+	.remove { color: var(--bad); }
 	.ask { font-size: var(--t13); display: inline-flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
-	.rename { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin: var(--s1) 0 var(--s2); }
-	.rename .field { flex: 1 1 220px; width: auto; font: var(--t20) var(--serif); }
 	/* Wrapped rather than scrolled: the categories are the user's own and
 	   unbounded, and a hidden sideways scroll cannot be reached with a mouse. */
 	.cat-tabs { margin-bottom: var(--s2); flex-wrap: wrap; overflow-x: visible; }

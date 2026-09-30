@@ -120,10 +120,12 @@ export function parseNote(content: string, path = ''): ParsedNote {
 /**
  * A note's lede: the first paragraph of its body, as one line.
  *
- * The first run of prose lines after the frontmatter, skipping blank lines
- * and headings, up to the next blank line, heading or fence. A body whose
- * first block is a list, quote, table or fence has no lede. Lines are joined
- * with single spaces. Empty when there is none. Pure.
+ * The first run of prose lines after the frontmatter and the note's title
+ * (a `# ` heading, when it opens the body), up to the next blank line,
+ * heading or fence. Any other heading ends the search: what comes under a
+ * `## ` belongs to that section, as a glossary's terms do, not to the note.
+ * A body whose first block is a list, quote, table or fence has no lede.
+ * Lines are joined with single spaces. Empty when there is none. Pure.
  */
 export function readLede(content: string): string {
 	const lines = content.split('\n');
@@ -139,7 +141,8 @@ export function readLede(content: string): string {
  * as it was.
  *
  * `text` is written as one line, runs of whitespace collapsed. A note with no
- * lede gets one as the first block of its body, set off by blank lines. An
+ * lede gets one as the first block of its body, under its title if it has
+ * one, set off by blank lines. An
  * empty `text` removes the lede and one blank line beside it. A note whose
  * lede already reads `text` comes back unchanged. Pure; never throws.
  */
@@ -171,17 +174,21 @@ export function setLede(content: string, text: string): string {
 
 /**
  * Where the lede is, as line indexes: `start` to `end` exclusive, equal when
- * there is none. `insertAt` is the first line after the frontmatter, where a
- * new lede goes.
+ * there is none. `insertAt` is where a new lede goes: the line after the
+ * title, or after the frontmatter when there is no title.
  */
 function findLede(lines: string[]): { start: number; end: number; insertAt: number } {
 	const opened = lines[0]?.replace(/\r$/, '') === '---';
 	const close = opened ? lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---') : -1;
-	const insertAt = close + 1;
 	const prose = (l: string) => l.trim() !== '' && !HEADING.test(l.trim()) && !FENCE.test(l) && !BLOCK.test(l);
+	const skipBlank = (from: number) => {
+		while (from < lines.length && lines[from].trim() === '') from++;
+		return from;
+	};
 
-	let start = insertAt;
-	while (start < lines.length && (lines[start].trim() === '' || HEADING.test(lines[start].trim()))) start++;
+	const first = skipBlank(close + 1);
+	const insertAt = first < lines.length && /^#[ \t]/.test(lines[first].trim()) ? first + 1 : close + 1;
+	const start = skipBlank(insertAt);
 	if (start >= lines.length || !prose(lines[start])) return { start: insertAt, end: insertAt, insertAt };
 	let end = start + 1;
 	while (end < lines.length && prose(lines[end])) end++;
