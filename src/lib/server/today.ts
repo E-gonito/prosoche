@@ -42,8 +42,6 @@ export type { Owner, WorkspaceGroup, TodayData };
  */
 type TodayDashboard = Omit<TodayData, 'cards'>;
 
-/** How many of a workspace's open cards the dashboard names before collapsing the rest. */
-const WORKSPACE_CARD_LIMIT = 3;
 
 /** How many unfiled captures the Inbox card lists before "and N more". */
 const INBOX_LIMIT = 5;
@@ -170,8 +168,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 			slug: workspace.slug,
 			name: workspace.name,
 			color: workspace.color,
-			cards: own.slice(0, WORKSPACE_CARD_LIMIT),
-			more: Math.max(0, own.length - WORKSPACE_CARD_LIMIT),
+			cards: own,
 			inboxCount
 		});
 	}

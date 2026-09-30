@@ -102,9 +102,10 @@ else in the vault with a Tasks-plugin due date, daily notes excluded, because
 each of those is a copy of your template and would otherwise repeat the same
 unfinished checklist; each of those rows has a button to plan it onto today.
 
-**From your workspaces** shows each workspace's most urgent open board cards
-— priority first, then the soonest due date — collapsed beyond the first
-three, plus how many lines of the inbox carry its tag or an alias. A card's
+**From your workspaces** shows every open board card of each workspace,
+most urgent first — priority first, then the soonest due date — in a list
+that scrolls past the first three and a half, plus how many lines of the
+inbox carry its tag or an alias. A card's
 title opens its workspace, where the board is; its checkbox ticks it in
 `Board.md`. Its ⠿ grip drags it onto the day: dropped on the timeline, a
 block such as `- [ ] 10:00 - 10:30 Book the venue [[Work/Board]] #ws/work`
