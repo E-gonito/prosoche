@@ -43,7 +43,7 @@ const edit = (over: Partial<Extract<ProposalEdit, { kind: 'append' }>> = {}): Pr
 
 const proposal = (over: Partial<Proposal> = {}): Proposal => ({
 	id: 'p1',
-	feature: 'capture',
+	feature: 'glossary-lookup',
 	stamp: STAMP,
 	summary: 'a proposal',
 	edits: [edit()],
@@ -93,7 +93,7 @@ describe('G1 requireHumanAccept', () => {
 
 	it('does not let another feature claim the briefing exception', () => {
 		const p = proposal({
-			feature: 'capture',
+			feature: 'glossary-lookup',
 			edits: [{ id: 'b1', kind: 'replace-region', path: 'Journal/2026/09/21.md', marker: BRIEFING_MARKER, text: 'x', reason: 'r' }]
 		});
 		expect(briefingException(p)).toBeNull();
@@ -183,7 +183,7 @@ describe('G3 requireSandboxRoot', () => {
 /* ------------------------------------------------------------------ G4 ---- */
 
 describe('G4 checkPath', () => {
-	const capture: PathPolicy = { feature: 'capture', allow: ['Inbox/', 'Work/Tasks.md'] };
+	const capture: PathPolicy = { feature: 'glossary-lookup', allow: ['Inbox/', 'Work/Tasks.md'] };
 	const denied = (path: string, policy: PathPolicy = capture) => checkPath(path, policy).map((r) => r.message).join(' ');
 
 	it('allows a path inside the allowlisted folder', () => {
@@ -238,7 +238,7 @@ describe('G4 checkPath', () => {
 	});
 
 	describe('the always-denied set, whatever the allowlist says', () => {
-		const everything: PathPolicy = { feature: 'capture', allow: ['.obsidian/', '_hub/', 'CLAUDE.md', 'Journal/'] };
+		const everything: PathPolicy = { feature: 'glossary-lookup', allow: ['.obsidian/', '_hub/', 'CLAUDE.md', 'Journal/'] };
 		for (const path of [
 			'.obsidian/plugins/obsidian-git/main.md',
 			'.git/config.md',

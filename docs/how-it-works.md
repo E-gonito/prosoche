@@ -44,8 +44,7 @@ the Unscheduled list, press its ✕, or press Backspace on it, to take the time
 off again. Everything snaps to ten minutes, and only the time on that line
 changes — the note keeps its own order regardless of where the UI displays a
 task. Your Google Calendar events for the day sit on the same grid as sand
-blocks rather than teal ones, read-only, each linking to its card on
-Meetings. On a phone, a segmented control switches between the timeline and
+blocks rather than teal ones, read-only, and linking nowhere. On a phone, a segmented control switches between the timeline and
 the plain list; the choice is remembered on that device.
 
 Capture appends to `Inbox/Capture.md` under today's date. A line written as a
@@ -76,94 +75,23 @@ A note that still has git conflict markers in it says so, with a link to the
 sync page. Resolving a merge is yours to do, in Obsidian or there; nothing in
 the app rewrites those lines for you.
 
-## Meetings
-
-Meetings is a notebook per workspace: a card to read before you go in, and a
-place to capture what you don't know while you're there. Everything it keeps
-is markdown in the workspace's home folder (its first folder).
-
-Meetings are opt-in. Only a workspace whose definition in `_hub/workspaces/`
-says `meetings: true` has a notebook; absent, or any other value, means none.
-A workspace without it is not listed on the Meetings page, is never offered
-or suggested when you pick a calendar event's workspace, has no Meetings
-section on its Overview, and its `/meetings/<slug>` answers 404 with a note
-saying which file to add the line to. Its pages and everything else it has
-are unaffected. Adding the line is the whole of switching it on: the
-notebook's files are made the first time you use them.
-
-- `Primer.md` is the meeting card. Write it in Obsidian, or press **Draft a
-  primer with Claude**; once it exists, **Suggest updates** proposes a
-  revised version. The card draws the note the way it is written: the
-  opening paragraph on its own, a `>` quote as a sand aside (a bold first
-  word becomes its lead-in), each `##` heading as a section label, a bullet
-  list as rows with any nested bullet as the muted line under its row, and a
-  numbered list as a set of frames.
-- `Meetings/YYYY-MM-DD Title.md` is one meeting. **Start meeting** or **Start
-  standup** creates it from a small template (`type`, `date`, the calendar
-  `event` and `attendees` when it came from one, and a `## Captured`
-  heading). The capture box adds one line under that heading per item:
-  `- term:: DVC`, `- question:: …`,
-  `- decision:: …`, `- [ ] action:: …`, or `- …` for a plain note. **End
-  meeting** writes one `ended: HH:MM` line into the frontmatter. The meeting
-  under way is today's latest note without `ended:`.
-- "Before you go in" lists every open task line from the workspace's meeting
-  notes. Ticking one rewrites that line and nothing else, as ticking a task
-  anywhere does.
-- A term you capture always goes into the meeting note. When the
-  workspace's definition names a glossary with `glossary: <name>`, it also
-  goes into that glossary, `Glossaries/<name>.md`, as an entry to look up
-  with the meeting as its source, unless the glossary already has it; the
-  first term creates the glossary if it is not there yet. A workspace
-  without `glossary:` makes no glossary write at all. The meeting note is
-  the record, so the capture counts even if that second write loses to an
-  edit made elsewhere; the term then waits on the glossary's page instead
-  (see Glossary below).
-- `Pages/*.html` are the workspace's own pages. Each gets a tab in the
-  notebook.
-
-Every Claude button here (the primer and **Prep with Claude**) shows its
-proposal as a diff first and writes only the file it names, and
-only when you accept. **Prep with Claude** adds a `## Talking points`
-section to the meeting under way, drafted from the primer, the last three
-meetings, the open actions and the calendar event. With no meeting under
-way, it proposes the new meeting note with the talking points already in
-it, so accepting the prep also starts the meeting.
-
-The Meetings page lists today's and the next seven days' calendar events.
-Pick an event's workspace once and it is remembered by the event's title in
-`_hub/meetings.md`, one line per title (`- Dev Weekly Meeting → eye2gene`),
-which you can edit in Obsidian. A workspace whose alias appears in the title
-is offered first but never applied without a click. An assigned event has
-**Prep**, which opens its notebook ready to start it, and **Start**, which
-starts the meeting at once. Nothing from the private folder is ever read
-here.
-
-The calendar is Google's, read through its secret iCal address, so no
-sign-in is needed: in Google Calendar open Settings, choose your calendar,
-then Integrate calendar, copy "Secret address in iCal format", and set it as
-`HUB_GCAL_ICS` in the server's environment. Treat that address like a
-password. Without it the page still works: open a notebook and start a
-meeting by hand. Outlook calendars are not supported yet.
-
 ## Glossary
 
 Glossary keeps glossaries: each term, what it means, and why it matters.
 A glossary belongs to no workspace. Each is one file in `Glossaries/` at the
 vault root, and the file name is its name: `Glossaries/Computer Science.md`
 is the glossary called Computer Science, at `/glossary/computer-science`. A
-workspace with meetings can point at one (see Meetings and Workspaces), and
-several workspaces can point at the same one.
+workspace can point at one (see Workspaces), and several workspaces can
+point at the same one.
 
 The Glossary page lists every glossary with how many terms it holds, how
-many are still to look up, and which workspaces' meetings feed it. **Start a
+many are still to look up. **Start a
 glossary** under it takes a name and writes `Glossaries/<name>.md` holding
 only a `# Glossary` title. A name is refused when another glossary has it
 (ignoring case, as Obsidian's links do), when it would give the same address
 as another, when it has no letter or digit, or when it cannot be a file name
 or a link: a slash, a colon, `#`, `^`, brackets, a leading or trailing dot.
-In the rail each glossary is a sub-item under Glossary. The notebook's old
-address, `/meetings/<slug>/glossary`, goes to the glossary that workspace
-points at, or to the list.
+In the rail each glossary is a sub-item under Glossary.
 
 A glossary's file holds one `##` heading per term, with `- status::`
 (`to-look-up` or `looked-up`), `- category::` and `- source::` lines, then
@@ -183,98 +111,26 @@ look up as looked up once it has a definition. A rename onto a term the
 glossary already has is refused. **Delete** on an entry asks first, then
 removes the entry's heading and every line under it, and nothing else.
 
-Any term captured in the meetings of a workspace that points at the glossary,
-and that the glossary still lacks, waits at the top under **Captured in
-meetings**, and **Add to glossary** appends an entry for it. The line under
-the title links to the meeting notebook of each such workspace; meetings are
-started from the workspace, not from here.
-
 **Rename**, beside the title, renames the file: the glossary's bytes are
 written unchanged under the new name, the old file is removed, and every
 workspace whose `glossary:` named it is changed to the new name, one line
 each. A name another glossary has is refused, so nothing is overwritten.
 **Delete** asks "Delete this glossary?" in place, then removes the one file;
 the deletion is committed, so git history still has it. A workspace still
-pointing at a deleted glossary keeps its `glossary:` line, and the next term
-captured in its meetings starts the glossary again.
+pointing at a deleted glossary keeps its `glossary:` line.
 
 **Look up with Claude** drafts the definition and the `→` line, and marks the
 entry looked up with `- drafted:: Claude`; **Look up all** does every waiting
-term in one proposal, twenty at most. The context is what the workspaces
-pointing at the glossary have: the primer of each with a notebook and the
-last three meetings across them. A glossary no workspace points at is
+term in one proposal, twenty at most. The context is the definition file of
+each workspace pointing at the glossary. A glossary no workspace points at is
 looked up from its terms alone.
 
 A look-up is a proposal like every Claude button's: it is shown as a diff
 first and writes only the glossary's own file, and only when you accept.
 
-**Scan notes for new terms** has Claude read your notes for terms the
-glossary lacks. A glossary remembers where to scan in its frontmatter:
-`sources:`, a list of vault folders, and `scanned:`, the day of the last
-full scan.
-
-    ---
-    sources:
-      - Computer Science
-    scanned: "2026-09-29"
-    ---
-
-The folders show as chips under the add-a-term form, each with × to remove
-it, and **Add folder** takes another (the field suggests the vault's
-folders; the private folder, `_hub/` and `Glossaries/` are never offered).
-Each change rewrites only the `sources:` lines; a glossary with no
-frontmatter gains a small block at the top, and its body is never touched.
-With no folder yet, the page asks for one before it will scan.
-
-One button then scans. Before a first scan it reads "Scan all 118 notes";
-after one, "Scan 12 notes changed since 29 Sep", counting the notes under
-the folders whose modified day is that day or later (a note edited on the
-day of a scan is read again rather than missed), with **Scan all 118 notes
-instead** beside it. Empty notes are not counted. The notes are split into
-batches of at most 60,000 characters (12,000 of any one note), and the page
-runs the batches one after another by itself, showing "Batch 3 of 9 · 41 new
-terms so far" and a **Stop** button. Stop drops the batch in flight; the
-terms found so far stay.
-
-Each batch is read-only: Claude reads the notes as quoted data and drafts
-entries for the technical terms they define or use, each with a category, a
-definition, a `→` line, the note it came from and a sentence quoted from
-it. An entry is kept only if that sentence is in the note and the term is in
-that sentence (a bracketed part, either side of a slash, or a plural will
-do); the rest wait, collapsed, under **Left out**. Terms the glossary
-already has, or an earlier batch found, are left out of the list, compared
-ignoring case and spacing, and each batch is told them so it does not look
-for them again.
-
-Nothing is written until you add. Every candidate shows its term, category,
-definition, `→` line, the quoted sentence and a link to its note, with a
-checkbox, ticked to start with, and fields to edit the term, the category
-(the glossary's categories are suggested), the definition and the `→` line.
-**Select all** and **None** tick or untick the terms shown, and a row of
-category chips shows one category at a time. A ticked term with no name or
-no definition, one the glossary has, or one ticked twice is marked, and
-**Add N terms**, which stays at the bottom of the screen, waits until it is
-fixed or unticked.
-
-Add sends only the ticked terms, as edited, and the server checks them all
-again: the glossary must be there; each term needs a name and a definition,
-within length limits (120 characters for a term, 1,500 for a definition),
-and a name that reads back as its heading; no term may be one the glossary
-has now or be sent twice; and each note must be a markdown note under the
-glossary's `sources:` as the file says now. Any failure refuses the lot and
-says which terms. Each term is then appended with `- status:: looked-up`,
-its category, `- source:: [[<note>]]` and `- drafted:: Claude`, then its
-definition and `→` line, after every byte already in the file. When the
-scan read every batch, `scanned:` is set to today; after a Stop it is left
-alone, so the notes not read are still counted as changed next time. The
-result must read back as the old entries unchanged plus exactly the new
-ones, and it is written once, pinned to the file as it was read, so a
-glossary edited meanwhile is refused and nothing is written. The page then
-says "Added 23 terms" and the new entries appear in the list. A full scan
-that found nothing offers **Mark these notes scanned**, which sets only
-`scanned:`.
-
-Look-ups and scans use the Glossary look-up's model settings.
+Look-ups use the Glossary look-up's model settings. A `sources:` or
+`scanned:` line in a glossary's frontmatter, left by the scan for new terms
+this version no longer has, is ignored and left in the file.
 
 **Flashcards.** A glossary can be linked to a study subject, and then every
 term with a definition is a flashcard there, kept in step with the
@@ -328,8 +184,7 @@ the cards it should hold, or it is left as it is and the glossary page and
 the server log say why. Nothing outside the glossary's own folder of cards is touched.
 
 The cards are brought in step after every write the app makes to a linked
-glossary (adding, editing or deleting a term, Add N terms after a scan,
-linking it), before the page reloads; on any change to a linked glossary
+glossary (adding, editing or deleting a term, linking it), before the page reloads; on any change to a linked glossary
 from outside, such as an edit in Obsidian or a git pull, a second after the
 last change; and for every linked glossary when the hub starts. One
 glossary is synced at a time, a file is written only when it differs, and
@@ -346,9 +201,7 @@ hub moves any such file it finds, once: for each folder of each workspace, a
 the last part of the folder's path rather than the workspace's name, so
 `Computer Science/Glossary.md` becomes `Glossaries/Computer Science.md`
 whatever its workspace is called. The bytes are copied unchanged and the old
-file removed, so git history keeps it. A workspace with `meetings: true`
-whose first folder held the file, and which names no glossary yet, gains
-`glossary: <that name>`, since its meetings were capturing into it. A file
+file removed, so git history keeps it.  A file
 already in `Glossaries/` by that name is never overwritten: the old one is
 left where it is and the start-up log says so. Once no old file is left,
 this does nothing.
@@ -363,10 +216,6 @@ it and the notes it links to; Browse opens the folder tree as a side sheet.
 The capture box appends one line to `Inbox/Capture.md` under a `## <day>`
 heading. A line that is already a task is kept as written; anything else is
 stamped with the time. That file is the only thing the Notes module writes.
-
-A note inside a study subject's folders offers Make cards, which opens that
-subject's Make cards page with the note already picked (see Study). The
-cards go to the subject's own card files; the note itself is never written.
 
 The private folder, `Private/`, never appears here: not in search, the tree,
 backlinks or recent notes. A link straight to a private note is a 404.
@@ -401,7 +250,7 @@ Sessions and Flashcards.
 **Notes** is the subject's own folders from the vault, as a tree on the left
 and the chosen note read in place on the right (on a phone, the tree above
 the note). A filter box narrows the tree to the notes whose path matches.
-Each note offers Make cards for this subject and Open in Notes for the
+Each note offers Open in Notes for the
 vault-wide reader. It is read-only; editing stays in Obsidian. Only notes
 inside the subject's folders open here, so what it shows is exactly what the
 subject's `folders:` names.
@@ -512,68 +361,11 @@ which is never committed and holds only today; the review comments cannot
 tell a first review from a later one, so the count is kept rather than
 worked out. A card first reviewed in Obsidian is not counted here.
 
-**Make cards** (`/study/<subject>/make`) drafts flashcards from your notes
-with Claude, and you choose which to keep. It is the primary button on the
-Flashcards tab, a button on Overview and on each subject's card on the
-Study page, and Make cards on a note opens it with that note picked
-(`?note=<path>`).
-
-1. **Pick the notes.** Type in the search box to find the subject's notes
-   by title or path, click one of the recently edited notes shown as chips,
-   or add a whole folder from the picker; pick as many as you like. The
-   notes offered are those in the subject's folders or carrying its tag,
-   except its own `Goals.md`, `Reading List.md`, `Sessions.md` and anything
-   in `Flashcards/`.
-2. **Pick a goal** (none by default) and **how many cards**: 5, 10 or 20
-   (10 by default). The page says which file the cards will go to.
-3. **Draft cards.** Claude reads the notes in order, read-only and as
-   quoted data, at most 40,000 characters a run and 12,000 of any one
-   note, and the page says how far it got, "Read notes 1–5 of 40"; **Next
-   batch** reads on and adds its cards to the list. Each card must name the
-   note it came from and quote a sentence of it. A card is kept only when
-   that quote is in the note (word for word, or nearly: a slip in copying,
-   such as a corrected typo, is allowed in a quote of five words or more)
-   and every word of the answer that carries meaning is in the quote (one
-   may be missing from an answer of five or more such words, but never a
-   "not"). The rest are dropped and listed. A card whose question the
-   destination file already asks, ignoring case and punctuation, is left
-   out, and the page says so.
-4. **Review.** Each drafted card shows its question and answer, both
-   editable in place, the quoted sentence and a link to its note, and a
-   tick, on by default. Select all and None set every tick.
-5. **Add N cards** writes only the ticked cards, as edited. Nothing is
-   written before this: it is the accept step. The server checks everything
-   again rather than trusting the page: the goal must be in `Goals.md`, each
-   card's note must be one the page could have offered, each side must be
-   text of at most 4,000 characters, and at most 60 cards go at once; any
-   failure refuses the lot and writes nothing. Each side gets the Anki
-   import's escaping (a blank line dropped, a heading made bold, a lone `?`
-   and a `#word` escaped), a card is written `Q::A` when that reads back
-   and in the multiline `?` form otherwise, and the whole file is read back
-   through the card finder, which must find the cards that were there and
-   exactly the new ones, before the one write.
-6. The page says "Added 8 cards to Flashcards/Networking.md", with
-   **Review them now** (the subject's review, for that goal when one was
-   picked) and **Make more**.
-
-The cards go to the subject's own card files, never into the notes:
-`<home>/Flashcards/<Goal>.md` for a goal (a character a file name cannot
-hold becomes a space), or `<home>/Flashcards/From notes.md` for none. A new
-file starts as an imported deck does, with `goal:` in its frontmatter (empty
-for none) and a `#flashcards` line, so the Flashcards tab groups it under
-the goal. Each note the cards came from has a `## [[<note>]]` heading, and
-cards from it go at the end of that section when it is already there, or
-under a new heading at the end of the file; each card is its own
-paragraph. Nothing already in the file is changed or moved, and an edit
-made to the file meanwhile, in Obsidian or elsewhere, makes Add refuse
-rather than overwrite. Drafting uses the Suggest flashcards model settings.
-With AI off, the page says so and links to Settings.
-
 ## Workspaces
 
 A workspace is one markdown file under `_hub/workspaces/`. It is the whole
-definition — its name, colour, tag, folders, whether it has meetings,
-which glossary they feed, and for a study subject how many new cards a day
+definition — its name, colour, tag, folders, which glossary
+it points at, and for a study subject how many new cards a day
 join its reviews — so
 editing it here or in Obsidian is the same edit. The "edit definition" link on a
 workspace's page goes straight to that file for exactly this reason; there is
@@ -601,18 +393,12 @@ folder is the workspace's home: it is where `Board.md`, `Overview.md`,
 all live. Glossaries are not kept here; they have their own folder (see
 Glossary).
 
-A line `meetings: true` gives the workspace a meeting notebook (see
-Meetings). Without it the workspace has none, which is the default, because
-most workspaces never hold a meeting. **Start a meeting**, on every
-workspace's Overview, adds that line for you the first time and then opens
-the meeting notes, where you name the meeting and start it.
-
-A line `glossary: <name>` sends the terms captured in the workspace's
-meetings to the glossary of that name, `Glossaries/<name>.md`, matched
-ignoring case; the first captured term creates it if it is not there. It
-is optional: without it a captured term stays in the meeting note alone.
-Several workspaces may name the same glossary, and renaming a glossary
-rewrites this line in each of them.
+A line `glossary: <name>` points the workspace at the glossary of that name,
+`Glossaries/<name>.md`, matched ignoring case; the glossary's look-ups read
+the workspace's definition file for context. It is optional. Several
+workspaces may name the same glossary, and renaming a glossary rewrites this
+line in each of them. A `meetings:` line, from before Meetings was removed,
+is ignored.
 
 A study subject (`template: study`) may say `new_per_day: <number>`: how
 many cards never reviewed join its reviews each day. It is 20 without the
@@ -630,8 +416,7 @@ The workspace control in a card's drawer writes the tag instead, when you want
 to say it outright.
 
 A workspace always has an Overview: its board, its master note, an inbox
-preview, the latest log entry, recent notes, and, for a workspace with
-meetings, a link into its meeting notebook. CRM always shows, because a list
+preview, the latest log entry, recent notes. CRM always shows, because a list
 of contacts starts empty and filling it is the point. Every other tab —
 Inbox, Log, Notes, and one per file in `Pages/` — hides itself until it has
 something to show, so a brand new workspace opens quiet rather than full of

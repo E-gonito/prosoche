@@ -32,10 +32,9 @@
 					{#if data.due > 0}
 						<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>
 					{/if}
-					<a class="btn" class:primary={data.due === 0} href="{base}/make" data-testid="make-cards-link">Make cards</a>
 				</span>
 			</div>
-			{#if data.due === 0}<p class="none">Nothing due right now. Make some from your notes with Claude.</p>{/if}
+			{#if data.due === 0}<p class="none">Nothing due right now.</p>{/if}
 		</section>
 
 		<section class="sheet">

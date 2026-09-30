@@ -15,8 +15,6 @@ import type {
 	Refusal,
 	Validation
 } from '$lib/shared/ai';
-import type { CardDraft } from '$lib/shared/study';
-import type { ScanDraft } from '$lib/shared/glossary';
 
 type AiResult<T> =
 	| { ok: true; value: T }
@@ -27,8 +25,8 @@ type AiResult<T> =
  * Re-run the guardrails over a proposal, without writing anything.
  *
  * `destinations` are the paths this particular run named, which the
- * per-feature path policy needs: a primer draft may write that one primer
- * and nothing else, so the server has to be told which primer that was.
+ * per-feature path policy needs: a glossary look-up may write that one
+ * glossary and nothing else, so the server has to be told which one it was.
  */
 export async function checkProposal(proposal: Proposal, destinations: string[] = []): Promise<AiResult<Validation>> {
 	return post(
@@ -61,13 +59,12 @@ export async function saveAiSettings(settings: AiSettings): Promise<AiResult<AiS
 	return post('/api/ai/settings', settings, (body) => body.settings as AiSettings);
 }
 
-async function post<T>(url: string, body: unknown, pick: (body: any) => T, signal?: AbortSignal): Promise<AiResult<T>> {
+async function post<T>(url: string, body: unknown, pick: (body: any) => T): Promise<AiResult<T>> {
 	try {
 		const res = await fetch(url, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(body),
-			signal
+			body: JSON.stringify(body)
 		});
 		const parsed = await res.json().catch(() => ({}));
 		if (res.ok) return { ok: true, value: pick(parsed) };
@@ -102,62 +99,17 @@ export interface Drafted {
 	destinations: string[];
 	problem: string | null;
 	refusals: Refusal[];
-	/** Set by capture: the notes it was offered, so an empty vault says why. */
-	candidates?: string[];
 }
 
 /**
- * Ask one of the drafting features for a proposal.
+ * Ask the glossary look-up for a proposal: a definition for each of `terms`
+ * of the glossary with slug `glossary`, or every term waiting when `terms` is
+ * absent.
  *
  * Read-only on the way in: nothing is written until the proposal comes back
  * and `applyProposal` is called with the ids the user ticked. `destinations`
  * must be passed through to that call, because the path policy is per-run.
  */
-export async function draftChange(request: {
-	feature: 'capture' | 'primer-draft' | 'meeting-prep' | 'glossary-lookup';
-	path?: string;
-	line?: number;
-	expectedRaw?: string;
-	day?: string;
-	/** The meeting features: the workspace, the meeting title and event. */
-	slug?: string;
-	title?: string;
-	event?: string;
-	/** The glossary look-up: the glossary's slug, and the terms to look up (all waiting when absent). */
-	glossary?: string;
-	terms?: string[];
-}): Promise<AiResult<Drafted>> {
+export async function draftChange(request: { feature: 'glossary-lookup'; glossary: string; terms?: string[] }): Promise<AiResult<Drafted>> {
 	return post('/api/ai/suggest', request, (body) => body as Drafted);
-}
-
-/**
- * Ask Claude for new terms in one batch of a glossary scan: the notes
- * `paths`, told the terms already `found` by earlier batches. Read-only: the
- * candidates come back for a person to tick and edit, and nothing is written
- * until `glossaryAction({ action: 'add-scanned' })` sends the ones they
- * kept. A guardrail that stopped the run comes back as the value's
- * `problem`, not as a failure. `signal` aborts the request (Stop); the run
- * already started on the server finishes and is logged, and its answer is
- * dropped.
- */
-export async function draftScan(request: { glossary: string; paths: string[]; found: string[] }, signal?: AbortSignal): Promise<AiResult<ScanDraft>> {
-	return post('/api/ai/suggest', { feature: 'glossary-scan', ...request }, (body) => body as ScanDraft, signal);
-}
-
-/**
- * Ask Claude for flashcards from notes of subject `subject`: the notes and
- * folders picked, read from the `from`th note in a batch, for the card file
- * of `goal`. Read-only: the cards come back for a person to tick and edit,
- * and nothing is written until `addCards` in `$lib/client/study` sends the
- * ones they kept.
- */
-export async function draftCards(request: {
-	subject: string;
-	notes: string[];
-	folders: string[];
-	goal: string | null;
-	count: number;
-	from: number;
-}): Promise<AiResult<CardDraft>> {
-	return post('/api/ai/suggest', { feature: 'suggest-flashcards', ...request }, (body) => body as CardDraft);
 }

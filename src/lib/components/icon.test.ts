@@ -49,8 +49,8 @@ describe('the navigation', () => {
 		}
 	});
 
-	it('puts four modules on the phone bar, leaving room for More', () => {
-		expect(MODULES.filter((m) => m.tab).map((m) => m.title)).toEqual(['Today', 'Meetings', 'Workspaces', 'Notes']);
+	it('puts three modules on the phone bar, leaving room for More', () => {
+		expect(MODULES.filter((m) => m.tab).map((m) => m.title)).toEqual(['Today', 'Workspaces', 'Notes']);
 	});
 
 	it('never puts a private module on the phone bar', () => {
@@ -64,8 +64,8 @@ describe('the navigation', () => {
 		expect(moduleFor('/glossary/work')?.id).toBe('glossary');
 	});
 
-	it('puts Glossary between Meetings and Workspaces', () => {
-		expect(MODULES.map((m) => m.id).slice(1, 4)).toEqual(['meetings', 'glossary', 'w']);
+	it('puts Glossary between Today and Workspaces', () => {
+		expect(MODULES.map((m) => m.id).slice(0, 3)).toEqual(['today', 'glossary', 'w']);
 	});
 
 	it('knows which sub-item a path is on, and not one it merely starts like', () => {

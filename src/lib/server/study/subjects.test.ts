@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { loadWorkspaces, type Workspace } from '../workspaces';
-import { createSubject, studyHome, subjectFor, subjectOf, subjectsOf } from './subjects';
+import { createSubject, studyHome, subjectOf, subjectsOf } from './subjects';
 
 const workspace = (slug: string, folders: string[], template?: string): Workspace => ({
 	slug,
@@ -42,12 +42,6 @@ describe('subjectsOf', () => {
 		expect(cs.newPerDay).toBe(20);
 		const [quiet] = subjectsOf([{ ...workspace('quiet', ['Q'], 'study'), newPerDay: 0 }]);
 		expect(quiet.newPerDay).toBe(0);
-	});
-
-	it('finds the subject a note is in, by folder or tag', () => {
-		expect(subjectFor(all, 'Computer Science/Networks/TCP.md', [])?.slug).toBe('cs-study');
-		expect(subjectFor(all, 'Inbox/x.md', ['ws/cs-study'])?.slug).toBe('cs-study');
-		expect(subjectFor(all, 'Work/x.md', [])).toBeNull();
 	});
 
 	it('finds one subject, and its study home, by slug', () => {

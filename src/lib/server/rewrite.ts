@@ -2,7 +2,7 @@
  * Changing one note as a function of its text, safe against an edit made a
  * moment earlier somewhere else.
  *
- * The meeting notebook and the glossary both write this way on a user's
+ * The glossary and the workspace's folder list write this way on a user's
  * click: read the note, compute the new text from it, write it back pinned to
  * the hash just read, and if another device got there first, start again
  * from what it wrote. The change itself is always an insertion or a one-line

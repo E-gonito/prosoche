@@ -195,14 +195,13 @@ function key(task: Task): string {
 	return `${task.path}:${task.line}`;
 }
 
-/** A calendar event, reduced to what the dashboard draws, linking to its Meetings primer. */
+/** A calendar event, reduced to what the dashboard draws. */
 function toTodayEvent(event: { id: string; title: string; startMin: number | null; endMin: number | null }): TodayEvent {
 	return {
 		id: event.id,
 		title: event.title,
 		startMin: event.startMin,
-		endMin: event.endMin,
-		href: `/meetings?event=${encodeURIComponent(event.id)}`
+		endMin: event.endMin
 	};
 }
 

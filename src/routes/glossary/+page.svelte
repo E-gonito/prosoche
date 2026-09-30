@@ -42,9 +42,7 @@
 				<i style="--dot: {g.color}"></i>
 				<span class="name">{g.name}</span>
 				<span class="muted small">
-					{g.terms} term{g.terms === 1 ? '' : 's'}{g.pending ? ` · ${g.pending} to look up` : ''}{g.linked.length
-						? ` · meetings of ${g.linked.map((w) => w.name).join(', ')}`
-						: ''}
+					{g.terms} term{g.terms === 1 ? '' : 's'}{g.pending ? ` · ${g.pending} to look up` : ''}
 				</span>
 				<Icon name="chevron-right" />
 			</a>

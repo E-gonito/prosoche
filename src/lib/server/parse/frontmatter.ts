@@ -23,9 +23,7 @@ import matter from 'gray-matter';
 /**
  * Set one top-level frontmatter key, leaving every other byte as it was.
  *
- * `value` is a string for a scalar field, a boolean for a flag such as a
- * workspace's `meetings: true` (written bare, so YAML reads it back as a
- * boolean rather than the string "true"), or a list of strings for a list
+ * `value` is a string for a scalar field or a list of strings for a list
  * field. An empty string, or a list with nothing in it, clears the field: the
  * key stays with no value (`company:`), so it keeps its place in the block for
  * the next edit.
@@ -46,13 +44,13 @@ import matter from 'gray-matter';
  * newlines included, collapse to one space: a value is one line. Pure; never
  * throws.
  */
-export function setFrontmatterField(content: string, key: string, value: string | boolean | readonly string[]): string {
-	const list = typeof value === 'string' || typeof value === 'boolean' ? null : value.map(oneLine).filter(Boolean);
-	const scalar = typeof value === 'boolean' ? String(value) : typeof value === 'string' ? oneLine(value) : '';
+export function setFrontmatterField(content: string, key: string, value: string | readonly string[]): string {
+	const list = typeof value === 'string' ? null : value.map(oneLine).filter(Boolean);
+	const scalar = typeof value === 'string' ? oneLine(value) : '';
 	const clearing = list ? list.length === 0 : scalar === '';
-	// The scalar as YAML text: a flag bare, anything else quoted only if YAML
-	// would otherwise read it as something other than this string.
-	const encoded = clearing || list ? '' : typeof value === 'boolean' ? scalar : yamlScalar(scalar, 'value');
+	// The scalar as YAML text, quoted only if YAML would otherwise read it as
+	// something other than this string.
+	const encoded = clearing || list ? '' : yamlScalar(scalar, 'value');
 
 	const lines = content.split('\n');
 	const close = lines[0]?.replace(/\r$/, '') === '---' ? lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---') : -1;

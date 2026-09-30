@@ -46,10 +46,6 @@ export type PermissionMode = (typeof PERMISSION_MODES)[number]['id'];
 
 export type FeatureId =
 	| 'briefing'
-	| 'capture'
-	| 'suggest-flashcards'
-	| 'primer-draft'
-	| 'meeting-prep'
 	| 'glossary-lookup'
 	| 'dating-insights';
 
@@ -81,10 +77,6 @@ export interface RunStamp extends RunSettings {
  */
 export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	briefing: { model: 'claude-sonnet-5', effort: 'medium', permission: 'read-only', budgetUsd: 0.25, timeoutSeconds: 120 },
-	capture: { model: 'claude-haiku-4-5-20251001', effort: 'low', permission: 'propose', budgetUsd: 0.1, timeoutSeconds: 90 },
-	'suggest-flashcards': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
-	'primer-draft': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
-	'meeting-prep': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.25, timeoutSeconds: 120 },
 	'glossary-lookup': { model: 'claude-sonnet-5', effort: 'medium', permission: 'propose', budgetUsd: 0.5, timeoutSeconds: 180 },
 	// Read-only by construction, never just by default: Dating's own budget row,
 	// kept low because a read on a private log is a small, occasional ask.
@@ -93,10 +85,6 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
 	briefing: 'Morning briefing',
-	capture: 'Capture and file',
-	'suggest-flashcards': 'Suggest flashcards',
-	'primer-draft': 'Meeting primer',
-	'meeting-prep': 'Meeting prep',
 	'glossary-lookup': 'Glossary look-up',
 	'dating-insights': 'Dating insights'
 };
@@ -163,19 +151,6 @@ export function refuse(guardrail: GuardrailId, message: string, path?: string): 
 		: { guardrail, title: GUARDRAILS[guardrail], message, path };
 }
 
-/** The fields of a task-line edit a proposal may ask for. Mirrors `TaskEdit`. */
-interface TaskLineEdit {
-	status?: 'todo' | 'done' | 'in-progress' | 'cancelled' | 'blocked';
-	time?: { start: string; end: string } | null;
-	quadrant?: number | null;
-	text?: string;
-	due?: string | null;
-	id?: string | null;
-	blockedBy?: string[] | null;
-	addTags?: string[];
-	removeTags?: string[];
-}
-
 /**
  * One concrete change, as an intention rather than as bytes.
  *
@@ -188,12 +163,10 @@ interface TaskLineEdit {
 export type ProposalEdit =
 	| { id: string; kind: 'create'; path: string; text: string; reason: string }
 	| { id: string; kind: 'append'; path: string; text: string; reason: string }
-	| { id: string; kind: 'rewrite-task'; path: string; line: number; expectedRaw: string; edit: TaskLineEdit; reason: string }
 	| { id: string; kind: 'replace-region'; path: string; marker: string; text: string; reason: string }
 	/**
 	 * A whole new version of an existing note, for a revision a human reads
-	 * as a diff: a primer brought up to date, a glossary with definitions
-	 * filled in. `expectedHash` is the note as the draft read it, so a note
+	 * as a diff: a glossary with definitions filled in. `expectedHash` is the note as the draft read it, so a note
 	 * edited since is refused rather than overwritten; G5's line-loss cap
 	 * still applies to the result.
 	 */
@@ -204,7 +177,6 @@ type EditKind = ProposalEdit['kind'];
 export const EDIT_KIND_LABELS: Record<EditKind, string> = {
 	create: 'New note',
 	append: 'Append',
-	'rewrite-task': 'Rewrite task line',
 	'replace-region': 'Replace marker region',
 	revise: 'Revise note'
 };

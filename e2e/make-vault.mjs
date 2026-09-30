@@ -67,8 +67,8 @@ const files = {
 	// Committed, so the fixture looks like a vault that has already been used
 	// once and the working tree starts genuinely clean. Seeding itself is
 	// covered by a unit test.
-	'_hub/workspaces/study.md': `---\nname: Study\ncolor: "#7c3aed"\ntag: ws/study\ntemplate: study\nmeetings: true\nfolders:\n  - "Study"\ntabs:\n  - title: Board\n    widgets: [board]\n---\n\nCourses and reading.\n`,
-	'_hub/workspaces/work.md': `---\nname: Work\ncolor: "#2f6fed"\ntag: ws/work\ntemplate: project\nmeetings: true\nglossary: Work\nfolders:\n  - "Work"\ntabs:\n  - title: Board\n    widgets: [board]\n---\n\nThe day job.\n`
+	'_hub/workspaces/study.md': `---\nname: Study\ncolor: "#7c3aed"\ntag: ws/study\ntemplate: study\nfolders:\n  - "Study"\ntabs:\n  - title: Board\n    widgets: [board]\n---\n\nCourses and reading.\n`,
+	'_hub/workspaces/work.md': `---\nname: Work\ncolor: "#2f6fed"\ntag: ws/work\ntemplate: project\nglossary: Work\nfolders:\n  - "Work"\ntabs:\n  - title: Board\n    widgets: [board]\n---\n\nThe day job.\n`
 };
 
 /**

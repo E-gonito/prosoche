@@ -2,13 +2,11 @@
 	/**
 	 * A button that drafts a change, and the proposal it produces.
 	 *
-	 * The drafting features — file this capture, the meeting notebook's
-	 * primer and prep, a glossary's look-ups — differ in what
-	 * they read and agree on everything after that: a proposal arrives, the
-	 * guardrails are re-run against the note as it is now, the user ticks what
-	 * they want, and the ticked edits are written. That shared half is here,
-	 * so none of the surfaces has its own slightly different idea of what
-	 * accepting means.
+	 * A drafting feature (today, a glossary's look-ups) reads what it needs and
+	 * then a proposal arrives, the guardrails are re-run against the note as it
+	 * is now, the user ticks what they want, and the ticked edits are written.
+	 * That shared half is here, so no surface has its own slightly different
+	 * idea of what accepting means.
 	 *
 	 * Nothing happens until the button is pressed, and the proposal is
 	 * discarded when the user rejects it. A draft is not queued: these run
@@ -100,10 +98,6 @@
 		<p class="ok" data-testid="draft-written">Written to {written.join(', ')}.</p>
 	{/if}
 
-	{#if drafted?.candidates?.length === 0}
-		<p class="hint">There is nowhere to file this yet. Give a workspace some folders first.</p>
-	{/if}
-
 	{#if drafted?.proposal && validation}
 		<Proposal
 			proposal={drafted.proposal}
@@ -121,7 +115,6 @@
 	/* An ordinary `.btn`, with the two differences this one has: it says when
 	   it is working. */
 	.go:disabled { cursor: default; opacity: 0.6; }
-	.hint { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--muted); }
 	.ok { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--ok); }
 	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

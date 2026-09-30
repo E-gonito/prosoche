@@ -72,8 +72,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		inboxPreview,
 		latestLog,
 		notes,
-		vaultFolders,
-		// Only a workspace with meetings has a notebook to link to.
-		meetingsHref: workspace.meetings ? `/meetings/${workspace.slug}` : null
+		vaultFolders
 	};
 };

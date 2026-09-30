@@ -30,14 +30,6 @@
 	<div class="head">
 		<a class="crumb" href="/notes">Notes</a>{#if data.folder}<span class="crumb"> / {data.folder}</span>{/if}
 		<div class="actions">
-			{#if data.subject}
-				<a
-					class="btn"
-					href="/study/{data.subject.slug}/make?note={encodeURIComponent(data.path)}"
-					title="Draft flashcards for {data.subject.name} from this note with Claude, and choose which to keep."
-					data-testid="make-cards">Make cards</a
-				>
-			{/if}
 			<button class="btn ghost" onclick={() => sheet?.showModal()} data-testid="open-files"><Icon name="file-text" /> Browse</button>
 		</div>
 	</div>

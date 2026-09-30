@@ -32,7 +32,7 @@ export interface Source {
 }
 
 /** How much of any one note goes into a prompt. */
-export const NOTE_CHARS = 8000;
+const NOTE_CHARS = 8000;
 
 /* ------------------------------------------------------------- plumbing -- */
 

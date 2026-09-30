@@ -2,7 +2,7 @@
  * People: anyone the vault's notes link to.
  *
  * A person is a note, `People/<Full Name>.md`, and a connection to them is a
- * wiki-link. Mentioning `[[Ada Lovelace]]` in a meeting note is all it takes for
+ * wiki-link. Mentioning `[[Ada Lovelace]]` in a note is all it takes for
  * that note to appear on her page, and a task whose block mentions her is a
  * follow-up. Nothing hub-specific is added to anyone else's note.
  *

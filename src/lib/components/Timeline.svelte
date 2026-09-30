@@ -25,14 +25,13 @@
 	/**
 	 * A calendar event, drawn on the grid beside the tasks. Deliberately not a
 	 * `Task`: it has no line to rewrite, so it carries only what a read-only
-	 * block needs to place and label itself, plus somewhere to send a click.
+	 * block needs to place and label itself.
 	 */
 	export interface TimelineEvent {
 		id: string;
 		title: string;
 		startMin: number | null;
 		endMin: number | null;
-		href: string;
 	}
 
 	let {
@@ -533,10 +532,9 @@
 			{#each placed as p (blockKey(p.item))}
 				{#if p.item.kind === 'event'}
 					{@const event = p.item.event}
-					<a
+					<div
 						class="block event"
 						data-testid="calendar-block"
-						href={event.href}
 						style="top: {top(p.startMin)}px; height: {(p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP}px;
 						       --label-lines: {labelLines((p.endMin - p.startMin) * PX_PER_MIN - BLOCK_GAP)};
 						       left: calc(54px + {(p.column / p.columns) * 100}% - {(p.column / p.columns) * 58}px);
@@ -546,7 +544,7 @@
 					>
 						<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}</div>
 						<div class="block-label">{event.title}</div>
-					</a>
+					</div>
 				{:else}
 				{@const task = p.item.task}
 				{@const done = isDone(task)}
@@ -724,10 +722,9 @@
 		border-color: var(--sand-edge);
 		border-left-width: 4px;
 		color: var(--text);
-		cursor: pointer;
+		cursor: default;
 		z-index: 1;
 	}
-	.block.event:hover { text-decoration: none; box-shadow: var(--shadow); }
 	.block.event .t { color: var(--sand-edge); }
 
 	/* A time, so body text with the figures lined up rather than monospace. */

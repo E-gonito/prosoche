@@ -8,9 +8,7 @@
  * this file only has to decide what a "day" and a "minute" mean to the rest
  * of the hub, and to turn network failure into a status rather than a throw.
  *
- * Two callers (Today, Meetings) share this module rather than each fetching
- * and parsing their own feed, so the ICS grammar and the feed cache exist in
- * exactly one place.
+ * The ICS grammar and the feed cache exist in exactly one place, here.
  */
 
 import { sync, expandRecurringEvent } from 'node-ical';

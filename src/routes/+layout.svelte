@@ -6,7 +6,7 @@
 	 * left, with each module's sub-items from the loader nested under it: the
 	 * workspaces under Workspaces, the glossaries under Glossary. On a phone
 	 * it is a bar under the header, pinned to the top with it, holding the
-	 * four modules marked `tab` and More, which opens a sheet with everything
+	 * modules marked `tab` and More, which opens a sheet with everything
 	 * else, workspaces included.
 	 */
 	import '../app.css';

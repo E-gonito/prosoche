@@ -13,7 +13,7 @@ const STAMP: RunStamp = {
 	permission: 'propose',
 	budgetUsd: 0.25,
 	timeoutSeconds: 90,
-	feature: 'capture',
+	feature: 'glossary-lookup',
 	startedAt: '2026-09-21T09:00:00.000Z',
 	durationMs: 1200,
 	costUsd: 0.01
@@ -37,7 +37,7 @@ afterEach(async () => {
 
 const policy = (over: Partial<Policy> = {}): Policy => ({
 	enabled: true,
-	path: { feature: 'capture', allow: ['Inbox/'] },
+	path: { feature: 'glossary-lookup', allow: ['Inbox/'] },
 	blast: { ...DEFAULT_BLAST },
 	...over
 });
@@ -45,7 +45,7 @@ const policy = (over: Partial<Policy> = {}): Policy => ({
 let seq = 0;
 const proposal = (edits: ProposalEdit[], over: Partial<Proposal> = {}): Proposal => ({
 	id: `p${++seq}-${Date.now()}`,
-	feature: 'capture',
+	feature: 'glossary-lookup',
 	stamp: STAMP,
 	summary: 'a change',
 	edits,
@@ -86,48 +86,6 @@ describe('validate', () => {
 		const result = await validate(vault, p, policy());
 		expect(result.ok).toBe(true);
 		if (result.ok) expect(result.previews[0].after).toBe('# New\n');
-	});
-
-	it('refuses a rewrite-task whose line has moved underneath', async () => {
-		await vault.write('Inbox/Tasks.md', '# Tasks\n- [ ] Buy milk `Q2`\n');
-		const p = proposal([
-			{
-				id: 'e1',
-				kind: 'rewrite-task',
-				path: 'Inbox/Tasks.md',
-				line: 1,
-				expectedRaw: '- [ ] Buy bread `Q2`',
-				edit: { status: 'done' },
-				reason: 'done'
-			}
-		]);
-		const result = await validate(vault, p, policy());
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.refusals[0].guardrail).toBe('G6');
-	});
-
-	it('rewrites one task line and leaves every other byte alone', async () => {
-		const before = '# Tasks\n- [ ] Buy milk `Q2`\n\ttrailing note\n- [ ] Other\n';
-		await vault.write('Inbox/Tasks.md', before);
-		const p = proposal([
-			{
-				id: 'e1',
-				kind: 'rewrite-task',
-				path: 'Inbox/Tasks.md',
-				line: 1,
-				expectedRaw: '- [ ] Buy milk `Q2`',
-				edit: { status: 'done' },
-				reason: 'done'
-			}
-		]);
-		const result = await validate(vault, p, policy());
-		expect(result.ok).toBe(true);
-		if (result.ok) {
-			const after = result.previews[0].after.split('\n');
-			expect(after[0]).toBe('# Tasks');
-			expect(after[1]).toContain('- [x]');
-			expect(after.slice(2)).toEqual(before.split('\n').slice(2));
-		}
 	});
 
 	it('refuses an edit kind it does not know', async () => {
@@ -312,18 +270,18 @@ describe('policyFor', () => {
 		expect(policy.blast.writableDays).toEqual(['2026-09-21']);
 	});
 
-	it('lets capture write the inbox and the one destination it proposed', () => {
-		const policy = policyFor('capture', caps, { ...ctx, destinations: ['Work/Tasks.md'] });
-		expect(policy.path.allow).toEqual(['Inbox/', 'Work/Tasks.md']);
-		expect(policy.blast.maxFiles).toBe(2);
+	it('lets a glossary look-up write the one glossary it named, and no other note', () => {
+		const policy = policyFor('glossary-lookup', caps, { ...ctx, destinations: ['Glossaries/CS.md', 'Work/Tasks.md', 'Glossaries/Other.md'] });
+		expect(policy.path.allow).toEqual(['Glossaries/CS.md']);
+		expect(policy.blast.maxFiles).toBe(1);
 	});
 
 	it('lets the ordinary features touch today and yesterday, and no other day', () => {
-		expect(policyFor('capture', caps, ctx).blast.writableDays).toEqual(['2026-09-21', '2026-09-20']);
+		expect(policyFor('glossary-lookup', caps, ctx).blast.writableDays).toEqual(['2026-09-21', '2026-09-20']);
 	});
 
 	it('carries the kill switch through, so one flag reaches every check', () => {
-		expect(policyFor('capture', { ...caps, enabled: false }, ctx).enabled).toBe(false);
+		expect(policyFor('glossary-lookup', { ...caps, enabled: false }, ctx).enabled).toBe(false);
 	});
 
 	it('gives a feature it has never heard of nothing', () => {
