@@ -681,7 +681,7 @@ written within a day. It is reached from Today's Inbox card, the evening
 review, the palette's `i` and the rail's foot, and it is done when it is
 empty.
 
-Each line leaves by one of three doors, as a button or, with the row
+Each line leaves by one of four doors, as a button or, with the row
 focused, a key:
 
 - **Today** (`t`) plans it onto today as a block with no time, linked back
@@ -692,9 +692,13 @@ focused, a key:
 - **Board** (`b`) files its words as a card at the bottom of a board's first
   column, read the way quick-add reads them and without the capture time.
   The workspaces are offered to pick from, the one the line names first.
+- **Note** (`n`) appends its words as a bullet to the end of a workspace's
+  `Overview.md`, for a thought that belongs to the project rather than to
+  its to-do list. The same picker, and the same words as a card would get.
+  A missing Overview.md starts as that one bullet.
 - **Drop** (`x`) does nothing else.
 
-All three tick the line in the inbox, so the file stays a record of what
+All four tick the line in the inbox, so the file stays a record of what
 came in and the row leaves the list. Nothing is deleted. A line that changed
 in the file since the page loaded is refused and the list reloads.
 

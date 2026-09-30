@@ -4,14 +4,17 @@
  * `capture.ts` writes the file; this module reads it for Today's Inbox card,
  * the `/inbox` triage page and each workspace's Inbox tab (the same list,
  * filtered to lines carrying the workspace's tag or an alias word), and gives
- * each unfiled line its three exits:
+ * each unfiled line its four exits:
  *
  *  - **plan** it onto a day, as a linked block through `day-plan.ts`;
  *  - **file** it as a card on a workspace's board, read the way quick-add
  *    reads it (`Q1`, `#label`, a due word);
+ *  - **note** it: append its words as a bullet to the end of a workspace's
+ *    `Overview.md`, for a thought that belongs to the project rather than
+ *    to its to-do list;
  *  - **drop** it.
  *
- * All three tick the inbox line in place, so the file stays a true record of
+ * All four tick the inbox line in place, so the file stays a true record of
  * what came in and what has since been dealt with, and the row leaves the
  * list. Nothing is ever deleted. Every exit is guarded by the line as the
  * caller last saw it, the way `updateTask` guards a task edit.
@@ -168,6 +171,33 @@ export async function planInboxLine(vault: Vault, workspaces: Workspace[], day: 
 	const planned = await addToDay(vault, workspaces, day, { path: CAPTURE_PATH, line, expectedRaw: raw });
 	if (!planned.ok) return { ok: false, reason: planned.reason === 'no-day' ? 'no-day' : 'line-changed' };
 	return tickLine(vault, line, raw, planned.path);
+}
+
+/**
+ * Append the inbox line at `line` to the end of the workspace's
+ * `<home>/Overview.md` as a bullet, `- <words>`, and tick the inbox line.
+ * Answers the overview's path.
+ *
+ * The words are the line's, less the capture time and the workspace's own
+ * tag, as a board card's would be. The note is only ever added to: one line
+ * at its end, after a newline if it lacked one, and a missing note starts
+ * as that one bullet. Refuses before writing anything when the line is not
+ * the one the caller saw or has no words. Writes the note first and the
+ * inbox second, so a failure between the two leaves the line unticked.
+ */
+export async function noteInboxLine(vault: Vault, workspace: Workspace, line: number, expectedRaw: string): Promise<Triaged> {
+	const found = await lineAt(vault, line, expectedRaw);
+	if (!found.ok) return found;
+
+	const path = `${homeFolder(workspace)}/Overview.md`;
+	const words = found.words.split(' ').filter((w) => w !== `#${workspace.tag}`).join(' ');
+	const note = await vault.read(path);
+	const content = note.exists ? note.content : '';
+	const joined = content === '' || content.endsWith('\n') ? content : `${content}\n`;
+	const written = await vault.write(path, `${joined}- ${words}\n`, note.exists ? note.hash : undefined);
+	if (!written.ok) return { ok: false, reason: 'line-changed' };
+
+	return tickLine(vault, line, expectedRaw, path);
 }
 
 /** Tick the inbox line at `line` and nothing else: "drop". Answers the inbox's path. */
