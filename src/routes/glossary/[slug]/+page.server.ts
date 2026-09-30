@@ -27,6 +27,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		const link = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]$/.exec(e.source?.trim() ?? '');
 		return {
 			term: e.term,
+			/** The heading's line: unique where a term, written twice, is not. */
+			line: e.line,
 			category: e.category,
 			pending: e.pending,
 			lookedUp: e.status === 'looked-up',
