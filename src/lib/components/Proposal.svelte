@@ -116,7 +116,6 @@
 					<span class="kind">{EDIT_KIND_LABELS[preview.kind]}</span>
 				</label>
 				<a class="path" href={href(preview.path)}>{preview.path}</a>
-				{#if preview.to}<span class="muted">→ {preview.to}</span>{/if}
 				<span class="counts muted">+{n.added} −{n.removed}</span>
 			</header>
 

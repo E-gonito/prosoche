@@ -323,16 +323,6 @@ describe('G5 checkBlastRadius', () => {
 		expect(checkBlastRadius([resolved('Inbox/a.md', 'content\n', '')]).some((r) => r.message.includes('empty'))).toBe(true);
 	});
 
-	it('refuses a rename outside Inbox', () => {
-		const move = { edit: { id: 'm', kind: 'move', path: 'Work/a.md', to: 'Work/b.md', reason: 'tidy' } as ProposalEdit, before: 'x', after: 'x' };
-		expect(checkBlastRadius([move]).some((r) => r.message.includes('Renames'))).toBe(true);
-	});
-
-	it('allows a rename within Inbox', () => {
-		const move = { edit: { id: 'm', kind: 'move', path: 'Inbox/a.md', to: 'Inbox/b.md', reason: 'tidy' } as ProposalEdit, before: 'x', after: 'x' };
-		expect(checkBlastRadius([move])).toEqual([]);
-	});
-
 	it('refuses a daily note that is not one of the writable days', () => {
 		const limits = { ...DEFAULT_BLAST, writableDays: ['2026-09-21', '2026-09-20'] };
 		expect(checkBlastRadius([resolved('Journal/2026/03/04.md', 'a', 'a\nb')], limits)).not.toEqual([]);

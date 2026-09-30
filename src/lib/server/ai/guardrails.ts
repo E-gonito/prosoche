@@ -314,8 +314,6 @@ function decodeMaybe(path: string): string {
 export interface BlastLimits extends BlastCaps {
 	/** `YYYY-MM-DD` days whose daily note may be touched. */
 	writableDays: string[];
-	/** Folder prefixes renames are allowed within. */
-	renamableUnder: string[];
 	/** Folder holding the daily notes, so the check knows one when it sees it. */
 	dailyFolder: string;
 }
@@ -324,7 +322,6 @@ export const DEFAULT_BLAST: BlastLimits = {
 	maxFiles: 5,
 	maxLineLoss: 0.3,
 	writableDays: [],
-	renamableUnder: ['Inbox/'],
 	dailyFolder: 'Journal'
 };
 
@@ -335,9 +332,7 @@ export const DEFAULT_BLAST: BlastLimits = {
  * undo even with snapshots. Five files, because a real suggestion is a note
  * and a task line, not a reorganisation. No file may lose more than 30% of
  * its lines, which catches the classic failure where a model rewrites a note
- * from its own summary and silently drops the half it did not read. No
- * renames outside `Inbox/`, because moving a note breaks every wiki-link to
- * it. And no daily note except the days the caller names - today and
+ * from its own summary and silently drops the half it did not read. And no daily note except the days the caller names - today and
  * yesterday in practice - because a job that miscalculates a date should not
  * be able to edit a year of journals.
  *
@@ -354,7 +349,6 @@ export function checkBlastRadius(
 	const paths = new Set<string>();
 	for (const { edit } of edits) {
 		paths.add(edit.path);
-		if (edit.kind === 'move') paths.add(edit.to);
 	}
 	if (paths.size > limits.maxFiles) {
 		out.push(refuse('G5', `${paths.size} files in one proposal; at most ${limits.maxFiles} are allowed.`));
@@ -364,14 +358,6 @@ export function checkBlastRadius(
 		if (after === '' && before !== '') {
 			out.push(refuse('G5', 'An edit would empty a file. Nothing here deletes content wholesale.', edit.path));
 		}
-		if (edit.kind === 'move') {
-			const inside = limits.renamableUnder.some((p) => edit.path.startsWith(p) && edit.to.startsWith(p));
-			if (!inside) {
-				const where = limits.renamableUnder.join(', ');
-				out.push(refuse('G5', `Renames are only allowed within ${where}; links elsewhere would break.`, edit.path));
-			}
-		}
-
 		const { removed, of } = changedLines(before, after);
 		if (of > 0 && removed / of > limits.maxLineLoss) {
 			const percent = Math.round((removed / of) * 100);
@@ -379,12 +365,10 @@ export function checkBlastRadius(
 			out.push(refuse('G5', `${percent}% of the lines would disappear; the limit is ${limit}%.`, edit.path));
 		}
 
-		for (const candidate of edit.kind === 'move' ? [edit.path, edit.to] : [edit.path]) {
-			const day = dailyNoteDay(candidate, limits.dailyFolder);
-			if (day !== null && !limits.writableDays.includes(day)) {
-				const allowed = limits.writableDays.join(' and ') || 'no day';
-				out.push(refuse('G5', `That is the daily note for ${day}; only ${allowed} may be edited.`, candidate));
-			}
+		const day = dailyNoteDay(edit.path, limits.dailyFolder);
+		if (day !== null && !limits.writableDays.includes(day)) {
+			const allowed = limits.writableDays.join(' and ') || 'no day';
+			out.push(refuse('G5', `That is the daily note for ${day}; only ${allowed} may be edited.`, edit.path));
 		}
 	}
 	return out;

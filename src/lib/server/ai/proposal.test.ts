@@ -130,11 +130,11 @@ describe('validate', () => {
 		}
 	});
 
-	it('refuses a move, because the vault has no rename', async () => {
-		const p = proposal([{ id: 'e1', kind: 'move', path: 'Inbox/Capture.md', to: 'Inbox/Filed.md', reason: 'tidy' }]);
+	it('refuses an edit kind it does not know', async () => {
+		const p = proposal([{ id: 'e1', kind: 'move', path: 'Inbox/Capture.md', to: 'Inbox/Filed.md', reason: 'tidy' } as unknown as ProposalEdit]);
 		const result = await validate(vault, p, policy());
 		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.refusals[0].message).toContain('not supported');
+		if (!result.ok) expect(result.refusals[0].message).toContain('Unknown edit kind');
 	});
 
 	it('shows the previews even when it refuses, so the user can see what was stopped', async () => {
@@ -310,7 +310,6 @@ describe('policyFor', () => {
 		const policy = policyFor('briefing', caps, ctx);
 		expect(policy.path.allow).toEqual(['Journal/2026/09/21.md']);
 		expect(policy.blast.writableDays).toEqual(['2026-09-21']);
-		expect(policy.blast.renamableUnder).toEqual([]);
 	});
 
 	it('lets capture write the inbox and the one destination it proposed', () => {
