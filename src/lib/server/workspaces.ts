@@ -19,11 +19,11 @@
  * linked to. A `meetings:` line is no longer read.
  */
 
-import { parseNote } from './parse/note';
 import { slugify } from '$lib/shared/slug';
 import { displayText } from '$lib/shared/task';
 import { config } from './config';
 import { setFrontmatterField } from './parse/frontmatter';
+import { parseNote, setLede } from './parse/note';
 import { invalid, rewrite, type Written } from './rewrite';
 import type { Vault } from './vault/index';
 
@@ -148,32 +148,84 @@ export function homeFolder(workspace: Workspace): string {
 	return workspace.folders[0] ?? 'Inbox';
 }
 
+/** The parts of a workspace definition a person edits from the app. */
+export interface WorkspaceEdit {
+	name?: string;
+	/** `#rrggbb`. */
+	color?: string;
+	/** The tag that claims a task for the workspace; a leading `#` is dropped. */
+	tag?: string;
+	/** `study` makes it a Study subject; empty removes the line's value. */
+	template?: string;
+	/** The one-line description: the definition's first paragraph. Empty removes it. */
+	description?: string;
+	/**
+	 * Every folder wanted after the home, in order: the reference folders,
+	 * whose notes count as the workspace's (and, for a Study subject, feed
+	 * its cards).
+	 */
+	folders?: string[];
+}
+
 /**
- * Point a workspace at a new set of reference folders: every folder after
- * its home, whose notes count as the workspace's (and, for a Study subject,
- * feed its cards).
+ * Change a workspace's definition, `_hub/workspaces/<slug>.md`: each field
+ * of `edit` that is present, and nothing else.
  *
- * `refs` is the whole list wanted after the home, in order. Each is trimmed
- * of spaces and surrounding slashes, backslashes become `/`, and empties,
- * repeats and the home itself are dropped, so the caller can pass what a
- * person typed. The home never moves: it holds the board, the inbox and a
+ * Frontmatter fields are written through `parse/frontmatter.ts` and the
+ * description through `setLede` in `parse/note.ts`, so every other byte of
+ * the file is kept. The slug, which is the file name, never changes, so
+ * renaming breaks no link.
+ *
+ * Folders are cleaned as a person typed them: trimmed of spaces and
+ * surrounding slashes, backslashes made `/`, empties, repeats and the home
+ * itself dropped. The home never moves: it holds the board, the inbox and a
  * subject's goals and cards, and moving it would strand them. A workspace
- * that names no folder yet has no home to keep, so its first ref becomes one.
+ * that names no folder yet has no home to keep, so its first folder becomes
+ * one. A folder need not exist yet.
  *
- * Writes only the `folders:` lines of `_hub/workspaces/<slug>.md`, through
- * `parse/frontmatter.ts`; every other byte of the definition is kept. A
- * folder need not exist yet. Refuses a `..` segment as invalid, a missing
- * definition as not-found, and returns a conflict after two clashing
- * writes. Never touches the folders themselves or any note in them.
+ * Refuses, writing nothing, an empty name, a colour that is not `#rrggbb`, a
+ * tag that is not one (letters, digits, `_`, `-` and `/`, starting with a
+ * letter) and a folder with a `.` or `..` segment, as invalid; a missing
+ * definition as not-found; and returns a conflict after two clashing
+ * writes. Never touches the folders themselves or any note in them, and
+ * never retags a task: a changed tag means tasks carrying the old one stop
+ * belonging here.
  */
-export async function setReferenceFolders(vault: Vault, workspace: Workspace, refs: string[]): Promise<Written> {
-	const cleaned = refs.map((f) => f.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/')).filter(Boolean);
-	if (cleaned.some((f) => f.split('/').some((part) => part === '..' || part === '.'))) {
-		return invalid('A folder is a path from the top of the vault, without . or .. in it.');
+export async function editWorkspace(vault: Vault, workspace: Workspace, edit: WorkspaceEdit): Promise<Written> {
+	const fields: Array<[string, string | string[]]> = [];
+
+	if (edit.name !== undefined) {
+		if (!edit.name.trim()) return invalid('A workspace needs a name.');
+		fields.push(['name', edit.name]);
 	}
-	const home = workspace.folders[0];
-	const folders = [...new Set(home ? [home, ...cleaned] : cleaned)];
-	return rewrite(vault, workspace.path, (content) => setFrontmatterField(content, 'folders', folders), 2);
+	if (edit.color !== undefined) {
+		if (!/^#[0-9a-f]{6}$/i.test(edit.color.trim())) return invalid('A colour is written #rrggbb.');
+		fields.push(['color', edit.color.trim().toLowerCase()]);
+	}
+	if (edit.tag !== undefined) {
+		const tag = edit.tag.trim().replace(/^#/, '');
+		if (!/^[A-Za-z][\w/-]*$/.test(tag)) return invalid('A tag is letters, digits, _, - and /, starting with a letter.');
+		fields.push(['tag', tag]);
+	}
+	if (edit.template !== undefined) fields.push(['template', edit.template]);
+	if (edit.folders !== undefined) {
+		const cleaned = edit.folders.map((f) => f.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/')).filter(Boolean);
+		if (cleaned.some((f) => f.split('/').some((part) => part === '..' || part === '.'))) {
+			return invalid('A folder is a path from the top of the vault, without . or .. in it.');
+		}
+		const home = workspace.folders[0];
+		fields.push(['folders', [...new Set(home ? [home, ...cleaned] : cleaned)]]);
+	}
+
+	return rewrite(
+		vault,
+		workspace.path,
+		(content) => {
+			const next = fields.reduce((text, [key, value]) => setFrontmatterField(text, key, value), content);
+			return edit.description === undefined ? next : setLede(next, edit.description);
+		},
+		2
+	);
 }
 
 /**

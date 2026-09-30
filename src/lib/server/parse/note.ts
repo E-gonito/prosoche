@@ -117,6 +117,80 @@ export function parseNote(content: string, path = ''): ParsedNote {
 	return { frontmatter, body, bodyOffset, title, headings, links, tags };
 }
 
+/**
+ * A note's lede: the first paragraph of its body, as one line.
+ *
+ * The first run of prose lines after the frontmatter, skipping blank lines
+ * and headings, up to the next blank line, heading or fence. A body whose
+ * first block is a list, quote, table or fence has no lede. Lines are joined
+ * with single spaces. Empty when there is none. Pure.
+ */
+export function readLede(content: string): string {
+	const lines = content.split('\n');
+	const { start, end } = findLede(lines);
+	return lines
+		.slice(start, end)
+		.map((l) => l.trim())
+		.join(' ');
+}
+
+/**
+ * Replace a note's lede (see `readLede`) with `text`, leaving every other byte
+ * as it was.
+ *
+ * `text` is written as one line, runs of whitespace collapsed. A note with no
+ * lede gets one as the first block of its body, set off by blank lines. An
+ * empty `text` removes the lede and one blank line beside it. A note whose
+ * lede already reads `text` comes back unchanged. Pure; never throws.
+ */
+export function setLede(content: string, text: string): string {
+	const line = text.replace(/\s+/g, ' ').trim();
+	const lines = content.split('\n');
+	const { start, end, insertAt } = findLede(lines);
+
+	if (end > start) {
+		if (!line) {
+			// The blank line after goes with it; at the end of the note, the one before.
+			const after = end < lines.length - 1 && lines[end].trim() === '';
+			const before = !after && start > insertAt && lines[start - 1].trim() === '';
+			lines.splice(before ? start - 1 : start, end - start + (after || before ? 1 : 0));
+			return lines.join('\n');
+		}
+		if (readLede(content) === line) return content;
+		lines.splice(start, end - start, line + (lines[start].endsWith('\r') ? '\r' : ''));
+		return lines.join('\n');
+	}
+
+	if (!line) return content;
+	const eol = lines[0]?.endsWith('\r') ? '\r' : '';
+	const next = lines[insertAt];
+	const block = [...(insertAt > 0 ? [eol] : []), line + eol, ...(next !== undefined && next.trim() !== '' ? [eol] : [])];
+	lines.splice(insertAt, 0, ...block);
+	return lines.join('\n');
+}
+
+/**
+ * Where the lede is, as line indexes: `start` to `end` exclusive, equal when
+ * there is none. `insertAt` is the first line after the frontmatter, where a
+ * new lede goes.
+ */
+function findLede(lines: string[]): { start: number; end: number; insertAt: number } {
+	const opened = lines[0]?.replace(/\r$/, '') === '---';
+	const close = opened ? lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---') : -1;
+	const insertAt = close + 1;
+	const prose = (l: string) => l.trim() !== '' && !HEADING.test(l.trim()) && !FENCE.test(l) && !BLOCK.test(l);
+
+	let start = insertAt;
+	while (start < lines.length && (lines[start].trim() === '' || HEADING.test(lines[start].trim()))) start++;
+	if (start >= lines.length || !prose(lines[start])) return { start: insertAt, end: insertAt, insertAt };
+	let end = start + 1;
+	while (end < lines.length && prose(lines[end])) end++;
+	return { start, end, insertAt };
+}
+
+/** A line that opens a block other than a paragraph: a list item, quote or table row. */
+const BLOCK = /^[ \t]*([-*+][ \t]|\d+[.)][ \t]|>|\|)/;
+
 /** File name without directories or the `.md` extension. */
 export function basename(path: string): string {
 	const name = path.split('/').pop() ?? '';

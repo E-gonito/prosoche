@@ -1,4 +1,4 @@
-import { createWorkspace, deleteWorkspace, setReferenceFolders } from '$server/workspaces';
+import { createWorkspace, deleteWorkspace, editWorkspace } from '$server/workspaces';
 import { noWorkspace, route, str, strings } from '../route';
 
 /** Folders as a list, or as the comma-separated string the wizard collects. */
@@ -17,14 +17,23 @@ export const POST = route(
 );
 
 /**
- * Set a workspace's reference folders, `{ slug, folders }`, where `folders`
- * is every folder wanted after the home (see `setReferenceFolders`). Answers
- * `{ folders }`, the workspace's folders as now written, home first.
+ * Edit a workspace's definition, `{ slug, name?, color?, tag?, template?,
+ * description?, folders? }`: each field sent is written, and a field left
+ * out is left alone (see `editWorkspace`). `folders` is every folder wanted
+ * after the home. Answers `{ folders }`, the workspace's folders as now
+ * written, home first.
  */
 export const PATCH = route(async ({ body, hub }) => {
 	const workspace = await hub.workspace(body.slug);
 	if (!workspace) return noWorkspace(body.slug);
-	const result = await setReferenceFolders(hub.vault, workspace, strings(body.folders) ?? []);
+	const result = await editWorkspace(hub.vault, workspace, {
+		name: str(body.name),
+		color: str(body.color),
+		tag: str(body.tag),
+		template: str(body.template),
+		description: str(body.description),
+		folders: strings(body.folders)
+	});
 	return result.ok ? { folders: (await hub.workspace(workspace.slug))?.folders ?? [] } : result;
 });
 
