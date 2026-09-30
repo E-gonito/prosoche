@@ -424,9 +424,13 @@ function cleanFolder(folder: string): string {
 	return folder.trim().replace(/^\/+|\/+$/g, '').trim();
 }
 
-/** The hub's own files and the glossaries, which are not notes to scan. */
+/**
+ * What is not a note to scan: the hub's own files, the glossaries, and any
+ * `Flashcards/` folder. Card files are made from glossaries and Anki decks,
+ * so reading them for terms would feed a glossary its own cards back.
+ */
 function notScanned(path: string): boolean {
-	return path.startsWith(`${config.hubFolder}/`) || path.startsWith(`${GLOSSARY_FOLDER}/`);
+	return path.startsWith(`${config.hubFolder}/`) || path.startsWith(`${GLOSSARY_FOLDER}/`) || /(^|\/)Flashcards\//.test(path);
 }
 
 /**
