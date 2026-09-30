@@ -1,6 +1,5 @@
 import { today } from '$server/daily';
 import { gradeAt } from '$server/study/flashcards';
-import { subjectsOf } from '$server/study/subjects';
 import { GRADES, type Grade } from '$lib/shared/scheduler';
 import { refuse, route, str } from '../../route';
 
@@ -17,7 +16,7 @@ export const POST = route(
 			return refuse('invalid', 'path, line and a grade of again, hard, good or easy are required');
 		}
 		const at = { path, line: body.line, index: typeof body.index === 'number' ? body.index : 0, expectedRaw: str(body.expectedRaw) };
-		return gradeAt(hub.vault, subjectsOf(await hub.workspaces()), at, grade, today());
+		return gradeAt(hub.vault, await hub.subjects(), at, grade, today());
 	},
 	{ 'no-note': 'No such note.', 'no-card': 'That card is no longer in the note.' }
 );

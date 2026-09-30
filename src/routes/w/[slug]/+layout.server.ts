@@ -66,7 +66,6 @@ export const load: LayoutServerLoad = async ({ params }) => {
 			name: workspace.name,
 			color: workspace.color,
 			tag: workspace.tag,
-			template: workspace.template ?? '',
 			description: readLede(definition.content),
 			folders: workspace.folders
 		},

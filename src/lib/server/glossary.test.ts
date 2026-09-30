@@ -346,18 +346,19 @@ describe('the study link and the scan, on disk', () => {
 	});
 
 	it('links a glossary to a study subject as a span edit, clears it, and refuses a slug that is no subject', async () => {
-		const subjects = [ws('cs', { template: 'study' }), ws('work')];
+		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nfolders:\n  - Study/CS\n---\n');
+		await vault.write('_hub/workspaces/work.md', '---\nname: Work\n---\n');
 		await vault.write(PATH, TWO);
-		expect(await setGlossaryStudy(vault, REF, subjects, 'cs')).toEqual({ ok: true, path: PATH });
+		expect(await setGlossaryStudy(vault, REF, 'cs')).toEqual({ ok: true, path: PATH });
 		expect((await vault.read(PATH)).content).toBe(`---\nstudy: cs\n---\n\n${TWO}`);
 		expect(studyLink((await vault.read(PATH)).content)).toBe('cs');
-		expect(await setGlossaryStudy(vault, REF, subjects, '')).toEqual({ ok: true, path: PATH });
+		expect(await setGlossaryStudy(vault, REF, '')).toEqual({ ok: true, path: PATH });
 		expect((await vault.read(PATH)).content).toBe(`---\nstudy:\n---\n\n${TWO}`);
 		expect(studyLink((await vault.read(PATH)).content)).toBeNull();
 
 		const before = (await vault.read(PATH)).content;
 		for (const bad of ['work', 'nope', 3, null]) {
-			expect(await setGlossaryStudy(vault, REF, subjects, bad)).toMatchObject({ ok: false, reason: 'invalid' });
+			expect(await setGlossaryStudy(vault, REF, bad)).toMatchObject({ ok: false, reason: 'invalid' });
 		}
 		expect((await vault.read(PATH)).content).toBe(before);
 	});

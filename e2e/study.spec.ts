@@ -68,14 +68,15 @@ test.describe('Study index', () => {
 		await expect(page.getByTestId('sub-study')).toContainText('Study');
 	});
 
-	test('New subject writes a study workspace homed at Study/<name> and opens it', async ({ page }) => {
+	test('New subject writes a subject file homed at Study/<name> and opens it', async ({ page }) => {
 		await page.getByTestId('subject-name').fill('Filipino');
 		await page.getByTestId('subject-folders').fill('Languages/Filipino');
 		await page.getByTestId('create-subject').click();
 
 		await expect(page).toHaveURL('/study/filipino');
-		const file = vaultFile('_hub/workspaces/filipino.md');
-		expect(file).toContain('template: study\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
+		const file = vaultFile('_hub/subjects/filipino.md');
+		expect(file).toContain('\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
+		expect(vaultFile('_hub/workspaces/filipino.md')).toBe('');
 		// Every tab shows, even for a subject with nothing in it yet.
 		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list', 'Sessions', 'Flashcards']);
 	});

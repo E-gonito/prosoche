@@ -1,6 +1,5 @@
 import { hub } from '$server/hub';
 import { glossaries } from '$server/glossary';
-import { subjectsOf } from '$server/study/subjects';
 import type { SubItem } from '$lib/modules';
 import type { LayoutServerLoad } from './$types';
 
@@ -13,12 +12,12 @@ import type { LayoutServerLoad } from './$types';
  * has somewhere to keep its data.
  */
 export const load: LayoutServerLoad = async () => {
-	const { vault, workspaces } = await hub();
+	const { vault, workspaces, subjects } = await hub();
 	const all = await workspaces();
 	const sub: Record<string, SubItem[]> = {
 		w: all.map((w) => ({ href: `/w/${w.slug}`, title: w.name, color: w.color })),
 		glossary: (await glossaries(vault, all)).map((g) => ({ href: `/glossary/${g.slug}`, title: g.name, color: g.color })),
-		study: subjectsOf(all).map((s) => ({ href: `/study/${s.slug}`, title: s.name, color: s.color }))
+		study: (await subjects()).map((s) => ({ href: `/study/${s.slug}`, title: s.name, color: s.color }))
 	};
 	return { sub, hasPrivate: await vault.hasPrivate() };
 };

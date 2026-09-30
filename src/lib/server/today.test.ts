@@ -25,10 +25,9 @@ const STUDY: Workspace = {
 	tag: 'ws/study',
 	aliases: [],
 	folders: ['Study'],
-	template: 'study',
 	path: '_hub/workspaces/study.md'
 };
-const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], template: undefined, path: '_hub/workspaces/work.md' };
+const WORK: Workspace = { ...STUDY, slug: 'work', name: 'Work', tag: 'ws/work', folders: ['Work'], path: '_hub/workspaces/work.md' };
 const WORKSPACES = [STUDY, WORK];
 
 const DAY = '2026-09-29';

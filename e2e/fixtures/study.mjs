@@ -1,6 +1,6 @@
 /**
  * Fixtures for the Study module: one subject, the base vault's `study`
- * workspace (`template: study`, home `Study/`), with two goals and their
+ * subject (`_hub/subjects/study.md`, home `Study/`), with two goals and their
  * milestones, a session log with one entry yesterday and one today (both on
  * a goal) and an older one on a pre-goal `[[Topic]]`, a reading list, and a
  * card file under a goal holding one due card.

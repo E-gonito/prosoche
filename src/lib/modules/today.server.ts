@@ -14,7 +14,6 @@
  */
 
 import type { Hub } from '$server/hub';
-import { subjectsOf } from '$server/study/subjects';
 import { dueEverywhere } from '$server/study/summary';
 
 export interface TodayCard {
@@ -43,7 +42,7 @@ interface TodayCardContext {
  * the ones it matters. Side effects: reads the vault and the index.
  */
 async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
-	const subjects = subjectsOf(await h.workspaces());
+	const subjects = await h.subjects();
 	const queues = await Promise.all(subjects.map((s) => dueEverywhere(h.vault, h.index, [s], day, 0)));
 	const items = subjects.flatMap((subject, i) => {
 		const { due, fresh } = queues[i];

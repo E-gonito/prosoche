@@ -46,7 +46,7 @@ import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { slugify } from '$lib/shared/slug';
-import { subjectsOf } from './study/subjects';
+import { loadSubjects } from './study/subjects';
 import type { Workspace } from './workspaces';
 import { hashContent, type Vault } from './vault/index';
 
@@ -182,10 +182,10 @@ export function studyLink(content: string): string | null {
  * among `workspaces`. A clash with an edit made a moment earlier is retried
  * once. Never touches the glossary's body or its cards.
  */
-export async function setGlossaryStudy(vault: Vault, glossary: GlossaryRef, workspaces: Workspace[], slug: unknown): Promise<Written> {
+export async function setGlossaryStudy(vault: Vault, glossary: GlossaryRef, slug: unknown): Promise<Written> {
 	if (typeof slug !== 'string') return invalid('Send the study subject as its slug.');
 	const wanted = slug.trim();
-	if (wanted && !subjectsOf(workspaces).some((s) => s.slug === wanted)) return invalid(`There is no study subject “${wanted}”.`);
+	if (wanted && !(await loadSubjects(vault)).some((s) => s.slug === wanted)) return invalid(`There is no study subject “${wanted}”.`);
 	return rewrite(vault, glossary.path, (content) => setFrontmatterField(content, 'study', wanted), 2);
 }
 

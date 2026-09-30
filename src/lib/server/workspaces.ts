@@ -1,6 +1,5 @@
 /**
- * Workspaces: the areas a vault is divided into, such as work, study and
- * personal.
+ * Workspaces: the areas a vault is divided into, such as work and personal.
  *
  * A workspace is one markdown file in `_hub/workspaces/`, so it is editable in
  * Obsidian and travels with the vault. Its frontmatter names the workspace and
@@ -16,7 +15,9 @@
  * does not recognise: harmlessly ignored.
  *
  * A `glossary:` line names the glossary (in `Glossaries/`) the workspace is
- * linked to. A `meetings:` line is no longer read.
+ * linked to. A `meetings:` line is no longer read, and neither is
+ * `template:`: a study subject is not a workspace but a file of its own (see
+ * `study/subjects.ts`), and nothing in this module depends on Study.
  */
 
 import { slugify } from '$lib/shared/slug';
@@ -25,10 +26,10 @@ import { config } from './config';
 import { setFrontmatterField } from './parse/frontmatter';
 import { parseNote, setLede } from './parse/note';
 import { invalid, rewrite, type Written } from './rewrite';
-import type { Vault } from './vault/index';
+import { folderList, type Vault } from './vault/index';
 
 export interface Workspace {
-	/** Derived from the file name, e.g. `_hub/workspaces/study.md` -> `study`. */
+	/** Derived from the file name, e.g. `_hub/workspaces/work.md` -> `work`. */
 	slug: string;
 	name: string;
 	color: string;
@@ -43,25 +44,12 @@ export interface Workspace {
 	aliases: string[];
 	folders: string[];
 	/**
-	 * What kind of workspace this is, from `template:` in its file. Only one
-	 * value means anything today: `study` marks the workspace the Study module
-	 * reads. Absent for an ordinary project.
-	 */
-	template?: string;
-	/**
 	 * The name of the glossary this workspace is linked to, from `glossary:`
 	 * in its file: `eye2gene` means `Glossaries/eye2gene.md`. Glossaries are
 	 * not owned by a workspace; this is only a pointer, and several
 	 * workspaces may point at one.
 	 */
 	glossary?: string;
-	/**
-	 * For a study subject, how many cards never reviewed may join its reviews
-	 * each day, from `new_per_day:` in its file: a whole number, 0 for none.
-	 * Absent, or anything else written there, means the default (see
-	 * `study/subjects.ts`).
-	 */
-	newPerDay?: number;
 	path: string;
 }
 
@@ -155,14 +143,11 @@ export interface WorkspaceEdit {
 	color?: string;
 	/** The tag that claims a task for the workspace; a leading `#` is dropped. */
 	tag?: string;
-	/** `study` makes it a Study subject; empty removes the line's value. */
-	template?: string;
 	/** The one-line description: the definition's first paragraph. Empty removes it. */
 	description?: string;
 	/**
 	 * Every folder wanted after the home, in order: the reference folders,
-	 * whose notes count as the workspace's (and, for a Study subject, feed
-	 * its cards).
+	 * whose notes count as the workspace's.
 	 */
 	folders?: string[];
 }
@@ -178,8 +163,8 @@ export interface WorkspaceEdit {
  *
  * Folders are cleaned as a person typed them: trimmed of spaces and
  * surrounding slashes, backslashes made `/`, empties, repeats and the home
- * itself dropped. The home never moves: it holds the board, the inbox and a
- * subject's goals and cards, and moving it would strand them. A workspace
+ * itself dropped. The home never moves: it holds the board, the inbox and
+ * the log, and moving it would strand them. A workspace
  * that names no folder yet has no home to keep, so its first folder becomes
  * one. A folder need not exist yet.
  *
@@ -207,14 +192,10 @@ export async function editWorkspace(vault: Vault, workspace: Workspace, edit: Wo
 		if (!/^[A-Za-z][\w/-]*$/.test(tag)) return invalid('A tag is letters, digits, _, - and /, starting with a letter.');
 		fields.push(['tag', tag]);
 	}
-	if (edit.template !== undefined) fields.push(['template', edit.template]);
 	if (edit.folders !== undefined) {
-		const cleaned = edit.folders.map((f) => f.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/')).filter(Boolean);
-		if (cleaned.some((f) => f.split('/').some((part) => part === '..' || part === '.'))) {
-			return invalid('A folder is a path from the top of the vault, without . or .. in it.');
-		}
-		const home = workspace.folders[0];
-		fields.push(['folders', [...new Set(home ? [home, ...cleaned] : cleaned)]]);
+		const folders = folderList(edit.folders, workspace.folders[0]);
+		if (!folders) return invalid('A folder is a path from the top of the vault, without . or .. in it.');
+		fields.push(['folders', folders]);
 	}
 
 	return rewrite(
@@ -257,17 +238,9 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		tag: str(fm.tag) ?? `ws/${slug}`,
 		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
 		folders,
-		template: str(fm.template) ?? undefined,
 		...(str(fm.glossary) ? { glossary: str(fm.glossary)! } : {}),
-		...(count(fm.new_per_day) !== null ? { newPerDay: count(fm.new_per_day)! } : {}),
 		path
 	};
-}
-
-/** A whole number of zero or more, written as a number or a string of digits; otherwise null. */
-function count(value: unknown): number | null {
-	const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
-	return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 function str(value: unknown): string | null {
@@ -293,8 +266,6 @@ export type NewWorkspace = {
 	name: string;
 	color?: string;
 	folders?: string[];
-	/** Written as `template:` when given; `study` makes the workspace a Study subject. */
-	template?: string;
 };
 
 type WorkspaceCreated =
@@ -321,7 +292,6 @@ export async function createWorkspace(vault: Vault, spec: NewWorkspace): Promise
 		color: spec.color ?? '#6b7280',
 		tag: `ws/${slug}`,
 		folders: (spec.folders ?? []).map((f) => f.replace(/^\/+|\/+$/g, '')).filter(Boolean),
-		...(spec.template ? { template: spec.template } : {}),
 		description: `Created from the hub. Point \`folders\` at wherever its notes live.`
 	};
 	const result = await vault.write(path, renderWorkspace(seed));
@@ -362,15 +332,6 @@ const SEEDS: Seed[] = [
 		description: 'The day job. Point `folders` at wherever its notes live.'
 	},
 	{
-		slug: 'study',
-		name: 'Study',
-		color: '#7c3aed',
-		tag: 'ws/study',
-		template: 'study',
-		folders: ['Study'],
-		description: 'Courses, books and whatever you are learning now.'
-	},
-	{
 		slug: 'personal',
 		name: 'Personal',
 		color: '#16a34a',
@@ -397,12 +358,11 @@ function renderWorkspace(seed: Seed): string {
 	const aliases = seed.aliases?.length
 		? `aliases:\n${seed.aliases.map((a) => `  - ${JSON.stringify(a)}`).join('\n')}\n`
 		: '';
-	const template = seed.template ? `template: ${seed.template}\n` : '';
 	return `---
 name: ${seed.name}
 color: "${seed.color}"
 tag: ${seed.tag}
-${template}folders:
+folders:
 ${folders}
 ${aliases}---
 

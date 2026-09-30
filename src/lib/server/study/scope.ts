@@ -1,7 +1,7 @@
 /**
  * Which notes a study subject covers, and one shared sweep of them.
  *
- * A subject's scope is its workspace's folders and tag: its home folder,
+ * A subject's scope is its folders and tag: its home folder,
  * where Study's own files live, and any reference folders beside it. Every
  * study module that reads notes rather than one known file — flashcards, the
  * "Make cards" button — asks the same question, "is this note in scope", and
@@ -27,16 +27,6 @@ export function inScope(path: string, tags: string[], scope: StudyScope | undefi
 	if (!folders.length && !wanted.length) return true;
 	if (folders.some((f) => path === f || path.startsWith(`${f.replace(/\/$/, '')}/`))) return true;
 	return wanted.some((w) => tags.some((t) => t === w || t.startsWith(`${w}/`)));
-}
-
-/**
- * The scope a workspace implies: its folders and its tag.
- *
- * Takes the two fields rather than a `Workspace`, so the study modules stay
- * independent of the workspace file format. Pure.
- */
-export function scopeOf(workspace: { folders: string[]; tag: string }): StudyScope {
-	return { folders: workspace.folders, tags: workspace.tag ? [workspace.tag] : [] };
 }
 
 /** One note, read and parsed once, as the study modules want it. */

@@ -1,5 +1,5 @@
 import { importAnkiDecks } from '$server/study/anki-decks';
-import { studyHome } from '$server/study/subjects';
+import { subjectOf } from '$server/study/subjects';
 import { refuse, route, strings } from '../../route';
 
 /**
@@ -10,7 +10,7 @@ import { refuse, route, strings } from '../../route';
  * is now, never from what the preview page last saw.
  */
 export const POST = route(async ({ body, hub }) => {
-	const home = studyHome(await hub.workspaces(), body.subject);
+	const home = subjectOf(await hub.subjects(), body.subject)?.home ?? null;
 	if (!home) return refuse('not-found', 'There is no study subject by that name.');
 	return { decks: await importAnkiDecks(hub.vault, home, { apply: true, only: strings(body.sources) }) };
 });

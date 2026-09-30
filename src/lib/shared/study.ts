@@ -30,12 +30,11 @@ export interface StudyScope {
 }
 
 /**
- * A subject: one workspace whose `template:` says `study`, as the screens
- * need it. Its own files live in `home`; its cards come from every folder
- * its workspace names.
+ * A subject: one file in `_hub/subjects/`, as the screens need it. Its own
+ * files live in `home`; its cards come from every folder its file names.
  */
 export interface SubjectRef {
-	/** The workspace's slug, and the `/study/<slug>` segment. */
+	/** The subject file's name, and the `/study/<slug>` segment. */
 	slug: string;
 	name: string;
 	color: string;

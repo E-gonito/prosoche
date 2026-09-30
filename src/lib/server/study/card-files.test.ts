@@ -9,6 +9,7 @@ const CS: Subject = {
 	home: 'Study/CS',
 	scope: { folders: ['Study/CS', 'Computer Science'], tags: ['ws/cs'] },
 	newPerDay: 20,
+	path: '_hub/subjects/cs.md',
 	files: {
 		goals: 'Study/CS/Goals.md',
 		reading: 'Study/CS/Reading List.md',

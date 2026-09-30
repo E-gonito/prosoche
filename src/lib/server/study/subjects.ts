@@ -1,29 +1,46 @@
 /**
  * Subjects: what Study is divided into.
  *
- * A subject is a workspace whose file says `template: study` — CS, Filipino,
- * whatever comes next — and there can be any number. Nothing is shared
- * between two subjects but the code: each has its own home folder holding
- * its own `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/`,
- * and its own scope, the workspace's folders and tag, for its cards.
+ * A subject is one markdown file in `_hub/subjects/`, the way a workspace is
+ * one in `_hub/workspaces/`, and the two have nothing to do with each other:
+ * a subject is never a workspace, never shows among them, and claims no task
+ * or note for one. There can be any number of subjects. Nothing is shared
+ * between two but the code: each has its own home folder holding its own
+ * `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/`, and its own
+ * scope, its folders and tag, for its cards.
  *
- * This module is the one place that turns a workspace into a subject, so a
- * page, a route and the Anki import all agree on where a subject's files
- * are. It never reads a note; it only says where they live.
+ *     ---
+ *     name: Filipino
+ *     color: "#7c3aed"
+ *     folders:
+ *       - "Study/Filipino"
+ *       - "Languages/Filipino"
+ *     new_per_day: 20
+ *     ---
+ *
+ * The first folder is the home; a file naming none is homed at
+ * `Study/<name>`. `tag:` is optional and, when there, puts notes carrying it
+ * in scope too. `new_per_day:` is optional, 20 when absent.
+ *
+ * This module is the one place that reads and writes that file, so a page, a
+ * route and the Anki import all agree on where a subject's files are. It
+ * never reads a note; it only says where they live.
  */
 
-import { createWorkspace, homeFolder, type Workspace } from '../workspaces';
-import { scopeOf } from './scope';
+import { config } from '../config';
+import { setFrontmatterField } from '../parse/frontmatter';
+import { parseNote, setLede } from '../parse/note';
+import { invalid, rewrite, type Written } from '../rewrite';
 import { slugify } from '$lib/shared/slug';
 import type { StudyScope, SubjectRef } from '$lib/shared/study';
-import type { Vault } from '../vault/index';
+import { folderList, type Vault } from '../vault/index';
 
-/** The `template:` value that makes a workspace a subject. */
-const STUDY_TEMPLATE = 'study';
+/** Where subject files live. */
+const SUBJECT_DIR = `${config.hubFolder}/subjects`;
 
 /**
  * How many never-reviewed cards join a subject's reviews each day when its
- * workspace file does not say, with `new_per_day:`.
+ * file does not say, with `new_per_day:`.
  */
 const NEW_PER_DAY = 20;
 
@@ -35,6 +52,8 @@ export interface Subject extends SubjectRef {
 	scope: StudyScope;
 	/** Cards never reviewed that may join its reviews each day; 0 for none. */
 	newPerDay: number;
+	/** Its definition file, `_hub/subjects/<slug>.md`. */
+	path: string;
 	files: {
 		goals: string;
 		reading: string;
@@ -44,27 +63,20 @@ export interface Subject extends SubjectRef {
 	};
 }
 
-/**
- * Every subject among the workspaces, in workspace order. Pure. A workspace
- * that is not a subject is simply not in the list.
- */
-export function subjectsOf(workspaces: Workspace[]): Subject[] {
-	return workspaces.filter((w) => w.template === STUDY_TEMPLATE).map(toSubject);
+/** Every subject, in file-name order. Never throws; a vault with none has none. */
+export async function loadSubjects(vault: Vault): Promise<Subject[]> {
+	const paths = (await vault.list()).filter((p) => p.startsWith(`${SUBJECT_DIR}/`) && !p.slice(SUBJECT_DIR.length + 1).includes('/')).sort();
+	const subjects: Subject[] = [];
+	for (const path of paths) {
+		const note = await vault.read(path);
+		if (note.exists) subjects.push(readSubject(path, note.content));
+	}
+	return subjects;
 }
 
 /** The subject with this slug, or null when there is none. Pure. */
-export function subjectOf(workspaces: Workspace[], slug: unknown): Subject | null {
-	return subjectsOf(workspaces).find((s) => s.slug === slug) ?? null;
-}
-
-/**
- * The study home of subject `slug`: the folder its `Goals.md`, `Reading
- * List.md`, `Sessions.md` and `Flashcards/` live in, vault-relative. Null for
- * a slug that is not a subject. Pure; the one answer every writer of a
- * subject's own files should ask for.
- */
-export function studyHome(workspaces: Workspace[], slug: unknown): string | null {
-	return subjectOf(workspaces, slug)?.home ?? null;
+export function subjectOf(subjects: Subject[], slug: unknown): Subject | null {
+	return subjects.find((s) => s.slug === slug) ?? null;
 }
 
 type SubjectCreated =
@@ -72,50 +84,153 @@ type SubjectCreated =
 	| { ok: false; reason: 'no-name' | 'exists' | 'reserved'; message: string };
 
 /**
- * Create a subject: a workspace file with `template: study`, homed at
- * `Study/<name>`, with `extraFolders` after the home as reference folders
- * whose notes count for its cards.
+ * Create a subject: a file in `_hub/subjects/`, homed at `Study/<name>`,
+ * with `extraFolders` after the home as reference folders whose notes count
+ * for its cards, and a colour no other subject has while one is free.
  *
- * Writes one file, `_hub/workspaces/<slug>.md`, through `createWorkspace`,
- * and never overwrites one. The home folder itself appears with the
- * subject's first write. Refuses a name that makes no folder or no slug, and
- * `review`, which `/study/review` already means.
+ * Writes that one file and never overwrites one. The home folder itself
+ * appears with the subject's first write. Refuses a name that makes no
+ * folder or no slug, a slug another subject has, and `review`, which
+ * `/study/review` already means. A workspace of the same name is no clash.
  */
-export async function createSubject(
-	vault: Vault,
-	existing: Workspace[],
-	spec: { name: string; extraFolders?: string[] }
-): Promise<SubjectCreated> {
+export async function createSubject(vault: Vault, spec: { name: string; extraFolders?: string[] }): Promise<SubjectCreated> {
 	// A folder name and a link target both: no path separators, nothing
 	// Obsidian refuses in a file name, nothing a wikilink would read.
 	const name = spec.name.replace(/[\\/:*?"<>|#^[\]]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+|\.+$/g, '');
-	if (!name) return { ok: false, reason: 'no-name', message: 'A subject needs a name.' };
-	if (slugify(name) === 'review') return { ok: false, reason: 'reserved', message: '"Review" is taken by the review page. Pick another name.' };
+	const slug = slugify(name);
+	if (!name || !slug) return { ok: false, reason: 'no-name', message: 'A subject needs a name with a letter or digit in it.' };
+	if (slug === 'review') return { ok: false, reason: 'reserved', message: '"Review" is taken by the review page. Pick another name.' };
 
 	const home = `${STUDY_ROOT}/${name}`;
-	const folders = [home, ...(spec.extraFolders ?? []).map((f) => f.trim().replace(/^\/+|\/+$/g, '')).filter((f) => f && f !== home)];
-	const taken = new Set(existing.filter((w) => w.template === STUDY_TEMPLATE).map((w) => w.color));
+	const folders = folderList(spec.extraFolders ?? [], home) ?? [home];
+	const taken = new Set((await loadSubjects(vault)).map((s) => s.color));
 	const color = PALETTE.find((c) => !taken.has(c)) ?? PALETTE[taken.size % PALETTE.length];
 
-	const created = await createWorkspace(vault, { name, color, folders, template: STUDY_TEMPLATE });
-	if (created.ok) return { ok: true, subject: toSubject(created.workspace) };
-	return created.reason === 'no-name'
-		? { ok: false, reason: 'no-name', message: 'A subject needs a name with a letter or digit in it.' }
-		: { ok: false, reason: 'exists', message: 'A workspace with that name already exists. Pick a different name.' };
+	const path = `${SUBJECT_DIR}/${slug}.md`;
+	const exists = { ok: false, reason: 'exists', message: 'A subject with that name already exists. Pick a different name.' } as const;
+	if ((await vault.read(path)).exists) return exists;
+	const result = await vault.write(path, renderSubject(name, color, folders));
+	if (!result.ok) return exists;
+	return { ok: true, subject: readSubject(path, result.note.content) };
+}
+
+/** The parts of a subject's file a person edits from the app. */
+export interface SubjectEdit {
+	name?: string;
+	/** `#rrggbb`. */
+	color?: string;
+	/** A tag whose notes are in scope too, a leading `#` dropped; empty for none. */
+	tag?: string;
+	/** The one-line description: the file's first paragraph. Empty removes it. */
+	description?: string;
+	/** Every folder wanted after the home, in order: the reference folders. */
+	folders?: string[];
+}
+
+/**
+ * Change a subject's file: each field of `edit` that is present, and nothing
+ * else. Frontmatter through `parse/frontmatter.ts`, the description through
+ * `setLede`, so every other byte is kept. The slug, which is the file name,
+ * never changes, and neither does the home, which stays first: its goals,
+ * reading list, sessions and cards are there. A subject whose file names no
+ * folder is homed at `Study/<name>`, and that is the home kept.
+ *
+ * Refuses, writing nothing, an empty name, a colour that is not `#rrggbb`, a
+ * tag that is not one (letters, digits, `_`, `-` and `/`, starting with a
+ * letter) and a folder with a `.` or `..` segment, as invalid; returns a conflict
+ * after two clashing writes. Never touches a folder or a note in one.
+ */
+export async function editSubject(vault: Vault, subject: Subject, edit: SubjectEdit): Promise<Written> {
+	const fields: Array<[string, string | string[]]> = [];
+	if (edit.name !== undefined) {
+		if (!edit.name.trim()) return invalid('A subject needs a name.');
+		fields.push(['name', edit.name.trim()]);
+	}
+	if (edit.color !== undefined) {
+		if (!/^#[0-9a-f]{6}$/i.test(edit.color.trim())) return invalid('A colour is written #rrggbb.');
+		fields.push(['color', edit.color.trim().toLowerCase()]);
+	}
+	if (edit.tag !== undefined) {
+		const tag = edit.tag.trim().replace(/^#/, '');
+		if (tag && !/^[A-Za-z][\w/-]*$/.test(tag)) return invalid('A tag is letters, digits, _, - and /, starting with a letter.');
+		fields.push(['tag', tag]);
+	}
+	if (edit.folders !== undefined) {
+		const folders = folderList(edit.folders, subject.scope.folders?.[0]);
+		if (!folders) return invalid('A folder is a path from the top of the vault, without . or .. in it.');
+		fields.push(['folders', folders]);
+	}
+	return rewrite(
+		vault,
+		subject.path,
+		(content) => {
+			const next = fields.reduce((text, [key, value]) => setFrontmatterField(text, key, value), content);
+			return edit.description === undefined ? next : setLede(next, edit.description);
+		},
+		2
+	);
+}
+
+/**
+ * Delete a subject: remove its file, `_hub/subjects/<slug>.md`, and nothing
+ * else. Its home folder, goals, reading list, sessions, cards and notes stay
+ * where they are; git history still has the file. Refuses an unknown slug.
+ */
+export async function deleteSubject(vault: Vault, slug: string): Promise<{ ok: true } | { ok: false; reason: 'not-found' }> {
+	if (!slug || slug.includes('/')) return { ok: false, reason: 'not-found' };
+	const result = await vault.remove(`${SUBJECT_DIR}/${slug}.md`);
+	return result.ok ? { ok: true } : { ok: false, reason: 'not-found' };
+}
+
+/**
+ * Move every subject still defined as a workspace — a file in
+ * `_hub/workspaces/` whose frontmatter says `template: study`, from before
+ * subjects had files of their own — to `_hub/subjects/`, byte for byte.
+ * Answers the paths written.
+ *
+ * Writes the new file first and removes the old one only once it is there,
+ * so a failure leaves the subject a workspace rather than nowhere. Skips a
+ * slug that already has a subject file, leaving both. Idempotent: once no
+ * workspace says `template: study` it does nothing. Delete it once no vault
+ * has one.
+ */
+export async function adoptStudyWorkspaces(vault: Vault): Promise<string[]> {
+	const moved: string[] = [];
+	const dir = `${config.hubFolder}/workspaces/`;
+	for (const path of await vault.list()) {
+		if (!path.startsWith(dir) || path.slice(dir.length).includes('/')) continue;
+		const note = await vault.read(path);
+		if (!note.exists || parseNote(note.content, path).frontmatter.template !== 'study') continue;
+		const target = `${SUBJECT_DIR}/${path.slice(dir.length)}`;
+		if ((await vault.read(target)).exists) continue;
+		if (!(await vault.write(target, note.content)).ok) continue;
+		await vault.remove(path, note.hash);
+		moved.push(target);
+	}
+	return moved;
 }
 
 /** Colours for new subjects, from the design tokens, used in turn. */
 const PALETTE = ['#7c3aed', '#2e6b85', '#c2553f', '#3f7d4e', '#c8962b', '#a8641c'];
 
-function toSubject(workspace: Workspace): Subject {
-	const home = homeFolder(workspace);
+/**
+ * The subject a file in `_hub/subjects/` defines, from its path and text.
+ * Pure; never throws. A field missing or malformed reads as its default.
+ */
+export function readSubject(path: string, content: string): Subject {
+	const fm = parseNote(content, path).frontmatter;
+	const slug = (path.split('/').pop() ?? '').replace(/\.md$/, '');
+	const folders = strList(fm.folders);
+	const tag = str(fm.tag)?.replace(/^#/, '');
+	const home = folders[0] ?? `${STUDY_ROOT}/${str(fm.name) ?? slug}`;
 	return {
-		slug: workspace.slug,
-		name: workspace.name,
-		color: workspace.color,
+		slug,
+		name: str(fm.name) ?? slug,
+		color: str(fm.color) ?? '#6b7280',
 		home,
-		scope: scopeOf(workspace),
-		newPerDay: workspace.newPerDay ?? NEW_PER_DAY,
+		scope: { folders: folders.length ? folders : [home], tags: tag ? [tag] : [] },
+		newPerDay: count(fm.new_per_day) ?? NEW_PER_DAY,
+		path,
 		files: {
 			goals: `${home}/Goals.md`,
 			reading: `${home}/Reading List.md`,
@@ -123,4 +238,36 @@ function toSubject(workspace: Workspace): Subject {
 			flashcards: `${home}/Flashcards`
 		}
 	};
+}
+
+/** A subject file a human can read and edit in Obsidian. */
+function renderSubject(name: string, color: string, folders: string[]): string {
+	return `---
+name: ${name}
+color: "${color}"
+folders:
+${folders.map((f) => `  - ${JSON.stringify(f)}`).join('\n')}
+---
+
+Created from Study.
+
+Edit this file to change the subject: its name, colour, and the folders its
+notes and cards come from. The first folder is its home, where its goals,
+reading list, sessions and cards are kept.
+`;
+}
+
+/** A whole number of zero or more, written as a number or a string of digits; otherwise null. */
+function count(value: unknown): number | null {
+	const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
+	return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+function str(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function strList(value: unknown): string[] {
+	if (typeof value === 'string') return [value];
+	return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }

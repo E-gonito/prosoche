@@ -58,7 +58,7 @@ import { parseGlossary } from '../parse/glossary';
 import { normaliseTerm } from '$lib/shared/glossary';
 import { cardBlock } from './anki-import';
 import { FLASHCARD_TAG, scanCards, type Card } from './flashcards';
-import { subjectOf, type Subject } from './subjects';
+import { loadSubjects, subjectOf, type Subject } from './subjects';
 import { GLOSSARY_FOLDER, glossaries, isGlossaryPath, studyLink } from '../glossary';
 import { hashContent, type Vault } from '../vault/index';
 import type { Workspace } from '../workspaces';
@@ -397,8 +397,8 @@ type CardSync = CardState & { written?: string[]; conflict?: string | null };
  * link, the cards in its folder now, and how many files a sync would
  * change. Reads the glossary and its card folder. Never writes.
  */
-export async function glossaryCardsState(vault: Vault, workspaces: Workspace[], path: string): Promise<CardState> {
-	const found = await examine(vault, workspaces, path);
+export async function glossaryCardsState(vault: Vault, path: string): Promise<CardState> {
+	const found = await examine(vault, path);
 	if (found.state !== 'found') return found;
 	const { link, files, plan } = found;
 	const cards = files.reduce((sum, f) => sum + scanCards(f.content, f.path).length, 0);
@@ -422,10 +422,10 @@ export async function glossaryCardsState(vault: Vault, workspaces: Workspace[], 
  * for it. Never writes the glossary or outside its card folder; never
  * throws for a clash.
  */
-export function syncGlossaryCards(vault: Vault, workspaces: Workspace[], path: string, opts: { renamedFrom?: string } = {}): Promise<CardSync> {
+export function syncGlossaryCards(vault: Vault, path: string, opts: { renamedFrom?: string } = {}): Promise<CardSync> {
 	const run = async (): Promise<CardSync> => {
-		if (opts.renamedFrom) await moveCardFolder(vault, workspaces, path, opts.renamedFrom);
-		const found = await examine(vault, workspaces, path);
+		if (opts.renamedFrom) await moveCardFolder(vault, path, opts.renamedFrom);
+		const found = await examine(vault, path);
 		if (found.state !== 'found') return found;
 		const { link, files, plan } = found;
 		const hashes = new Map(files.map((f) => [f.path, f.hash]));
@@ -475,7 +475,7 @@ const queues = new WeakMap<Vault, Promise<unknown>>();
  */
 export async function syncAllGlossaryCards(vault: Vault, workspaces: Workspace[]): Promise<CardSync[]> {
 	const out: CardSync[] = [];
-	for (const g of await glossaries(vault, workspaces)) out.push(await syncGlossaryCards(vault, workspaces, g.path));
+	for (const g of await glossaries(vault, workspaces)) out.push(await syncGlossaryCards(vault, g.path));
 	return out;
 }
 
@@ -485,11 +485,11 @@ export async function syncAllGlossaryCards(vault: Vault, workspaces: Workspace[]
  *
  * Subscribes to the vault. A change to a glossary file (not a removal) syncs
  * that glossary `delayMs` after the last change to it, reading the
- * workspaces afresh. Changes to card files are not glossary changes, so a
+ * subjects afresh. Changes to card files are not glossary changes, so a
  * sync's own writes never set off another. Returns the unsubscribe, which
  * also drops any sync not yet started.
  */
-export function followGlossaryCards(vault: Vault, workspaces: () => Promise<Workspace[]>, delayMs = 1000): () => void {
+export function followGlossaryCards(vault: Vault, delayMs = 1000): () => void {
 	const timers = new Map<string, ReturnType<typeof setTimeout>>();
 	const unsubscribe = vault.subscribe((change) => {
 		if (change.kind === 'removed' || !isGlossaryPath(change.path)) return;
@@ -498,9 +498,7 @@ export function followGlossaryCards(vault: Vault, workspaces: () => Promise<Work
 			change.path,
 			setTimeout(() => {
 				timers.delete(change.path);
-				workspaces()
-					.then((ws) => syncGlossaryCards(vault, ws, change.path))
-					.catch((e) => console.error(`[glossary cards] ${change.path}`, e));
+				syncGlossaryCards(vault, change.path).catch((e) => console.error(`[glossary cards] ${change.path}`, e));
 			}, delayMs)
 		);
 	});
@@ -537,9 +535,9 @@ export function renamedCardFile(content: string, from: string, to: string): stri
  * a file whose new place is taken is left where it is. Does nothing for a
  * glossary that names no subject.
  */
-async function moveCardFolder(vault: Vault, workspaces: Workspace[], path: string, from: string): Promise<void> {
+async function moveCardFolder(vault: Vault, path: string, from: string): Promise<void> {
 	const note = await vault.read(path);
-	const subject = subjectOf(workspaces, studyLink(note.content) ?? '');
+	const subject = subjectOf(await loadSubjects(vault), studyLink(note.content) ?? '');
 	if (!note.exists || !subject) return;
 	const to = glossaryName(path);
 	const source = glossaryCardsFolder(subject, from);
@@ -560,13 +558,12 @@ async function moveCardFolder(vault: Vault, workspaces: Workspace[], path: strin
 /** The glossary's link, card files and reconciliation, read once. */
 async function examine(
 	vault: Vault,
-	workspaces: Workspace[],
 	path: string
 ): Promise<Extract<CardState, { state: 'unlinked' | 'unknown' }> | { state: 'found'; link: CardLink; files: Array<CardFileText & { hash: string }>; plan: Reconciliation }> {
 	const note = await vault.read(path);
 	const study = note.exists ? studyLink(note.content) : null;
 	if (!study) return { state: 'unlinked' };
-	const subject = subjectOf(workspaces, study);
+	const subject = subjectOf(await loadSubjects(vault), study);
 	if (!subject) return { state: 'unknown', study };
 
 	const name = glossaryName(path);
