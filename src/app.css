@@ -294,7 +294,8 @@ dialog::backdrop { background: rgba(42, 38, 34, 0.35); }
 .x:hover { color: var(--bad); }
 
 /* A word that deletes: red text on no fill, for an in-place "Delete this?". */
-.remove { color: var(--bad); }
+.remove,
+.btn.ghost.remove:hover { color: var(--bad); }
 
 /* A line of input with its button: type, then Add. */
 .add-row { display: flex; gap: var(--s2); }

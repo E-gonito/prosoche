@@ -234,7 +234,7 @@
 	.menu button:hover { background: var(--soft); }
 	.confirm { display: flex; align-items: center; gap: var(--s1); }
 	/* `.remove`, not `.danger`, which is the global filled red button. */
-	.remove, .menu button.remove { color: var(--bad); }
+	.menu button.remove { color: var(--bad); }
 
 	.problem { margin-bottom: var(--s3); }
 

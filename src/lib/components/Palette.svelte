@@ -140,7 +140,7 @@
 				<div class="list" id="palette-list" role="listbox" aria-label="Results" bind:this={list}>
 					{#each palette.rows as item, i (item.id)}
 						{@const group = heading(i)}
-						{#if group}<h6>{group}</h6>{/if}
+						{#if group}<h6 class="caps">{group}</h6>{/if}
 						<button
 							type="button"
 							class="row"
@@ -207,13 +207,7 @@
 	.ask { display: block; font-size: var(--t12); color: var(--muted); margin: 2px var(--s1) 6px; }
 	.hint, .said { margin: var(--s2) var(--s1) 2px; font-size: var(--t12); color: var(--muted); }
 	.list { margin-top: var(--s2); overflow: auto; min-height: 0; }
-	h6 {
-		margin: 10px var(--s1) var(--s1);
-		font-size: var(--t11);
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-	}
+	h6 { margin: 10px var(--s1) var(--s1); }
 	.row {
 		display: grid;
 		grid-template-columns: 1fr auto;

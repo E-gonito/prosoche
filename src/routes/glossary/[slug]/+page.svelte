@@ -202,7 +202,7 @@
 		</ul>
 	{/if}
 
-	<form class="add" onsubmit={addFresh} data-testid="add-term-form">
+	<form class="add-row add" onsubmit={addFresh} data-testid="add-term-form">
 		<input class="field" bind:value={fresh.term} placeholder="New term" aria-label="Term" data-testid="new-term" />
 		<input class="field" bind:value={fresh.category} placeholder="Category" aria-label="Category" list="glossary-categories" data-testid="new-category" />
 		<datalist id="glossary-categories">
@@ -306,8 +306,8 @@
 	.cards label { font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 	.cards .field { width: auto; flex: 0 1 220px; font-size: var(--t13); }
 	.card-problems { margin: 0 0 var(--s3); padding-left: var(--s4); }
-	.add { display: flex; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s4); }
-	.add .field { flex: 1 1 140px; width: auto; }
+	.add { flex-wrap: wrap; margin-bottom: var(--s4); }
+	.add .field { flex: 1 1 140px; }
 	.add .field:first-child { flex-basis: 180px; }
 	.filter { margin-bottom: var(--s3); }
 	.count { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) 0 var(--s4); }

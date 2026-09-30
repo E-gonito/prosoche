@@ -54,8 +54,9 @@
 	<div class="layout">
 		<div class="column">
 			<p class="label">Log a contact</p>
-			<form class="log-form" onsubmit={(e) => { e.preventDefault(); void log(); }}>
+			<form class="add-row" onsubmit={(e) => { e.preventDefault(); void log(); }}>
 				<input
+					class="field"
 					bind:value={text}
 					placeholder="What did you talk about?"
 					aria-label="What you talked about with {data.name}"
@@ -118,17 +119,6 @@
 	.column { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
 	.column .label:not(:first-child) { margin-top: var(--s3); }
 
-	.log-form { display: flex; gap: var(--s2); }
-	.log-form input {
-		flex: 1;
-		min-width: 0;
-		font: inherit;
-		font-size: var(--t13);
-		padding: 7px 10px;
-		border: 1px solid var(--line);
-		border-radius: var(--r-md);
-		background: var(--field);
-	}
 	.log-row { display: flex; gap: 10px; padding: var(--s2); border-top: 1px solid var(--line); font-size: var(--t13); }
 	.log-row:first-child { border-top: 0; }
 	.day { flex: none; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); padding-top: 2px; width: 78px; }

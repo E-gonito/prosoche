@@ -213,7 +213,7 @@
 							}}
 						/>
 					{:else}
-						<h3>
+						<h3 class="caps">
 							{column.title}
 							<span class="count num">{column.cards.length}{column.limit ? `/${column.limit}` : ''}</span>
 						</h3>
@@ -339,7 +339,7 @@
 		<button role="menuitem" onclick={() => toggle(card)}>{card.done ? 'Mark not done' : 'Mark done'}</button>
 		{#if i > 0}<button role="menuitem" onclick={() => move(card.line, { column: c, index: i - 1 })}>Move up</button>{/if}
 		{#if i < current.columns[c].cards.length - 1}<button role="menuitem" onclick={() => move(card.line, { column: c, index: i + 1 })}>Move down</button>{/if}
-		{#if current.columns.length > 1}<p class="menu-label">Move to…</p>{/if}
+		{#if current.columns.length > 1}<p class="caps menu-label">Move to…</p>{/if}
 		{#each current.columns as other, t (t)}
 			{#if t !== c}
 				<button role="menuitem" data-testid="move-to" onclick={() => move(card.line, { column: t, index: other.cards.length })}>{other.title}</button>
@@ -420,16 +420,7 @@
 	.new-column { padding-top: 2px; }
 
 	header { display: flex; align-items: center; gap: var(--s2); min-height: 30px; }
-	h3 {
-		flex: 1;
-		min-width: 0;
-		margin: 0;
-		font: 600 var(--t12)/1.2 var(--sans);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--muted);
-		overflow-wrap: anywhere;
-	}
+	h3 { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 	.count { font-weight: 400; letter-spacing: 0; margin-left: var(--s1); }
 	.rename { flex: 1; padding: var(--s1) var(--s2); font-size: var(--t13); }
 
@@ -519,13 +510,7 @@
 	.menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--soft); outline: none; }
 	.menu button:disabled { color: var(--muted); cursor: default; }
 	.menu button.danger:not(:disabled) { color: var(--bad); }
-	.menu-label {
-		margin: var(--s1) var(--s2) 2px;
-		font-size: var(--t11);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--muted);
-	}
+	.menu-label { margin: var(--s1) var(--s2) 2px; }
 
 	.drop-line { height: 2px; margin: -5px 0; background: var(--accent); border-radius: 1px; }
 

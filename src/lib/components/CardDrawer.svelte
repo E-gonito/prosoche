@@ -134,6 +134,7 @@
 		<label class="row">
 			<span>Card</span>
 			<input
+				class="field"
 				bind:this={field}
 				bind:value={text}
 				data-testid="drawer-text"
@@ -152,6 +153,7 @@
 			<label class="row">
 				<span>Status</span>
 				<select
+					class="field"
 					data-testid="drawer-status"
 					value={current.status}
 					onchange={(e) => save({ status: e.currentTarget.value as TaskStatus })}
@@ -165,6 +167,7 @@
 			<label class="row">
 				<span>Quadrant</span>
 				<select
+					class="field"
 					data-testid="drawer-quadrant"
 					value={current.quadrant === null ? '' : String(current.quadrant)}
 					onchange={(e) => save({ quadrant: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
@@ -177,6 +180,7 @@
 			<label class="row">
 				<span>Workspace</span>
 				<select
+					class="field"
 					data-testid="drawer-workspace"
 					value={tagged}
 					onchange={(e) => setWorkspace(e.currentTarget.value)}
@@ -191,6 +195,7 @@
 			<label class="row">
 				<span>Due</span>
 				<input
+					class="field"
 					type="date"
 					data-testid="drawer-due"
 					value={current.due ?? ''}
@@ -215,6 +220,7 @@
 		<label class="row">
 			<span>Waiting on</span>
 			<input
+				class="field"
 				bind:value={blockedBy}
 				data-testid="drawer-blockedby"
 				placeholder="Task ids, comma separated"
@@ -252,17 +258,7 @@
 
 	.row { display: flex; align-items: center; gap: 10px; }
 	.row > span { flex: none; width: 82px; font-size: var(--t12); color: var(--muted); }
-	.row input,
-	.row select {
-		flex: 1;
-		min-width: 0;
-		border: 1px solid var(--line);
-		border-radius: var(--r-md);
-		padding: 6px var(--s2);
-		font: inherit;
-		font-size: var(--t13);
-		background: var(--field);
-	}
+	.row .field { flex: 1; min-width: 0; width: auto; }
 	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) 14px; }
 
 	.context-label { display: block; margin-bottom: var(--s1); font-size: var(--t12); color: var(--muted); }

@@ -201,8 +201,6 @@
 	footer { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
 	.confirm { display: flex; align-items: center; gap: var(--s1); font-size: var(--t13); }
 	/* `.remove`, not `.danger`, which is the global filled red button. */
-	.remove { color: var(--bad); }
-	.remove:hover { background: var(--soft); color: var(--bad); }
 	.problem { margin: 0; }
 
 	@media (max-width: 720px) {
