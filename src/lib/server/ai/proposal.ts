@@ -114,7 +114,10 @@ export function policyFor(
 		case 'glossary-lookup':
 			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1 });
 
-		// Any feature not named writes nothing.
+		// A glossary scan proposes no edit: its candidates go to a person, and
+		// the terms they keep are written by `addScannedTerms`, the accept step.
+		// Any feature not named writes nothing either.
+		case 'glossary-scan':
 		default:
 			return wrap([]);
 	}

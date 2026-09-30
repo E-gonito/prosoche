@@ -1,10 +1,11 @@
-import { addTerm, createGlossary, deleteGlossary, deleteTerm, editTerm, findGlossary, renameGlossary, setGlossaryStudy } from '$server/glossary';
+import { today } from '$server/daily';
+import { addScannedTerms, addTerm, createGlossary, deleteGlossary, deleteTerm, editTerm, findGlossary, renameGlossary, setGlossarySources, setGlossaryStudy, type ScanAdded } from '$server/glossary';
 import { syncGlossaryCards } from '$server/study/glossary-cards';
 import type { Written } from '$server/rewrite';
 import { refuse, route, str } from '../route';
 
 interface Body {
-	action: 'create-glossary' | 'rename-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete' | 'set-study';
+	action: 'create-glossary' | 'rename-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete' | 'set-study' | 'set-sources' | 'add-scanned';
 	/** Every action but create: the glossary, by slug. */
 	glossary: string;
 	/** create and rename: the glossary's new name. */
@@ -17,19 +18,28 @@ interface Body {
 	source: string | null;
 	/** set-study: the study subject's slug, or '' to unlink. */
 	study: unknown;
+	/** set-sources: the folders the glossary is scanned from. */
+	sources: unknown;
+	/** add-scanned: the entries a person kept, and whether the scan read every note it meant to. */
+	entries: unknown;
+	complete: unknown;
 }
 
 /**
  * The glossaries' writes, each one a user's click: create, rename or delete
- * a glossary; add, edit or delete a term in one; or link it to a study
- * subject. Translation only; `$server/glossary` decides what is written.
+ * a glossary; add, edit or delete a term in one; link it to a study
+ * subject; set the folders it is scanned from; or add the terms a person
+ * kept from a scan. Translation only; `$server/glossary` decides what is
+ * written. `add-scanned` is the accept step for Claude's drafted terms, and
+ * runs no model.
  *
  * After any of these writes to a glossary, its cards are brought in step
  * (`syncGlossaryCards`) before the response, so the page reloads onto them;
  * a rename moves them to the new name's folder first. A glossary linked to
  * no subject makes that a read and nothing more.
  *
- * Answers `{ path }`, or a refusal with its sentence.
+ * Answers `{ path }` (and `added` for add-scanned), or a refusal with its
+ * sentence.
  */
 export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => {
 	if (body.action === 'create-glossary') return createGlossary(vault, str(body.name) ?? '');
@@ -37,7 +47,7 @@ export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => 
 	const all = await workspaces();
 	const glossary = await findGlossary(vault, all, str(body.glossary) ?? '');
 	if (!glossary) return refuse('not-found', 'No such glossary.');
-	const synced = async (result: Written, opts: { renamedFrom?: string } = {}) => {
+	const synced = async (result: Written | ScanAdded, opts: { renamedFrom?: string } = {}) => {
 		if (result.ok) await syncGlossaryCards(vault, all, result.path, opts);
 		return result;
 	};
@@ -59,6 +69,10 @@ export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => 
 			return synced(await deleteTerm(vault, glossary.path, term));
 		case 'set-study':
 			return synced(await setGlossaryStudy(vault, glossary, all, body.study));
+		case 'set-sources':
+			return setGlossarySources(vault, glossary, body.sources);
+		case 'add-scanned':
+			return synced(await addScannedTerms(vault, glossary, { entries: body.entries, complete: body.complete }, today()));
 		default:
 			return refuse('invalid', 'Unknown action.');
 	}
