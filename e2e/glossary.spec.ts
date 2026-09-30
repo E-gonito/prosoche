@@ -148,7 +148,7 @@ test.describe('Glossary', () => {
 	test('linked to a study subject, every defined term is a card there, kept in step with the glossary', async ({ page }) => {
 		const CARDS = 'Study/Flashcards/Glossary/Work/ML.md';
 		const header =
-			'---\ngoal:\nglossary: Work\ncategory: ML\n---\n\n#flashcards\n\nMade from [[Work]] (ML). Edit the terms there; this file is\nkept in step with the glossary.\n';
+			'---\ngoal:\nglossary: Work\ncategory: ML\n---\n\n#flashcards\n\nMade from [[Glossaries/Work|Work]] (ML). Edit the terms there; this file is\nkept in step with the glossary.\n';
 		const dvcCard = (definition: string) => `DVC\n??\n${definition}\n→ For Work, it makes training data traceable.\n`;
 		const before = vaultFile('Glossaries/Work.md');
 		await page.goto('/glossary/work');

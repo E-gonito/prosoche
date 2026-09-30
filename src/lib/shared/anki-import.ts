@@ -18,7 +18,7 @@ export type DeckStatus = 'new' | 'created' | 'exists' | 'empty';
 export interface DeckImport {
 	/** The `.txt`, vault-relative, e.g. `Flashcards/CS/Networking/HTTP.txt`. */
 	source: string;
-	/** The card file, vault-relative, e.g. `Study/Flashcards/CS/Networking/HTTP.md`. */
+	/** The card file, vault-relative, e.g. `Study/Flashcards/CS/Networking/HTTP (cards).md`. */
 	target: string;
 	/** Anki's deck name, `::` separated. */
 	deck: string;
