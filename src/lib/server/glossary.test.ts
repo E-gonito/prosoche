@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
 import {
+	cardSettings,
 	addTerm,
 	createGlossary,
 	deleteGlossary,
@@ -11,7 +12,6 @@ import {
 	editTerm,
 	findGlossary,
 	glossaries,
-	glossariesFor,
 	isGlossaryPath,
 	listGlossaries,
 	loadGlossary,
@@ -22,8 +22,7 @@ import {
 	scanNotes,
 	scanSettings,
 	setGlossarySources,
-	setGlossaryStudy,
-	studyLink,
+	setGlossaryFlashcards,
 	withScannedTerms,
 	type GlossaryRef
 } from './glossary';
@@ -345,30 +344,33 @@ describe('the study link and the scan, on disk', () => {
 		await rm(dir, { recursive: true, force: true });
 	});
 
-	it('links a glossary to a study subject as a span edit, clears it, and refuses a slug that is no subject', async () => {
-		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nfolders:\n  - Study/CS\n---\n');
-		await vault.write('_hub/workspaces/work.md', '---\nname: Work\n---\n');
+	it('turns a glossary’s flashcards on and off as a span edit, clearing an old study link, and refuses anything but a boolean', async () => {
 		await vault.write(PATH, TWO);
-		expect(await setGlossaryStudy(vault, REF, 'cs')).toEqual({ ok: true, path: PATH });
-		expect((await vault.read(PATH)).content).toBe(`---\nstudy: cs\n---\n\n${TWO}`);
-		expect(studyLink((await vault.read(PATH)).content)).toBe('cs');
-		expect(await setGlossaryStudy(vault, REF, '')).toEqual({ ok: true, path: PATH });
-		expect((await vault.read(PATH)).content).toBe(`---\nstudy:\n---\n\n${TWO}`);
-		expect(studyLink((await vault.read(PATH)).content)).toBeNull();
+		expect(await setGlossaryFlashcards(vault, REF, true)).toEqual({ ok: true, path: PATH });
+		expect((await vault.read(PATH)).content).toBe(`---\nflashcards: true\n---\n\n${TWO}`);
+		expect(cardSettings((await vault.read(PATH)).content).on).toBe(true);
+
+		await vault.write(PATH, `---\nstudy: cs-study\n---\n\n${TWO}`);
+		expect(await setGlossaryFlashcards(vault, REF, false)).toEqual({ ok: true, path: PATH });
+		expect((await vault.read(PATH)).content).toBe(`---\nstudy:\nflashcards: false\n---\n\n${TWO}`);
+		expect(cardSettings((await vault.read(PATH)).content).on).toBe(false);
 
 		const before = (await vault.read(PATH)).content;
-		for (const bad of ['work', 'nope', 3, null]) {
-			expect(await setGlossaryStudy(vault, REF, bad)).toMatchObject({ ok: false, reason: 'invalid' });
+		for (const bad of ['true', 1, null]) {
+			expect(await setGlossaryFlashcards(vault, REF, bad)).toMatchObject({ ok: false, reason: 'invalid' });
 		}
 		expect((await vault.read(PATH)).content).toBe(before);
 	});
 
-	it('finds the glossaries whose study: names a subject', async () => {
-		await vault.write(PATH, `---\nstudy: cs\n---\n\n${TWO}`);
-		await vault.write('Glossaries/Other.md', `---\nstudy: work\n---\n`);
-		await vault.write('Glossaries/Plain.md', TWO);
-		expect(await glossariesFor(vault, [], 'cs')).toEqual([{ name: 'Computer Science', slug: 'computer-science' }]);
-		expect(await glossariesFor(vault, [], 'nope')).toEqual([]);
+	it.each([
+		['---\nflashcards: true\n---\n', { on: true, perDay: null }],
+		['---\nflashcards: false\nstudy: cs\n---\n', { on: false, perDay: null }],
+		['---\nstudy: cs\nnew_per_day: 5\n---\n', { on: true, perDay: 5 }],
+		['---\nstudy:\n---\n', { on: false, perDay: null }],
+		['---\nflashcards: true\nnew_per_day: lots\n---\n', { on: true, perDay: null }],
+		['# Glossary\n', { on: false, perDay: null }]
+	])('reads the card settings of %j', (content, expected) => {
+		expect(cardSettings(content)).toEqual(expected);
 	});
 
 	it('lists the folders and notes a scan may read, never the hub, the glossaries, card files or the private folder', async () => {

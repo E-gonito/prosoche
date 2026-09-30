@@ -1,7 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Study index: every subject as a card, everything due across them,
-	 * and a form for a new subject.
+	 * The Study index: every subject as a card, and a form for a new subject.
 	 */
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
@@ -33,13 +32,7 @@
 <div class="page">
 	<div class="title">
 		<h1>Study</h1>
-		<p>One subject per thing you are learning, each with its own goals, reading, sessions and cards.</p>
-	</div>
-
-	<div class="due sheet">
-		<span class="count num" data-testid="due-count">{data.due}</span>
-		<span class="muted">{data.due === 1 ? 'card' : 'cards'} due across every subject</span>
-		{#if data.due > 0}<a class="btn primary" href="/study/review" data-testid="review-everything">Review everything due</a>{/if}
+		<p>One subject per thing you are learning, each with its own goals, reading and sessions.</p>
 	</div>
 
 	<p class="label">Subjects</p>
@@ -62,7 +55,6 @@
 					{/if}
 					<p class="facts small">
 						<span class="num">{formatDuration(subject.weekMinutes, ' ')} this week</span>
-						<span class="num">{subject.due} due</span>
 						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
 					</p>
 				</div>
@@ -76,15 +68,11 @@
 		<input class="field folders" bind:value={folders} placeholder="Reference folders, comma separated (optional)" aria-label="Reference folders" data-testid="subject-folders" />
 		<button class="btn primary" disabled={!name.trim() || saving} data-testid="create-subject">{saving ? 'Creating…' : 'Create'}</button>
 	</form>
-	<p class="hint">Files go in <code>Study/{name.trim() || '<name>'}</code>, cards in <code>Study/{name.trim() || '<name>'}/Flashcards/</code>.</p>
+	<p class="hint">Files go in <code>Study/{name.trim() || '<name>'}</code>.</p>
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 </div>
 
 <style>
-	.due { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
-	/* The one figure on the page meant to be read at a glance. */
-	.count { font-size: 34px; line-height: 1; font-weight: 600; }
-	.due .btn { margin-left: auto; }
 
 	.subjects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s4); }
 	/* The whole card opens the subject, through its name's link stretched over

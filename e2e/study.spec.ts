@@ -1,7 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { lineWith, resetVault, TODAY, VAULT, vaultFile, waitForFile } from './helpers';
+import { lineWith, resetVault, TODAY, vaultFile, waitForFile } from './helpers';
 
 /**
  * Study, against `fixtures/study.mjs`: one subject, the base vault's `study`
@@ -12,7 +10,6 @@ const BASE = '/study/study';
 const GOALS = 'Study/Goals.md';
 const SESSIONS = 'Study/Sessions.md';
 const READING = 'Study/Reading List.md';
-const CARDS = 'Study/Flashcards.md';
 const AWS = 'Pass AWS Solutions Architect';
 const PAPERS = 'Read three papers a month';
 
@@ -58,13 +55,11 @@ test.describe('Study index', () => {
 		await page.goto('/study');
 	});
 
-	test('shows each subject with its goals and what is due, and everything due in all', async ({ page }) => {
-		await expect(page.getByTestId('due-count')).toHaveText('1');
+	test('shows each subject with its goals', async ({ page }) => {
 		const subject = page.getByTestId('subject-card');
 		await expect(subject).toHaveCount(1);
 		await expect(subject).toContainText(AWS);
 		await expect(subject).toContainText('1/2');
-		await expect(subject).toContainText('1 due');
 		await expect(page.getByTestId('sub-study')).toContainText('Study');
 	});
 
@@ -78,14 +73,9 @@ test.describe('Study index', () => {
 		expect(file).toContain('\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
 		expect(vaultFile('_hub/workspaces/filipino.md')).toBe('');
 		// Every tab shows, even for a subject with nothing in it yet.
-		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list', 'Sessions', 'Flashcards']);
+		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list', 'Sessions']);
 	});
 
-	test('Review everything due reviews every subject’s cards', async ({ page }) => {
-		await page.getByTestId('review-everything').click();
-		await expect(page).toHaveURL('/study/review');
-		await expect(page.getByTestId('card-question')).toContainText('What does SM-2 schedule');
-	});
 
 	test('an old single-subject address opens that tab of the only subject', async ({ page }) => {
 		await page.goto('/study/resources');
@@ -101,19 +91,13 @@ test.describe('Subject overview', () => {
 		await page.goto(BASE);
 	});
 
-	test('shows the one card due, ready to review', async ({ page }) => {
-		await expect(page.getByTestId('due-count')).toHaveText('1');
-		await expect(page.getByTestId('review-link')).toHaveAttribute('href', `${BASE}/review`);
-	});
 
-	test('shows each goal’s milestones, hours, reading and cards', async ({ page }) => {
+	test('shows each goal’s milestones, hours and reading', async ({ page }) => {
 		const aws = page.getByTestId('goal').filter({ hasText: AWS });
 		await expect(aws).toContainText('1 of 2');
 		await expect(aws).toContainText('Two practice exams');
 		await expect(aws.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes())} this week`);
 		await expect(aws.getByTestId('goal-reading')).toContainText('AWS whitepapers');
-		await expect(aws.getByTestId('goal-due')).toHaveText('1 card due');
-		await expect(aws.getByTestId('goal-due')).toHaveAttribute('href', `${BASE}/review?goal=pass-aws-solutions-architect`);
 		await expect(page.getByTestId('goal').filter({ hasText: PAPERS })).toContainText('0 of 2');
 	});
 
@@ -262,75 +246,13 @@ test.describe('Sessions', () => {
 	});
 });
 
-test.describe('Flashcards', () => {
-	test.beforeEach(async ({ page, request }) => {
-		await resetVault(request);
-		await page.goto(`${BASE}/flashcards`);
-	});
-
-	test('lists card files under the goal their frontmatter names', async ({ page }) => {
-		const group = page.getByTestId('card-group').filter({ hasText: CARDS });
-		await expect(group).toHaveAttribute('data-goal', AWS);
-		await expect(page.getByTestId('review-goal')).toHaveAttribute('href', `${BASE}/review?goal=pass-aws-solutions-architect`);
-	});
-
-	test('the goal picker rewrites one frontmatter line and regroups the file', async ({ page }) => {
-		const before = vaultFile(CARDS);
-		await page.getByTestId('card-file').filter({ hasText: CARDS }).getByTestId('file-goal').selectOption(PAPERS);
-
-		expect(await waitForFile(CARDS, (c) => c.includes(`goal: ${PAPERS}`))).toBe(true);
-		expect(vaultFile(CARDS)).toBe(before.replace(`goal: ${AWS}`, `goal: ${PAPERS}`));
-		await expect(page.getByTestId('card-group').filter({ hasText: CARDS })).toHaveAttribute('data-goal', PAPERS);
-	});
-
-	test('reviewing a goal grades its card and rewrites the legacy comment as FSRS state', async ({ page }) => {
-		const before = vaultFile(CARDS);
-		await page.getByTestId('review-goal').click();
-		await expect(page.getByTestId('card-question')).toContainText('What does SM-2 schedule');
-		await page.getByTestId('card').click();
-		await expect(page.getByTestId('card-answer')).toContainText('The day a card is next due');
-		// A review card lapses to a ten-minute relearning step; the rest are days.
-		await expect(page.getByTestId('grade-again')).toContainText('10 min');
-		await expect(page.getByTestId('grade-good')).toContainText(/\d+ (days|mo)/);
-
-		await page.getByTestId('grade-good').click();
-
-		// The fixture's `<!--SR:…-->` line, and only it, becomes prosoche's own comment.
-		const fsrs = new RegExp(`<!--fsrs:(\\d{4}-\\d{2}-\\d{2}),[\\d.]+,[\\d.]+,2,0,review,${TODAY}-->`);
-		expect(await waitForFile(CARDS, (c) => fsrs.test(c))).toBe(true);
-		const after = vaultFile(CARDS);
-		expect(fsrs.exec(after)![1] > TODAY).toBe(true);
-		expect(after.replace(fsrs, 'COMMENT')).toBe(before.replace(/<!--SR:[^\n]*-->/, 'COMMENT'));
-		await expect(page.getByTestId('review-done')).toContainText('Done for today');
-	});
-
-	test('says how many new cards join today and how many wait, as a subject lets in twenty a day', async ({ page }) => {
-		const cards = Array.from({ length: 25 }, (_, i) => `Card ${String(i + 1).padStart(2, '0')}::Answer ${i + 1}`).join('\n\n');
-		writeFileSync(join(VAULT, 'Study/Many.md'), `#flashcards\n\n${cards}\n`);
-		// Today's count of first reviews is transient state a reset leaves behind.
-		rmSync(join(VAULT, '_hub/.state/new-cards.json'), { force: true });
-		const counts = page.getByTestId('cards-new');
-		// The page reads the vault once the watcher has seen the new note.
-		await expect(async () => {
-			await page.goto(`${BASE}/flashcards`);
-			await expect(counts).toHaveText(/^20 new today · \d+ waiting$/, { timeout: 1000 });
-		}).toPass();
-		const waiting = Number((await counts.textContent())!.match(/(\d+) waiting/)![1]);
-		expect(waiting).toBeGreaterThanOrEqual(5);
-	});
-
-	test('a goal with no cards has nothing to review', async ({ page }) => {
-		await page.goto(`${BASE}/review?goal=read-three-papers-a-month`);
-		await expect(page.getByTestId('nothing-due')).toBeVisible();
-	});
-});
 
 test.describe('Phone layout', () => {
 	test.beforeEach(async ({ request }) => {
 		await resetVault(request);
 	});
 
-	test('Study is reached from the More sheet, and the review session fits', async ({ page }) => {
+	test('Study is reached from the More sheet', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.goto('/notes');
 
@@ -340,14 +262,6 @@ test.describe('Phone layout', () => {
 		await page.locator('dialog.more a[href="/study"]').click();
 		await expect(page).toHaveURL('/study');
 		await expect(page.getByTestId('subject-card')).toBeVisible();
-
-		await page.goto(`${BASE}/review`);
-		await page.getByTestId('card').click();
-		const grades = page.getByTestId('grades');
-		await expect(grades).toBeVisible();
-		const box = await grades.boundingBox();
-		expect(box!.width).toBeLessThanOrEqual(390);
-		expect(box!.width / 4).toBeGreaterThan(44);
 	});
 });
 

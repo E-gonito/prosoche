@@ -2,7 +2,7 @@
  * Collapsing a repeated segment out of a flashcard's context trail.
  *
  * `Card.context` is a note title followed by its heading trail, joined with
- * ` › ` in `$server/study/flashcards`. A note named after its only heading —
+ * ` › ` in `$server/flashcards/cards`. A note named after its only heading —
  * or a heading repeating its parent's name, which happens whenever a
  * curriculum note nests a single top-level section — reads back as
  * "Scheduling › Scheduling › Algorithms". Nothing downstream should have to

@@ -113,8 +113,8 @@ is appended under `# Tasks` in the day's note; dropped on the unscheduled
 list, the same block with no time. The card stays where it is on its board,
 untouched; the block is the time spent on it.
 
-Beyond that, any module may add a card of its own — Study offers one for
-flashcards due, once something is. A private module never does: nothing of
+Beyond that, any module may add a card of its own — Flashcards offers one
+line for the cards to review across every deck, once something is. A private module never does: nothing of
 Date's appears here, or anywhere outside its own screen.
 
 A note that still has git conflict markers in it says so, with a link to the
@@ -205,7 +205,7 @@ the last full scan. A glossary with no terms yet but with folders to read opens 
     sources:
       - Computer Science
     scanned: "2026-09-29"
-    study: cs-study
+    flashcards: true
     ---
 
 The folders show as chips, each with × to remove it, and **Add** takes
@@ -213,8 +213,8 @@ another (the field suggests the vault's folders; the private folder, `_hub/`
 and `Glossaries/` are never offered). Each change rewrites only the
 `sources:` lines; a glossary with no frontmatter gains a small block at the
 top, and its body is never touched. With no folder yet, there is nothing to
-scan. When the glossary is linked to a study subject, one line under the
-folders says the terms you add become cards there.
+scan. When the glossary's flashcards are on, one line under the folders
+says the terms you add become cards in its deck.
 
 One button then scans. Before a first scan it reads "Scan all 118 notes";
 after one, "Scan 12 notes changed since 29 Sep", counting the notes under
@@ -228,8 +228,8 @@ terms found so far stay. Scanning again while a list is not yet added asks
 "Discard the 12 terms not yet added?" in place first.
 
 A `Flashcards/` folder anywhere is never read and never offered as a
-source: cards are made from glossaries and decks, and reading them would
-feed a glossary its own cards back.
+source: cards are made from glossaries, and reading them would feed a
+glossary its own cards back.
 
 Each batch is one read-only run through the same runner as every AI
 feature: the kill switch and the budget are checked first, the CLI gets no
@@ -277,42 +277,44 @@ sets only `scanned:`.
 Look-ups use the Glossary look-up's model settings, and scans the Glossary
 scan's, one run per batch.
 
-**Flashcards.** A glossary can be linked to a study subject, and then every
-term with a definition is a flashcard there, kept in step with the
-glossary; no model is involved. The **Flashcards** line under the title has
-a picker of the study subjects and Not linked, and says how the cards
-stand: "226 cards in CS study · up to date", linking to that subject's
-Flashcards tab, or how many card files are still to update. Picking a
-subject writes `study: <subject slug>` into the glossary's frontmatter, as a
-span edit of that one line; Not linked empties it, which stops the syncing
-and leaves the cards where they are. A `study:` naming no study subject
-reads as unlinked, and the page says so.
+**Flashcards.** A glossary's terms can be flashcards, kept in step with the
+glossary; no model is involved. The **Flashcards** switch under the title
+turns them on or off and says how they stand: "271 cards in its deck · up
+to date", linking to the glossary's deck on the Flashcards page, or how many
+card files are still to update. It writes `flashcards: true` or `false`
+into the glossary's frontmatter, as a span edit of that one line; turning
+it off stops the syncing and leaves the cards where they are. A glossary
+from before, when cards lived in a study subject, still says `study:
+<subject>` and no `flashcards:`; it reads as on, and the switch clears the
+old line the first time it is used. A glossary may also say `new_per_day:`,
+the most of the day's new cards its deck may take (see Flashcards).
 
 Each term is one card, reviewed both ways: the term, a `??` line, then the
 definition and the `→` line (the definition alone when there is none). A
 term still to look up has no card until it has a definition. The cards go
-in one file per category,
-`<subject home>/Flashcards/Glossary/<Glossary name>/<Category>.md`, and a
-term with no category in `Uncategorised.md`; the glossary's name is in the
-path, so two glossaries linked to one subject never share a file. A new file
-starts
+in one file per category, `Flashcards/<Glossary name>/<Category> (cards).md`,
+and a term with no category in `Uncategorised (cards).md`; the glossary's
+name is in the path, so two glossaries never share a file, and ` (cards)`
+keeps a card file from sharing its name with a note, since a bare
+`[[Networking]]` could open either. `Flashcards/` also holds the `.txt`
+decks another tool generates; only the `.md` files are prosoche's, and the
+rest are never read or touched. A new file starts
 
     ---
-    goal:
     glossary: Computer Science
     category: Cloud
     ---
 
     #flashcards
 
-    Made from [[Computer Science]] (Cloud). Edit the terms there; this file is
+    Made from [[Glossaries/Computer Science|Computer Science]] (Cloud). Edit the terms there; this file is
     kept in step with the glossary.
 
     VPC
     ??
     An isolated virtual network within a cloud provider…
     → Where eye2gene's endpoints live.
-    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->
+    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->
 
 These files are prosoche's, as a workspace's `Board.md` is: their cards
 follow the glossary. A card is matched to its term by its front, ignoring
@@ -321,24 +323,83 @@ lines in place and keeps the review comment under them; a term moved to
 another category moves its card, comment and all, to the end of that
 category's file; a new term's card goes at the end of its file, which is
 made when it is not there. Deleting a term leaves its card, for you to
-delete; renaming one makes a new card and leaves the old. `goal:`, which the
-Flashcards tab sets, any other frontmatter, every review comment and any
-card you add by hand are always kept. Each card gets the Anki import's
-escaping, and each file must read back through the card finder as exactly
-the cards it should hold, or it is left as it is and the glossary page and
-the server log say why. Nothing outside the glossary's own folder of cards is touched.
+delete; renaming one makes a new card and leaves the old. Any frontmatter,
+every review comment and any card you add by hand are always kept. Each
+card is escaped so it reads as itself (a blank line dropped, a heading made
+bold, a lone `?` or a `#word` escaped), and each file must read back through
+the card finder as exactly the cards it should hold, or it is left as it is
+and the glossary page and the server log say why. Nothing outside the
+glossary's own folder of cards is touched.
 
-The cards are brought in step after every write the app makes to a linked
-glossary (adding, editing or deleting a term, linking it), before the page reloads; on any change to a linked glossary
-from outside, such as an edit in Obsidian or a git pull, a second after the
-last change; and for every linked glossary when the hub starts. One
-glossary is synced at a time, a file is written only when it differs, and
-each write is pinned to the file as it was read, so a card file edited
-meanwhile is left alone until the next change. A card moving between two
-files is written into its new file before it is cut from the old one.
-Renaming a glossary here moves its folder of cards to the new name, review
-history and all; a rename made in Obsidian starts a new folder and leaves
-the old one.
+The cards are brought in step after every write the app makes to a glossary
+whose cards are on (adding, editing or deleting a term, turning them on),
+before the page reloads; on any change to one from outside, such as an edit
+in Obsidian or a git pull, a second after the last change; and for every
+such glossary when the hub starts. One glossary is synced at a time, a file
+is written only when it differs, and each write is pinned to the file as it
+was read, so a card file edited meanwhile is left alone until the next
+change. A card moving between two files is written into its new file before
+it is cut from the old one. Renaming a glossary here moves its folder of
+cards to the new name, review history and all; a rename made in Obsidian
+starts a new folder and leaves the old one. Cards used to live in a study
+subject, under `<subject home>/Flashcards/Glossary/<Glossary name>/`; the
+first sync of a glossary moves any files still there into its deck's
+folder, adding ` (cards)` to their names, review history and all.
+
+## Flashcards
+
+Flashcards are the glossaries' terms: a glossary whose cards are on is a
+**deck** (see Glossary), and nothing else in the vault is reviewed. The
+Flashcards page, `/flashcards`, shows the cards to review today across every
+deck with **Review all**, the number of new cards a day, and each deck with
+its cards due, new today and in all, a Review button, and its categories as
+chips, each with the cards ready in it and linking to a review of just that
+category. A review is `/flashcards/review`, or `?deck=<glossary slug>` for
+one deck, and `&category=<name>` for one category of it.
+
+**New cards a day.** Cards never reviewed join the reviews fifteen a day
+across every deck together; the rest wait. The number is `new_per_day:` in
+`_hub/flashcards.md`, set from the Flashcards page or in Obsidian, and 0
+lets none in:
+
+    ---
+    new_per_day: 15
+    ---
+
+The day's cards are shared out a card at a time to whichever deck has begun
+the fewest today, so fifteen over three decks is five each; a deck with
+nothing left to learn gives its share to the others, and turning another
+glossary's cards on changes the mix rather than the total. A glossary's own
+`new_per_day:` caps its deck's share. Within a deck, the new cards are its
+first ones never reviewed, by file path and then position in the file, so
+the choice is stable through the day and the next ones follow tomorrow; a
+deck that did its share this morning gets none of what is left. Review all,
+a deck's review, a category's review, the counts on the page and Today's
+card all use this rule, so they offer the same cards. A card's first review
+is counted per deck and day in `_hub/.state/new-cards.json`, which is never
+committed and holds only today; the review comments cannot tell a first
+review from a later one, so the count is kept rather than worked out.
+
+**Reviewing.** Cards already reviewed come first, then the new ones, and
+within each the decks take turns, a card from each, so a day with three
+decks is a mix rather than three decks in a row. The queue is fixed when the
+review opens. Cards are graded with the keyboard or a tap: Again, Hard, Good
+or Easy, each button showing when the card would come back. Scheduling is
+FSRS, the algorithm Anki uses, through its official TypeScript port
+`ts-fsrs`, with Anki's default parameters, 90% desired retention and one
+ten-minute learning step; a card due again today comes back at the end of
+the session. The state is written back on the line after the card in a
+comment of prosoche's own, one entry per card side:
+
+    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->
+
+that is the due day, stability, difficulty, reviews, lapses, state and the
+day last reviewed. The Obsidian Spaced Repetition plugin no longer
+maintains these cards: a card reviewed here is one it cannot read, so review
+them only in prosoche. An old `<!--SR:…-->` comment the plugin wrote is
+still read, as a review card whose stability is its interval and whose
+difficulty follows its ease, and is rewritten in the new form only when that
+card is next graded. Grading never writes outside a deck's folder.
 
 ## Notes
 
@@ -370,15 +431,14 @@ never shows in Study. Nothing is shared between two subjects but the code.
     folders:
       - "Study/Filipino"
       - "Languages/Filipino"
-    new_per_day: 20
     ---
 
 A subject's own files live in its home folder, the first folder its file
-names (`Study/<name>` when it names none): `Goals.md`, `Reading List.md`,
-`Sessions.md` and a `Flashcards/` folder. Its cards come from every folder
-it names, so reference notes kept elsewhere can sit beside the home as
-further folders, and, when the file has a `tag:`, from any note carrying
-that tag. Folders, at the foot of a subject's page, adds or removes those:
+names (`Study/<name>` when it names none): `Goals.md`, `Reading List.md`
+and `Sessions.md`. Its notes come from every folder it names, so reference
+notes kept elsewhere can sit beside the home as further folders, and, when
+the file has a `tag:`, from any note carrying that tag. Flashcards are not
+Study's; they are the glossaries' (see Flashcards). Folders, at the foot of a subject's page, adds or removes those:
 the home stays first and never moves, and each change rewrites only the
 `folders:` lines. The heading's Edit changes the name, description, colour
 and tag in the same file, and Delete, after asking in place, removes that
@@ -388,27 +448,22 @@ git history still has the file.
 Subjects used to be workspaces whose file said `template: study`. On start,
 each such file still in `_hub/workspaces/` is moved to `_hub/subjects/`
 byte for byte, unless a subject of that name is already there, in which
-case both are left for you to sort out. A glossary whose `study:` names the subject also makes cards
-here, and the subject's Overview says so under its flashcards: "Scan notes
-in the Computer Science glossary for more cards", linking to that
-glossary's scan (see Glossary).
+case both are left for you to sort out. Card files a subject used to hold
+stay where they are: a glossary's are moved to its deck (see Glossary), and
+anything else, such as Anki imports, is left untouched and unreviewed.
 
 **The Study page** shows one card per subject — its goals with milestones
-done out of total, this week's hours and the cards due — and the cards due
-across every subject, with Review everything due, which reviews them all in
-one session. Today's flashcards card instead gives each subject its own
-line, with its count and new cards, leading to that subject's review, so a
-day can take one subject's cards rather than all of them. New subject takes a
+done out of total, this week's hours and its streak. New subject takes a
 name and, optionally, reference folders, and writes the subject's file,
-homed at `Study/<name>`; a name another subject already has is refused, and
-so is "Review", which that page already is. A workspace of the same name is
-no clash. The
-old single-subject addresses, such as `/study/goals`, open that tab of the
-only subject, or this page when there are several.
+homed at `Study/<name>`; a name another subject already has is refused. A
+workspace of the same name is no clash. The old single-subject addresses,
+such as `/study/goals`, open that tab of the only subject, or this page when
+there are several; `/study/flashcards` and `/study/review` open the
+Flashcards page.
 
-Every subject has six tabs, always shown, because a new subject should
-invite filling in rather than hide: Overview, Notes, Goals, Reading list,
-Sessions and Flashcards.
+Every subject has five tabs, always shown, because a new subject should
+invite filling in rather than hide: Overview, Notes, Goals, Reading list and
+Sessions.
 
 **Notes** is the subject's own folders from the vault, as a tree on the left
 and the chosen note read in place on the right (on a phone, the tree above
@@ -423,45 +478,17 @@ with an optional `target::` date and its milestones as ordinary task lines
 underneath, due-dated with the same `📅` field every task in the vault
 uses. A milestone is a task, so ticking one is the ordinary task rewrite;
 "Add a goal" appends a heading and "Add a milestone" appends a task line
-under one. Reading items, sessions and card files each point at a goal,
-which is how progress rolls up: every goal picker in Study offers the same
+under one. Reading items and sessions each point at a goal, which is how
+progress rolls up: every goal picker in Study offers the same
 list, the headings of `Goals.md` in order. A goal is matched by its name
 ignoring case and punctuation, and one naming a goal that is no longer in
 `Goals.md` counts as belonging to none.
 
 **Overview** shows each goal with its milestones done out of its total and
-what is next, the hours logged on it this week, what is in the Reading
-group for it and the cards due in its files, with a link that reviews just
-those; then whatever points at no goal. Above them are the cards due in all,
-this week's time against a `weekly_hours:` target from `Goals.md`'s
-frontmatter, and the streak of consecutive days with a session logged.
-
-A card can hold a fenced code block, blank lines and all.
-
-**Import Anki decks**, linked from a subject's Flashcards tab
-(`/study/<subject>/import`), turns the Anki exports under `Flashcards/` into
-card files for that subject. Each `.txt` deck becomes one note at the same
-path under the subject's own `Flashcards/` folder, so
-`Flashcards/CS/Networking/HTTP.txt` becomes
-`Study/Computer Science/Flashcards/CS/Networking/HTTP.md`. The note has `goal:` left empty for
-you to set, `source:` naming the `.txt`, and a `#flashcards/<deck>` tag from
-the Anki deck name (`CS::Networking` is `#flashcards/cs/networking`). Each
-card is written `Q::A` when both sides are one line and a `::` would not be
-ambiguous, and as the multiline `?` form otherwise. HTML becomes markdown:
-line breaks (including the escaped `&lt;br&gt;` these exports use), bold,
-italic, lists, links, images as image links, entities, and `<pre>` as a
-fenced block. Two things the plugin's syntax cannot hold are changed: a blank
-line outside code would end the card, so it is dropped, and a heading would
-too, so it becomes a bold line. A lone `?` line and a `#word` that would
-become a vault tag are escaped. Every card is read back through the same card
-finder review uses before it is written; one that would not read back as the
-same card is left out and listed as a problem. Review history starts fresh.
-
-The page shows every deck first — its target, card count, a sample card and
-any problems — and writes only when you press **Import**, then says what it
-created and what it skipped. It never overwrites a file: a deck whose card
-file is already there is skipped and says so, so running it again only fills
-in what is missing. The `.txt` decks are never modified.
+what is next, the hours logged on it this week and what is in the Reading
+group for it; then whatever points at no goal. Above them are this week's
+time against a `weekly_hours:` target from `Goals.md`'s frontmatter, and the
+streak of consecutive days with a session logged.
 
 **Reading list** is `Reading List.md`, which prosoche owns as it owns a
 workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's
@@ -491,51 +518,6 @@ goal picked from the list, and shows hours per goal this month and a
 bar-per-week chart of the last eight weeks. A session from before goals,
 `[[Topic]]`, still reads, and is shown as it is written rather than folded
 into a goal.
-
-**Flashcards** lists the subject's card files: notes in its folders
-holding cards in Obsidian Spaced Repetition's syntax that carry a
-`#flashcards` tag or already have a review comment. They are grouped by
-the goal their frontmatter names, `goal: <goal>`, which puts every card in
-the file under that goal; each file's picker sets it, rewriting that one
-frontmatter line and nothing else. Review all, or Review beside a goal,
-starts a session: `/study/<subject>/review`, or `?goal=<slug>` for one
-goal. Cards are graded with the keyboard or a tap: Again, Hard, Good or
-Easy, each button showing when the card would come back. Scheduling is
-FSRS, the algorithm Anki uses, through its official TypeScript port
-`ts-fsrs`, with Anki's default parameters, 90% desired retention and one
-ten-minute learning step; a card due again today comes back at the end of
-the session. The state is written back on the line after the card in a
-comment of prosoche's own, one entry per card side:
-
-    <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->
-
-that is the due day, stability, difficulty, reviews, lapses, state and the
-day last reviewed. The Obsidian Spaced Repetition plugin no longer
-maintains these cards: a card reviewed here is one it cannot read, so review
-them only in prosoche. An old `<!--SR:…-->` comment the plugin wrote is
-still read, as a review card whose stability is its interval and whose
-difficulty follows its ease, and is rewritten in the new form only when that
-card is next graded; a note nobody reviews is never touched. Notes holding cards but no tag are listed
-separately, since neither Obsidian nor Study reviews them until the tag is
-added. A glossary linked to the subject keeps its cards under
-`Flashcards/Glossary/<Glossary name>/`, one file per category, and they
-show here like any card file, grouped by goal with the same picker (see
-Glossary).
-
-**New cards a day.** Cards never reviewed join a subject's reviews twenty a
-day; the rest wait. A subject's file can set another number with
-`new_per_day:`, and 0 lets none in. Today's new cards are the first ones
-never reviewed in the subject's folders, by file path and then position in
-the file, less those already reviewed for the first time today, so the
-choice is stable through the day and the next ones follow tomorrow. The
-subject's review, a goal's review, each file's count, Review everything and
-Today's flashcards card all use this rule, so they offer the same cards;
-Review everything lets in each subject's own new cards. The Flashcards tab
-and the subject's page say "20 new today · 206 waiting". A card's first
-review is counted per subject and day in `_hub/.state/new-cards.json`,
-which is never committed and holds only today; the review comments cannot
-tell a first review from a later one, so the count is kept rather than
-worked out.
 
 ## Workspaces
 

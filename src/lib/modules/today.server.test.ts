@@ -26,11 +26,8 @@ describe('TODAY_CARDS never names a private module', () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-today-cards-'));
 		vault = new Vault(root);
 		index = new NoteIndex(':memory:');
-		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
-		await vault.write(
-			'_hub/subjects/study.md',
-			'---\nname: Study\ncolor: "#7c3aed"\ntag: ws/study\nfolders:\n  - "Study"\n---\n'
-		);
+		await vault.write('Glossaries/Computer Science.md', '---\nflashcards: true\n---\n# Glossary\n');
+		await vault.write('Flashcards/Computer Science/Theory (cards).md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		for (const path of await vault.list()) {
 			const note = await vault.read(path);
 			index.put(path, note.content, note.mtimeMs);
@@ -104,39 +101,30 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		expect(cards).toEqual([]);
 	});
 
-	it('gives each subject its own line, linking to its own review, once something is due', async () => {
-		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
-		await vault.write('Filipino/Words.md', '#flashcards\n\nAso::Dog\n');
-		await vault.write('Elsewhere/Cards.md', '#flashcards\n\nNot::a subject\n');
-		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nfolders:\n  - "Study"\n---\n');
-		await vault.write('_hub/subjects/fil.md', '---\nname: Filipino\nfolders:\n  - "Filipino"\n---\n');
-		for (const path of await vault.list()) {
-			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs);
-		}
+	it('gives one line for every deck together, linking to the mixed review, once something is due', async () => {
+		await vault.write('Glossaries/Computer Science.md', '---\nflashcards: true\n---\n# Glossary\n');
+		await vault.write('Glossaries/Filipino.md', '---\nflashcards: true\n---\n# Glossary\n');
+		await vault.write('Flashcards/Computer Science/Theory (cards).md', '#flashcards\n\nWhat is Big O::A growth bound\n');
+		await vault.write('Flashcards/Filipino/Words (cards).md', '#flashcards\n\nAso::Dog\n');
+		await vault.write('Study/Cards.md', '#flashcards\n\nNot::a deck\n');
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
 		expect(cards).toHaveLength(1);
-		expect(cards[0]).toMatchObject({ module: 'study', href: '/study' });
-		// One line per subject; the note in no subject's folders is not counted.
-		expect(cards[0].items).toEqual([
-			{ text: 'CS: 1 card', meta: '1 new today', href: '/study/cs/review' },
-			{ text: 'Filipino: 1 card', meta: '1 new today', href: '/study/fil/review' }
-		]);
+		expect(cards[0]).toMatchObject({ module: 'flashcards', href: '/flashcards' });
+		// One line for both decks; the card in no deck is not counted.
+		expect(cards[0].items).toEqual([{ text: '2 cards to review', meta: '2 new today', href: '/flashcards/review' }]);
 	});
 
-	it('counts only each subject’s new cards for today, as Study does', async () => {
-		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n\nWhat is Big Theta::A tight bound\n');
-		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nnew_per_day: 1\nfolders:\n  - "Study"\n---\n');
-		for (const path of await vault.list()) {
-			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs);
-		}
+	it('counts only the day’s new cards, as the Flashcards page does', async () => {
+		await vault.write('_hub/flashcards.md', '---\nnew_per_day: 1\n---\n');
+		await vault.write('Glossaries/Computer Science.md', '---\nflashcards: true\n---\n# Glossary\n');
+		await vault.write('Flashcards/Computer Science/Theory (cards).md', '#flashcards\n\nWhat is Big O::A growth bound\n\nWhat is Big Theta::A tight bound\n');
 		const cards = await todayCards({ day: '2026-09-29', hub: fakeHub() });
-		expect(cards[0].items).toEqual([{ text: 'CS: 1 card', meta: '1 new today', href: '/study/cs/review' }]);
+		expect(cards[0].items).toEqual([{ text: '1 card to review', meta: '1 new today', href: '/flashcards/review' }]);
 	});
 
-	it('counts nothing when there is no subject, rather than the whole vault', async () => {
-		await vault.write('Study/Algorithms.md', '#flashcards\n\nWhat is Big O::A growth bound\n');
+	it('counts nothing when no glossary makes cards, whatever else holds some', async () => {
+		await vault.write('Glossaries/Computer Science.md', '# Glossary\n');
+		await vault.write('Flashcards/Computer Science/Theory (cards).md', '#flashcards\n\nWhat is Big O::A growth bound\n');
 		expect(await todayCards({ day: '2026-09-29', hub: fakeHub() })).toEqual([]);
 	});
 });

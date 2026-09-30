@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { NoteIndex } from '../index/index';
-import { dueCards, fileGoal, formatComment, isCardSource, parseEntries, review, scanCards, setCardFileGoal } from './flashcards';
+import { dueCards, formatComment, gradeAt, isCardSource, parseEntries, review, scanCards } from './cards';
 import { fromSm2, outcomes, type Schedule } from '$lib/shared/scheduler';
 
 /** A review-state schedule for the comment tests. */
@@ -266,78 +266,55 @@ describe('review', () => {
 describe('dueCards', () => {
 	let root: string;
 	let vault: Vault;
-	let index: NoteIndex;
+
+	const pool = (folder: string, begun = 0, room: number | null = null) => ({ folder, begun, room });
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-due-'));
 		vault = new Vault(root);
-		index = new NoteIndex(':memory:');
 		await vault.write('CS/Due.md', '#flashcards\n\nOverdue::yes\n<!--SR:!2026-09-01,4,250-->\n\nLater::no\n<!--SR:!2027-01-01,4,250-->\n\nNew::card\n');
 		await vault.write('Art/Colour.md', '#flashcards\n\nHue::A colour\n');
-		await vault.write('Notes/Prompting.md', '#prompt_engineering\n\nWhy prompt?\n?\nBecause.\n');
-		for (const path of await vault.list()) {
-			const note = await vault.read(path);
-			index.put(path, note.content, note.mtimeMs);
-		}
+		await vault.write('Art/Prompting.md', 'Why prompt?\n?\nBecause.\n');
 	});
 	afterEach(async () => {
-		index.close();
 		await vault.close();
 		await rm(root, { recursive: true, force: true });
 	});
 
 	it('returns overdue cards before new ones and leaves the future alone', async () => {
-		const queue = await dueCards(vault, index, { on: '2026-09-21' });
+		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'] });
 		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'Hue', 'New']);
 		expect(queue).toMatchObject({ due: 1, fresh: 2, total: 4 });
 	});
 
-	it('scopes to a folder, so the same widget shows different cards per workspace', async () => {
-		const cs = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] } });
+	it('reads only the folders it is given, and none for none', async () => {
+		const cs = await dueCards(vault, { on: '2026-09-21', folders: ['CS'] });
 		expect(cs.cards.map((c) => c.question)).toEqual(['Overdue', 'New']);
-		const art = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['Art'] } });
-		expect(art.cards.map((c) => c.question)).toEqual(['Hue']);
+		expect((await dueCards(vault, { on: '2026-09-21', folders: [] })).total).toBe(0);
 	});
 
-	it('scopes by a tag on the note as well as by folder', async () => {
-		const queue = await dueCards(vault, index, { on: '2026-09-21', scope: { tags: ['prompt_engineering'] } });
-		expect(queue.total).toBe(0);
-		expect(queue.invisible).toEqual([{ path: 'Notes/Prompting.md', title: 'Prompting', cards: 1 }]);
-	});
-
-	it('counts cards Obsidian cannot see rather than reviewing them behind its back', async () => {
-		const queue = await dueCards(vault, index, { on: '2026-09-21' });
-		expect(queue.cards.some((c) => c.path === 'Notes/Prompting.md')).toBe(false);
-		expect(queue.invisible).toEqual([{ path: 'Notes/Prompting.md', title: 'Prompting', cards: 1 }]);
-	});
-
-	it('does not call a highlight in an untagged note a missing flashcard', async () => {
-		await vault.write('Notes/Speech.md', 'He said it was ==very good== indeed.\n');
-		const note = await vault.read('Notes/Speech.md');
-		index.put('Notes/Speech.md', note.content, note.mtimeMs);
-		const queue = await dueCards(vault, index, { on: '2026-09-21' });
-		expect(queue.invisible.map((i) => i.path)).toEqual(['Notes/Prompting.md']);
+	it('leaves out a note that merely holds something shaped like a card', async () => {
+		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art'] });
+		expect(queue.cards.map((c) => c.path)).toEqual(['Art/Colour.md']);
 	});
 
 	it('honours the limit without lying about the totals', async () => {
-		const queue = await dueCards(vault, index, { on: '2026-09-21', limit: 1 });
+		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], limit: 1 });
 		expect(queue.cards).toHaveLength(1);
 		expect(queue.total).toBe(4);
 	});
 
-	it('lists every card file with its goal and counts', async () => {
-		await vault.write('Art/Colour.md', '---\ngoal: "[[Goals#Colour theory]]"\n---\n#flashcards\n\nHue::A colour\n');
-		const queue = await dueCards(vault, index, { on: '2026-09-21' });
+	it('lists every card file with its counts', async () => {
+		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'] });
 		expect(queue.files).toEqual([
-			{ path: 'Art/Colour.md', title: 'Colour', goal: 'Colour theory', cards: 1, due: 1 },
-			{ path: 'CS/Due.md', title: 'Due', goal: null, cards: 3, due: 2 }
+			{ path: 'Art/Colour.md', cards: 1, due: 1 },
+			{ path: 'CS/Due.md', cards: 3, due: 2 }
 		]);
 	});
 
-	it('lets in only as many unseen cards as a quota allows, in a stable order, and counts the rest as waiting', async () => {
-		const art = { folders: ['Art'] };
-		const cs = { folders: ['CS'] };
-		const one = await dueCards(vault, index, { on: '2026-09-21', newCards: [{ scope: cs, allowance: 0 }, { scope: art, allowance: 1 }] });
+	it('lets in only the unseen cards the plan does, and counts the rest as waiting', async () => {
+		const plan = { left: 5, pools: [pool('CS', 0, 0), pool('Art')] };
+		const one = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
 		expect(one.cards.map((c) => c.question)).toEqual(['Overdue', 'Hue']);
 		expect(one).toMatchObject({ due: 1, fresh: 1, waiting: 1, total: 4 });
 		// A file's count is the same rule: CS's new card waits.
@@ -345,82 +322,51 @@ describe('dueCards', () => {
 			['Art/Colour.md', 1],
 			['CS/Due.md', 1]
 		]);
-		const none = await dueCards(vault, index, { on: '2026-09-21', newCards: [] });
+		const none = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: { left: 5, pools: [] } });
 		expect(none).toMatchObject({ due: 1, fresh: 0, waiting: 2 });
 	});
 
-	it('picks a goal’s new cards from the subject’s, so the two reviews agree', async () => {
-		await vault.write('CS/Due.md', `---\ngoal: Systems\n---\n${(await vault.read('CS/Due.md')).content}More::new\n`);
-		await vault.write('CS/Aa.md', '#flashcards\n\nFirst::by path\n');
-		const quota = [{ scope: { folders: ['CS'] }, allowance: 1 }];
-		const subject = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota });
-		expect(subject.cards.map((c) => c.question)).toEqual(['Overdue', 'First']);
-		// CS/Aa.md comes first by path and names no goal, so the goal gets no new card today.
-		const goal = await dueCards(vault, index, { on: '2026-09-21', scope: { folders: ['CS'] }, newCards: quota, goal: 'systems' });
-		expect(goal.cards.map((c) => c.question)).toEqual(['Overdue']);
-		expect(goal).toMatchObject({ fresh: 0, waiting: 2 });
+	it('takes the pools in turn, reviews before new cards', async () => {
+		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-10,4,250-->\n\nTint::light\n<!--SR:!2026-09-11,4,250-->\n');
+		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-02,4,250-->\n');
+		const plan = { left: 5, pools: [pool('CS'), pool('Art')] };
+		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
+		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'Shade', 'Stale', 'Tint', 'New', 'Hue']);
 	});
 
-	it('reviews one goal’s files, matching the goal whatever its case, and still lists every file', async () => {
-		await vault.write('CS/Due.md', `---\ngoal: Computer systems\n---\n${(await vault.read('CS/Due.md')).content}`);
-		const queue = await dueCards(vault, index, { on: '2026-09-21', goal: 'Computer Systems' });
-		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'New']);
-		expect(queue).toMatchObject({ due: 1, fresh: 1, total: 3 });
-		expect(queue.files.map((f) => f.path)).toEqual(['Art/Colour.md', 'CS/Due.md']);
+	it('sees a card file changed since the last read', async () => {
+		expect((await dueCards(vault, { on: '2026-09-21', folders: ['Art'] })).total).toBe(1);
+		await vault.write('Art/Colour.md', '#flashcards\n\nHue::A colour\n\nTone::Shade\n');
+		expect((await dueCards(vault, { on: '2026-09-21', folders: ['Art'] })).total).toBe(2);
 	});
 });
 
-describe('fileGoal', () => {
-	it.each([
-		[{ goal: 'Networks' }, 'Networks'],
-		[{ goal: '  Networks ' }, 'Networks'],
-		[{ goal: '[[Goals#Networks]]' }, 'Networks'],
-		[{ goal: ['Networks', 'Other'] }, 'Networks'],
-		[{ goal: '' }, null],
-		[{ goal: null }, null],
-		[{}, null]
-	])('reads %j as %j', (frontmatter, goal) => {
-		expect(fileGoal(frontmatter)).toBe(goal);
-	});
-});
-
-describe('setCardFileGoal', () => {
+describe('gradeAt', () => {
 	let root: string;
 	let vault: Vault;
-	const SCOPE = { folders: ['CS'] };
 
 	beforeEach(async () => {
-		root = await mkdtemp(join(tmpdir(), 'hub-goal-'));
+		root = await mkdtemp(join(tmpdir(), 'hub-grade-'));
 		vault = new Vault(root);
+		await vault.write('Deck/Cards.md', '#flashcards\n\nQ::A\n');
+		await vault.write('Notes/Cards.md', '#flashcards\n\nQ::A\n');
 	});
 	afterEach(async () => {
 		await vault.close();
 		await rm(root, { recursive: true, force: true });
 	});
 
-	it('sets, changes and clears one frontmatter line, and nothing else', async () => {
-		const body = '#flashcards\n\nQ::A\n<!--SR:!2026-09-01,4,250-->\n';
-		await vault.write('CS/Cards.md', `---\ndeck: x\n---\n${body}`);
-		expect(await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Networks')).toEqual({ ok: true });
-		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal: Networks\n---\n${body}`);
-		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Operating Systems');
-		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal: Operating Systems\n---\n${body}`);
-		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', null);
-		expect((await vault.read('CS/Cards.md')).content).toBe(`---\ndeck: x\ngoal:\n---\n${body}`);
+	const POOLS = [{ key: 'deck/deck', folder: 'Deck', perDay: null }];
+
+	it('grades a card in a deck and counts its first review there', async () => {
+		const result = await gradeAt(vault, POOLS, { path: 'Deck/Cards.md', line: 2, index: 0 }, 'good', '2026-09-21');
+		expect(result.ok).toBe(true);
+		expect((await vault.read('Deck/Cards.md')).content).toMatch(/^#flashcards\n\nQ::A\n<!--fsrs:/);
+		expect(JSON.parse((await vault.read('_hub/.state/new-cards.json')).content)).toEqual({ day: '2026-09-21', introduced: { 'deck/deck': 1 } });
 	});
 
-	it('gives a note with no frontmatter a block of its own', async () => {
-		await vault.write('CS/Cards.md', '#flashcards\n\nQ::A\n');
-		await setCardFileGoal(vault, SCOPE, 'CS/Cards.md', 'Networks');
-		expect((await vault.read('CS/Cards.md')).content).toBe('---\ngoal: Networks\n---\n\n#flashcards\n\nQ::A\n');
-	});
-
-	it('refuses a note outside the scope, one with no cards, and one that is not there', async () => {
-		await vault.write('Art/Cards.md', '#flashcards\n\nQ::A\n');
-		await vault.write('CS/Plain.md', 'Just prose.\n');
-		expect(await setCardFileGoal(vault, SCOPE, 'Art/Cards.md', 'X')).toEqual({ ok: false, reason: 'not-cards' });
-		expect(await setCardFileGoal(vault, SCOPE, 'CS/Plain.md', 'X')).toEqual({ ok: false, reason: 'not-cards' });
-		expect(await setCardFileGoal(vault, SCOPE, 'CS/Missing.md', 'X')).toEqual({ ok: false, reason: 'no-note' });
-		expect((await vault.read('Art/Cards.md')).content).toBe('#flashcards\n\nQ::A\n');
+	it('never writes a note outside every deck', async () => {
+		expect(await gradeAt(vault, POOLS, { path: 'Notes/Cards.md', line: 2, index: 0 }, 'good', '2026-09-21')).toEqual({ ok: false, reason: 'no-card' });
+		expect((await vault.read('Notes/Cards.md')).content).toBe('#flashcards\n\nQ::A\n');
 	});
 });

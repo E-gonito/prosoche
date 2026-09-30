@@ -42,7 +42,7 @@
 		/** The terms it has now. */
 		terms: string[];
 		aiEnabled: boolean;
-		/** The study subject its terms become cards in, when it is linked to one. */
+		/** Where its terms' cards are reviewed, when its flashcards are on. */
 		cards: { name: string; href: string } | null;
 	} = $props();
 

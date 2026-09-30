@@ -1,8 +1,8 @@
 /**
  * Flashcards: finding them in the vault's markdown, and writing reviews back.
  *
- * Cards are not stored anywhere. They are regions of the user's notes, written
- * in Obsidian Spaced Repetition's card syntax, and their review state is one
+ * Cards are not stored anywhere. They are regions of notes, written in
+ * Obsidian Spaced Repetition's card syntax, and their review state is one
  * comment of prosoche's own on the line after the card, holding the FSRS
  * state of each card side (see `shared/scheduler.ts`):
  *
@@ -12,46 +12,34 @@
  * `!` between sides, and `new` for a side never answered. This module is the
  * only place that knows that syntax, and it is the only place that writes
  * it. Nothing about a card lives in SQLite, so deleting the index changes
- * nothing.
+ * nothing. The cards reviewed are the glossaries' decks (see `decks.ts`);
+ * this module knows nothing of glossaries, only of folders of card files.
  *
  * The plugin's own `<!--SR:!date,interval,ease-->` comment is still read, as
  * FSRS state seeded from SM-2, and is rewritten in the new form only when
  * that card is next graded. The plugin no longer maintains these cards: a
  * card graded here is one it cannot read.
  *
- * Three things were checked against the real vault before this was written,
- * because two of them contradicted the specification:
+ * Three things were checked against the real vault before this was written:
  *
- *  - Not one note carries `#flashcards`, yet three notes carry SR comments. A
- *    note therefore counts as a card source if it has a flashcard tag *or* it
- *    already has a schedule comment. Notes holding cards that Obsidian cannot
- *    see are counted and reported rather than quietly harvested, so the fix —
- *    adding the tag — stays the user's to make.
+ *  - A note counts as a card source if it has a flashcard tag *or* it
+ *    already has a schedule comment; a note merely holding something shaped
+ *    like a card is not one.
  *  - `::` and `==` appear all over this vault as Rust paths and C comparisons.
  *    Code fences and inline code spans are masked before anything is matched,
  *    and a cloze must have no space just inside its delimiters, or
  *    `total == 0` becomes a flashcard.
  *  - The plugin finds an inline card's comment only when it starts at column
  *    zero on the next line, so that is where a new comment goes.
- *
- * A card file belongs to a goal through its frontmatter, `goal: <name>`, so
- * every card in it counts towards that goal; setting it is the one other
- * write this module makes, one frontmatter line.
  */
 
-import { basename, parseNote } from '../parse/note';
-import { setFrontmatterField } from '../parse/frontmatter';
-import { goalOf } from './goals';
-import { inScope, scopedNotes } from './scope';
-import { recordIntroduced } from './new-cards';
-import type { Subject } from './subjects';
+import { basename, parseNote, type ParsedNote } from '../parse/note';
+import { recordIntroduced, releaseNew, type NewCardPlan, type NewCardPool } from './new-cards';
 import { fromSm2, outcomes, type CardState, type Grade, type Schedule } from '$lib/shared/scheduler';
-import { slugify } from '$lib/shared/slug';
-import type { Card, CardFile, CardKind, CardQueue, StudyScope } from '$lib/shared/study';
-import type { NoteIndex } from '../index/index';
+import type { Card, CardFile, CardKind, CardQueue } from '$lib/shared/flashcards';
 import type { Vault } from '../vault/index';
 
-export type { Card, CardKind, CardQueue, StudyScope };
+export type { Card, CardKind, CardQueue };
 
 /** Separators, as configured in this vault's plugin settings. */
 const SEPARATORS: Array<{ text: string; kind: CardKind }> = [
@@ -171,144 +159,143 @@ export function isCardSource(tags: string[], content: string): boolean {
 }
 
 interface DueQuery {
-	/** Folders and note tags that say what is in scope. Empty is the whole vault. */
-	scope?: StudyScope;
+	/** The folders whose card files are swept, vault-relative. None means no cards. */
+	folders: string[];
 	/** The day to schedule against, `YYYY-MM-DD`. */
 	on: string;
 	/** How many cards to return. The counts describe everything found. */
 	limit?: number;
 	/**
-	 * Only cards from files whose `goal:` names this goal, compared as slugs,
-	 * so case and punctuation do not matter. Absent means every card.
+	 * Which cards never reviewed may join today, shared out between the
+	 * pools by `releaseNew` (see `new-cards.ts`); the pools are also what the
+	 * queue deals its cards out by. Absent means every unseen card is ready,
+	 * and one pool.
 	 */
-	goal?: string;
-	/**
-	 * How many cards never reviewed may join today, per part of the scope:
-	 * each quota lets in the first `allowance` unseen cards in its scope, in
-	 * the queue's stable order, and a card any quota lets in is ready. A
-	 * study subject's quota is its new cards per day less those already
-	 * begun today (see `new-cards.ts`). Absent means every unseen card is
-	 * ready.
-	 */
-	newCards?: Array<{ scope: StudyScope; allowance: number }>;
+	newCards?: NewCardPlan;
 }
 
 /**
- * The goal a card file's frontmatter puts its cards under: `goal:` as a
- * name, or as a `[[Goals#…]]` link, which is read for its heading. A list
- * gives its first entry. Null when there is none. Pure.
- */
-export function fileGoal(frontmatter: Record<string, unknown>): string | null {
-	const raw = Array.isArray(frontmatter.goal) ? frontmatter.goal[0] : frontmatter.goal;
-	if (typeof raw !== 'string' || !raw.trim()) return null;
-	const link = /^\[\[([^[\]]+)\]\]$/.exec(raw.trim());
-	return link ? (goalOf(link[1]) ?? link[1].trim()) : raw.trim();
-}
-
-/**
- * The cards to review, and what else is in scope.
+ * The cards to review in `folders`, and what else is there.
  *
- * Ordered most overdue first, then cards never reviewed, then by position in
- * the vault. Deliberately deterministic where the plugin shuffles, so a review
- * session can be resumed and a test can name a card.
+ * Cards already reviewed come first, then cards never reviewed. Within each,
+ * the pools in `newCards` take turns, a card from each in their order, so a
+ * day with three decks is a mix rather than three decks in a row; each
+ * pool's own cards stay most overdue first, then by position in the vault.
+ * Deliberately deterministic where the plugin shuffles, so a review session
+ * can be resumed and a test can name a card.
  *
- * A card never reviewed is ready only when a quota in `newCards` lets it in
- * today; the others are counted as `waiting`. The quotas are applied to the
- * whole scope before `goal` narrows it, so one goal's review offers the same
- * new cards the subject's does, and a file's `due` counts the same ones.
+ * A card never reviewed is ready only when `newCards` lets it in today; the
+ * others are counted as `waiting`. `files` lists every card source swept,
+ * with its counts.
  *
- * Reads every markdown file in scope, because review state lives in the
- * markdown and the index holds no card table. That is a few hundred small
- * files for this vault, and it is the price of the state being in the notes.
- *
- * `files` lists every card source in scope, with its goal and counts,
- * whichever goal was asked for, so one call gives the Flashcards tab both its
- * list and its queue.
+ * Reads every markdown file in the folders, because review state lives in
+ * the markdown and the index holds no card table, from one sweep of the
+ * vault that is kept until something in it changes.
  *
  * Never writes. Never throws: a note that cannot be read contributes nothing.
  */
-export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery): Promise<CardQueue> {
-	const sources: Array<{ path: string; title: string; goal: string | null; tags: string[]; cards: Card[] }> = [];
-	const invisible: CardQueue['invisible'] = [];
-	const wanted = query.goal === undefined ? null : slugify(query.goal);
-
-	for (const { path, content, parsed } of await scopedNotes(vault, query.scope)) {
+export async function dueCards(vault: Vault, query: DueQuery): Promise<CardQueue> {
+	const sources: Array<{ path: string; cards: Card[] }> = [];
+	for (const { path, content, parsed } of await notesIn(vault, query.folders)) {
 		const found = scanCards(content, path);
-		if (!found.length) continue;
-		if (isCardSource(parsed.tags, content)) {
-			sources.push({ path, title: index.noteTitle(path) ?? parsed.title, goal: fileGoal(parsed.frontmatter), tags: parsed.tags, cards: found });
-		} else {
-			// Only cards the user clearly wrote as cards. A `==highlight==` in an
-			// untagged note is emphasis: this vault has a speech transcript with
-			// twenty of them, and reporting those as missing flashcards would be
-			// noise rather than a nudge.
-			const explicit = found.filter((c) => c.kind !== 'cloze').length;
-			if (explicit) invisible.push({ path, title: index.noteTitle(path) ?? parsed.title, cards: explicit });
-		}
+		if (found.length && isCardSource(parsed.tags, content)) sources.push({ path, cards: found });
 	}
 
-	const released = releaseNew(sources, query.newCards);
+	const released = query.newCards ? releaseNew(query.newCards, unseenIn(sources)) : null;
 	const isReady = (c: Card) => (c.schedule === null ? released === null || released.has(c) : c.schedule.due <= query.on);
-	const files: CardFile[] = sources.map((s) => ({ path: s.path, title: s.title, goal: s.goal, cards: s.cards.length, due: s.cards.filter(isReady).length }));
-	const cards = sources.filter((s) => wanted === null || (s.goal !== null && slugify(s.goal) === wanted)).flatMap((s) => s.cards);
+	const files: CardFile[] = sources.map((s) => ({ path: s.path, cards: s.cards.length, due: s.cards.filter(isReady).length }));
+	const cards = sources.flatMap((s) => s.cards);
 
-	const ready = cards.filter(isReady);
-	ready.sort(byUrgency);
+	// The pool each card is dealt out under: the first whose folder holds it.
+	const pools = query.newCards?.pools ?? [];
+	const turnOf = (c: Card) => Math.max(0, pools.findIndex((p) => inFolder(c.path, p.folder)));
+	const ready = cards.filter(isReady).sort(byUrgency);
+	const reviewed = ready.filter((c) => c.schedule !== null);
+	const fresh = ready.filter((c) => c.schedule === null);
+	const queue = [...takeTurns(reviewed, turnOf), ...takeTurns(fresh, turnOf)];
 	return {
-		cards: ready.slice(0, query.limit ?? 200),
-		due: ready.filter((c) => c.schedule !== null).length,
-		fresh: ready.filter((c) => c.schedule === null).length,
+		cards: queue.slice(0, query.limit ?? 200),
+		due: reviewed.length,
+		fresh: fresh.length,
 		waiting: cards.filter((c) => c.schedule === null && !isReady(c)).length,
 		total: cards.length,
-		files: files.sort((a, b) => a.path.localeCompare(b.path)),
-		invisible: invisible.sort((a, b) => b.cards - a.cards)
+		files: files.sort((a, b) => a.path.localeCompare(b.path))
 	};
 }
 
+/** Whether `path` is inside `folder`, vault-relative. Pure. */
+export function inFolder(path: string, folder: string): boolean {
+	return path.startsWith(`${folder.replace(/\/$/, '')}/`);
+}
+
+/** Every card never reviewed in `sources`, in queue order. */
+function unseenIn(sources: Array<{ cards: Card[] }>): Card[] {
+	return sources.flatMap((s) => s.cards.filter((c) => c.schedule === null)).sort(byUrgency);
+}
+
 /**
- * The unseen cards the quotas let in today: for each quota, the first
- * `allowance` cards never reviewed in its scope, in queue order (by path,
- * then line). Null when there are no quotas, meaning every one.
+ * `cards` dealt out a turn at a time: the first card of each turn number in
+ * ascending order, then the second of each, and so on, each turn's cards
+ * keeping the order they came in. Pure.
  */
-function releaseNew(sources: Array<{ tags: string[]; cards: Card[] }>, quotas: DueQuery['newCards']): Set<Card> | null {
-	if (!quotas) return null;
-	const unseen = sources.flatMap((s) => s.cards.filter((c) => c.schedule === null).map((card) => ({ card, tags: s.tags })));
-	unseen.sort((a, b) => byUrgency(a.card, b.card));
-	const out = new Set<Card>();
-	for (const quota of quotas) {
-		let left = quota.allowance;
-		for (const { card, tags } of unseen) {
-			if (left <= 0) break;
-			if (!inScope(card.path, tags, quota.scope)) continue;
-			out.add(card);
-			left--;
-		}
+function takeTurns(cards: Card[], turnOf: (c: Card) => number): Card[] {
+	const piles = new Map<number, Card[]>();
+	for (const c of cards) {
+		const turn = turnOf(c);
+		if (!piles.has(turn)) piles.set(turn, []);
+		piles.get(turn)!.push(c);
 	}
+	const order = [...piles.keys()].sort((a, b) => a - b).map((t) => piles.get(t)!);
+	const out: Card[] = [];
+	for (let i = 0; out.length < cards.length; i++) for (const pile of order) if (i < pile.length) out.push(pile[i]);
 	return out;
 }
 
-type GoalSet = { ok: true } | { ok: false; reason: 'no-note' | 'not-cards' | 'conflict' };
+/** One note, read and parsed once. */
+interface SweptNote {
+	path: string;
+	content: string;
+	parsed: ParsedNote;
+}
 
 /**
- * Put a card file's cards under `goal`, or under none for null, by setting
- * `goal:` in its frontmatter.
+ * Every markdown note in `folders` and their subfolders, read and parsed.
  *
- * One frontmatter line changes, through `setFrontmatterField`; the rest of
- * the note, cards and schedules included, is untouched, and a note with no
- * frontmatter gains a two-line block at the top. Refuses a note outside
- * `scope` or one that holds no cards Study reviews, so this can never become
- * a way to write to any note in the vault. Clearing leaves an empty `goal:`
- * key in place for the next time.
+ * Review state lives in the markdown and the index holds none, so each
+ * question about cards means reading the card files, and a page asks
+ * several at once. Each folder is read once per change instead, kept per
+ * vault and thrown away the moment anything in that vault changes, so a
+ * page can never show what a file said a second ago. Never writes; a note
+ * that disappears between listing and reading is skipped.
  */
-export async function setCardFileGoal(vault: Vault, scope: StudyScope, path: string, goal: string | null): Promise<GoalSet> {
-	const note = await vault.read(path);
-	if (!note.exists) return { ok: false, reason: 'no-note' };
-	const { tags } = parseNote(note.content, path);
-	if (!inScope(path, tags, scope) || !isCardSource(tags, note.content) || !scanCards(note.content, path).length) {
-		return { ok: false, reason: 'not-cards' };
+async function notesIn(vault: Vault, folders: string[]): Promise<SweptNote[]> {
+	let cache = sweeps.get(vault);
+	if (!cache) {
+		const fresh = new Map<string, Promise<SweptNote[]>>();
+		cache = fresh;
+		sweeps.set(vault, fresh);
+		vault.subscribe(() => fresh.clear());
 	}
-	const written = await vault.write(path, setFrontmatterField(note.content, 'goal', goal ?? ''), note.hash);
-	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
+	const read = folders.map((folder) => {
+		let pending = cache.get(folder);
+		if (!pending) {
+			pending = sweep(vault, folder);
+			cache.set(folder, pending);
+		}
+		return pending;
+	});
+	return (await Promise.all(read)).flat();
+}
+
+const sweeps = new WeakMap<Vault, Map<string, Promise<SweptNote[]>>>();
+
+async function sweep(vault: Vault, folder: string): Promise<SweptNote[]> {
+	const notes: SweptNote[] = [];
+	for (const name of await vault.files(folder, 'md', { deep: true })) {
+		const note = await vault.read(`${folder}/${name}`);
+		if (note.exists) notes.push({ path: note.path, content: note.content, parsed: parseNote(note.content, note.path) });
+	}
+	return notes;
 }
 
 type Reviewed =
@@ -323,28 +310,30 @@ type Reviewed =
 
 /**
  * Grade the card at `at` as the browser last saw it, and count a first review
- * against today's new cards of every subject in `subjects` holding it.
+ * against today's new cards of the pool holding it.
  *
  * The card, and its current schedule, are read back out of the note, so a
  * stale page cannot post a schedule of its own; `at.expectedRaw` is a
  * conflict token, not data. Writes as `review` does. Refuses with `no-note`,
- * `no-card` for a card no longer in the note, or `changed` with the line now
+ * `no-card` for a card no longer in the note or a note in no pool's folder,
+ * so this never writes outside the decks, or `changed` with the line now
  * there.
  */
 export async function gradeAt(
 	vault: Vault,
-	subjects: Subject[],
+	pools: NewCardPool[],
 	at: { path: string; line: number; index: number; expectedRaw?: string },
 	grade: Grade,
 	day: string
 ): Promise<Reviewed | { ok: false; reason: 'no-card' }> {
+	if (!pools.some((p) => inFolder(at.path, p.folder))) return { ok: false, reason: 'no-card' };
 	const note = await vault.read(at.path);
 	if (!note.exists) return { ok: false, reason: 'no-note', current: null };
 	const card = scanCards(note.content, at.path).find((c) => c.line === at.line && c.index === at.index);
 	if (!card) return { ok: false, reason: 'no-card' };
 	if (at.expectedRaw !== undefined && card.expectedRaw !== at.expectedRaw) return { ok: false, reason: 'changed', current: card.expectedRaw };
 	const result = await review(vault, card, grade, day);
-	if (result.ok && card.schedule === null) await recordIntroduced(vault, subjects, card.path, note.content, day);
+	if (result.ok && card.schedule === null) await recordIntroduced(vault, pools, card.path, day);
 	return result;
 }
 

@@ -14,23 +14,24 @@ const OLD_TABS: Record<string, string> = {
 	goals: '/goals',
 	sessions: '/sessions',
 	resources: '/reading',
-	reading: '/reading',
-	flashcards: '/flashcards'
+	reading: '/reading'
 };
 
 /**
  * Which subject every page under `/study/<subject>` is about, what its
  * heading says (the name, description, colour and tag in its file in
- * `_hub/subjects/`), and what its Overview, Flashcards, Reading and Sessions
+ * `_hub/subjects/`), and what its Overview, Goals, Reading and Sessions
  * tabs show (`subjectView`), read once here so those tabs need no load of
  * their own.
  *
  * A subject's slug wins over an old tab URL, so a subject may be called
  * "Goals". Otherwise an old URL goes to that tab of the only subject, or to
- * the Study index when there are several or none; anything else is a 404.
+ * the Study index when there are several or none; the old
+ * `/study/flashcards` and `/study/review`, from when cards were Study's, go
+ * to the Flashcards page; anything else is a 404.
  */
 export const load: LayoutServerLoad = async ({ params, url }) => {
-	const { vault, index, subjects: readSubjects } = await hub();
+	const { vault, subjects: readSubjects } = await hub();
 	const subjects = await readSubjects();
 	const subject = subjects.find((s) => s.slug === params.subject);
 	if (subject) {
@@ -46,10 +47,11 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 			details: { name: subject.name, description: readLede(definition.content), color: subject.color, tag: subject.scope.tags?.[0] ?? '' },
 			definitionHref: noteHref(subject.path),
 			today: day,
-			study: subjectView(await studySummary(vault, index, subject, day), day)
+			study: subjectView(await studySummary(vault, subject), day)
 		};
 	}
 
+	if (params.subject === 'flashcards' || params.subject === 'review') redirect(307, '/flashcards');
 	const tab = OLD_TABS[params.subject];
 	if (tab !== undefined) redirect(307, subjects.length === 1 ? `/study/${subjects[0].slug}${tab}` : '/study');
 	error(404, 'There is no such subject.');

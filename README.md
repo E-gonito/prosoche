@@ -61,16 +61,18 @@ New here? [`docs/getting-started.md`](docs/getting-started.md) takes you from
 
 ## Modules
 
-Six tabs, drawn from one registry (`src/lib/modules/index.ts`):
+Seven tabs, drawn from one registry (`src/lib/modules/index.ts`):
 
 - **Today** — the day and the week around it: the timeline, board cards to
   drag onto it, an inbox card and an evening review.
 - **Glossary** — one file per glossary, with Claude look-ups, a scan of your
-  notes for new terms, and flashcards made from its terms.
+  notes for new terms, and a switch that makes its terms flashcards.
+- **Flashcards** — one deck per glossary, filtered by category, scheduled by
+  FSRS, with a shared number of new cards a day across every deck.
 - **Workspaces** — a kanban board, overview, inbox, log, contacts and notes,
   each defined by one file in `_hub/workspaces/`.
-- **Study** — subjects with goals, a reading list, sessions and flashcards
-  scheduled by FSRS, each defined by one file in `_hub/subjects/`.
+- **Study** — subjects with goals, a reading list and sessions, each defined
+  by one file in `_hub/subjects/`.
 - **Date** — a private counter ledger and person profiles under a gitignored
   `Private/` folder.
 - **Notes** — a read-only Obsidian viewer with search and backlinks.
@@ -132,10 +134,10 @@ prompt text. The details are in [`docs/how-it-works.md`](docs/how-it-works.md#se
 
 - [x] Vault reading, full-text index, git sync, rendered notes
 - [x] Timeline with drag-and-drop, task ticking, conflict resolver
-- [x] Six modules, kanban boards, contacts, evening review, one inbox
+- [x] Seven modules, kanban boards, contacts, evening review, one inbox
 - [x] Read-only AI: glossary look-up and scan, briefing and Date insights,
       behind an accept step
-- [x] Flashcards scheduled by FSRS, Anki import, cards from glossaries
+- [x] Flashcards from glossaries, scheduled by FSRS, a shared daily limit
 - [x] Command palette, phone and desktop, installable to the home screen
 - [ ] Multi-vault, and a second sync provider to prove the interface
 - [ ] Outlook calendars, deferred behind Google's ICS feed

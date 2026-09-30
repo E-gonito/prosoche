@@ -23,7 +23,7 @@
 
 	/**
 	 * Remove the subject's file, once asked twice. Its goals, reading,
-	 * sessions, cards and notes are never touched.
+	 * sessions and notes are never touched.
 	 */
 	async function remove() {
 		problem = '';

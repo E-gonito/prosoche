@@ -2,12 +2,12 @@
  * The browser's side of reviewing flashcards: grading one card, and moving a
  * held queue on after a grade inserted a line.
  *
- * Every other study write is a plain `api` call; these two are named because
- * they locate a card and keep line numbers true.
+ * Every other flashcard write is a plain `api` call; these two are named
+ * because they locate a card and keep line numbers true.
  */
 
 import { api, type Result } from './api';
-import type { Card, CardShift, Graded } from '$lib/shared/study';
+import type { Card, CardShift, Graded } from '$lib/shared/flashcards';
 import type { Grade } from '$lib/shared/scheduler';
 
 /**
@@ -23,7 +23,7 @@ import type { Grade } from '$lib/shared/scheduler';
  */
 export async function gradeCard(card: Card, grade: Grade): Promise<Result<Graded>> {
 	const { path, line, index, expectedRaw } = card;
-	const result = await api<{ card: Card; shift?: CardShift | null }>('/api/study/card', { path, line, index, expectedRaw, grade });
+	const result = await api<{ card: Card; shift?: CardShift | null }>('/api/flashcards/card', { path, line, index, expectedRaw, grade });
 	return result.ok ? { ok: true, value: { card: result.value.card, shift: result.value.shift ?? null } } : result;
 }
 

@@ -11,7 +11,7 @@ import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
-import { followGlossaryCards, syncAllGlossaryCards } from './study/glossary-cards';
+import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
 import { adoptStudyWorkspaces, loadSubjects, type Subject } from './study/subjects';
 
 /**
@@ -155,9 +155,7 @@ function start(): Promise<Hub> {
 			// runs after the hub resolves, so a large first link does not hold up the
 			// first page; syncs queue one at a time either way.
 			followGlossaryCards(vault);
-			void loadWorkspaces(vault)
-				.then((ws) => syncAllGlossaryCards(vault, ws))
-				.catch((e) => console.error('[hub] syncing glossary cards failed', e));
+			void syncAllGlossaryCards(vault).catch((e) => console.error('[hub] syncing glossary cards failed', e));
 			vault.watch();
 			sync.start();
 		},

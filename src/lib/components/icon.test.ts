@@ -83,8 +83,8 @@ describe('the navigation', () => {
 		expect(moduleFor('/glossary/work')?.id).toBe('glossary');
 	});
 
-	it('puts Glossary between Today and Workspaces', () => {
-		expect(MODULES.map((m) => m.id).slice(0, 3)).toEqual(['today', 'glossary', 'w']);
+	it('puts Glossary, then the Flashcards made from it, between Today and Workspaces', () => {
+		expect(MODULES.map((m) => m.id).slice(0, 4)).toEqual(['today', 'glossary', 'flashcards', 'w']);
 	});
 
 	it('knows which sub-item a path is on, and not one it merely starts like', () => {

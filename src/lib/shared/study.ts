@@ -1,6 +1,6 @@
 /**
- * The vocabulary of the study section: what a subject, a goal, a card, a card
- * file and a reading-list item are.
+ * The vocabulary of the study section: what a subject, a goal and a
+ * reading-list item are.
  *
  * These shapes are the contract between the server modules that read them out
  * of the markdown, the API routes that serialise them and the screens that
@@ -9,14 +9,9 @@
  * `$server`, and a server module must never pull a browser module into its
  * bundle.
  *
- * Everything here is data. The browser's calls against these shapes are in
- * `$lib/client/study`, and the arithmetic that schedules a card is in
- * `$lib/shared/scheduler`.
+ * Everything here is data. Flashcards are not Study's: see
+ * `$lib/shared/flashcards`.
  */
-
-import type { Grade, Schedule } from './scheduler';
-
-export type { Grade, Schedule };
 
 /**
  * Which part of the vault a study query covers: a subject's folders and tag.
@@ -31,21 +26,21 @@ export interface StudyScope {
 
 /**
  * A subject: one file in `_hub/subjects/`, as the screens need it. Its own
- * files live in `home`; its cards come from every folder its file names.
+ * files live in `home`; its notes come from every folder its file names.
  */
 export interface SubjectRef {
 	/** The subject file's name, and the `/study/<slug>` segment. */
 	slug: string;
 	name: string;
 	color: string;
-	/** Home folder: where `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/` live. */
+	/** Home folder: where `Goals.md`, `Reading List.md` and `Sessions.md` live. */
 	home: string;
 }
 
 /**
  * A goal, as every goal picker offers it. A goal is a `## ` heading in the
  * subject's `Goals.md`, and it is the subject's unit of progress: reading
- * items, sessions and card files point at one.
+ * items and sessions point at one.
  */
 export interface GoalRef {
 	/** The heading's text, verbatim. */
@@ -54,95 +49,6 @@ export interface GoalRef {
 	slug: string;
 	/** The wikilink written into a reading item or a session: `[[Goals#<name>]]`. */
 	link: string;
-}
-
-/** How a card is written in the markdown, in Spaced Repetition's terms. */
-export type CardKind = 'inline' | 'inline-reversed' | 'multiline' | 'multiline-reversed' | 'cloze';
-
-/**
- * One flashcard, identified by where it is rather than by what it says.
- *
- * A card is a region of a note, so `path` and `line` are its identity and
- * `expectedRaw` is the line the hub will rewrite, carried to the browser and
- * back so a grade cannot land on a line that changed underneath. Nothing here
- * is a copy of state the markdown does not hold.
- */
-export interface Card {
-	path: string;
-	/** First line of the card, 0-based, as the file numbers lines. */
-	line: number;
-	/** Last line of the card's own text, before any schedule comment. */
-	endLine: number;
-	kind: CardKind;
-	/** The prompt, as markdown. */
-	question: string;
-	/** The answer, as markdown. For a cloze, the hidden text revealed. */
-	answer: string;
-	/** Note title and heading trail, so a card out of context is still placed. */
-	context: string;
-	/** Deck from `#flashcards/<deck>`, else the note's folder. */
-	deck: string;
-	schedule: Schedule | null;
-	/** Which of the schedules in the comment belongs to this card. */
-	index: number;
-	/** How many sibling cards share the comment; 1 for everything but clozes. */
-	siblings: number;
-	/** Line the schedule is written on, or the line it will be written after. */
-	scheduleLine: number;
-	/** True when `scheduleLine` already holds a comment to rewrite. */
-	scheduleExists: boolean;
-	/** `scheduleLine` as it stood when read, for per-line conflict detection. */
-	expectedRaw: string;
-}
-
-/**
- * A note holding cards, and the goal its frontmatter's `goal:` puts them
- * under. The Flashcards tab lists these, grouped by goal.
- */
-export interface CardFile {
-	path: string;
-	title: string;
-	/** `goal:` as the note names it, or null when it names none. */
-	goal: string | null;
-	/** Every card in the file. */
-	cards: number;
-	/** Cards ready to review today: due, overdue, or new today. */
-	due: number;
-}
-
-/** What a due-card query answers. */
-export interface CardQueue {
-	/** Cards to review, most overdue first, then new ones. */
-	cards: Card[];
-	/** Cards already due or overdue, among `cards`. */
-	due: number;
-	/** Cards never reviewed that join today, among `cards`: today's new cards. */
-	fresh: number;
-	/** Cards never reviewed that are not among today's new cards: they wait for a later day. */
-	waiting: number;
-	/** Total cards in scope, reviewed or not. */
-	total: number;
-	/** Every card source in scope, in path order, whatever the goal asked for. */
-	files: CardFile[];
-	/**
-	 * Notes holding cards that Obsidian cannot see, because the note carries no
-	 * flashcard tag. Surfaced rather than silently included, so the fix is one
-	 * the user can make in Obsidian.
-	 */
-	invisible: Array<{ path: string; title: string; cards: number }>;
-}
-
-/** Lines inserted into a note, which moves every card below them. */
-export interface CardShift {
-	path: string;
-	afterLine: number;
-	by: number;
-}
-
-export interface Graded {
-	card: Card;
-	/** Set when the write inserted a line, so a held queue can be corrected. */
-	shift: CardShift | null;
 }
 
 /** What a reading-list item is, written as its `#tag`; `other` is written as no tag. */
@@ -212,6 +118,5 @@ export const STUDY_TABS: StudyTab[] = [
 	{ title: 'Notes', path: '/notes' },
 	{ title: 'Goals', path: '/goals' },
 	{ title: 'Reading list', path: '/reading' },
-	{ title: 'Sessions', path: '/sessions' },
-	{ title: 'Flashcards', path: '/flashcards' }
+	{ title: 'Sessions', path: '/sessions' }
 ];

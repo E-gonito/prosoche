@@ -27,12 +27,10 @@ describe('readSubject', () => {
 			home: 'Study/Computer Science',
 			path: '_hub/subjects/cs-study.md',
 			scope: { folders: ['Study/Computer Science', 'Computer Science'], tags: ['ws/cs-study'] },
-			newPerDay: 20,
 			files: {
 				goals: 'Study/Computer Science/Goals.md',
 				reading: 'Study/Computer Science/Reading List.md',
-				sessions: 'Study/Computer Science/Sessions.md',
-				flashcards: 'Study/Computer Science/Flashcards'
+				sessions: 'Study/Computer Science/Sessions.md'
 			}
 		});
 	});
@@ -40,16 +38,6 @@ describe('readSubject', () => {
 	it('homes a subject naming no folder at Study/<name>, in scope on its own, with no tag', () => {
 		const bare = readSubject('_hub/subjects/bare.md', '---\nname: Bare\n---\n');
 		expect(bare).toMatchObject({ home: 'Study/Bare', scope: { folders: ['Study/Bare'], tags: [] } });
-	});
-
-	it.each([
-		['new_per_day: 10', 10],
-		['new_per_day: 0', 0],
-		['new_per_day: "15"', 15],
-		['new_per_day: -1', 20],
-		['new_per_day: lots', 20]
-	])('reads %s as %d new cards a day', (line, expected) => {
-		expect(readSubject('_hub/subjects/q.md', `---\nname: Q\n${line}\n---\n`).newPerDay).toBe(expected);
 	});
 });
 
@@ -96,11 +84,10 @@ describe('subjects on disk', () => {
 		expect(first.ok && second.ok && first.subject.color !== second.subject.color).toBe(true);
 	});
 
-	it('refuses no name, a taken name, and the review page’s, but not a workspace’s', async () => {
+	it('refuses no name and a taken name, but not a workspace’s', async () => {
 		expect(await createSubject(vault, { name: ' / ' })).toMatchObject({ ok: false, reason: 'no-name' });
 		await createSubject(vault, { name: 'Filipino' });
 		expect(await createSubject(vault, { name: 'filipino' })).toMatchObject({ ok: false, reason: 'exists' });
-		expect(await createSubject(vault, { name: 'Review' })).toMatchObject({ ok: false, reason: 'reserved' });
 		await vault.write('_hub/workspaces/eye2gene.md', '---\nname: eye2gene\n---\n');
 		expect(await createSubject(vault, { name: 'eye2gene' })).toMatchObject({ ok: true });
 	});

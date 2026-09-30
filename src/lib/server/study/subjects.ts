@@ -6,8 +6,9 @@
  * a subject is never a workspace, never shows among them, and claims no task
  * or note for one. There can be any number of subjects. Nothing is shared
  * between two but the code: each has its own home folder holding its own
- * `Goals.md`, `Reading List.md`, `Sessions.md` and `Flashcards/`, and its own
- * scope, its folders and tag, for its cards.
+ * `Goals.md`, `Reading List.md` and `Sessions.md`, and its own scope, its
+ * folders and tag, for its notes. Flashcards are not Study's; they are the
+ * glossaries' (see `flashcards/decks.ts`).
  *
  *     ---
  *     name: Filipino
@@ -15,15 +16,14 @@
  *     folders:
  *       - "Study/Filipino"
  *       - "Languages/Filipino"
- *     new_per_day: 20
  *     ---
  *
  * The first folder is the home; a file naming none is homed at
  * `Study/<name>`. `tag:` is optional and, when there, puts notes carrying it
- * in scope too. `new_per_day:` is optional, 20 when absent.
+ * in scope too.
  *
- * This module is the one place that reads and writes that file, so a page, a
- * route and the Anki import all agree on where a subject's files are. It
+ * This module is the one place that reads and writes that file, so a page
+ * and a route agree on where a subject's files are. It
  * never reads a note; it only says where they live.
  */
 
@@ -38,28 +38,18 @@ import { folderList, type Vault } from '../vault/index';
 /** Where subject files live. */
 const SUBJECT_DIR = `${config.hubFolder}/subjects`;
 
-/**
- * How many never-reviewed cards join a subject's reviews each day when its
- * file does not say, with `new_per_day:`.
- */
-const NEW_PER_DAY = 20;
-
 /** The folder new subjects are homed under: `Study/<Name>`. */
 const STUDY_ROOT = 'Study';
 
 /** A subject, with where its files are and which notes it covers. */
 export interface Subject extends SubjectRef {
 	scope: StudyScope;
-	/** Cards never reviewed that may join its reviews each day; 0 for none. */
-	newPerDay: number;
 	/** Its definition file, `_hub/subjects/<slug>.md`. */
 	path: string;
 	files: {
 		goals: string;
 		reading: string;
 		sessions: string;
-		/** The folder card files are written to. */
-		flashcards: string;
 	};
 }
 
@@ -81,17 +71,17 @@ export function subjectOf(subjects: Subject[], slug: unknown): Subject | null {
 
 type SubjectCreated =
 	| { ok: true; subject: Subject }
-	| { ok: false; reason: 'no-name' | 'exists' | 'reserved'; message: string };
+	| { ok: false; reason: 'no-name' | 'exists'; message: string };
 
 /**
  * Create a subject: a file in `_hub/subjects/`, homed at `Study/<name>`,
- * with `extraFolders` after the home as reference folders whose notes count
- * for its cards, and a colour no other subject has while one is free.
+ * with `extraFolders` after the home as reference folders whose notes are
+ * its too, and a colour no other subject has while one is free.
  *
  * Writes that one file and never overwrites one. The home folder itself
  * appears with the subject's first write. Refuses a name that makes no
- * folder or no slug, a slug another subject has, and `review`, which
- * `/study/review` already means. A workspace of the same name is no clash.
+ * folder or no slug, and a slug another subject has. A workspace of the
+ * same name is no clash.
  */
 export async function createSubject(vault: Vault, spec: { name: string; extraFolders?: string[] }): Promise<SubjectCreated> {
 	// A folder name and a link target both: no path separators, nothing
@@ -99,7 +89,6 @@ export async function createSubject(vault: Vault, spec: { name: string; extraFol
 	const name = spec.name.replace(/[\\/:*?"<>|#^[\]]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+|\.+$/g, '');
 	const slug = slugify(name);
 	if (!name || !slug) return { ok: false, reason: 'no-name', message: 'A subject needs a name with a letter or digit in it.' };
-	if (slug === 'review') return { ok: false, reason: 'reserved', message: '"Review" is taken by the review page. Pick another name.' };
 
 	const home = `${STUDY_ROOT}/${name}`;
 	const folders = folderList(spec.extraFolders ?? [], home) ?? [home];
@@ -132,7 +121,7 @@ export interface SubjectEdit {
  * else. Frontmatter through `parse/frontmatter.ts`, the description through
  * `setLede`, so every other byte is kept. The slug, which is the file name,
  * never changes, and neither does the home, which stays first: its goals,
- * reading list, sessions and cards are there. A subject whose file names no
+ * reading list and sessions are there. A subject whose file names no
  * folder is homed at `Study/<name>`, and that is the home kept.
  *
  * Refuses, writing nothing, an empty name, a colour that is not `#rrggbb`, a
@@ -173,7 +162,7 @@ export async function editSubject(vault: Vault, subject: Subject, edit: SubjectE
 
 /**
  * Delete a subject: remove its file, `_hub/subjects/<slug>.md`, and nothing
- * else. Its home folder, goals, reading list, sessions, cards and notes stay
+ * else. Its home folder, goals, reading list, sessions and notes stay
  * where they are; git history still has the file. Refuses an unknown slug.
  */
 export async function deleteSubject(vault: Vault, slug: string): Promise<{ ok: true } | { ok: false; reason: 'not-found' }> {
@@ -229,13 +218,11 @@ export function readSubject(path: string, content: string): Subject {
 		color: str(fm.color) ?? '#6b7280',
 		home,
 		scope: { folders: folders.length ? folders : [home], tags: tag ? [tag] : [] },
-		newPerDay: count(fm.new_per_day) ?? NEW_PER_DAY,
 		path,
 		files: {
 			goals: `${home}/Goals.md`,
 			reading: `${home}/Reading List.md`,
-			sessions: `${home}/Sessions.md`,
-			flashcards: `${home}/Flashcards`
+			sessions: `${home}/Sessions.md`
 		}
 	};
 }
@@ -252,15 +239,9 @@ ${folders.map((f) => `  - ${JSON.stringify(f)}`).join('\n')}
 Created from Study.
 
 Edit this file to change the subject: its name, colour, and the folders its
-notes and cards come from. The first folder is its home, where its goals,
-reading list, sessions and cards are kept.
+notes come from. The first folder is its home, where its goals, reading
+list and sessions are kept.
 `;
-}
-
-/** A whole number of zero or more, written as a number or a string of digits; otherwise null. */
-function count(value: unknown): number | null {
-	const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
-	return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 function str(value: unknown): string | null {

@@ -48,6 +48,7 @@ export interface SubItem {
 export const MODULES: Module[] = [
 	{ id: 'today', title: 'Today', icon: 'sun', href: '/today', tab: true },
 	{ id: 'glossary', title: 'Glossary', icon: 'book-a', href: '/glossary' },
+	{ id: 'flashcards', title: 'Flashcards', icon: 'layers', href: '/flashcards' },
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
 	{ id: 'date', title: 'Date', icon: 'calendar', href: '/date', private: true },
