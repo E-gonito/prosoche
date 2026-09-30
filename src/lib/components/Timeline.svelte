@@ -15,7 +15,7 @@
 	 * offset — and a block keeps following the pointer while the window
 	 * scrolls out from under it.
 	 */
-	import { layoutBlocks, snap, timelineRange, timelineScrollTop } from '$lib/shared/layout';
+	import { layoutBlocks, snap, timelineRange, timelineScrollTop } from '$lib/client/layout';
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatMinutes } from '$lib/shared/time';
 	import { editTask, planOnDay } from '$lib/client/api';
