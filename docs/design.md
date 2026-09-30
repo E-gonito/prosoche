@@ -91,8 +91,18 @@ A media query cannot read a custom property, so two widths are written out:
   MINE or LOOKED UP.
 - **`.card`**: a panel with a small-caps `h3`, for the rare boxed group.
 - **`.prose`**: rendered markdown, close to Obsidian's reading view.
+- **`.caps`**: small-capitals type: a label, a card's heading, a column's.
+- **`.dot`** (`.lg`): a workspace's colour, `style="--dot: {color}"`; `.lg` in headings.
+- **`.box`**: a tick box, a button whose `aria-pressed` says whether it is ticked.
+- **`.modal`**: a native `<dialog>` shell, centred. One `dialog::backdrop` serves all.
+- **`.drag-ghost`**: the label that follows the pointer during a drag.
+- **`.add-row`**: a `.field` and its button on one line; the field takes the room.
+- **`.link`** (one truncated line), **`.x`** (a small × that removes its chip),
+  **`.remove`** (red text on no fill for a delete; not `.btn.danger`).
+- **`.empty`**: the only empty state, a muted line; `.empty.big` is a whole screen.
+- **`.problem`**: a warning-red line. A page may set its margin, never its colour.
 - **`.q1`–`.q4`**, **`.tag`**, **`.num`**, **`.muted`**, **`.small`**,
-  **`.hint`**, **`.problem`**, **`.none`**, **`.empty`**, **`.kv`**.
+  **`.hint`**, **`.kv`**.
 
 ## Monospace
 
@@ -105,20 +115,16 @@ with `.num`, which lines figures up without changing the typeface.
 - **`Icon`**: every glyph, from one hand-copied Lucide path set. `name`,
   `size` (default 16), `label` (absent means decorative).
 - **`Draft`**: a button that asks Claude for a proposal and shows it as a diff
-  with Accept and Reject. Every AI write in the app goes through it, but
-  three: the briefing's Save, Study's Make cards, and a glossary's scan for
-  new terms (**`GlossaryScan`**), where drafted items are shown as a list to
-  tick and edit and Add is the accept.
-- **`Capture`**: one line into an inbox note.
-- **`FileTree`**: the vault's folders, used by Notes.
+  with Accept and Reject. Every AI write goes through it, but the briefing's
+  Save, which previews the text and writes it only on Save.
+- **`Capture`**: one line into an inbox note. **`FileTree`**: the vault's folders.
 - **`board/Board`**: a workspace's board. Columns are unboxed, a small-caps
   heading over a stack of cards; the cards are the boxes, because a card is
   the thing you act on. Columns sit side by side at 230px or more and scroll
   sideways; below 560px of board width one column takes most of the width
   and they snap. Its drawer is **`board/CardEditor`**, and a card shown
   away from its board (on Today) is **`board/CardRow`**.
-- **`StudyTabs`**: a study subject's heading, a crumb back to Study, and its
-  five tabs, all always shown.
+- **`StudyTabs`**: a subject's heading, a crumb to Study, and its five tabs.
 - **`MasterNote`**: a note read as `.prose` with an Edit button that swaps in
   a textarea of the raw file, Save and Cancel below it.
 
@@ -128,19 +134,15 @@ with `.num`, which lines figures up without changing the typeface.
   it; a finger only from its ⠿ grip, which has `touch-action: none`,
   because anywhere else a finger is scrolling. The grip shows on hover and
   always, faintly, on a screen with no hover.
-- **Every drag has a menu.** Anything that can be dragged can be moved from
-  a ⋯ menu too, for the keyboard.
+- **Every drag has a menu.** Anything draggable can be moved from a ⋯ menu.
 - **A menu inside a scroller is fixed.** A popover in a sideways scroller
   would be clipped, so it is drawn once at the top level, fixed to the
   viewport at its button, and closed on any scroll or resize.
 - **A delete asks twice, in place.** Delete turns into "Delete this? Delete
   · Keep" where it was, rather than opening a dialog over a drawer that is
-  already one. The word is red text on no fill (a `.remove` class, not
-  `.danger`, which is the filled red button). The board's card drawer and
-  the reading list do this.
+  already one. The word is `.remove`. The card drawer and reading list do this.
 - **A board can be shown as lists.** A file in the kanban grammar need not
   be drawn as a board: the study reading list shows its columns as grouped
   `.sheet.rows`, with a status select to move an item between groups and a
   ⋯ menu for Move up, Move down, Edit and Delete.
-- **A due date is red once it is late.** `--bad` for a due date that has
-  passed on something still open; muted otherwise.
+- **A due date is red once it is late** (`--bad`, on something still open).

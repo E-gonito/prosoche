@@ -19,7 +19,7 @@ import { MODULES, SYSTEM } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
 import { noteHref } from '$lib/shared/links';
-import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
+import { all, install, type Shortcut } from '$lib/client/shortcuts.svelte';
 
 interface PaletteRow {
 	id: string;
@@ -110,18 +110,13 @@ class PaletteState {
 	]);
 
 	/**
-	 * Register the commands and start listening for keys. Call once, from the
-	 * one component that draws the palette; the returned function undoes both.
+	 * Install the commands as the app's key bindings. Call once, from the one
+	 * component that draws the palette; the returned function undoes it.
 	 * `t3Url` is '' when `HUB_T3_URL` is unset, which leaves the command out
 	 * entirely rather than registering one that opens nothing useful.
 	 */
 	install(t3Url = ''): () => void {
-		const off = register(commands(this, t3Url));
-		const stop = listen();
-		return () => {
-			off();
-			stop();
-		};
+		return install(commands(this, t3Url));
 	}
 
 	/** Open on the command list, with the box empty and the first row chosen. */

@@ -1,11 +1,12 @@
 /**
- * Every global key binding in the app, in one registry with one listener.
+ * Every global key binding in the app, in one list with one listener.
  *
- * No component attaches its own `window` keydown handler. They register a
- * shortcut here instead, which buys three things a scattering of handlers
- * cannot: the bindings can be listed (the palette shows them, so they are
- * discoverable rather than folklore), they cannot silently shadow each other,
- * and the rule about typing is enforced in exactly one place.
+ * There is a single registrant: the command palette installs its commands
+ * once, from the shell, and no other component attaches a `window` keydown
+ * handler. That buys what a scattering of handlers cannot: the bindings can be
+ * listed (the palette shows them, so they are discoverable rather than
+ * folklore), two of them cannot silently shadow each other, and the rule
+ * about typing is enforced in exactly one place.
  *
  * **A shortcut never fires while the user is typing.** A key pressed inside an
  * input, a textarea, a select or the editor belongs to the text, not to the
@@ -24,80 +25,35 @@ export interface Shortcut {
 }
 
 /**
- * The bindings, held twice: once for identity and once for reactivity.
- *
- * Two bugs came from making the array itself `$state`, and both are worth
- * naming because the shape of the fix follows from them.
- *
- * A `$state` array is a proxy, so `registry.push(x)` stores a proxy of `x`
- * while the caller still holds the raw `x`. `indexOf` then never matches and
- * unregistering silently did nothing, so every navigation left its bindings
- * behind for ever.
- *
- * Worse, pushing to a `$state` array both reads and writes it. `register` is
- * called from an `$effect`, so the effect depended on the thing it wrote and
- * re-ran until Svelte gave up — `effect_update_depth_exceeded`, which locks
- * the page after it has painted, so the app looked fine and did not work.
- *
- * So there are two: a plain array that is the source of truth and keeps the
- * objects' identity, and a `$state` snapshot that register and unregister
- * *replace* when it changes. Readers read the snapshot and are reactive.
- * Writers only assign to it, never read it, so an `$effect` that registers
- * has no dependencies and runs exactly once.
+ * The installed bindings. `$state.raw` because they are only ever replaced
+ * whole: a deep `$state` array would hand out proxies, and an effect that
+ * both read and wrote it would loop.
  */
-const registry: Shortcut[] = [];
-let snapshot = $state<Shortcut[]>([]);
-let listeners = 0;
-let attached: ((event: KeyboardEvent) => void) | null = null;
+let bindings = $state.raw<Shortcut[]>([]);
 
 /**
- * Add bindings and return the function that removes exactly those again.
- *
- * Registering the same keys twice is allowed and the later one wins, so a
- * page may override a global binding while it is mounted; the override goes
- * away when its unregister runs. Never validates the key string beyond
- * lower-casing it, because an unrecognised binding simply never matches.
+ * Install the app's bindings, replacing any earlier set, and start handling
+ * keys. Returns the function that stops and clears them. Keys are lower-cased
+ * and an unrecognised binding simply never matches; when two share keys the
+ * first in the list wins. Off the browser there is no window to listen on, so
+ * only the list is kept.
  */
-export function register(shortcuts: Shortcut[]): () => void {
-	const added = shortcuts.map((shortcut) => ({ ...shortcut, keys: normalise(shortcut.keys) }));
-	registry.push(...added);
-	snapshot = [...registry];
+export function install(shortcuts: Shortcut[]): () => void {
+	bindings = shortcuts.map((shortcut) => ({ ...shortcut, keys: normalise(shortcut.keys) }));
+	if (typeof window === 'undefined') return () => (bindings = []);
+	window.addEventListener('keydown', handle);
 	return () => {
-		for (const shortcut of added) {
-			const at = registry.indexOf(shortcut);
-			if (at >= 0) registry.splice(at, 1);
-		}
-		snapshot = [...registry];
+		window.removeEventListener('keydown', handle);
+		bindings = [];
 	};
 }
 
 /**
- * Every registered binding, in the order they were registered, for the palette
- * to list: the global commands first, then whatever the current page added.
- * Reactive, so a component that reads it re-renders when a page registers its
- * own. A later binding still wins when the key is actually pressed.
+ * Every installed binding, in the order given, for the palette to list.
+ * Reactive: a component that reads it re-renders when the set changes.
  */
 export function all(): Shortcut[] {
-	return snapshot;
-}
-
-/**
- * Start handling keys, and return the function that stops. Safe to call from
- * several components: the window listener is attached once and removed when
- * the last caller lets go. Does nothing at all on the server.
- */
-export function listen(): () => void {
-	if (typeof window === 'undefined') return () => {};
-	if (++listeners === 1) {
-		attached = handle;
-		window.addEventListener('keydown', attached);
-	}
-	return () => {
-		if (--listeners === 0 && attached) {
-			window.removeEventListener('keydown', attached);
-			attached = null;
-		}
-	};
+	return bindings;
 }
 
 /**
@@ -122,8 +78,7 @@ export function keyLabel(keys: string): string {
 
 /**
  * True when this element is somewhere the user could be typing: a form field,
- * anything contenteditable, or inside CodeMirror. Exported because the palette
- * needs the same answer when it decides whether to take focus.
+ * anything contenteditable, or inside CodeMirror.
  */
 function isTyping(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
@@ -135,17 +90,20 @@ function isTyping(target: EventTarget | null): boolean {
 
 function handle(event: KeyboardEvent): void {
 	if (event.isComposing || event.repeat) return;
-	const pressed = describe(event);
-	const typing = isTyping(event.target);
-	// Last registered wins, so a page can override a global binding.
-	for (let i = registry.length - 1; i >= 0; i--) {
-		const shortcut = registry[i];
-		if (shortcut.keys !== pressed) continue;
-		if (typing && !shortcut.whileTyping) return;
-		event.preventDefault();
-		shortcut.run();
-		return;
-	}
+	if (press(describe(event), isTyping(event.target))) event.preventDefault();
+}
+
+/**
+ * Run the binding for a pressed combination, in the spelling `describe`
+ * gives. `typing` says the caret is in a text box, which only a
+ * `whileTyping` binding may answer. Returns whether one ran, so the caller
+ * knows to swallow the key. Exported for the table test: it is the rule.
+ */
+export function press(pressed: string, typing: boolean): boolean {
+	const shortcut = bindings.find((s) => s.keys === pressed);
+	if (!shortcut || (typing && !shortcut.whileTyping)) return false;
+	shortcut.run();
+	return true;
 }
 
 /** The pressed combination in the same spelling as a registered binding. */

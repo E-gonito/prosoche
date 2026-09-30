@@ -69,3 +69,18 @@ describe('the design page', () => {
 		expect(doc.split('\n').length).toBeLessThan(150);
 	});
 });
+
+describe('the shared classes', () => {
+	/** Every class the "Shared classes" section names in bold, without its dot. */
+	const section = /## Shared classes([\s\S]*?)\n## /.exec(doc)?.[1] ?? '';
+	const named = [...new Set([...section.matchAll(/\*\*`([^`]+)`\*\*/g)].flatMap(([, spec]) => [...spec.matchAll(/\.([a-z][a-z0-9-]*)/g)].map((m) => m[1])))];
+
+	it('are documented, which is the only reason this test can run', () => {
+		expect(named.length).toBeGreaterThan(20);
+	});
+
+	it('all have a rule in app.css, so the page cannot promise one that does not', () => {
+		const missing = named.filter((name) => !new RegExp(`\\.${name}(?![a-z0-9-])`).test(css));
+		expect(missing, 'named in docs/design.md but not styled in src/app.css').toEqual([]);
+	});
+});
