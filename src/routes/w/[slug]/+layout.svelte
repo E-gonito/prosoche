@@ -1,20 +1,21 @@
 <script lang="ts">
 	/**
-	 * A workspace: its name and tag, a strip of tabs, and whatever the current
-	 * one renders.
+	 * A workspace: its heading, a strip of tabs, and whatever the current one
+	 * renders.
 	 *
-	 * The tab strip is the one thing every workspace page shares, so it lives
-	 * here rather than being redrawn by each. Which tabs exist is decided by
+	 * The heading and the tab strip are the things every workspace page
+	 * shares, so they live here rather than being redrawn by each. The heading
+	 * is the shared `DetailsHeader`, whose Edit changes the definition file's
+	 * name, description, colour, tag and kind. Which tabs exist is decided by
 	 * the server load in `+layout.server.ts`; this component only draws them
 	 * and marks the current one.
 	 */
 	import { page } from '$app/state';
-	import WorkspaceDetails from '$lib/components/WorkspaceDetails.svelte';
+	import { invalidateAll } from '$app/navigation';
+	import DetailsHeader from '$lib/components/DetailsHeader.svelte';
+	import { saveWorkspace } from '$lib/client/api';
 
 	let { data, children } = $props();
-
-	/** True while the name, description, colour, tag and kind are being edited. */
-	let editing = $state(false);
 
 	const href = (slug: string) => (slug ? `/w/${data.workspace.slug}/${slug}` : `/w/${data.workspace.slug}`);
 	const isActive = (slug: string) => page.url.pathname === href(slug);
@@ -23,20 +24,20 @@
 <svelte:head><title>{data.workspace.name} · prosoche</title></svelte:head>
 
 <div class="page wide">
-	<div class="title">
-		<h1><span class="dot lg" style="--dot: {data.workspace.color}"></span>{data.workspace.name}</h1>
-		{#if data.workspace.description}<p class="desc" data-testid="workspace-description">{data.workspace.description}</p>{/if}
-		<p>
-			<code class="tag">#{data.workspace.tag}</code>
-			{#if !editing}· <button class="link-btn" onclick={() => (editing = true)} data-testid="edit-workspace">Edit</button>{/if}
-		</p>
-	</div>
-
-	{#if editing}
-		{#key data.workspace.slug}
-			<WorkspaceDetails workspace={data.workspace} definitionHref={data.definitionHref} onclose={() => (editing = false)} />
-		{/key}
-	{/if}
+	{#key data.workspace.slug}
+		<DetailsHeader
+			details={{ ...data.workspace, kind: data.workspace.template }}
+			fields={['name', 'description', 'color', 'tag', 'kind']}
+			fileHref={data.definitionHref}
+			save={async (changed) => {
+				const result = await saveWorkspace(data.workspace.slug, changed);
+				if (result.ok) await invalidateAll();
+				return result;
+			}}
+		>
+			{#snippet meta()}<code class="tag">#{data.workspace.tag}</code>{/snippet}
+		</DetailsHeader>
+	{/key}
 
 	<nav class="tabs" aria-label="{data.workspace.name} tabs" data-testid="tabs">
 		{#each data.tabs as tab (tab.slug)}
@@ -48,9 +49,5 @@
 </div>
 
 <style>
-	h1 { display: flex; align-items: center; gap: var(--s2); }
 	.tag { font: var(--t12) var(--mono); color: var(--muted); }
-	.desc { margin: var(--s1) 0 0; }
-	.link-btn { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; }
-	.link-btn:hover { text-decoration: underline; }
 </style>

@@ -1,15 +1,17 @@
 import { today } from '$server/daily';
-import { addScannedTerms, addTerm, createGlossary, deleteGlossary, deleteTerm, editTerm, findGlossary, renameGlossary, setGlossarySources, setGlossaryStudy, type ScanAdded } from '$server/glossary';
+import { addScannedTerms, addTerm, createGlossary, deleteGlossary, deleteTerm, editGlossary, editTerm, findGlossary, setGlossarySources, setGlossaryStudy, type ScanAdded } from '$server/glossary';
 import { syncGlossaryCards } from '$server/study/glossary-cards';
 import type { Written } from '$server/rewrite';
 import { refuse, route, str } from '../route';
 
 interface Body {
-	action: 'create-glossary' | 'rename-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete' | 'set-study' | 'set-sources' | 'add-scanned';
+	action: 'create-glossary' | 'edit-glossary' | 'delete-glossary' | 'add' | 'edit' | 'delete' | 'set-study' | 'set-sources' | 'add-scanned';
 	/** Every action but create: the glossary, by slug. */
 	glossary: string;
-	/** create and rename: the glossary's new name. */
+	/** create: the glossary's name. edit-glossary: its new name, if changing. */
 	name: string;
+	/** edit-glossary: its new description, if changing. */
+	description: string;
 	/** add: the new term. edit and delete: the term as it is now. */
 	term: string;
 	/** edit: the fields to change; absent ones are left alone. */
@@ -26,8 +28,8 @@ interface Body {
 }
 
 /**
- * The glossaries' writes, each one a user's click: create, rename or delete
- * a glossary; add, edit or delete a term in one; link it to a study
+ * The glossaries' writes, each one a user's click: create a glossary, edit
+ * its name and description, or delete it; add, edit or delete a term in one; link it to a study
  * subject; set the folders it is scanned from; or add the terms a person
  * kept from a scan. Translation only; `$server/glossary` decides what is
  * written. `add-scanned` is the accept step for Claude's drafted terms, and
@@ -54,8 +56,11 @@ export const POST = route<Body>(async ({ body, hub: { vault, workspaces } }) => 
 
 	const term = str(body.term) ?? '';
 	switch (body.action) {
-		case 'rename-glossary':
-			return synced(await renameGlossary(vault, glossary, str(body.name) ?? ''), { renamedFrom: glossary.name });
+		case 'edit-glossary': {
+			const name = str(body.name);
+			const result = await editGlossary(vault, glossary, { name, description: str(body.description) });
+			return name === undefined ? result : synced(result, { renamedFrom: glossary.name });
+		}
 		case 'delete-glossary':
 			return deleteGlossary(vault, glossary);
 		case 'add':

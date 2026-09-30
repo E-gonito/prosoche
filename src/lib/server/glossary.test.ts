@@ -17,6 +17,7 @@ import {
 	loadGlossary,
 	noteFolders,
 	renameGlossary,
+	editGlossary,
 	addScannedTerms,
 	scanNotes,
 	scanSettings,
@@ -146,6 +147,20 @@ describe('glossaries on disk', () => {
 		expect((await vault.read('Glossaries/eye2gene.md')).exists).toBe(false);
 		expect((await vault.read(work.path)).content).toBe(definition.replace('glossary: eye2gene # kept', 'glossary: Eye2Gene Work'));
 		expect((await vault.read(garden.path)).content).toBe('---\nname: garden\n---\n');
+	});
+
+	it('edits the description under the title, then renames, carrying it across; terms untouched', async () => {
+		const content = '---\nstudy: cs\n---\n\n# Glossary\n\n## DVC\n- status:: looked-up\n\nData version control.\n';
+		await vault.write('Glossaries/eye2gene.md', content);
+		const ref = (await findGlossary(vault, [], 'eye2gene'))!;
+		expect(await editGlossary(vault, ref, { description: 'Words from work.' })).toEqual({ ok: true, path: 'Glossaries/eye2gene.md' });
+		const described = content.replace('# Glossary\n', '# Glossary\n\nWords from work.\n');
+		expect((await vault.read('Glossaries/eye2gene.md')).content).toBe(described);
+
+		const again = (await findGlossary(vault, [], 'eye2gene'))!;
+		expect(await editGlossary(vault, again, { name: 'Work', description: 'All of it.' })).toEqual({ ok: true, path: 'Glossaries/Work.md' });
+		expect((await vault.read('Glossaries/Work.md')).content).toBe(described.replace('Words from work.', 'All of it.'));
+		expect((await vault.read('Glossaries/eye2gene.md')).exists).toBe(false);
 	});
 
 	it('refuses a rename onto a name that is taken, and renaming to the same name writes nothing', async () => {
