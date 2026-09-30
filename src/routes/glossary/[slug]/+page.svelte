@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	/**
 	 * One glossary, as in the artifact: a filter box, a tab per category, and
 	 * one entry per term with its definition and why it matters.
@@ -127,8 +128,12 @@
 		}
 	}
 
-	/** Whether the scan is open. It stays mounted when closed, so its list survives. */
-	let scanOpen = $state(false);
+	/**
+	 * Whether the scan is open. It stays mounted when closed, so its list
+	 * survives. An empty glossary that already has folders to read opens with
+	 * it showing: filling it is the only thing there is to do here.
+	 */
+	let scanOpen = $state(untrack(() => data.entries.length === 0 && data.scan.sources.length > 0));
 	afterNavigate(({ to }) => {
 		if (to?.url.hash === '#scan') scanOpen = true;
 	});
@@ -326,7 +331,7 @@
 		</div>
 	{:else}
 		<p class="empty">
-			No terms yet. Add one above, or scan your notes for some; they go in <code>{data.glossary.path}</code>.
+			No terms yet. Add one above, or <button class="link" type="button" onclick={() => (scanOpen = true)} data-testid="empty-scan">scan your notes</button> for some; they go in <code>{data.glossary.path}</code>.
 		</p>
 	{/if}
 </div>

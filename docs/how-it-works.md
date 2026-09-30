@@ -198,7 +198,7 @@ once they have a definition. **Scan notes**, beside Add term, opens it; so
 does `#scan` at the end of the glossary's address, which is where a study
 subject's link goes (see Study). A glossary remembers where to scan in its
 frontmatter: `sources:`, a list of vault folders, and `scanned:`, the day of
-the last full scan.
+the last full scan. A glossary with no terms yet but with folders to read opens with the scan showing.
 
     ---
     sources:
