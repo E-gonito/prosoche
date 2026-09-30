@@ -10,8 +10,7 @@ import type { PageServerLoad } from './$types';
  * queue is fixed at page load.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, index, ready, workspaces } = hub();
-	await ready;
+	const { vault, index, workspaces } = await hub();
 
 	const day = today();
 	const queue = await dueEverywhere(vault, index, subjectsOf(await workspaces()), day);

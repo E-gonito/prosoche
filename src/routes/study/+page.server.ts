@@ -9,8 +9,7 @@ import type { PageServerLoad } from './$types';
  * the cards due — and everything due across them all.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, index, ready, workspaces } = hub();
-	await ready;
+	const { vault, index, workspaces } = await hub();
 
 	const day = today();
 	const subjects = subjectsOf(await workspaces());

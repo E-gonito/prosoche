@@ -12,9 +12,9 @@
 	let { data } = $props();
 
 	const base = $derived(`/study/${data.subject.slug}`);
-	const weekTarget = $derived(data.weeklyHours ? data.weeklyHours * 60 : null);
-	const weekPct = $derived(weekTarget ? Math.min(100, Math.round((data.weekMinutes / weekTarget) * 100)) : null);
-	const loose = $derived(data.unassigned.weekMinutes > 0 || data.unassigned.reading.length > 0 || data.unassigned.due > 0);
+	const weekTarget = $derived(data.study.weeklyHours ? data.study.weeklyHours * 60 : null);
+	const weekPct = $derived(weekTarget ? Math.min(100, Math.round((data.study.weekMinutes / weekTarget) * 100)) : null);
+	const loose = $derived(data.study.unassigned.weekMinutes > 0 || data.study.unassigned.reading.length > 0 || data.study.unassigned.due > 0);
 </script>
 
 <svelte:head><title>{data.subject.name} · Study · prosoche</title></svelte:head>
@@ -26,22 +26,22 @@
 		<section class="sheet">
 			<p class="label">Flashcards</p>
 			<div class="due-row">
-				<span class="count" data-testid="due-count">{data.due}</span>
-				<span class="muted">due now{data.fresh || data.waiting ? ` · ${data.fresh} new today · ${data.waiting} waiting` : ''}</span>
+				<span class="count" data-testid="due-count">{data.study.due}</span>
+				<span class="muted">due now{data.study.fresh || data.study.waiting ? ` · ${data.study.fresh} new today · ${data.study.waiting} waiting` : ''}</span>
 				<span class="buttons">
-					{#if data.due > 0}
+					{#if data.study.due > 0}
 						<a class="btn primary" href="{base}/review" data-testid="review-link">Review</a>
 					{/if}
 				</span>
 			</div>
-			{#if data.due === 0}<p class="none">Nothing due right now.</p>{/if}
+			{#if data.study.due === 0}<p class="none">Nothing due right now.</p>{/if}
 		</section>
 
 		<section class="sheet">
 			<p class="label">
 				This week
 				<span class="right num" data-testid="week-time">
-					{formatDuration(data.weekMinutes, ' ')}{weekTarget ? ` of ${formatDuration(weekTarget, ' ')}` : ''}
+					{formatDuration(data.study.weekMinutes, ' ')}{weekTarget ? ` of ${formatDuration(weekTarget, ' ')}` : ''}
 				</span>
 			</p>
 			{#if weekPct !== null}
@@ -49,17 +49,17 @@
 			{/if}
 			<p class="streak" data-testid="streak">
 				<Icon name="flame" size={15} label="Streak" />
-				<b class="num">{data.streak}</b> {data.streak === 1 ? 'day' : 'days'} in a row
+				<b class="num">{data.study.streak}</b> {data.study.streak === 1 ? 'day' : 'days'} in a row
 			</p>
 		</section>
 	</div>
 
 	<p class="label">Goals<span class="right"><a href="{base}/goals">Open</a></span></p>
-	{#if data.goals.length === 0}
+	{#if data.study.progress.length === 0}
 		<p class="none">No goals yet. <a href="{base}/goals">Add the first one</a>: reading, sessions and cards all roll up by goal.</p>
 	{:else}
 		<div class="sheet rows" data-testid="goals-summary">
-			{#each data.goals as goal (goal.slug)}
+			{#each data.study.progress as goal (goal.slug)}
 				<div class="goal" data-testid="goal">
 					<div class="head">
 						<span class="name">{goal.name}</span>
@@ -95,12 +95,12 @@
 				<div class="goal" data-testid="goal-none">
 					<div class="head"><span class="name muted">No goal</span></div>
 					<p class="facts small">
-						<span class="num">{formatDuration(data.unassigned.weekMinutes, ' ')} this week</span>
-						<span class="num muted">{data.unassigned.due} {data.unassigned.due === 1 ? 'card' : 'cards'} due</span>
+						<span class="num">{formatDuration(data.study.unassigned.weekMinutes, ' ')} this week</span>
+						<span class="num muted">{data.study.unassigned.due} {data.study.unassigned.due === 1 ? 'card' : 'cards'} due</span>
 					</p>
-					{#if data.unassigned.reading.length}
+					{#if data.study.unassigned.reading.length}
 						<ul class="reading">
-							{#each data.unassigned.reading as item (item.line)}
+							{#each data.study.unassigned.reading as item (item.line)}
 								<li><Icon name="book-open" size={13} /> {item.title}</li>
 							{/each}
 						</ul>
@@ -111,7 +111,7 @@
 	{/if}
 
 	<p class="label">Folders</p>
-	<FolderEditor slug={data.subject.slug} folders={data.folders} options={data.vaultFolders} />
+	<FolderEditor slug={data.subject.slug} folders={data.subject.scope.folders ?? []} options={data.vaultFolders} />
 </div>
 
 <style>

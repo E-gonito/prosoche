@@ -1,6 +1,8 @@
 import { error, redirect } from '@sveltejs/kit';
 import { hub } from '$server/hub';
+import { today } from '$server/daily';
 import { subjectsOf } from '$server/study/subjects';
+import { studySummary, subjectView } from '$server/study/summary';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -16,18 +18,26 @@ const OLD_TABS: Record<string, string> = {
 };
 
 /**
- * Which subject every page under `/study/<subject>` is about.
+ * Which subject every page under `/study/<subject>` is about, and what its
+ * Overview, Flashcards, Reading and Sessions tabs show (`subjectView`), read
+ * once here so those tabs need no load of their own.
  *
  * A subject's slug wins over an old tab URL, so a subject may be called
  * "Goals". Otherwise an old URL goes to that tab of the only subject, or to
  * the Study index when there are several or none; anything else is a 404.
  */
-export const load: LayoutServerLoad = async ({ params }) => {
-	const { ready, workspaces } = hub();
-	await ready;
+export const load: LayoutServerLoad = async ({ params, url }) => {
+	const { vault, index, workspaces } = await hub();
 	const subjects = subjectsOf(await workspaces());
 	const subject = subjects.find((s) => s.slug === params.subject);
-	if (subject) return { subject };
+	if (subject) {
+		// Read on every tab change, not only when the subject changes: a card
+		// graded or a reading item moved on one tab must show on the next, and
+		// so must an edit made in Obsidian meanwhile.
+		void url.pathname;
+		const day = today();
+		return { subject, today: day, study: subjectView(await studySummary(vault, index, subject, day), day) };
+	}
 
 	const tab = OLD_TABS[params.subject];
 	if (tab !== undefined) redirect(307, subjects.length === 1 ? `/study/${subjects[0].slug}${tab}` : '/study');

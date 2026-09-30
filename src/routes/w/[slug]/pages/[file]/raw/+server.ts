@@ -17,9 +17,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	const { file } = params;
 	if (!file || file.includes('/') || file.includes('\\') || !/\.html?$/i.test(file)) error(404, 'No such page');
 
-	const { vault, ready, workspaces } = hub();
-	await ready;
-	const workspace = (await workspaces()).find((w) => w.slug === params.slug);
+	const { vault, workspace: find } = await hub();
+	const workspace = await find(params.slug);
 	if (!workspace) error(404, 'No such workspace');
 
 	const folder = `${homeFolder(workspace)}/Pages`;

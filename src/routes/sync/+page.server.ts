@@ -3,8 +3,7 @@ import { config } from '$server/config';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const { vault, index, ready } = hub();
-	await ready;
+	const { vault, index } = await hub();
 	return {
 		status: await vault.sync.status(),
 		files: await vault.sync.pending(),

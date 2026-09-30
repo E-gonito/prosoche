@@ -3,7 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import WeekBars from '$lib/components/WeekBars.svelte';
-	import { logSession } from '$lib/client/study';
+	import { api } from '$lib/client/api';
 	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
@@ -20,7 +20,7 @@
 		if (!mins || mins <= 0 || saving) return;
 		saving = true;
 		problem = '';
-		const result = await logSession(data.subject.slug, { day: data.today, minutes: mins, goal: goal || null, note: note.trim() });
+		const result = await api('/api/study/session', { subject: data.subject.slug, day: data.today, minutes: mins, goal: goal || null, note: note.trim() });
 		saving = false;
 		if (result.ok) {
 			goal = '';
@@ -44,7 +44,7 @@
 	<form class="row" onsubmit={submit}>
 		<select class="field goal" bind:value={goal} aria-label="Goal" data-testid="session-goal">
 			<option value="">No goal</option>
-			{#each data.goals as g (g.slug)}
+			{#each data.study.goalRefs as g (g.slug)}
 				<option value={g.name}>{g.name}</option>
 			{/each}
 		</select>
@@ -54,19 +54,19 @@
 			{saving ? 'Saving…' : 'Log it'}
 		</button>
 	</form>
-	{#if data.goals.length === 0}
+	{#if data.study.goalRefs.length === 0}
 		<p class="hint">Sessions roll up by goal. <a href="/study/{data.subject.slug}/goals">Add a goal</a> to log time against it.</p>
 	{/if}
 
 	<p class="label">Last 8 weeks</p>
 	<div class="sheet">
-		<WeekBars weeks={data.weeks} />
+		<WeekBars weeks={data.study.weeks} />
 	</div>
 
-	{#if data.goalHours.length > 0}
+	{#if data.study.goalHours.length > 0}
 		<p class="label">This month, by goal</p>
 		<div class="sheet rows" data-testid="goal-hours">
-			{#each data.goalHours as g (`${g.goal}:${g.label}`)}
+			{#each data.study.goalHours as g (`${g.goal}:${g.label}`)}
 				<div class="goal-row">
 					<span class:muted={!g.goal}>{g.goal ? g.label : g.label === 'Untracked' ? 'No goal' : `[[${g.label}]]`}</span>
 					<span class="num muted">{formatDuration(g.minutes, ' ')}</span>
@@ -76,11 +76,11 @@
 	{/if}
 
 	<p class="label">Sessions</p>
-	{#if data.sessions.length === 0}
+	{#if data.study.sessions.length === 0}
 		<p class="none">Nothing logged yet.</p>
 	{:else}
 		<div class="sheet rows" data-testid="session-log">
-			{#each data.sessions as s (s.line)}
+			{#each data.study.sessions as s (s.line)}
 				<div class="session-row">
 					<span class="day muted small num">{s.day}</span>
 					<span class="minutes num">{formatDuration(s.minutes, ' ')}</span>

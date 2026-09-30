@@ -8,8 +8,7 @@ import type { PageServerLoad } from './$types';
 const RECENT = 12;
 
 export const load: PageServerLoad = async () => {
-	const { vault, index, ready } = hub();
-	await ready;
+	const { vault, index } = await hub();
 
 	const recent = index.notes({ excludePrefixes: [`${config.hubFolder}/`], limit: RECENT }).map((note) => ({
 		path: note.path,

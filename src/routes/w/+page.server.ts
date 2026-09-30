@@ -11,8 +11,7 @@ import type { PageServerLoad } from './$types';
  * open one.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, ready, workspaces } = hub();
-	await ready;
+	const { vault, workspaces } = await hub();
 
 	const defs = await workspaces();
 	const cards = await openCards(vault, defs);

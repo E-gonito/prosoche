@@ -15,8 +15,7 @@ import type { PageServerLoad } from './$types';
  * can actually be put back.
  */
 export const load: PageServerLoad = async () => {
-	const { vault, ready } = hub();
-	await ready;
+	const { vault } = await hub();
 
 	const day = today();
 	const [settings, spend, runs, snapshots] = await Promise.all([

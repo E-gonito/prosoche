@@ -6,8 +6,7 @@ import type { PageServerLoad } from './$types';
 const WEEKS = 12;
 
 export const load: PageServerLoad = async () => {
-	const { vault, ready } = hub();
-	await ready;
+	const { vault } = await hub();
 
 	const { entries } = await loadLedger(vault);
 	const day = today();

@@ -1,10 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { parseNote, basename } from '$server/parse/note';
-import { renderMarkdown } from '$server/render';
+import { renderNote } from '$server/render';
 import { isMarkdown, PathOutsideVaultError } from '$server/vault/paths';
 import { CONFLICT_MARKERS } from '$server/index/index';
-import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -17,8 +16,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const path = params.path;
 	if (!isMarkdown(path)) error(404, 'Not a note');
 
-	const { vault, index, ready } = hub();
-	await ready;
+	const { vault, index } = await hub();
 
 	let note;
 	try {
@@ -39,10 +37,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		title: parsed.title || name,
 		conflicted: index.problemFor(path) === CONFLICT_MARKERS,
 		frontmatter: Object.entries(parsed.frontmatter).map(([key, value]) => [key, Array.isArray(value) ? value.join(', ') : String(value)]),
-		html: renderMarkdown(parsed.body, (t) => {
-			const target = index.resolveLink(t);
-			return target ? noteHref(target) : null;
-		}),
+		html: renderNote(index, parsed.body),
 		tree: await vault.tree(),
 		tags: parsed.tags,
 		backlinks: index

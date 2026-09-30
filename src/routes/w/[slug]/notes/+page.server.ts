@@ -7,10 +7,8 @@ import type { PageServerLoad } from './$types';
 const LIMIT = 200;
 
 export const load: PageServerLoad = async ({ params }) => {
-	const { index, ready, workspaces } = hub();
-	await ready;
-
-	const workspace = (await workspaces()).find((w) => w.slug === params.slug)!;
+	const { index, workspace: find } = await hub();
+	const workspace = (await find(params.slug))!;
 	const day = today();
 	const notes = index.notes({ under: workspace.folders, limit: LIMIT }).map((note) => ({
 		path: note.path,

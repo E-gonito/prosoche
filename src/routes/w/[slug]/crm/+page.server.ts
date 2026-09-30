@@ -8,9 +8,7 @@ import type { PageServerLoad } from './$types';
  * first. The layout has already answered 404 for an unknown workspace.
  */
 export const load: PageServerLoad = async ({ params }) => {
-	const { vault, ready, workspaces } = hub();
-	await ready;
-
-	const workspace = (await workspaces()).find((w) => w.slug === params.slug)!;
+	const { vault, workspace: find } = await hub();
+	const workspace = (await find(params.slug))!;
 	return { contacts: await listContacts(vault, workspace), kinds: [...CONTACT_KINDS] as string[], today: today() };
 };
