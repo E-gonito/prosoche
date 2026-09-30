@@ -21,7 +21,7 @@ import { formatMinutes } from '$lib/shared/time';
 import type { NoteIndex } from '../index/index';
 import type { Vault } from '../vault/index';
 import { config } from '../config';
-import { displayText, isDone, isOpen, matchKey, type Task } from '$lib/shared/task';
+import { displayText, isDone, isOpen, isSkipped, matchKey, type Task } from '$lib/shared/task';
 import { compareCards, type OpenCard } from '$lib/shared/kanban';
 import { openCards } from '../kanban';
 import { loadWorkspaces } from '../workspaces';
@@ -85,7 +85,7 @@ export function gather(index: NoteIndex, day: DayKey, cards: OpenCard[]): Briefi
 		.findTasks({ blocked: true, statuses: ['todo', 'in-progress', 'blocked'], excludePrefixes: [config.dailyNote.folder], limit: 40 })
 		.filter(isOpen);
 
-	const unfinished = index.tasksIn(yesterdayPath).filter((t) => !t.fenced && isOpen(t) && !isDone(t));
+	const unfinished = index.tasksIn(yesterdayPath).filter((t) => !t.fenced && isOpen(t));
 
 	// What each board has waiting, minus whatever the day already plans. A
 	// task on the day that quotes a card's words is that card planned, so the
@@ -136,7 +136,7 @@ export function render(facts: BriefingFacts, opener = ''): string {
 		'Scheduled',
 		facts.scheduled.map((t) => {
 			const time = t.startMin === null ? '' : `${formatMinutes(t.startMin)}${t.endMin === null ? '' : `-${formatMinutes(t.endMin)}`} `;
-			return `- ${time}${displayText(t.text)}${isDone(t) ? ' ✅' : ''}`;
+			return `- ${time}${displayText(t.text)}${isDone(t) ? ' ✅' : isSkipped(t) ? ' (skipped)' : ''}`;
 		})
 	);
 	section('Overdue', facts.overdue.map((t) => `- ${displayText(t.text)} (due ${t.due}) — ${link(t.path)}`));

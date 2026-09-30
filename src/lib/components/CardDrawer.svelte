@@ -28,7 +28,7 @@
 		{ value: 'in-progress', label: 'In progress' },
 		{ value: 'blocked', label: 'Blocked' },
 		{ value: 'done', label: 'Done' },
-		{ value: 'cancelled', label: 'Cancelled' }
+		{ value: 'cancelled', label: 'Skipped' }
 	];
 
 	// The drawer is opened for one card and closed again, so these start from

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatMinutes } from '$lib/shared/time';
-	import { displayText, isDone, type Task } from '$lib/shared/task';
+	import { displayText, isDone, isSkipped, type Task } from '$lib/shared/task';
 	import { editTask } from '$lib/client/api';
 	import { startDrag, drag } from '$lib/client/drag.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -37,6 +37,8 @@
 	let saving = $state(false);
 	let adding = $state(false);
 	const done = $derived(isDone(task));
+	// Skipped is struck through like done, and the box takes it back to open.
+	const skipped = $derived(isSkipped(task));
 	const dragging = $derived(drag.task?.path === task.path && drag.task?.line === task.line);
 
 	async function add() {
@@ -54,14 +56,14 @@
 	async function toggle() {
 		if (saving) return;
 		saving = true;
-		const result = await editTask(task, { status: done ? 'todo' : 'done' });
+		const result = await editTask(task, { status: done || skipped ? 'todo' : 'done' });
 		saving = false;
 		if (result.ok) onchange?.(result.value);
 		else onproblem?.(result.message);
 	}
 </script>
 
-<div class="task" data-testid="task-row" data-line={task.line} data-path={task.path} class:done class:saving class:dragging>
+<div class="task" data-testid="task-row" data-line={task.line} data-path={task.path} class:done={done || skipped} class:saving class:dragging>
 	{#if draggable}
 		<span
 			class="grip"
@@ -78,10 +80,10 @@
 		data-testid="checkbox"
 		onclick={toggle}
 		disabled={saving}
-		aria-pressed={done}
-		aria-label={done ? `Mark "${displayText(task.text)}" not done` : `Mark "${displayText(task.text)}" done`}
+		aria-pressed={done ? true : skipped ? 'mixed' : false}
+		aria-label={done ? `Mark "${displayText(task.text)}" not done` : skipped ? `Mark "${displayText(task.text)}" not skipped` : `Mark "${displayText(task.text)}" done`}
 	>
-		{done ? '✓' : ''}
+		{done ? '✓' : skipped ? '–' : ''}
 	</button>
 	{#if task.startMin !== null && task.endMin !== null}
 		<span class="time">{formatMinutes(task.startMin)}–{formatMinutes(task.endMin)}</span>

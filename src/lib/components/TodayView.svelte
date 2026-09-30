@@ -46,7 +46,8 @@
 			label: WEEKDAYS[i],
 			value: d.done,
 			total: d.total,
-			text: d.total ? `${d.done} of ${d.total}` : 'no tasks',
+			// A skipped task is in neither number: it shortens the bar, and is named.
+			text: d.total || d.skipped ? `${d.done} of ${d.total}${d.skipped ? `, ${d.skipped} skipped` : ''}` : 'no tasks',
 			href: d.day === data.today ? '/today' : `/today/${d.day}`
 		}))
 	);

@@ -62,6 +62,22 @@ describe('updateTask', () => {
 		expect(result).toEqual({ ok: false, reason: 'line-changed', current: '- [x] 09:30 - 10:00 Morning stretch `Q1`' });
 	});
 
+	it('skips a task by one character and reopens it to the original bytes', async () => {
+		const before = (await vault.read('day.md')).content;
+		const line = before.split('\n')[4];
+		const skipped = await updateTask(vault, 'day.md', 4, line, { status: 'cancelled' });
+		expect(skipped.ok && skipped.task.status).toBe('cancelled');
+		const after = (await vault.read('day.md')).content;
+		expect(after).toBe(before.replace('- [ ] Walk the dog', '- [-] Walk the dog'));
+
+		// Reopening needs the skipped line as the caller now sees it; the line
+		// it had before is stale and refused.
+		expect(await updateTask(vault, 'day.md', 4, line, { status: 'todo' })).toMatchObject({ ok: false, reason: 'line-changed' });
+		const reopened = await updateTask(vault, 'day.md', 4, after.split('\n')[4], { status: 'todo' });
+		expect(reopened.ok).toBe(true);
+		expect((await vault.read('day.md')).content).toBe(before);
+	});
+
 	it('still ticks when a different line changed', async () => {
 		const lines = (await vault.read('day.md')).content.split('\n');
 		const target = lines[1];

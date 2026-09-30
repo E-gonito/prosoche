@@ -159,6 +159,39 @@ describe('rewriteTaskLine', () => {
 	});
 });
 
+// Skipped is Obsidian's cancelled checkbox, `- [-]`. The evening review writes
+// it and takes it back, one character each way, on any line shape above.
+describe('skipped, `[-]`', () => {
+	const shapes = Object.entries(REAL);
+
+	it.each(shapes)('reads %s as skipped once its box is a dash, and keeps every other field', (_name, raw) => {
+		const skipped = raw.replace(/\[.\]/, '[-]');
+		const open = parseTaskLine(raw)!;
+		const t = parseTaskLine(skipped)!;
+		expect([t.status, t.statusChar]).toEqual(['cancelled', '-']);
+		expect([t.start, t.end, t.text, t.quadrant]).toEqual([open.start, open.end, open.text, open.quadrant]);
+		expect(rewriteTaskLine(skipped, {})).toBe(skipped);
+		expect(rewriteTaskLine(skipped, { status: 'cancelled' })).toBe(skipped);
+	});
+
+	it.each(shapes)('skips %s by one character and reopens it to the original bytes', (_name, raw) => {
+		const status = parseTaskLine(raw)!.status;
+		const skipped = rewriteTaskLine(raw, { status: 'cancelled' });
+		expect(skipped.length).toBe(raw.length);
+		expect(Array.from({ length: raw.length }, (_, i) => i).filter((i) => skipped[i] !== raw[i])).toEqual([3]);
+		expect(rewriteTaskLine(skipped, { status })).toBe(raw);
+	});
+
+	it.each([
+		['open to skipped', '- [ ] Walk the dog', 'cancelled', '- [-] Walk the dog'],
+		['done to skipped', '- [x] 09:30 - 10:00 Stretch `Q1`', 'cancelled', '- [-] 09:30 - 10:00 Stretch `Q1`'],
+		['skipped back to open', '\t- [-] Nested, indented ', 'todo', '\t- [ ] Nested, indented '],
+		['skipped to done', '* [-] Star bullet 📅 2026-09-30', 'done', '* [x] Star bullet 📅 2026-09-30']
+	] as const)('%s', (_name, raw, status, expected) => {
+		expect(rewriteTaskLine(raw, { status })).toBe(expected);
+	});
+});
+
 // Tags, ids, dependencies and due dates. A board needs to know which
 // workspace claims a line and what it waits on, and the Blocked lens needs to
 // follow one task to another, so these are read from the line rather than

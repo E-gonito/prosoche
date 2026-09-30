@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareTasks, displayText, matchKey, taskMinutes, isOpen, type Task } from './task';
+import { compareTasks, displayText, matchKey, taskMinutes, isDone, isOpen, isSkipped, tally, type Task, type TaskStatus } from './task';
 
 const task = (over: Partial<Task> = {}): Task => ({
 	path: 'a.md',
@@ -67,11 +67,22 @@ describe('taskMinutes', () => {
 	});
 });
 
-describe('isOpen', () => {
-	it('counts cancelled as closed', () => {
-		expect(isOpen(task({ status: 'cancelled' }))).toBe(false);
-		expect(isOpen(task({ status: 'done' }))).toBe(false);
-		expect(isOpen(task({ status: 'blocked' }))).toBe(true);
+describe('open, done and skipped', () => {
+	it.each<[TaskStatus, boolean, boolean, boolean]>([
+		['todo', true, false, false],
+		['in-progress', true, false, false],
+		['blocked', true, false, false],
+		['done', false, true, false],
+		// Skipped is neither owed nor done.
+		['cancelled', false, false, true]
+	])('%s: open %s, done %s, skipped %s', (status, open, done, skipped) => {
+		const t = task({ status });
+		expect([isOpen(t), isDone(t), isSkipped(t)]).toEqual([open, done, skipped]);
+	});
+
+	it('tallies each task into exactly one of the three', () => {
+		const statuses: TaskStatus[] = ['todo', 'done', 'done', 'cancelled', 'blocked', 'in-progress'];
+		expect(tally(statuses.map((status) => task({ status })))).toEqual({ done: 2, skipped: 1, open: 3 });
 	});
 });
 

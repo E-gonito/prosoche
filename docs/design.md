@@ -93,7 +93,7 @@ A media query cannot read a custom property, so two widths are written out:
 - **`.prose`**: rendered markdown, close to Obsidian's reading view.
 - **`.caps`**: small-capitals type: a label, a card's heading, a column's.
 - **`.dot`** (`.lg`): a workspace's colour, `style="--dot: {color}"`; `.lg` in headings.
-- **`.box`**: a tick box, a button whose `aria-pressed` says whether it is ticked.
+- **`.box`**: a tick box; `aria-pressed` is ticked, `mixed` skipped (`- [-]`).
 - **`.modal`**: a native `<dialog>` shell, centred. One `dialog::backdrop` serves all.
 - **`.drag-ghost`**: the label that follows the pointer during a drag.
 - **`.add-row`**: a `.field` and its button on one line; the field takes the room.

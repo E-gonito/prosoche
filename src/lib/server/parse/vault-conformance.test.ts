@@ -94,6 +94,18 @@ describe.skipIf(!ENABLED)('a real vault', () => {
 		expect(lost.map(({ file, t }) => `${file}: ${JSON.stringify(t.raw)}`)).toEqual([]);
 	});
 
+	// The evening review's two writes: skip a task, and take the skip back.
+	// Each must change the one checkbox character and nothing else.
+	it('skips every task by one character and reopens it to the original bytes', () => {
+		const drifted = tasks.filter(({ t }) => {
+			const skipped = rewriteTaskLine(t.raw, { status: 'cancelled' });
+			// By UTF-16 unit, as the spans are: a line may carry emoji.
+			const changed = Array.from({ length: skipped.length }, (_, i) => i).filter((i) => skipped[i] !== t.raw[i]).length;
+			return skipped.length !== t.raw.length || changed > 1 || rewriteTaskLine(skipped, { status: t.status }) !== t.raw;
+		});
+		expect(drifted.map(({ file, t }) => `${file}: ${JSON.stringify(t.raw)}`)).toEqual([]);
+	});
+
 	it('only ever reads quadrants in range', () => {
 		const seen = [...new Set(tasks.map(({ t }) => t.quadrant).filter((q) => q !== null))].sort();
 		expect(seen.every((q) => q >= 1 && q <= 4)).toBe(true);

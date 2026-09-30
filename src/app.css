@@ -255,6 +255,8 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 }
 .box:hover { border-color: var(--accent); }
 .box[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); }
+/* Skipped: let go rather than done, so ink rather than the accent. */
+.box[aria-pressed='mixed'] { background: var(--muted); border-color: var(--muted); }
 
 /* A dialog: the native element, centred, with one backdrop for all of them. */
 dialog::backdrop { background: rgba(42, 38, 34, 0.35); }

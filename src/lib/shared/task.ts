@@ -47,9 +47,31 @@ export function workspaceTags(task: Task): string[] {
 
 export const OPEN_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'blocked'];
 
-export const isDone = (task: Task): boolean => task.status === 'done' || task.status === 'cancelled';
+/**
+ * A task is in exactly one of three states: open (still owed), done, or
+ * skipped. Skipped is Obsidian's cancelled checkbox, `- [-]`: the day let it
+ * go, so it is neither counted as done nor owed. The three predicates below
+ * are the one place that sorting happens.
+ */
+export const isOpen = (task: Task): boolean => OPEN_STATUSES.includes(task.status);
 
-export const isOpen = (task: Task): boolean => !isDone(task);
+/** Ticked, `[x]` or `[X]`. A skipped task is not done. */
+export const isDone = (task: Task): boolean => task.status === 'done';
+
+/** Let go, `[-]`: struck through wherever it is shown, and owed by nobody. */
+export const isSkipped = (task: Task): boolean => task.status === 'cancelled';
+
+/**
+ * How many of `tasks` are done, skipped and still open. Pure; every count of
+ * a day's tasks (Today's summary, the week bars, the evening review) is this.
+ */
+export function tally(tasks: Task[]): { done: number; skipped: number; open: number } {
+	return {
+		done: tasks.filter(isDone).length,
+		skipped: tasks.filter(isSkipped).length,
+		open: tasks.filter(isOpen).length
+	};
+}
 
 /**
  * Order of work on a screen: most urgent quadrant first, then the soonest due
