@@ -77,8 +77,9 @@ The box at the top of Today's Unscheduled list adds a task to the day: with
 a time range (`10:00 - 10:30 Dentist`) it lands on the timeline, without one
 it waits in the list until you drag its ⠿ grip onto an hour.
 
-Press `c` for a capture box anywhere, or share to the app from your phone.
-Those lines go where their words say:
+For a thought that is not a task, use the Inbox card's box on Today, press
+`c` anywhere, or share to the app from your phone. Those lines go where
+their words say:
 
 - a time range goes into today's note and onto the timeline;
 - `#ws/<slug>` or a workspace alias puts it on that workspace's board;

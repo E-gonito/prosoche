@@ -125,7 +125,7 @@ test.describe('Inbox', () => {
 		await expect(page.getByTestId('inbox-row')).toHaveCount(4);
 	});
 
-	test('the card is hidden once the inbox is empty', async ({ page }) => {
+	test('the card keeps its capture box once the inbox is empty, and loses its list and count', async ({ page }) => {
 		await page.goto('/inbox');
 		for (let i = 0; i < 4; i++) {
 			await page.getByTestId('inbox-row').first().focus();
@@ -134,7 +134,21 @@ test.describe('Inbox', () => {
 		}
 		await expect(page.getByTestId('inbox-empty')).toBeVisible();
 		await page.goto('/today');
-		await expect(page.getByTestId('today-inbox')).toHaveCount(0);
+		const card = page.getByTestId('today-inbox');
+		await expect(card.getByTestId('capture-row')).toBeVisible();
+		await expect(card.locator('.inbox-line')).toHaveCount(0);
+		await expect(card.getByRole('link')).toHaveCount(0);
+	});
+
+	test('the Inbox card’s box on Today captures a thought into the inbox, not the day', async ({ page }) => {
+		const note = vaultFile(TODAY_NOTE);
+		await page.goto('/today');
+		const box = page.getByTestId('today-inbox').getByTestId('capture-row');
+		await box.getByLabel('Quick capture').fill('remember the umbrella');
+		await box.getByRole('button', { name: 'Add' }).click();
+		await expect(page.getByText('Saved to Inbox/Capture.md')).toBeVisible();
+		await expect(page.getByTestId('today-inbox').locator('.inbox-line').first()).toContainText('remember the umbrella');
+		expect(vaultFile(TODAY_NOTE)).toBe(note);
 	});
 
 	test('x drops a line: one character on one line, nothing deleted', async ({ page }) => {
