@@ -36,7 +36,7 @@ import { findGoal, goalRefs, readGoals } from '../study/goals';
 import type { Subject } from '../study/subjects';
 import type { Vault } from '../vault/index';
 import { wrapAsData, type Schema } from './guardrails';
-import { runDraft, type DraftOptions, type Source } from './meeting-drafts';
+import { runDraft, type DraftOptions, type Source } from './run';
 import type { CardDraft, DraftedCard, DroppedCard, SourceBatch } from '$lib/shared/study';
 
 /** How many cards a run may be asked for; the page offers these. */
