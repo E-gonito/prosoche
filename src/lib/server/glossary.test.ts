@@ -321,6 +321,8 @@ describe('the study link and the scan, on disk', () => {
 		await vault.write('CS/TCP.md', TCP);
 		await vault.write('CS/Deep/UDP.md', '# UDP\n');
 		await vault.write('Work/Handbook.md', '# H\n');
+		await vault.write('Study/CS/Flashcards/Glossary/CS/Net.md', '#flashcards\n\nUDP\n??\nA datagram protocol.\n');
+		await vault.write('Study/CS/Goals.md', '## Networks\n');
 		await vault.write('_hub/ai.md', '---\nenabled: true\n---\n');
 		await vault.write('Private/Diary.md', 'secret', undefined, { scope: 'private' });
 	});
@@ -353,11 +355,13 @@ describe('the study link and the scan, on disk', () => {
 		expect(await glossariesFor(vault, [], 'nope')).toEqual([]);
 	});
 
-	it('lists the folders and notes a scan may read, never the hub, the glossaries or the private folder', async () => {
+	it('lists the folders and notes a scan may read, never the hub, the glossaries, card files or the private folder', async () => {
 		await vault.write(PATH, TWO);
-		expect(await noteFolders(vault)).toEqual(['CS', 'CS/Deep', 'Work']);
+		expect(await noteFolders(vault)).toEqual(['CS', 'CS/Deep', 'Study', 'Study/CS', 'Work']);
 		expect(await scanNotes(vault, ['/CS/'])).toEqual(['CS/Deep/UDP.md', 'CS/TCP.md']);
 		expect(await scanNotes(vault, ['CS/Deep', 'Work', 'CS/Deep'])).toEqual(['CS/Deep/UDP.md', 'Work/Handbook.md']);
+		// A subject's folder is a fine source; its cards are not notes and are left out.
+		expect(await scanNotes(vault, ['Study/CS'])).toEqual(['Study/CS/Goals.md']);
 		expect(await scanNotes(vault, ['C'])).toEqual([]);
 		expect(await scanNotes(vault, ['', '/'])).toEqual([]);
 		expect(await scanNotes(vault, ['_hub', 'Glossaries', 'Private'])).toEqual([]);

@@ -226,6 +226,10 @@ terms so far" and a **Stop** button. Stop drops the batch in flight; the
 terms found so far stay. Scanning again while a list is not yet added asks
 "Discard the 12 terms not yet added?" in place first.
 
+A `Flashcards/` folder anywhere is never read and never offered as a
+source: cards are made from glossaries and decks, and reading them would
+feed a glossary its own cards back.
+
 Each batch is one read-only run through the same runner as every AI
 feature: the kill switch and the budget are checked first, the CLI gets no
 tools, and the run is logged. Claude reads the notes as quoted data, and
