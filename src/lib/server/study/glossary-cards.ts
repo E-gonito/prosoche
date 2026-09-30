@@ -25,13 +25,13 @@
  *     ??
  *     An isolated virtual network…
  *     → Where eye2gene's endpoints live.
- *     <!--SR:!2026-10-02,3,250!2026-10-01,1,230-->
+ *     <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->
  *
  * These files are prosoche's, as a workspace's `Board.md` is: their cards
- * follow the glossary. What the author or the plugin adds is theirs and is
- * kept: `goal:` and any other frontmatter, every `<!--SR:…-->` review
- * comment, a card for a term since deleted or renamed, and any card that
- * matches no term.
+ * follow the glossary. What the author or a review adds is theirs and is
+ * kept: `goal:` and any other frontmatter, every review comment (prosoche's
+ * `<!--fsrs:…-->` or the plugin's legacy `<!--SR:…-->`), a card for a term
+ * since deleted or renamed, and any card that matches no term.
  *
  * `reconcileGlossaryCards` is the whole policy, and it is pure: the entries
  * and the files as they are in, the new text of each file that changes out.

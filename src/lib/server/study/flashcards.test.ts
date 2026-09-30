@@ -5,10 +5,15 @@ import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { NoteIndex } from '../index/index';
 import { dueCards, fileGoal, formatComment, isCardSource, parseEntries, review, scanCards, setCardFileGoal } from './flashcards';
+import { fromSm2, outcomes, type Schedule } from '$lib/shared/scheduler';
+
+/** A review-state schedule for the comment tests. */
+const REVIEWED: Schedule = { due: '2026-10-02', stability: 3.21, difficulty: 5.8, reps: 4, lapses: 0, state: 'review', last: '2026-09-29' };
 
 describe('scanCards', () => {
 	it('reads an inline card and the schedule on the line after it', () => {
-		const note = ['#flashcards', '', 'What is a pointer::An address', '<!--SR:!2026-09-21,4,270-->', ''].join('\n');
+		const comment = '<!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->';
+		const note = ['#flashcards', '', 'What is a pointer::An address', comment, ''].join('\n');
 		const [card] = scanCards(note, 'CS/Pointers.md');
 		expect(card).toMatchObject({
 			path: 'CS/Pointers.md',
@@ -19,8 +24,15 @@ describe('scanCards', () => {
 			endLine: 2,
 			scheduleLine: 3,
 			scheduleExists: true,
-			schedule: { due: '2026-09-21', interval: 4, ease: 270 }
+			schedule: REVIEWED
 		});
+		expect(card.expectedRaw).toBe(comment);
+	});
+
+	it('reads the plugin’s legacy comment as FSRS state seeded from SM-2', () => {
+		const note = ['#flashcards', '', 'What is a pointer::An address', '<!--SR:!2026-09-21,4,270-->', ''].join('\n');
+		const [card] = scanCards(note, 'CS/Pointers.md');
+		expect(card).toMatchObject({ scheduleLine: 3, scheduleExists: true, schedule: fromSm2('2026-09-21', 4, 270) });
 		expect(card.expectedRaw).toBe('<!--SR:!2026-09-21,4,270-->');
 	});
 
@@ -123,6 +135,7 @@ describe('isCardSource', () => {
 
 	it('accepts a note that already carries a schedule', () => {
 		expect(isCardSource(['notes'], 'A::B\n<!--SR:!2026-01-01,1,250-->')).toBe(true);
+		expect(isCardSource(['notes'], 'A::B\n<!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29-->')).toBe(true);
 	});
 
 	it('rejects a note that merely contains something card-shaped', () => {
@@ -131,29 +144,34 @@ describe('isCardSource', () => {
 });
 
 describe('the schedule comment', () => {
-	it('round-trips the format the plugin writes', () => {
-		const entries = parseEntries('<!--SR:!2023-09-02,4,270!2023-09-02,5,270-->');
-		expect(entries).toEqual([
-			{ due: '2023-09-02', interval: 4, ease: 270 },
-			{ due: '2023-09-02', interval: 5, ease: 270 }
-		]);
-		expect(formatComment(entries, 0, 2, { due: '2026-10-01', interval: 9, ease: 290 })).toBe(
-			'<!--SR:!2026-10-01,9,290!2023-09-02,5,270-->'
-		);
+	it('round-trips prosoche’s own format, sibling by sibling', () => {
+		const comment = '<!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!2026-10-01,1.02,6.3,1,0,learning,2026-09-29-->';
+		const entries = parseEntries(comment);
+		expect(entries).toEqual([REVIEWED, { due: '2026-10-01', stability: 1.02, difficulty: 6.3, reps: 1, lapses: 0, state: 'learning', last: '2026-09-29' }]);
+		expect(formatComment(entries, 0, 2, entries[0]!)).toBe(comment);
 	});
 
-	it('reads the older form without the leading bang', () => {
-		expect(parseEntries('<!--SR:2025-12-21,4,270-->')).toEqual([{ due: '2025-12-21', interval: 4, ease: 270 }]);
+	it('reads a side never answered, and one it cannot read, as new', () => {
+		expect(parseEntries('<!--fsrs:new!2026-10-02,3.21,5.8,4,0,review,2026-09-29!garbled-->')).toEqual([null, REVIEWED, null]);
 	});
 
-	it('reads a fractional interval as whole days', () => {
-		expect(parseEntries('<!--SR:!2025-12-21,2.5,250-->')).toEqual([{ due: '2025-12-21', interval: 3, ease: 250 }]);
+	it('reads the plugin’s format, current and older, through fromSm2', () => {
+		expect(parseEntries('<!--SR:!2023-09-02,4,270!2023-09-02,5,270-->')).toEqual([fromSm2('2023-09-02', 4, 270), fromSm2('2023-09-02', 5, 270)]);
+		expect(parseEntries('<!--SR:2025-12-21,4,270-->')).toEqual([fromSm2('2025-12-21', 4, 270)]);
 	});
 
-	it('keeps unreviewed siblings marked new', () => {
-		expect(formatComment([], 1, 3, { due: '2026-10-01', interval: 9, ease: 290 })).toBe(
-			'<!--SR:!2000-01-01,1,250!2026-10-01,9,290!2000-01-01,1,250-->'
-		);
+	it('reads a fractional legacy interval as whole days', () => {
+		expect(parseEntries('<!--SR:!2025-12-21,2.5,250-->')).toEqual([fromSm2('2025-12-21', 3, 250)]);
+	});
+
+	it('reads the plugin’s magic date as a new sibling', () => {
+		expect(parseEntries('<!--SR:!2000-01-01,1,250!2026-10-01,9,290-->')).toEqual([null, fromSm2('2026-10-01', 9, 290)]);
+	});
+
+	it('writes unreviewed siblings as new, and a legacy comment whole in the new form', () => {
+		expect(formatComment([], 1, 3, REVIEWED)).toBe('<!--fsrs:new!2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->');
+		const legacy = parseEntries('<!--SR:!2026-09-01,10,250!2000-01-01,1,250-->');
+		expect(formatComment(legacy, 1, 2, REVIEWED)).toBe('<!--fsrs:2026-09-01,10,5,1,0,review,2026-08-22!2026-10-02,3.21,5.8,4,0,review,2026-09-29-->');
 	});
 });
 
@@ -184,15 +202,16 @@ describe('review', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
-	it('rewrites one line and leaves every other byte alone', async () => {
+	it('rewrites one line, a legacy comment in the new form, and leaves every other byte alone', async () => {
 		const before = (await vault.read('CS/Basics.md')).content.split('\n');
 		const [card] = scanCards(before.join('\n'), 'CS/Basics.md');
 		const result = await review(vault, card, 'good', '2026-09-21');
 		expect(result.ok).toBe(true);
 
 		const after = (await vault.read('CS/Basics.md')).content.split('\n');
-		// 20 days late, good: (10 + 10) * 2.5 = 50 days on from today.
-		expect(after[3]).toBe('<!--SR:!2026-11-10,50,250-->');
+		const next = outcomes(fromSm2('2026-09-01', 10, 250), '2026-09-21').good.schedule;
+		expect(after[3]).toBe(formatComment([], 0, 1, next));
+		expect(after[3]).toMatch(/^<!--fsrs:\d{4}-\d{2}-\d{2},[\d.]+,[\d.]+,2,0,review,2026-09-21-->$/);
 		expect(after.filter((_, i) => i !== 3)).toEqual(before.filter((_, i) => i !== 3));
 	});
 
@@ -203,7 +222,8 @@ describe('review', () => {
 		expect(result.ok && result.shift).toEqual({ path: 'CS/Basics.md', afterLine: 5, by: 1 });
 
 		const after = (await vault.read('CS/Basics.md')).content.split('\n');
-		expect(after[6]).toBe('<!--SR:!2026-09-25,4,270-->');
+		expect(after[6]).toBe(formatComment([], 0, 1, outcomes(null, '2026-09-21').easy.schedule));
+		expect(after[6]).toMatch(/^<!--fsrs:.*,1,0,review,2026-09-21-->$/);
 		expect(after.filter((_, i) => i !== 6)).toEqual(before);
 	});
 
@@ -214,7 +234,9 @@ describe('review', () => {
 		if (!once.ok) return;
 		const twice = await review(vault, once.card, 'good', '2026-09-21');
 		expect(twice.ok).toBe(true);
-		expect((await vault.read('CS/Basics.md')).content).toContain('<!--SR:!2026-09-29,8,250-->');
+		const expected = outcomes(outcomes(null, '2026-09-21').good.schedule, '2026-09-21').good.schedule;
+		expect(twice.ok && twice.card.schedule).toEqual(expected);
+		expect((await vault.read('CS/Basics.md')).content).toContain(formatComment([], 0, 1, expected));
 	});
 
 	it('refuses when the line changed in Obsidian since the card was read', async () => {
@@ -234,8 +256,10 @@ describe('review', () => {
 		await vault.write('CS/Cloze.md', '#flashcards\n\nA ==one== and ==two==.\n<!--SR:!2026-09-01,10,250!2026-09-02,20,250-->\n');
 		const cards = scanCards((await vault.read('CS/Cloze.md')).content, 'CS/Cloze.md');
 		await review(vault, cards[1], 'hard', '2026-09-21');
-		// Nineteen days late, hard: (20 + 19/4) * 0.5 = 12 days, ease down to 230.
-		expect((await vault.read('CS/Cloze.md')).content).toContain('<!--SR:!2026-09-01,10,250!2026-10-03,12,230-->');
+		const hard = outcomes(fromSm2('2026-09-02', 20, 250), '2026-09-21').hard.schedule;
+		// The graded deletion moves on; its sibling keeps its state, now written in the new form.
+		expect((await vault.read('CS/Cloze.md')).content).toContain(formatComment([fromSm2('2026-09-01', 10, 250)], 1, 2, hard));
+		expect((await vault.read('CS/Cloze.md')).content).toContain('<!--fsrs:2026-09-01,10,5,1,0,review,2026-08-22!');
 	});
 });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanTasks, rewriteTaskLine } from './task';
+import { parseEntries, scanCards } from '../study/flashcards';
 
 /**
  * Runs the parser over an entire real vault. Its job is not to check any one
@@ -96,5 +97,21 @@ describe.skipIf(!ENABLED)('a real vault', () => {
 	it('only ever reads quadrants in range', () => {
 		const seen = [...new Set(tasks.map(({ t }) => t.quadrant).filter((q) => q !== null))].sort();
 		expect(seen.every((q) => q >= 1 && q <= 4)).toBe(true);
+	});
+
+	// Reading a card never writes it: a legacy `<!--SR:…-->` comment is only
+	// rewritten when its card is graded. What reading must never do is drop a
+	// reviewed side, which would quietly reset it to new on its next grade.
+	it('reads every reviewed side of every card comment, legacy or new', () => {
+		const lost: string[] = [];
+		for (const file of files) {
+			const content = readFileSync(file, 'utf8');
+			for (const card of scanCards(content, file)) {
+				if (!card.scheduleExists || card.index !== 0) continue;
+				const reviewed = card.expectedRaw.split('!').filter((p) => /\d{4}-\d{2}-\d{2}/.test(p) && !p.includes('2000-01-01')).length;
+				if (parseEntries(card.expectedRaw).filter(Boolean).length !== reviewed) lost.push(`${file}: ${card.expectedRaw}`);
+			}
+		}
+		expect(lost).toEqual([]);
 	});
 });

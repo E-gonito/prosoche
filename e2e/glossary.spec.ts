@@ -162,8 +162,8 @@ test.describe('Glossary', () => {
 		// DVC has a definition; MLflow, still to look up, has no card yet.
 		expect(vaultFile(CARDS)).toBe(`${header}\n${dvcCard('An open-source tool that versions datasets and models alongside git.')}`);
 
-		// A review comment written in Obsidian stays when the definition changes.
-		const comment = '<!--SR:!2030-01-01,3,250!2030-01-02,1,230-->';
+		// A card's review comment stays when the definition changes.
+		const comment = '<!--fsrs:2030-01-01,3.21,5.8,4,0,review,2029-12-29!new-->';
 		writeFileSync(join(VAULT, CARDS), `${vaultFile(CARDS)}${comment}\n`);
 		const dvc = page.getByTestId('glossary-entry').filter({ hasText: 'DVC' });
 		await dvc.getByTestId('edit-term-open').click();

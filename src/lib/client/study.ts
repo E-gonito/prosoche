@@ -13,7 +13,7 @@
 
 import type { Result, Task } from './api';
 import type { Card, CardShift, Graded, ReadingList, ReadingOp } from '$lib/shared/study';
-import type { Grade } from '$lib/shared/sm2';
+import type { Grade } from '$lib/shared/scheduler';
 import type { DeckImport } from '$lib/shared/anki-import';
 
 export * from '$lib/shared/study';

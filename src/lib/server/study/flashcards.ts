@@ -2,12 +2,22 @@
  * Flashcards: finding them in the vault's markdown, and writing reviews back.
  *
  * Cards are not stored anywhere. They are regions of the user's notes, written
- * in Obsidian Spaced Repetition's syntax, and their review state is the
- * `<!--SR:!date,interval,ease-->` comment the plugin reads and writes. This
- * module is the only place that knows that syntax, and it is the only place
- * that writes it. Nothing about a card lives in SQLite, so a card reviewed in
- * Obsidian is due correctly here and the other way round, and deleting the
- * index changes nothing.
+ * in Obsidian Spaced Repetition's card syntax, and their review state is one
+ * comment of prosoche's own on the line after the card, holding the FSRS
+ * state of each card side (see `shared/scheduler.ts`):
+ *
+ *     <!--fsrs:2026-10-02,3.21,5.8,4,0,review,2026-09-29!new-->
+ *
+ * that is `due,stability,difficulty,reps,lapses,state,last review` per side,
+ * `!` between sides, and `new` for a side never answered. This module is the
+ * only place that knows that syntax, and it is the only place that writes
+ * it. Nothing about a card lives in SQLite, so deleting the index changes
+ * nothing.
+ *
+ * The plugin's own `<!--SR:!date,interval,ease-->` comment is still read, as
+ * FSRS state seeded from SM-2, and is rewritten in the new form only when
+ * that card is next graded. The plugin no longer maintains these cards: a
+ * card graded here is one it cannot read.
  *
  * Three things were checked against the real vault before this was written,
  * because two of them contradicted the specification:
@@ -33,7 +43,7 @@ import { basename, parseNote } from '../parse/note';
 import { setFrontmatterField } from '../parse/frontmatter';
 import { goalOf } from './goals';
 import { inScope, scopedNotes } from './scope';
-import { isDue, schedule as nextSchedule, type Grade, type Schedule } from '$lib/shared/sm2';
+import { fromSm2, outcomes, type CardState, type Grade, type Schedule } from '$lib/shared/scheduler';
 import { slugify } from '$lib/shared/slug';
 import type { Card, CardFile, CardKind, CardQueue, StudyScope } from '$lib/shared/study';
 import type { NoteIndex } from '../index/index';
@@ -48,10 +58,15 @@ const SEPARATORS: Array<{ text: string; kind: CardKind }> = [
 ];
 const MULTILINE: Record<string, CardKind> = { '?': 'multiline', '??': 'multiline-reversed' };
 
+const OPEN = '<!--fsrs:';
+/** The Obsidian plugin's comment, read but never written. */
 const SR_OPEN = '<!--SR:';
-const SR_CLOSE = '-->';
+const CLOSE = '-->';
 /** The plugin's stand-in due date for a sibling card that is still new. */
 const NEW_CARD_DATE = '2000-01-01';
+/** How the comment marks a card side never answered. */
+const NEW = 'new';
+const STATES: readonly CardState[] = ['learning', 'review', 'relearning'];
 
 /** The tag the plugin harvests from, matching `flashcardTags` in its settings. */
 export const FLASHCARD_TAG = 'flashcards';
@@ -150,7 +165,7 @@ interface Line {
  */
 export function isCardSource(tags: string[], content: string): boolean {
 	const tagged = tags.some((t) => t === FLASHCARD_TAG || t.startsWith(`${FLASHCARD_TAG}/`));
-	return tagged || content.includes(SR_OPEN);
+	return tagged || content.includes(OPEN) || content.includes(SR_OPEN);
 }
 
 interface DueQuery {
@@ -231,7 +246,7 @@ export async function dueCards(vault: Vault, index: NoteIndex, query: DueQuery):
 	}
 
 	const released = releaseNew(sources, query.newCards);
-	const isReady = (c: Card) => (c.schedule === null ? released === null || released.has(c) : isDue(c.schedule, query.on));
+	const isReady = (c: Card) => (c.schedule === null ? released === null || released.has(c) : c.schedule.due <= query.on);
 	const files: CardFile[] = sources.map((s) => ({ path: s.path, title: s.title, goal: s.goal, cards: s.cards.length, due: s.cards.filter(isReady).length }));
 	const cards = sources.filter((s) => wanted === null || (s.goal !== null && slugify(s.goal) === wanted)).flatMap((s) => s.cards);
 
@@ -307,14 +322,14 @@ type Reviewed =
 /**
  * Grade a card and write its new schedule into the note.
  *
- * One line changes: the card's `<!--SR:-->` comment is rewritten in place, or,
- * when the card has never been reviewed, one comment line is inserted directly
- * after the card. Every other byte of the note is left alone, and no note is
- * ever re-serialised from a parsed model.
+ * One line changes: the card's comment is rewritten in place, or, when the
+ * card has never been reviewed, one comment line is inserted directly after
+ * the card. Every other byte of the note is left alone, and no note is ever
+ * re-serialised from a parsed model.
  *
- * The comment is written in the plugin's own format, including the sibling
- * schedules of a cloze's other deletions, so Obsidian reads back exactly what
- * it would have written itself.
+ * The comment is always written in prosoche's `<!--fsrs:…-->` form, holding
+ * the sibling schedules of a cloze's other deletions too; a legacy
+ * `<!--SR:…-->` comment is converted whole when one of its cards is graded.
  *
  * Refuses rather than guesses when the line it expected is no longer there, so
  * a card edited in Obsidian since the page loaded cannot be clobbered.
@@ -327,7 +342,7 @@ export async function review(vault: Vault, card: Card, grade: Grade, today: stri
 	const at = lines[card.scheduleLine] ?? null;
 	if (at !== card.expectedRaw) return { ok: false, reason: 'changed', current: at };
 
-	const schedule = nextSchedule(card.schedule, grade, today);
+	const schedule = outcomes(card.schedule, today)[grade].schedule;
 	const entries = card.scheduleExists ? parseEntries(card.expectedRaw) : [];
 	const comment = formatComment(entries, card.index, card.siblings, schedule);
 
@@ -337,8 +352,8 @@ export async function review(vault: Vault, card: Card, grade: Grade, today: stri
 		// user's, or the plugin's, and not ours to tidy.
 		lines[card.scheduleLine] = `${/^[ \t]*/.exec(at)![0]}${comment}`;
 	} else {
-		// Column zero, because that is the only place the plugin looks for an
-		// inline card's comment.
+		// Column zero, where the plugin put its comments, so a note keeps one
+		// shape whichever wrote it.
 		lines.splice(card.scheduleLine + 1, 0, comment);
 		shift = { path: card.path, afterLine: card.scheduleLine, by: 1 };
 	}
@@ -476,35 +491,49 @@ function build(spec: {
 	};
 }
 
-/** True for a line that is only a schedule comment. */
+/** True for a line that is only a schedule comment, prosoche's or the plugin's. */
 function isSchedule(raw: string): boolean {
 	const trimmed = raw.trim();
-	return trimmed.startsWith(SR_OPEN) && trimmed.endsWith(SR_CLOSE);
+	return (trimmed.startsWith(OPEN) || trimmed.startsWith(SR_OPEN)) && trimmed.endsWith(CLOSE);
 }
 
+const DAY = String.raw`\d{4}-\d{2}-\d{2}`;
+const NUM = String.raw`\d+(?:\.\d+)?`;
+const ENTRY = new RegExp(`^(${DAY}),(${NUM}),(${NUM}),(\\d+),(\\d+),(${STATES.join('|')}),(${DAY})$`);
+
 /**
- * The schedules in one comment, in order. A sibling that has never been
- * reviewed is stored with the plugin's magic date and reads back as null, so a
- * new cloze deletion inside a reviewed card is still offered.
+ * The schedules in one comment, in order, null for a side never answered, so
+ * a new cloze deletion inside a reviewed card is still offered. Pure.
  *
- * Accepts the current `!date,interval,ease` form and the older form without
- * the `!`, and tolerates a fractional interval by rounding it, because older
- * plugin versions wrote them.
+ * Reads prosoche's `<!--fsrs:…-->` and the plugin's `<!--SR:…-->`, whose
+ * SM-2 entries become FSRS state through `fromSm2`. Of the plugin's forms it
+ * accepts the current `!date,interval,ease`, the older one without the `!`,
+ * a fractional interval (rounded, as older versions wrote them) and its
+ * magic date for a new sibling. An entry it cannot read is null.
  */
 export function parseEntries(comment: string): Array<Schedule | null> {
-	const inner = comment.trim().slice(SR_OPEN.length, -SR_CLOSE.length);
+	const trimmed = comment.trim();
+	if (trimmed.startsWith(OPEN)) {
+		return trimmed.slice(OPEN.length, -CLOSE.length).split('!').map((part) => {
+			const m = ENTRY.exec(part.trim());
+			if (!m) return null;
+			const [, due, stability, difficulty, reps, lapses, state, last] = m;
+			return { due, stability: Number(stability), difficulty: Number(difficulty), reps: Number(reps), lapses: Number(lapses), state: state as CardState, last };
+		});
+	}
+	const inner = trimmed.slice(SR_OPEN.length, -CLOSE.length);
 	const parts = inner.startsWith('!') ? inner.split('!').filter(Boolean) : [inner];
 	return parts.map((part) => {
 		const m = /^(\d{4}-\d{2}-\d{2}),([\d.]+),(\d+)/.exec(part.trim());
 		if (!m || m[1] === NEW_CARD_DATE) return null;
-		return { due: m[1], interval: Math.round(Number(m[2])), ease: Number(m[3]) };
+		return fromSm2(m[1], Math.round(Number(m[2])), Number(m[3]));
 	});
 }
 
 /**
- * One comment holding `siblings` schedules, with `index` replaced. Siblings
- * that are still new keep the plugin's magic date, which is how the plugin
- * itself records "this deletion has not been reviewed".
+ * One `<!--fsrs:…-->` comment holding `siblings` schedules, with `index`
+ * replaced and the others as `entries` has them, `new` where there is none.
+ * Pure.
  */
 export function formatComment(
 	entries: Array<Schedule | null>,
@@ -514,10 +543,10 @@ export function formatComment(
 ): string {
 	const out: string[] = [];
 	for (let i = 0; i < Math.max(siblings, index + 1); i++) {
-		const entry = i === index ? replacement : entries[i] ?? null;
-		out.push(entry ? `!${entry.due},${entry.interval},${entry.ease}` : `!${NEW_CARD_DATE},1,250`);
+		const e = i === index ? replacement : (entries[i] ?? null);
+		out.push(e ? [e.due, e.stability, e.difficulty, e.reps, e.lapses, e.state, e.last].join(',') : NEW);
 	}
-	return `${SR_OPEN}${out.join('')}${SR_CLOSE}`;
+	return `${OPEN}${out.join('!')}${CLOSE}`;
 }
 
 /** Where a separator starts in a masked line, or null when it is not there. */

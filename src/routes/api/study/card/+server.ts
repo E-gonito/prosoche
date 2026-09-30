@@ -4,7 +4,7 @@ import { today } from '$server/daily';
 import { review, scanCards } from '$server/study/flashcards';
 import { recordIntroduced } from '$server/study/new-cards';
 import { subjectsOf } from '$server/study/subjects';
-import { GRADES, type Grade } from '$lib/shared/sm2';
+import { GRADES, type Grade } from '$lib/shared/scheduler';
 import type { RequestHandler } from './$types';
 
 interface Body {
