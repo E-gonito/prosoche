@@ -279,7 +279,7 @@
 
 	{#if data.entries.length}
 		<div class="sheet rows entries" data-testid="glossary-entries">
-			{#each shown as entry (entry.term)}
+			{#each shown as entry (entry.line)}
 				<article class="entry" data-testid="glossary-entry">
 					{#if editing === entry.term}
 						<form class="edit" onsubmit={save} data-testid="edit-term-form">
