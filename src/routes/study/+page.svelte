@@ -1,10 +1,13 @@
 <script lang="ts">
 	/**
 	 * The Study index: every subject as a card, and a form for a new subject.
+	 * Each card's Edit and Delete are the shared `EditDetails`, as on every
+	 * module's list; a subject's own pages only show them.
 	 */
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
-	import { api } from '$lib/client/api';
+	import EditDetails from '$lib/components/EditDetails.svelte';
+	import { api, saveSubject } from '$lib/client/api';
 	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
@@ -13,6 +16,12 @@
 	let folders = $state('');
 	let saving = $state(false);
 	let problem = $state('');
+
+	/** Reload once a write has gone through, and hand its result back either way. */
+	async function reloaded<T extends { ok: boolean }>(result: T): Promise<T> {
+		if (result.ok) await invalidateAll();
+		return result;
+	}
 
 	async function create(event: Event) {
 		event.preventDefault();
@@ -43,6 +52,7 @@
 			{#each data.subjects as subject (subject.slug)}
 				<div class="sheet subject" data-testid="subject-card">
 					<h2><i class="dot" style="--dot: {subject.color}"></i><a class="stretch" href="/study/{subject.slug}">{subject.name}</a></h2>
+					{#if subject.description}<p class="muted small desc">{subject.description}</p>{/if}
 					{#if subject.goals.length}
 						<ul class="goals">
 							{#each subject.goals.slice(0, 4) as goal (goal.name)}
@@ -57,6 +67,16 @@
 						<span class="num">{formatDuration(subject.weekMinutes, ' ')} this week</span>
 						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
 					</p>
+					<div class="own small">
+						<EditDetails
+							details={subject}
+							fields={['name', 'description', 'color', 'tag']}
+							fileHref={subject.fileHref}
+							save={async (changed) => reloaded(await saveSubject(subject.slug, changed))}
+							remove={async () => reloaded(await api('/api/study/subject', { subject: subject.slug }, { method: 'DELETE' }))}
+							ask="Delete this subject? Only its file in _hub/subjects goes; its folder and notes stay."
+						/>
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -82,6 +102,11 @@
 	.stretch { color: inherit; }
 	.stretch::after { content: ''; position: absolute; inset: 0; }
 	.stretch:hover { text-decoration: none; }
+	/* A card being edited takes the whole row, so its form has room. */
+	.subject:has(:global(form)) { grid-column: 1 / -1; }
+	.subject:has(:global(form)):hover { border-color: var(--line); }
+	.desc { margin: 0; }
+	.own { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: 0; }
 	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
 	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
 	.goals li { display: flex; justify-content: space-between; gap: var(--s2); }

@@ -5,7 +5,6 @@ import { readLog } from '$server/log';
 import { belongsTo, legacyInbox, readInbox, unfiled } from '$server/inbox';
 import { CAPTURE_PATH } from '$server/capture';
 import { readLede } from '$server/parse/note';
-import { noteHref } from '$lib/shared/links';
 import type { LayoutServerLoad } from './$types';
 
 /** Sections that always exist, in reading order. Overview and CRM never hide. */
@@ -69,7 +68,6 @@ export const load: LayoutServerLoad = async ({ params }) => {
 			description: readLede(definition.content),
 			folders: workspace.folders
 		},
-		definitionHref: noteHref(workspace.path),
 		tabs,
 		inbox: { path: CAPTURE_PATH, lines: inbox, legacy },
 		log: { path: logPath, entries: log },

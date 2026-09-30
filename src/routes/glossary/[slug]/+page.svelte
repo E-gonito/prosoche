@@ -15,49 +15,15 @@
 	 * server then keeps in step with every term as this glossary's deck on
 	 * the Flashcards page, and says how they stand.
 	 */
-	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
-	import DetailsHeader, { type Details } from '$lib/components/DetailsHeader.svelte';
+	import DetailsHeader from '$lib/components/DetailsHeader.svelte';
 	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { api } from '$lib/client/api';
-	import { slugify } from '$lib/shared/slug';
 
 	let { data } = $props();
 
 	const slug = $derived(data.glossary.slug);
-
-	/** Deleting the glossary is asked twice. */
-	let confirmingDelete = $state(false);
-
-	/**
-	 * The heading's Edit: name and description. A new name is a new file and
-	 * a new URL, so the page moves there; otherwise it reloads in place.
-	 */
-	async function saveDetails(changed: Partial<Details>) {
-		const result = await api('/api/glossary', { action: 'edit-glossary', glossary: slug, name: changed.name, description: changed.description });
-		if (!result.ok) return result;
-		if (changed.name !== undefined) await goto(`/glossary/${slugify(changed.name)}`, { invalidateAll: true, replaceState: true });
-		else await invalidateAll();
-		return result;
-	}
-
-	async function removeGlossary() {
-		problem = '';
-		const result = await api('/api/glossary', { action: 'delete-glossary', glossary: slug });
-		if (!result.ok) {
-			confirmingDelete = false;
-			problem = result.message;
-			return;
-		}
-		await goto('/glossary', { invalidateAll: true, replaceState: true });
-	}
-
-	// The page is reused when the rail moves to another glossary; its own
-	// half-done asks do not carry over.
-	$effect(() => {
-		void slug;
-		confirmingDelete = false;
-	});
 
 	let query = $state('');
 	/** 'all', 'pending', or `cat:<category>`. */
@@ -164,21 +130,7 @@
 			crumb={{ href: '/glossary', label: 'Glossary' }}
 			details={{ name: data.glossary.name, description: data.glossary.description, color: data.glossary.color }}
 			fallback="What each term means, and why it matters"
-			fileHref={data.glossary.href}
-			save={saveDetails}
-		>
-			{#snippet actions()}
-				{#if confirmingDelete}
-					<span class="ask" data-testid="delete-glossary-ask">
-						Delete this glossary{data.entries.length ? ` and its ${data.entries.length} term${data.entries.length === 1 ? '' : 's'}` : ''}?
-						<button class="btn ghost small remove" onclick={removeGlossary} data-testid="delete-glossary-confirm">Delete</button>
-						<button class="btn ghost small" onclick={() => (confirmingDelete = false)}>Keep</button>
-					</span>
-				{:else}
-					<button class="link-btn remove" onclick={() => (confirmingDelete = true)} data-testid="delete-glossary">Delete</button>
-				{/if}
-			{/snippet}
-		</DetailsHeader>
+		/>
 	{/key}
 
 	<div class="cards" data-testid="glossary-cards">
@@ -336,10 +288,6 @@
 	.count { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) 0 var(--s4); }
 	.count :global(.draft:has(.proposal)) { flex-basis: 100%; }
 	.entry h3 { font-size: var(--t16); margin: 0 0 var(--s1); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
-	.link-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
-	.link-btn:hover { text-decoration: underline; }
-	.remove { color: var(--bad); }
-	.ask { font-size: var(--t13); display: inline-flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
 	/* Wrapped rather than scrolled: the categories are the user's own and
 	   unbounded, and a hidden sideways scroll cannot be reached with a mouse. */
 	.cat-tabs { margin-bottom: var(--s2); flex-wrap: wrap; overflow-x: visible; }

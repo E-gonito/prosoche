@@ -5,15 +5,13 @@
 	 *
 	 * The heading and the tab strip are the things every workspace page
 	 * shares, so they live here rather than being redrawn by each. The heading
-	 * is the shared `DetailsHeader`, whose Edit changes the definition file's
-	 * name, description, colour and tag. Which tabs exist is decided by
+	 * is the shared `DetailsHeader`; the workspace is edited from the
+	 * Workspaces list. Which tabs exist is decided by
 	 * the server load in `+layout.server.ts`; this component only draws them
 	 * and marks the current one.
 	 */
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
 	import DetailsHeader from '$lib/components/DetailsHeader.svelte';
-	import { saveWorkspace } from '$lib/client/api';
 
 	let { data, children } = $props();
 
@@ -24,20 +22,9 @@
 <svelte:head><title>{data.workspace.name} · prosoche</title></svelte:head>
 
 <div class="page wide">
-	{#key data.workspace.slug}
-		<DetailsHeader
-			details={data.workspace}
-			fields={['name', 'description', 'color', 'tag']}
-			fileHref={data.definitionHref}
-			save={async (changed) => {
-				const result = await saveWorkspace(data.workspace.slug, changed);
-				if (result.ok) await invalidateAll();
-				return result;
-			}}
-		>
-			{#snippet meta()}<code class="tag">#{data.workspace.tag}</code>{/snippet}
-		</DetailsHeader>
-	{/key}
+	<DetailsHeader details={data.workspace}>
+		{#snippet meta()}<code class="tag">#{data.workspace.tag}</code>{/snippet}
+	</DetailsHeader>
 
 	<nav class="tabs" aria-label="{data.workspace.name} tabs" data-testid="tabs">
 		{#each data.tabs as tab (tab.slug)}

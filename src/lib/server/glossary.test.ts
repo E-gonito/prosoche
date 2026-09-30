@@ -88,11 +88,16 @@ describe('glossaries on disk', () => {
 		expect(await listGlossaries(vault, [work])).toEqual([]);
 	});
 
-	it('counts terms and pending ones for the list', async () => {
+	it('counts terms and pending ones for the list, with no description taken from a term', async () => {
 		await vault.write('Glossaries/eye2gene.md', '# Glossary\n\n## DVC\n- status:: looked-up\n\nTracks data.\n\n## MLflow\n- status:: to-look-up\n');
 		expect(await listGlossaries(vault, [work])).toEqual([
-			{ name: 'eye2gene', slug: 'eye2gene', color: '#2f6fed', terms: 2, pending: 1 }
+			{ name: 'eye2gene', slug: 'eye2gene', path: 'Glossaries/eye2gene.md', color: '#2f6fed', description: '', terms: 2, pending: 1 }
 		]);
+	});
+
+	it('gives the list the paragraph under the title as the description', async () => {
+		await vault.write('Glossaries/eye2gene.md', '# Glossary\n\nWords from work.\n\n## DVC\n- status:: looked-up\n');
+		expect((await listGlossaries(vault, [work]))[0].description).toBe('Words from work.');
 	});
 
 	it('reads a missing glossary as empty', async () => {

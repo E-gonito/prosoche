@@ -1,27 +1,19 @@
 <script lang="ts">
 	/**
 	 * Every workspace, at a glance: what it is, what is open, and when it was
-	 * last touched.
+	 * last touched. Each row's Edit and Delete are the shared `EditDetails`,
+	 * as on every module's list; a workspace's own page only shows them.
 	 */
-	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
+	import EditDetails from '$lib/components/EditDetails.svelte';
+	import { api, saveWorkspace } from '$lib/client/api';
 
 	let { data } = $props();
-	let problem = $state('');
 
-	/**
-	 * Remove a workspace's definition, after saying plainly what that does and
-	 * does not do. Its notes are the user's and are never touched.
-	 */
-	async function remove(w: { slug: string; name: string }) {
-		if (!confirm(`Delete the “${w.name}” workspace?\n\nOnly its definition in _hub/workspaces is removed. Its folders and notes stay in your vault.`)) return;
-		problem = '';
-		const result = await api('/api/workspace', { slug: w.slug }, { method: 'DELETE' });
-		if (!result.ok) {
-			problem = result.message;
-			return;
-		}
-		await invalidateAll();
+	/** Reload once a write has gone through, and hand its result back either way. */
+	async function reloaded<T extends { ok: boolean }>(result: T): Promise<T> {
+		if (result.ok) await invalidateAll();
+		return result;
 	}
 </script>
 
@@ -48,24 +40,27 @@
 						{#if w.latestLog}<span class="muted small">last logged {w.latestLog}</span>{/if}
 					</span>
 				</a>
-				<button class="btn ghost small remove" onclick={() => remove(w)} aria-label="Delete the {w.name} workspace" data-testid="delete-workspace">Delete</button>
+				<EditDetails
+					details={w}
+					fields={['name', 'description', 'color', 'tag']}
+					fileHref={w.fileHref}
+					save={async (changed) => reloaded(await saveWorkspace(w.slug, changed))}
+					remove={async () => reloaded(await api('/api/workspace', { slug: w.slug }, { method: 'DELETE' }))}
+					ask="Delete this workspace? Only its file in _hub/workspaces goes; its folders and notes stay."
+				/>
 			</div>
 		{:else}
 			<p class="empty">No workspaces yet.</p>
 		{/each}
 	</div>
 
-	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
-
 	<p><a class="btn" href="/w/new" data-testid="new-workspace">New workspace</a></p>
 </div>
 
 <style>
-	.line { display: flex; align-items: center; gap: var(--s2); border-top: 1px solid var(--line); }
+	.line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding-right: var(--s2); border-top: 1px solid var(--line); }
 	.line:first-child { border-top: 0; }
 	.row { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s2); color: var(--text); }
-	.remove { flex: none; color: var(--muted); }
-	.remove:hover { color: var(--bad); }
 	.row:hover { text-decoration: none; background: var(--soft); }
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 	.desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
