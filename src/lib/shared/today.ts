@@ -20,9 +20,7 @@ export interface Owner {
 
 /**
  * A calendar event, reduced to what a screen draws: no organiser, no
- * description, no attendee list Today has no room for. `href` already points
- * at the Meetings module, built once on the server rather than assembled
- * again in every place an event is shown.
+ * description, no attendee list Today has no room for. It links nowhere.
  */
 export interface TodayEvent {
 	id: string;
@@ -30,7 +28,6 @@ export interface TodayEvent {
 	/** Minutes since local midnight; null for an all-day event. */
 	startMin: number | null;
 	endMin: number | null;
-	href: string;
 }
 
 export interface WorkspaceGroup {

@@ -29,8 +29,6 @@ describe('setFrontmatterField', () => {
 		['replaces a multi-line scalar with one line', lines('---', 'role: >', '  Head of', '  sales', 'email: a@b.c', '---'), 'role', 'CEO', lines('---', 'role: CEO', 'email: a@b.c', '---')],
 		['keeps a CRLF note CRLF', '---\r\nstage: talking\r\n---\r\n', 'stage', 'dating', '---\r\nstage: dating\r\n---\r\n'],
 		['inserts with the note’s own line ending', '---\r\ntype: person\r\n---\r\n', 'stage', 'dating', '---\r\ntype: person\r\nstage: dating\r\n---\r\n'],
-		['writes a flag bare, so it reads back as a boolean', lines('---', 'name: Kaya', 'folders:', '  - Kaya', '---'), 'meetings', true, lines('---', 'name: Kaya', 'folders:', '  - Kaya', 'meetings: true', '---')],
-		['rewrites an existing flag in place', lines('---', 'meetings: false', 'name: Kaya', '---'), 'meetings', true, lines('---', 'meetings: true', 'name: Kaya', '---')],
 		['still quotes the string "true"', lines('---', 'x:', '---'), 'x', 'true', lines('---', 'x: "true"', '---')]
 	])('%s', (_name, before, key, value, after) => {
 		expect(setFrontmatterField(before, key, value)).toBe(after);

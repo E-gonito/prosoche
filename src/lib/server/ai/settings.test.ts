@@ -52,21 +52,21 @@ describe('fromFrontmatter', () => {
 		expect(settings.features.briefing.effort).toBe('high');
 		// Untouched fields keep the shipped value.
 		expect(settings.features.briefing.permission).toBe('read-only');
-		expect(settings.features.capture.model).toBe('claude-haiku-4-5-20251001');
+		expect(settings.features['glossary-lookup'].model).toBe('claude-sonnet-5');
 	});
 
 	it('lets a defaults block cover every feature, with a row overriding it', () => {
 		const settings = fromFrontmatter({
 			defaults: { model: 'claude-haiku-4-5-20251001' },
-			features: { 'meeting-prep': { model: 'claude-opus-5' } }
+			features: { 'glossary-lookup': { model: 'claude-opus-5' } }
 		});
 		expect(settings.features.briefing.model).toBe('claude-haiku-4-5-20251001');
-		expect(settings.features['meeting-prep'].model).toBe('claude-opus-5');
+		expect(settings.features['glossary-lookup'].model).toBe('claude-opus-5');
 	});
 
 	it('falls back to the safe value for a permission mode it does not know', () => {
-		const settings = fromFrontmatter({ features: { capture: { permission: 'bypassPermissions' } } });
-		expect(settings.features.capture.permission).toBe('propose');
+		const settings = fromFrontmatter({ features: { 'glossary-lookup': { permission: 'bypassPermissions' } } });
+		expect(settings.features['glossary-lookup'].permission).toBe('propose');
 	});
 
 	it('falls back for a model or effort it does not know', () => {
@@ -97,7 +97,7 @@ describe('the round trip through the vault', () => {
 		wanted.enabled = false;
 		wanted.features.briefing.model = 'claude-opus-5';
 		wanted.features.briefing.effort = 'xhigh';
-		wanted.features.capture.permission = 'propose';
+		wanted.features['glossary-lookup'].permission = 'read-only';
 		wanted.budget.dailyUsd = 3;
 
 		await saveSettings(vault, wanted);

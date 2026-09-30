@@ -5,12 +5,9 @@
  * path written, or why not. Never throws; a lost connection is a result.
  */
 
-import type { ScannedEntry } from '$lib/shared/glossary';
-
 export * from '$lib/shared/glossary';
 
-/** `added` is set by add-scanned: how many entries it wrote. */
-type GlossaryResult = { ok: true; path: string; added?: number } | { ok: false; message: string };
+type GlossaryResult = { ok: true; path: string } | { ok: false; message: string };
 
 /** `glossary` is the glossary's slug, as in its URL. */
 type GlossaryAction =
@@ -20,9 +17,6 @@ type GlossaryAction =
 	| { action: 'add'; glossary: string; term: string; category?: string | null; source?: string | null }
 	| { action: 'edit'; glossary: string; term: string; change: { term?: string; category?: string; definition?: string; relevance?: string } }
 	| { action: 'delete'; glossary: string; term: string }
-	| { action: 'set-sources'; glossary: string; sources: string[] }
-	/** `complete`: the scan read every note it meant to, so the glossary is marked scanned today. */
-	| { action: 'add-scanned'; glossary: string; entries: ScannedEntry[]; complete: boolean }
 	/** `study`: a study subject's slug, or '' to stop keeping cards. */
 	| { action: 'set-study'; glossary: string; study: string };
 
@@ -35,7 +29,7 @@ export async function glossaryAction(body: GlossaryAction): Promise<GlossaryResu
 			body: JSON.stringify(body)
 		});
 		const parsed = await res.json().catch(() => ({}));
-		if (res.ok && parsed.ok) return { ok: true, path: parsed.path, added: parsed.added };
+		if (res.ok && parsed.ok) return { ok: true, path: parsed.path };
 		return { ok: false, message: parsed.message ?? `Request failed (${res.status})` };
 	} catch {
 		return { ok: false, message: 'No connection.' };

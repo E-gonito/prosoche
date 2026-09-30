@@ -8,7 +8,6 @@
 	 * the one other thing edited here: which parts of the vault it reads.
 	 */
 	import Board from '$lib/components/board/Board.svelte';
-	import StartMeeting from '$lib/components/StartMeeting.svelte';
 	import MasterNote from '$lib/components/MasterNote.svelte';
 	import FolderEditor from '$lib/components/FolderEditor.svelte';
 	import { noteHref } from '$lib/shared/links';
@@ -77,17 +76,8 @@
 	<FolderEditor slug={data.workspace.slug} folders={data.workspace.folders} options={data.vaultFolders} />
 </section>
 
-<section>
-	<p class="label">Meetings</p>
-	<p class="meetings">
-		<StartMeeting {slug} meetings={data.meetingsHref !== null} />
-		{#if data.meetingsHref}<a href={data.meetingsHref}>Open the meeting notebook</a>{/if}
-	</p>
-</section>
-
 <style>
 	section { margin-bottom: var(--s5); }
-	.meetings { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 	.split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s5); }
 	.day { margin: 0; padding: var(--s2) var(--s1) 0; font: 600 var(--t12) inherit; color: var(--muted); }
 	.capture { margin: 0; padding: var(--s1); font-size: var(--t13); border-top: 1px solid var(--line); }

@@ -13,12 +13,12 @@
  * "is this a deletion?", "is this a rename out of Inbox?", "is this a new
  * note or a rewrite of an old one?", and a span cannot be asked.
  *
- * So an edit is one of six named intentions, and the bytes it produces are
+ * So an edit is one of four named intentions, and the bytes it produces are
  * computed here, by our code, from the vault as it is right now. The model
  * never supplies bytes for anything except the text it is adding. The one
  * exception is `revise`, a whole new version of a note, which exists for a
- * document that is meant to be rewritten (a meeting primer); it is pinned to
- * the hash the draft read and still judged on lines lost. The guardrails then
+ * document that is meant to be rewritten (a glossary's definitions); it is
+ * pinned to the hash the draft read and still judged on lines lost. The guardrails then
  * run twice over: once on the intention (kind, path) and once on the resolved
  * before-and-after (lines lost, files touched).
  *
@@ -31,7 +31,6 @@
 
 import { config } from '../config';
 import { dailyNotePath, shiftDay, type DayKey } from '../daily';
-import { rewriteTaskLine } from '../parse/task';
 import { isGlossaryPath } from '../glossary';
 import type { Vault } from '../vault/index';
 import {
@@ -68,8 +67,7 @@ export interface Policy {
 /** What a feature's policy depends on beyond the feature itself. */
 interface PolicyContext {
 	today: DayKey;
-	/** Extra paths this particular run may write: the destination capture
-	 *  proposed, the primer, meeting note or glossary a draft names. */
+	/** Extra paths this particular run may write: the glossary a draft names. */
 	destinations?: string[];
 }
 
@@ -110,26 +108,14 @@ export function policyFor(
 		case 'briefing':
 			return wrap([todayNote], { maxFiles: 1, writableDays: [ctx.today] });
 
-		// Capture files one thing into the inbox and, at most, one destination
-		// it names when it proposes.
-		case 'capture':
-			return wrap(['Inbox/', ...extra], { maxFiles: 2 });
-
-		// The meeting and glossary features each write one note of one kind,
-		// and the destination names it exactly. The destination arrives back
-		// from the browser, so it is also held to its kind here: a forged one
-		// can at worst name another workspace's primer or meeting note, or
-		// another glossary in `Glossaries/`.
-		case 'primer-draft':
-			return wrap(extra.filter((p) => p.endsWith('/Primer.md')).slice(0, 1), { maxFiles: 1 });
+		// A glossary look-up writes one glossary, and the destination names it
+		// exactly. The destination arrives back from the browser, so it is also
+		// held to its kind here: a forged one can at worst name another
+		// glossary in `Glossaries/`.
 		case 'glossary-lookup':
 			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1 });
-		case 'meeting-prep':
-			return wrap(extra.filter((p) => /\/Meetings\/[^/]+\.md$/.test(p)).slice(0, 1), { maxFiles: 1 });
 
-		// Suggest flashcards drafts cards rather than a proposal, and the cards
-		// a person keeps are written by `study/card-files.ts`, so a proposal
-		// claiming to be one may write nowhere; nor may any feature not named.
+		// Any feature not named writes nothing.
 		default:
 			return wrap([]);
 	}
@@ -153,8 +139,7 @@ interface Resolved {
  *
  * Inputs: the vault and the edits. Output: one `Resolved` per edit, carrying
  * any refusal that only reading the file could reveal - a `create` aimed at a
- * note that already exists, a `rewrite-task` whose line has moved, a
- * `replace-region` whose markers are gone.
+ * note that already exists, a `replace-region` whose markers are gone.
  *
  * Side effects: reads notes. Never writes, and never invents content: `after`
  * is always the current file with the model's text inserted by our own string
@@ -200,32 +185,6 @@ async function resolve(vault: Vault, edits: ProposalEdit[], policy: PathPolicy):
 			case 'append': {
 				const body = note.content === '' ? '' : ensureTrailingNewline(note.content);
 				out.push({ ...base, after: `${body}${ensureTrailingNewline(edit.text)}` });
-				break;
-			}
-
-			case 'rewrite-task': {
-				const lines = note.content.split('\n');
-				const current = lines[edit.line];
-				if (!note.exists) {
-					out.push({
-						...base,
-						after: note.content,
-						refusals: [refuse('G6', 'That note does not exist, so it has no task line to rewrite.', edit.path)]
-					});
-					break;
-				}
-				if (current !== edit.expectedRaw) {
-					out.push({
-						...base,
-						after: note.content,
-						refusals: [
-							refuse('G6', `Line ${edit.line + 1} is not what the proposal expected, so it was left alone.`, edit.path)
-						]
-					});
-					break;
-				}
-				lines[edit.line] = rewriteTaskLine(current, edit.edit);
-				out.push({ ...base, after: lines.join('\n') });
 				break;
 			}
 

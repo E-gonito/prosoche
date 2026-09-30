@@ -26,7 +26,7 @@ interface Module {
 	 * note list. Only Date is private.
 	 */
 	private?: boolean;
-	/** One of the four destinations on a phone's tab bar. */
+	/** One of the destinations on a phone's tab bar, ahead of More. */
 	tab?: boolean;
 }
 
@@ -47,7 +47,6 @@ export interface SubItem {
 /** In the order the rail draws them. */
 export const MODULES: Module[] = [
 	{ id: 'today', title: 'Today', icon: 'sun', href: '/today', tab: true },
-	{ id: 'meetings', title: 'Meetings', icon: 'users', href: '/meetings', tab: true },
 	{ id: 'glossary', title: 'Glossary', icon: 'book-a', href: '/glossary' },
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },

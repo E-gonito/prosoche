@@ -3,13 +3,10 @@
 	 * One glossary, as in the artifact: a filter box, a tab per category, and
 	 * one entry per term with its definition and why it matters.
 	 *
-	 * Terms captured in the meetings of workspaces pointing here, but not yet
-	 * in the glossary, wait at the top. Adding one, typing a new one in,
-	 * editing or deleting one, and renaming or deleting the glossary, are the
-	 * user's own acts and write straight away. Looking a term up and scanning
-	 * notes for new terms are Claude's: a look-up arrives as a proposal, a
-	 * scan as a list to tick and edit (`GlossaryScan`), and neither changes
-	 * anything until the user accepts or adds.
+	 * Typing a new term in, editing or deleting one, and renaming or deleting
+	 * the glossary, are the user's own acts and write straight away. Looking a
+	 * term up is Claude's: it arrives as a proposal and changes nothing until
+	 * the user accepts.
 	 *
 	 * The Flashcards line links the glossary to a study subject, whose cards
 	 * the server then keeps in step with every term, and says how they
@@ -17,15 +14,12 @@
 	 */
 	import { goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
-	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { glossaryAction } from '$lib/client/glossary';
-	import { noteHref } from '$lib/shared/links';
 	import { slugify } from '$lib/shared/slug';
 
 	let { data } = $props();
 
 	const slug = $derived(data.glossary.slug);
-	const notebooks = $derived(data.linked.filter((w) => w.meetings));
 
 	/** The glossary's own name and existence: rename in place, delete asked twice. */
 	let renaming = $state<string | null>(null);
@@ -86,10 +80,9 @@
 			return matches(e.term, e.definition, e.relevance, e.category);
 		})
 	);
-	const captured = $derived(data.captured.filter((c) => matches(c.term)));
 	const inCategory = (category: string) => data.entries.filter((e) => e.category === category).length;
 
-	async function add(term: { term: string; category?: string | null; source?: string | null }): Promise<boolean> {
+	async function add(term: { term: string; category?: string | null }): Promise<boolean> {
 		adding = term.term;
 		problem = '';
 		const result = await glossaryAction({ action: 'add', glossary: slug, ...term });
@@ -169,9 +162,7 @@
 			<h1><i style="--dot: {data.glossary.color}"></i>{data.glossary.name}</h1>
 		{/if}
 		<p class="sub">
-			<span>
-				What each term means, and why it matters{#each notebooks as w, i (w.slug)}{i ? ', ' : ' · '}<a href="/meetings/{w.slug}">{w.name} meetings</a>{/each}
-			</span>
+			<span>What each term means, and why it matters</span>
 			<span class="own">
 				{#if confirmingDelete}
 					<span class="ask" data-testid="delete-glossary-ask">
@@ -185,12 +176,6 @@
 				{/if}
 			</span>
 		</p>
-		{#if confirmingDelete && data.linked.length}
-			<p class="hint">
-				{data.linked.map((w) => w.name).join(', ')} still name{data.linked.length === 1 ? 's' : ''} it as
-				<code>glossary:</code>, so the next term captured in a meeting starts it again.
-			</p>
-		{/if}
 	</div>
 
 	<div class="cards" data-testid="glossary-cards">
@@ -226,19 +211,6 @@
 		<button class="btn" type="submit" disabled={!fresh.term.trim() || adding !== null} data-testid="new-add">Add term</button>
 	</form>
 
-	<!-- Keyed, so moving to another glossary stops a scan and drops its list. -->
-	{#key slug}
-		<GlossaryScan
-			{slug}
-			path={data.glossary.path}
-			plan={data.scan}
-			folders={data.folders}
-			categories={data.categories}
-			terms={data.entries.map((e) => e.term)}
-			aiEnabled={data.aiEnabled}
-		/>
-	{/key}
-
 	<input class="field filter" type="search" bind:value={query} placeholder="Filter terms…" aria-label="Filter terms" data-testid="glossary-filter" />
 
 	<div class="tabs cat-tabs" role="tablist" aria-label="Categories" data-testid="glossary-tabs">
@@ -266,22 +238,6 @@
 	</div>
 
 	{#if problem}<p class="problem">{problem}</p>{/if}
-
-	{#if captured.length}
-		<p class="label">Captured in meetings <span class="right">{captured.length}</span></p>
-		<div class="sheet rows" data-testid="captured-terms">
-			{#each captured as term (term.term)}
-				<div class="captured">
-					<div>
-						<b>{term.term}</b>
-						<small class="muted">From <a href={noteHref(term.meeting.path)}>{term.meeting.title}{term.meeting.date ? ` ${term.meeting.date}` : ''}</a></small>
-					</div>
-					<button class="btn small" disabled={adding === term.term} onclick={() => add({ term: term.term, source: term.source })} data-testid="add-term">Add to glossary</button>
-				</div>
-			{/each}
-		</div>
-		<p class="label">Glossary</p>
-	{/if}
 
 	{#if data.entries.length}
 		<div class="sheet rows entries" data-testid="glossary-entries">
@@ -336,8 +292,7 @@
 		</div>
 	{:else}
 		<p class="none">
-			No terms yet. Add one above, scan your notes for some{notebooks.length ? ', or capture one in a meeting' : ''}; they go in
-			<code>{data.glossary.path}</code>.
+			No terms yet. Add one above; it goes in <code>{data.glossary.path}</code>.
 		</p>
 	{/if}
 </div>
@@ -356,7 +311,6 @@
 	.filter { margin-bottom: var(--s3); }
 	.count { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) 0 var(--s4); }
 	.count :global(.draft:has(.proposal)) { flex-basis: 100%; }
-	.captured { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
 	.entry h3 { font-size: var(--t16); margin: 0 0 var(--s1); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.sub { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 	.own { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
@@ -399,5 +353,4 @@
 	.relevance span { color: var(--accent); }
 	.from { margin: var(--s1) 0 0; font-size: var(--t13); color: var(--muted); }
 	.lookup { margin-top: var(--s2); }
-	.captured small { font-size: var(--t12); }
 </style>

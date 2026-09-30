@@ -65,7 +65,6 @@
 						<span class="num">{subject.due} due</span>
 						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
 					</p>
-					<a class="btn small make" href="/study/{subject.slug}/make" data-testid="subject-make-cards">Make cards</a>
 				</div>
 			{/each}
 		</div>
@@ -89,13 +88,12 @@
 
 	.subjects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s4); }
 	/* The whole card opens the subject, through its name's link stretched over
-	   it; Make cards sits above that, so it is a link of its own. */
+	   it. */
 	.subject { position: relative; display: flex; flex-direction: column; gap: var(--s2); color: var(--text); }
 	.subject:hover { border-color: var(--accent); }
 	.stretch { color: inherit; }
 	.stretch::after { content: ''; position: absolute; inset: 0; }
 	.stretch:hover { text-decoration: none; }
-	.make { position: relative; align-self: flex-start; }
 	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
 	.subject h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
 	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }

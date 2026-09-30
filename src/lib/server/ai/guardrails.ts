@@ -243,9 +243,8 @@ export interface PathPolicy {
  * own audit trail or the queue of what is waiting to be accepted - checked
  * case-insensitively, because the vault is also mounted on a case-insensitive
  * Mac volume where `claude.MD` is the same file. And, through the per-feature
- * allowlist, a feature reaching outside its remit: capture may touch
- * `Inbox/`, the briefing may touch today's note, neither may touch the
- * other's files.
+ * allowlist, a feature reaching outside its remit: the briefing may touch
+ * today's note, a glossary look-up one glossary, neither the other's files.
  *
  * Inputs: a vault-relative path and the feature's policy.
  * Output: refusals, empty when the path is allowed.

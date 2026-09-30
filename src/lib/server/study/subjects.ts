@@ -13,7 +13,7 @@
  */
 
 import { createWorkspace, homeFolder, type Workspace } from '../workspaces';
-import { inScope, scopeOf } from './scope';
+import { scopeOf } from './scope';
 import { slugify } from '$lib/shared/slug';
 import type { StudyScope, SubjectRef } from '$lib/shared/study';
 import type { Vault } from '../vault/index';
@@ -55,15 +55,6 @@ export function subjectsOf(workspaces: Workspace[]): Subject[] {
 /** The subject with this slug, or null when there is none. Pure. */
 export function subjectOf(workspaces: Workspace[], slug: string): Subject | null {
 	return subjectsOf(workspaces).find((s) => s.slug === slug) ?? null;
-}
-
-/**
- * The subject a note belongs to — the first whose folders hold it or whose
- * tag it carries — or null when it is in none. Pure. This is what puts
- * "Make cards" on a note.
- */
-export function subjectFor(workspaces: Workspace[], path: string, tags: string[]): Subject | null {
-	return subjectsOf(workspaces).find((s) => inScope(path, tags, s.scope)) ?? null;
 }
 
 /**

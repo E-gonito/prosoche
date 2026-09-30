@@ -4,9 +4,8 @@
  * A glossary is one file in `Glossaries/` at the vault root, and the file
  * name is its name: `Glossaries/Computer Science.md` is the glossary called
  * Computer Science, at `/glossary/computer-science`. Glossaries belong to no
- * workspace. A workspace whose definition says `glossary: <name>` sends the
- * terms captured in its meetings to that glossary, and any number of
- * workspaces may point at the same one.
+ * workspace. A workspace whose definition says `glossary: <name>` is linked
+ * to it, and any number of workspaces may point at the same one.
  *
  * The Glossary routes talk to this module. It owns where glossaries live, how
  * a name becomes a file and a URL, which workspaces point at which glossary,
@@ -15,40 +14,20 @@
  * insertion, a span edit or the removal of one entry's lines through the
  * grammar in `parse/glossary.ts`; nothing here re-serialises a note.
  *
- * Terms captured in a meeting reach a glossary two ways: `meetings.ts` adds
- * each one as it is captured, and any that are still missing are offered by
- * `loadGlossary` from the list the caller passes in. This module never reads
- * a meeting note itself, so it does not depend on the notebook's layout.
- *
- * A glossary may name, in its frontmatter, the folders of notes it is
- * scanned for new terms (`sources:`) and the day of its last full scan
- * (`scanned:`). Both are written here as span edits of their own lines,
- * through `setFrontmatterField`; the body is never re-serialised.
- *
- *     ---
- *     sources:
- *       - Computer Science
- *     scanned: "2026-09-29"
- *     ---
- *
- * A glossary may also name the study subject its terms become flashcards in,
+ * A glossary may name the study subject its terms become flashcards in,
  * `study: <subject slug>`, set here by `setGlossaryStudy` the same way. The
  * cards themselves are `study/glossary-cards.ts`'s business; this module
  * only reads and writes the link.
  *
- * Nothing here writes on a model's behalf. Look-ups are proposals and a scan
- * is a list of candidates, both drafted in `ai/glossary-drafts.ts`; the
- * candidates a person keeps come back through `addScannedTerms`, which is
- * the accept step and trusts nothing it is sent.
+ * Nothing here writes on a model's behalf: look-ups are proposals, drafted
+ * in `ai/glossary-drafts.ts`.
  */
 
 import { config } from './config';
-import { appendEntry, deleteEntry, editEntry, findEntry, insertDefinition, normaliseTerm, parseGlossary, setField, type EntryChange, type GlossaryEntry } from './parse/glossary';
+import { appendEntry, deleteEntry, editEntry, findEntry, normaliseTerm, parseGlossary, type EntryChange, type GlossaryEntry } from './parse/glossary';
 import { contactName } from './parse/contact';
 import { setFrontmatterField } from './parse/frontmatter';
-import { basename, parseNote } from './parse/note';
-import { isDayKey } from './daily';
-import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
+import { parseNote } from './parse/note';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { slugify } from '$lib/shared/slug';
 import { subjectsOf } from './study/subjects';
@@ -64,7 +43,7 @@ const TITLE = '# Glossary\n';
 /** The dot for a glossary no workspace points at; a workspace's default colour. */
 const NEUTRAL = '#6b7280';
 
-/** One glossary file, and the workspaces that send it their meetings' terms. */
+/** One glossary file, and the workspaces that point at it. */
 export interface GlossaryRef {
 	/** The file name without `.md`. */
 	name: string;
@@ -78,26 +57,12 @@ export interface GlossaryRef {
 	color: string;
 }
 
-/** A term captured elsewhere, such as in a meeting, that could be added. */
-export interface CapturedTerm {
-	term: string;
-	/** `[[<note name>]]`, as the glossary's `source::` wants it. */
-	source: string;
-	meeting: { path: string; title: string; date: string | null };
-}
-
-/** One glossary as read, with the terms it is missing. */
+/** One glossary as read. */
 export interface Glossary {
 	path: string;
 	exists: boolean;
 	content: string;
 	entries: GlossaryEntry[];
-	/** The captured terms offered, less any the glossary already has. */
-	captured: CapturedTerm[];
-	/** The folders it is scanned for new terms; see `scanSettings`. */
-	sources: string[];
-	/** The day of its last full scan, or null. */
-	scanned: string | null;
 }
 
 /** A glossary and its size, for a list. */
@@ -108,20 +73,6 @@ interface GlossarySummary {
 	terms: number;
 	/** Entries still to look up. */
 	pending: number;
-	/** The workspaces pointing at it, by slug and name. */
-	linked: Array<{ slug: string; name: string }>;
-}
-
-/**
- * Where the glossary called `name` lives: `Glossaries/<name>.md`, or null for
- * a name that could not stay inside that folder (empty, a slash, a leading
- * dot). Lenient on purpose, so a glossary made in Obsidian with a name
- * `createGlossary` would refuse is still found. Pure.
- */
-export function glossaryPath(name: string): string | null {
-	const clean = name.trim();
-	if (!clean || /[\\/]/.test(clean) || clean.startsWith('.')) return null;
-	return `${GLOSSARY_FOLDER}/${clean}.md`;
 }
 
 /** True for a markdown file directly inside `Glossaries/`. Pure. */
@@ -170,21 +121,6 @@ export async function findGlossary(vault: Vault, workspaces: Workspace[], slug: 
 }
 
 /**
- * The glossary a workspace's meetings capture into: the existing glossary its
- * `glossary:` names (ignoring case), or, when there is none yet, where one by
- * that name would go, so the first captured term creates it. Null for a
- * workspace with no `glossary:`, or one naming something that cannot be a
- * file in `Glossaries/`. Never writes.
- */
-export async function glossaryOf(vault: Vault, workspace: Workspace): Promise<{ name: string; path: string } | null> {
-	if (!workspace.glossary) return null;
-	const found = (await glossaries(vault, [workspace])).find((g) => g.linked.length > 0);
-	if (found) return { name: found.name, path: found.path };
-	const path = glossaryPath(workspace.glossary);
-	return path ? { name: workspace.glossary.trim(), path } : null;
-}
-
-/**
  * Every glossary with its size and the workspaces pointing at it, sorted by
  * name. Reads each file. Never writes.
  */
@@ -197,51 +133,16 @@ export async function listGlossaries(vault: Vault, workspaces: Workspace[]): Pro
 			slug: g.slug,
 			color: g.color,
 			terms: entries.length,
-			pending: entries.filter((e) => e.pending).length,
-			linked: g.linked.map((w) => ({ slug: w.slug, name: w.name }))
+			pending: entries.filter((e) => e.pending).length
 		});
 	}
 	return out;
 }
 
-/**
- * Read one glossary, and which of `captured` it lacks.
- *
- * A missing file is an empty glossary. `captured` is taken in the order
- * given, newest first by convention, and a term offered twice is kept once,
- * from its first appearance. Never writes.
- */
-export async function loadGlossary(vault: Vault, path: string, captured: CapturedTerm[] = []): Promise<Glossary> {
+/** Read one glossary. A missing file is an empty glossary. Never writes. */
+export async function loadGlossary(vault: Vault, path: string): Promise<Glossary> {
 	const note = await vault.read(path);
-	const entries = parseGlossary(note.content);
-	const known = new Set(entries.map((e) => normaliseTerm(e.term)));
-	const missing: CapturedTerm[] = [];
-	for (const term of captured) {
-		const key = normaliseTerm(term.term);
-		if (!key || known.has(key)) continue;
-		known.add(key);
-		missing.push(term);
-	}
-	return { path, exists: note.exists, content: note.content, entries, captured: missing, ...scanSettings(note.content) };
-}
-
-/**
- * Where a glossary is scanned for new terms, and when it last was, read from
- * its frontmatter. Pure; never throws.
- *
- * `sources:` is a list of vault folders, or one folder written as a string;
- * each is trimmed of spaces and slashes at either end, empty ones and repeats
- * are dropped, and the order is kept. Anything else reads as no sources.
- * `scanned:` is a `YYYY-MM-DD` day, quoted or not; anything else reads as
- * null, as if the glossary had never been scanned.
- */
-export function scanSettings(content: string): { sources: string[]; scanned: string | null } {
-	const fm = parseNote(content).frontmatter;
-	const raw: unknown[] = Array.isArray(fm.sources) ? fm.sources : typeof fm.sources === 'string' ? [fm.sources] : [];
-	const sources = [...new Set(raw.filter((s): s is string => typeof s === 'string').map(cleanFolder).filter(Boolean))];
-	const s = fm.scanned;
-	const day = s instanceof Date && !Number.isNaN(s.getTime()) ? s.toISOString().slice(0, 10) : typeof s === 'string' ? s.trim() : '';
-	return { sources, scanned: isDayKey(day) ? day : null };
+	return { path, exists: note.exists, content: note.content, entries: parseGlossary(note.content) };
 }
 
 /**
@@ -270,194 +171,6 @@ export async function setGlossaryStudy(vault: Vault, glossary: GlossaryRef, work
 	const wanted = slug.trim();
 	if (wanted && !subjectsOf(workspaces).some((s) => s.slug === wanted)) return invalid(`There is no study subject “${wanted}”.`);
 	return rewrite(vault, glossary.path, (content) => setFrontmatterField(content, 'study', wanted), 2);
-}
-
-/**
- * Every folder that holds a note a scan could read, directly or below,
- * sorted: what a glossary's `sources:` may name. Public folders only, never
- * the hub's own or `Glossaries/`. Reads the listing only.
- */
-export async function noteFolders(vault: Vault): Promise<string[]> {
-	const out = new Set<string>();
-	for (const path of await vault.list()) {
-		if (notScanned(path)) continue;
-		const parts = path.split('/').slice(0, -1);
-		for (let i = 1; i <= parts.length; i++) out.add(parts.slice(0, i).join('/'));
-	}
-	return [...out].sort((a, b) => a.localeCompare(b));
-}
-
-/**
- * The markdown notes under any of `folders`, sorted by path, each once: the
- * notes a scan of those folders may read. Public notes only (never the
- * private folder), leaving out the hub's own files and the glossaries
- * themselves. Folders are vault-relative, with or without slashes at either
- * end; an empty one names nothing, not the whole vault. Reads the listing
- * only.
- */
-export async function scanNotes(vault: Vault, folders: string[]): Promise<string[]> {
-	const roots = folders.map(cleanFolder).filter(Boolean);
-	if (roots.length === 0) return [];
-	return (await vault.list()).filter((p) => !notScanned(p) && roots.some((r) => p.startsWith(`${r}/`)));
-}
-
-/**
- * Set the folders a glossary is scanned for new terms: its frontmatter's
- * `sources:`, written through `setFrontmatterField` as a list, so only that
- * key's lines change and a glossary without frontmatter gains a minimal
- * block. An empty list clears the key's value.
- *
- * Refuses anything but a list of strings, more than twenty folders, and a
- * folder `noteFolders` does not offer; a repeat is written once. A clash
- * with an edit made a moment earlier is retried once. Never touches the
- * glossary's body.
- */
-export async function setGlossarySources(vault: Vault, glossary: GlossaryRef, folders: unknown): Promise<Written> {
-	if (!Array.isArray(folders) || folders.some((f) => typeof f !== 'string')) return invalid('Send the folders as a list.');
-	const wanted = [...new Set((folders as string[]).map(cleanFolder).filter(Boolean))];
-	if (wanted.length > 20) return invalid('A glossary can be scanned from at most twenty folders.');
-	const offered = new Set(await noteFolders(vault));
-	const unknown = wanted.find((f) => !offered.has(f));
-	if (unknown) return invalid(`“${unknown}” is not a folder of notes in the vault.`);
-	return rewrite(vault, glossary.path, (content) => setFrontmatterField(content, 'sources', wanted), 2);
-}
-
-/** What adding scanned terms did, or why it did not. */
-export type ScanAdded = { ok: true; path: string; added: number } | Extract<Written, { ok: false }>;
-
-/**
- * Add the entries a person kept from a scan to the glossary, and, when the
- * scan read every note it meant to, set `scanned:` to `day`.
- *
- * The explicit accept step for drafted terms, so everything is checked again
- * here, whatever the page sent. The glossary must exist. `entries` must be a
- * list of at most `MAX_NEW_ENTRIES`, and may be empty only when `complete`
- * is true (a scan that found nothing still marks its notes scanned). Each
- * entry needs a term and a definition, every field within `ENTRY_LIMITS`; a
- * term that reads back as its own heading; a term the glossary does not
- * have, compared with `normaliseTerm` against the file as it is now, and
- * that no other entry sent has; and a source that is a markdown note under
- * one of the glossary's `sources:` (see `scanNotes`). Any failure refuses the
- * lot, naming each entry at fault, and writes nothing.
- *
- * The new text is built by `withScannedTerms`, which must read back as the
- * old entries unchanged plus exactly the new ones. Side effects: one write,
- * to the glossary's own file, guarded by the hash it read, so an edit made
- * meanwhile is a conflict and nothing is written. Never writes a note the
- * terms came from, and never changes a byte of the entries already there.
- */
-export async function addScannedTerms(vault: Vault, glossary: GlossaryRef, input: { entries: unknown; complete: unknown }, day: string): Promise<ScanAdded> {
-	const refuse = (message: string) => ({ ok: false as const, reason: 'invalid' as const, message });
-	const note = await vault.read(glossary.path);
-	if (!note.exists) return { ok: false, reason: 'not-found', message: 'That glossary is not there any more.' };
-
-	const complete = input.complete === true;
-	if (!Array.isArray(input.entries) || (input.entries.length === 0 && !complete)) return refuse('There are no terms to add.');
-	if (input.entries.length > MAX_NEW_ENTRIES) return refuse(`At most ${MAX_NEW_ENTRIES} terms can be added at once.`);
-
-	const allowed = new Set(await scanNotes(vault, scanSettings(note.content).sources));
-	const known = new Set(parseGlossary(note.content).map((e) => normaliseTerm(e.term)));
-	const sent = new Set<string>();
-	const problems: string[] = [];
-	const entries: ScannedEntry[] = [];
-	for (const [i, raw] of (input.entries as Array<Record<string, unknown> | null>).entries()) {
-		const text = (value: unknown) => (typeof value === 'string' ? value.trim() : null);
-		const fields = { term: text(raw?.term), category: text(raw?.category ?? ''), definition: text(raw?.definition), relevance: text(raw?.relevance ?? '') };
-		const source = text(raw?.source);
-		const name = fields.term ? `“${fields.term}”` : `Term ${i + 1}`;
-		const { term, category, definition, relevance } = fields;
-		if (term === null || category === null || definition === null || relevance === null || source === null) {
-			problems.push(`${name} is not a glossary entry.`);
-			continue;
-		}
-		const key = normaliseTerm(term);
-		const tooLong = (Object.keys(ENTRY_LIMITS) as Array<keyof typeof ENTRY_LIMITS>).some((k) => fields[k]!.length > ENTRY_LIMITS[k]);
-		if (!term) problems.push(`${name} needs a name.`);
-		else if (!definition) problems.push(`${name} needs a definition.`);
-		else if (tooLong) problems.push(`${name} is too long.`);
-		else if (!readsAsHeading(term)) problems.push(`${name} cannot be written as a heading.`);
-		else if (sent.has(key)) problems.push(`${name} is in the list twice.`);
-		else if (known.has(key)) problems.push(`${name} is already in the glossary.`);
-		else if (!allowed.has(source)) problems.push(`${name} names a note that is not under this glossary's folders.`);
-		else {
-			sent.add(key);
-			entries.push({ term, category, definition, relevance, source });
-		}
-	}
-	if (problems.length) return refuse(problems.join(' '));
-
-	const next = withScannedTerms(note.content, entries, complete ? day : null);
-	if (next === null) return refuse('These terms would not read back as written, so nothing was added.');
-	if (next !== note.content) {
-		const written = await vault.write(glossary.path, next, note.hash);
-		if (!written.ok) return { ok: false, reason: 'conflict', message: 'The glossary changed while the terms were being added. Nothing was written; add them again.' };
-	}
-	return { ok: true, path: glossary.path, added: entries.length };
-}
-
-/**
- * `content` with `entries` appended and, when `scanned` is given, its
- * frontmatter's `scanned:` set to that day; or null when the result would not
- * read back as the entries already there, unchanged, plus exactly these.
- *
- * Each entry is appended through `appendEntry` as looked-up, with its
- * category, `source:: [[<note>]]` (the bare name when it would break a link)
- * and `drafted:: Claude`, then its definition and `→` line. Every byte of
- * `content` stays; `scanned:` is a span edit of its own line. An entry whose
- * term the text already has, or that would not read back as its own heading,
- * makes the whole result null rather than touching another entry. Pure.
- */
-export function withScannedTerms(content: string, entries: ScannedEntry[], scanned: string | null): string | null {
-	let text = content;
-	for (const e of entries) {
-		if (findEntry(text, e.term)) return null;
-		const appended = appendEntry(text, { term: e.term, status: 'looked-up', category: e.category || null, source: sourceLink(e.source) });
-		const heading = findEntry(appended, e.term);
-		if (!heading) return null;
-		const drafted = setField(appended, heading.term, 'drafted', 'Claude');
-		const defined = drafted && insertDefinition(drafted, heading.term, e.definition, e.relevance);
-		if (!defined) return null;
-		text = defined;
-	}
-	if (!text.startsWith(content)) return null;
-	if (scanned) text = setFrontmatterField(text, 'scanned', scanned);
-	return readsBack(content, text, entries, scanned) ? text : null;
-}
-
-/** Whether `after` is `before` plus exactly `added`, with `scanned` set when given. */
-function readsBack(before: string, after: string, added: ScannedEntry[], scanned: string | null): boolean {
-	const old = parseGlossary(before);
-	const now = parseGlossary(after);
-	if (now.length !== old.length + added.length) return false;
-	const fields = (e: GlossaryEntry) => JSON.stringify(Object.entries(e.fields).map(([k, f]) => [k, f.value]));
-	const unchanged = old.every((e, i) => e.term === now[i].term && e.definition === now[i].definition && e.relevance === now[i].relevance && fields(e) === fields(now[i]));
-	const fresh = added.every((want, j) => {
-		const got = now[old.length + j];
-		return (
-			normaliseTerm(got.term) === normaliseTerm(want.term) &&
-			got.status === 'looked-up' &&
-			got.category === (oneLine(want.category) || null) &&
-			got.source === sourceLink(want.source) &&
-			got.fields.drafted?.value === 'Claude' &&
-			got.definition !== '' &&
-			(got.relevance ?? '') === oneLine(want.relevance)
-		);
-	});
-	const was = scanSettings(before);
-	const is = scanSettings(after);
-	return unchanged && fresh && JSON.stringify(is.sources) === JSON.stringify(was.sources) && is.scanned === (scanned ?? was.scanned);
-}
-
-/** Whether `term`, written as an entry's heading, reads back as that term. */
-function readsAsHeading(term: string): boolean {
-	const entry = parseGlossary(appendEntry('', { term }))[0];
-	return Boolean(entry) && normaliseTerm(entry.term) === normaliseTerm(term);
-}
-
-/** `[[<note>]]` for a note's path, or the bare name when it holds what would end a wikilink early. */
-function sourceLink(path: string): string {
-	const name = oneLine(basename(path));
-	return /[[\]|#^]/.test(name) ? name : `[[${name}]]`;
 }
 
 /**
@@ -515,8 +228,7 @@ export async function renameGlossary(vault: Vault, glossary: GlossaryRef, rawNam
 /**
  * Delete a glossary: remove its one file through `vault.remove`, which
  * commits the deletion, so git history still has it. Workspaces that point
- * at it keep their `glossary:` line, and the next term captured in their
- * meetings starts it again. Refuses a glossary that is not there.
+ * at it keep their `glossary:` line. Refuses a glossary that is not there.
  */
 export async function deleteGlossary(vault: Vault, glossary: GlossaryRef): Promise<Written> {
 	const removed = await vault.remove(glossary.path);
@@ -621,17 +333,4 @@ async function freeName(vault: Vault, rawName: string, except: string | null): P
 
 function sameName(a: string, b: string): boolean {
 	return normaliseTerm(a) === normaliseTerm(b);
-}
-
-function oneLine(text: string): string {
-	return text.replace(/\s+/g, ' ').trim();
-}
-
-function cleanFolder(folder: string): string {
-	return folder.trim().replace(/^\/+|\/+$/g, '').trim();
-}
-
-/** The hub's own files and the glossaries, which are not notes to scan. */
-function notScanned(path: string): boolean {
-	return path.startsWith(`${config.hubFolder}/`) || path.startsWith(`${GLOSSARY_FOLDER}/`);
 }

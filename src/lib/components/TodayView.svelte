@@ -40,7 +40,7 @@
 	const scheduled = $derived(all.filter((t) => t.startMin !== null).sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0)));
 	const unscheduled = $derived(all.filter((t) => t.startMin === null));
 
-	const timelineEvents = $derived(data.events.map((e) => ({ id: e.id, title: e.title, startMin: e.startMin, endMin: e.endMin, href: e.href })));
+	const timelineEvents = $derived(data.events.map((e) => ({ id: e.id, title: e.title, startMin: e.startMin, endMin: e.endMin })));
 	const allDayEvents = $derived(data.events.filter((e) => e.startMin === null));
 
 	function applied(updated: Task) {
@@ -160,7 +160,7 @@
 						{#if allDayEvents.length}
 							<div class="chips all-day">
 								{#each allDayEvents as event (event.id)}
-									<a class="chip quiet" href={event.href}><Icon name="calendar" size={12} />{event.title}</a>
+									<span class="chip quiet"><Icon name="calendar" size={12} />{event.title}</span>
 								{/each}
 							</div>
 						{/if}

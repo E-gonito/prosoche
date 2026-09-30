@@ -41,7 +41,6 @@
 		<div class="buttons">
 			<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
 			{#if data.due > 0}<a class="btn" href="{base}/review" data-testid="review-all">Review all</a>{/if}
-			<a class="btn primary" href="{base}/make" data-testid="make-cards-link">Make cards from notes</a>
 		</div>
 	</div>
 
@@ -84,7 +83,7 @@
 		</div>
 	{:else}
 		<p class="none">
-			No card files here yet. <a href="{base}/make">Make cards from your notes</a> with Claude, or write them yourself: a note in
+			No card files here yet. Write them yourself: a note in
 			{data.subject.name}'s folders holds cards once it carries <code>#flashcards</code> and a <code>question::answer</code> line.
 		</p>
 	{/each}

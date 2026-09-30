@@ -6,7 +6,7 @@
 	 * list of matching note names.
 	 *
 	 * Read-only: editing stays in Obsidian. The note links on to the vault-wide
-	 * reader and to Make cards for this subject.
+	 * reader.
 	 */
 	import FileTree from '$lib/components/FileTree.svelte';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
@@ -58,7 +58,6 @@
 					<div class="note-head">
 						<h2>{data.note.title}</h2>
 						<div class="actions">
-							<a class="btn small" href="{base}/make?note={encodeURIComponent(data.note.path)}" data-testid="subject-make-cards">Make cards</a>
 							<a class="btn ghost small" href={noteHref(data.note.path)}>Open in Notes</a>
 						</div>
 					</div>

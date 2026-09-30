@@ -90,15 +90,11 @@ describe('seedWorkspaces and loadWorkspaces', () => {
 		expect(loaded).not.toHaveProperty('stages');
 	});
 
-	it.each([
-		['meetings: true', true],
-		['meetings: false', false],
-		['meetings: "true"', false],
-		['meetings: yes', false],
-		['name: Quiet', false]
-	])('reads %j as meetings %s', async (line, expected) => {
-		await vault.write('_hub/workspaces/w.md', `---\n${line}\n---\n`);
-		expect((await loadWorkspaces(vault))[0].meetings).toBe(expected);
+	it('parses an old file that still says meetings: true, ignoring it', async () => {
+		await vault.write('_hub/workspaces/w.md', '---\nname: Old\nmeetings: true\n---\n');
+		const loaded = (await loadWorkspaces(vault))[0];
+		expect(loaded.name).toBe('Old');
+		expect(loaded).not.toHaveProperty('meetings');
 	});
 
 	it.each([

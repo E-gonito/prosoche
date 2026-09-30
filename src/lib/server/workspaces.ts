@@ -15,10 +15,8 @@
  * that still has either is parsed the same as any other frontmatter the hub
  * does not recognise: harmlessly ignored.
  *
- * Meetings are opt-in: only a file that says `meetings: true` gets a meeting
- * notebook, a place on the Meetings page and a slot when a calendar event is
- * mapped to a workspace. A `glossary:` line names the glossary (in
- * `Glossaries/`) that those meetings capture terms into.
+ * A `glossary:` line names the glossary (in `Glossaries/`) the workspace is
+ * linked to. A `meetings:` line is no longer read.
  */
 
 import { parseNote } from './parse/note';
@@ -51,18 +49,9 @@ export interface Workspace {
 	 */
 	template?: string;
 	/**
-	 * True only when the file says `meetings: true`, which gives the
-	 * workspace a meeting notebook. Absent or any other value means none:
-	 * most workspaces never hold a meeting, and a notebook nobody asked for
-	 * is clutter on the Meetings page. Optional so a workspace built in code
-	 * without it reads as having no meetings, as a file without it does.
-	 */
-	meetings?: boolean;
-	/**
-	 * The name of the glossary this workspace's meetings capture terms into,
-	 * from `glossary:` in its file: `eye2gene` means `Glossaries/eye2gene.md`.
-	 * Absent means captured terms stay in the meeting note alone. Glossaries
-	 * are not owned by a workspace; this is only a pointer, and several
+	 * The name of the glossary this workspace is linked to, from `glossary:`
+	 * in its file: `eye2gene` means `Glossaries/eye2gene.md`. Glossaries are
+	 * not owned by a workspace; this is only a pointer, and several
 	 * workspaces may point at one.
 	 */
 	glossary?: string;
@@ -217,7 +206,6 @@ function toWorkspace(path: string, fm: Record<string, unknown>): Workspace {
 		aliases: strList(fm.aliases).map((a) => a.trim()).filter(Boolean),
 		folders,
 		template: str(fm.template) ?? undefined,
-		meetings: fm.meetings === true,
 		...(str(fm.glossary) ? { glossary: str(fm.glossary)! } : {}),
 		...(count(fm.new_per_day) !== null ? { newPerDay: count(fm.new_per_day)! } : {}),
 		path
@@ -243,7 +231,7 @@ function longestFolder(w: Workspace): number {
 	return Math.max(0, ...w.folders.map((f) => f.length));
 }
 
-interface Seed extends Omit<Workspace, 'path' | 'aliases' | 'meetings'> {
+interface Seed extends Omit<Workspace, 'path' | 'aliases'> {
 	description: string;
 	/** Absent in every shipped seed: a name is not an alias until you say so. */
 	aliases?: string[];

@@ -9,7 +9,7 @@ you are actually doing, as against what you meant to do. That is the whole
 premise. The plan you wrote this morning and the day you actually had are the
 same file.
 
-> Working, and in daily use by its author. Six modules — Today, Meetings,
+> Working, and in daily use by its author. Six modules — Today, Glossary,
 > Workspaces, Study, Date and Notes — plus the AI layer are all in. It has
 > no login and is meant to run on a private network.
 
@@ -66,7 +66,7 @@ Everything else is ordinary Obsidian: wikilinks, tags, frontmatter.
 Workspaces are markdown too. One file per workspace under `_hub/workspaces/`
 names it, colours it and says where its notes live, so that travels with the
 vault and is editable in Obsidian. Every workspace gets the same sections —
-tasks or board, inbox, log, contacts and deals, meetings, notes — and a
+tasks or board, inbox, log, contacts and deals, notes — and a
 section with nothing in it is simply hidden. An `aliases:` list in that file
 names the words you already use for the project — `aliases: [eye2gene, e2g]`
 — so a daily block reading "Work on eye2gene" is counted against it without
@@ -80,13 +80,11 @@ is a route folder and a line:
 - **Today** — the day and the week around it: scheduled blocks, overdue and
   blocked cards, calendar events, and a briefing button that drafts a
   paragraph you save yourself.
-- **Meetings** — one card per workspace: a primer, live notes with a capture
-  box and prep talking points, each with a Claude draft you accept or throw
-  away. Captured terms can feed a glossary.
 - **Glossary** — standalone glossaries, one file each in `Glossaries/`, with
-  Claude look-ups and a scan of chosen folders for new terms to review and add.
+  Claude look-ups for the terms you have to guess at, and flashcards made
+  from them.
 - **Workspaces** — tasks or a board, an inbox, a dated log, contacts and a
-  deal pipeline, past meetings, and read-only notes.
+  deal pipeline, and read-only notes.
 - **Study** — topics, a reading list, flashcard review, goals with
   milestones, and a session log.
 - **Date** — a daily counter ledger, stats and history, and person
@@ -110,7 +108,7 @@ HUB_VAULT=~/vault npm run dev      # http://localhost:5173
 | `HUB_DB` | `~/.local/state/hub/index.db` | Index cache; safe to delete |
 | `HUB_UNDO` | `~/.local/state/hub/undo` | Snapshots taken before any AI write |
 | `HUB_PEOPLE_FOLDER` | `People` | Where a person note is created |
-| `HUB_GCAL_ICS` | — | Google Calendar's secret address in iCal format. Absent means no calendar events on Today or Meetings |
+| `HUB_GCAL_ICS` | — | Google Calendar's secret address in iCal format. Absent means no calendar events on Today |
 | `HUB_T3_URL` | — | Base URL of a T3 Code web client on this machine. Absent means no "T3 Code" entry in the nav or palette |
 | `PORT`, `HOST` | `3000`, `0.0.0.0` | For the built server |
 
@@ -209,7 +207,7 @@ ships — every surface still loads and says so.
 
 - [x] Vault reading, full-text index, file tree, rendered notes, git sync, daily note view
 - [x] Ticking tasks, drag-and-drop timeline, conflict resolver
-- [x] Six modules: Today, Meetings, Workspaces, Study, Date, Notes
+- [x] Six modules: Today, Glossary, Workspaces, Study, Date, Notes
 - [x] Kanban boards, contacts and a deal pipeline, task dependencies
 - [x] LLM assistance over the vault, behind an accept-or-reject proposal flow
       so nothing is written without confirmation
