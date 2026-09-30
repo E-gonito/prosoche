@@ -5,15 +5,18 @@
 	 *
 	 * Typing a new term in, editing or deleting one, and renaming or deleting
 	 * the glossary, are the user's own acts and write straight away. Looking a
-	 * term up is Claude's: it arrives as a proposal and changes nothing until
-	 * the user accepts.
+	 * term up and scanning notes for new terms are Claude's: a look-up arrives
+	 * as a proposal, a scan as a list to tick and edit (`GlossaryScan`, opened
+	 * by its button or by `#scan` in the address), and neither changes
+	 * anything until the user accepts or adds.
 	 *
 	 * The Flashcards line links the glossary to a study subject, whose cards
 	 * the server then keeps in step with every term, and says how they
 	 * stand.
 	 */
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
+	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { api } from '$lib/client/api';
 	import { slugify } from '$lib/shared/slug';
 
@@ -124,6 +127,15 @@
 		}
 	}
 
+	/** Whether the scan is open. It stays mounted when closed, so its list survives. */
+	let scanOpen = $state(false);
+	afterNavigate(({ to }) => {
+		if (to?.url.hash === '#scan') scanOpen = true;
+	});
+	const cardsIn = $derived(
+		data.cards.state === 'linked' ? { name: data.cards.subject.name, href: `/study/${data.cards.subject.slug}/flashcards` } : null
+	);
+
 	/** The subject the picker shows: the linked one, the unknown slug, or none. */
 	const study = $derived(data.cards.state === 'linked' ? data.cards.subject.slug : data.cards.state === 'unknown' ? data.cards.study : '');
 	let linking = $state(false);
@@ -209,7 +221,27 @@
 			{#each data.categories as category (category)}<option value={category}></option>{/each}
 		</datalist>
 		<button class="btn" type="submit" disabled={!fresh.term.trim() || adding !== null} data-testid="new-add">Add term</button>
+		<button class="btn" type="button" aria-expanded={scanOpen} aria-controls="scan" onclick={() => (scanOpen = !scanOpen)} data-testid="scan-open">
+			{scanOpen ? 'Close scan' : 'Scan notes'}
+		</button>
 	</form>
+
+	<div id="scan" hidden={!scanOpen}>
+		<p class="label">Scan notes for new terms</p>
+		<!-- Keyed, so moving to another glossary stops a scan and drops its list. -->
+		{#key slug}
+			<GlossaryScan
+				{slug}
+				path={data.glossary.path}
+				plan={data.scan}
+				folders={data.folders}
+				categories={data.categories}
+				terms={data.entries.map((e) => e.term)}
+				aiEnabled={data.aiEnabled}
+				cards={cardsIn}
+			/>
+		{/key}
+	</div>
 
 	<input class="field filter" type="search" bind:value={query} placeholder="Filter terms…" aria-label="Filter terms" data-testid="glossary-filter" />
 
@@ -294,7 +326,7 @@
 		</div>
 	{:else}
 		<p class="empty">
-			No terms yet. Add one above; it goes in <code>{data.glossary.path}</code>.
+			No terms yet. Add one above, or scan your notes for some; they go in <code>{data.glossary.path}</code>.
 		</p>
 	{/if}
 </div>
