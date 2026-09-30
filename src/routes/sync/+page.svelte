@@ -53,6 +53,17 @@
 		}
 	}
 
+	/** Fill the message box from the ticked files' diffs; the person still commits. */
+	async function suggest() {
+		busy = 'suggest';
+		problem = '';
+		const result = await api<{ message: string; problem?: string }>('/api/sync/message', { paths: chosen.map((f: Pending) => f.path) });
+		busy = '';
+		if (!result.ok) problem = result.message;
+		else if (result.value.problem) problem = result.value.problem;
+		else message = result.value.message;
+	}
+
 	async function doDiscard() {
 		asking = null;
 		const paths = chosen.map((f: Pending) => f.path);
@@ -150,12 +161,26 @@
 				{/each}
 			</div>
 
-			<input
-				class="field"
-				bind:value={message}
-				placeholder="Commit message (optional)"
-				aria-label="Commit message"
-			/>
+			<div class="message">
+				<input
+					class="field"
+					bind:value={message}
+					placeholder="Commit message (optional)"
+					aria-label="Commit message"
+					data-testid="commit-message"
+				/>
+				{#if data.aiEnabled}
+					<button
+						class="btn"
+						disabled={!chosen.length || !!busy}
+						onclick={suggest}
+						title="Reads the ticked files' diffs and suggests a docs(x): y line"
+						data-testid="suggest-message"
+					>
+						{busy === 'suggest' ? 'Reading…' : 'Suggest'}
+					</button>
+				{/if}
+			</div>
 
 			<div class="row buttons">
 				<button class="btn primary" disabled={!chosen.length || !!busy} onclick={() => (asking = 'commit')}>
@@ -292,6 +317,9 @@
 	.row .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.tag.by { background: var(--accent-soft); color: var(--accent); }
 	label.row { cursor: pointer; }
+
+	.message { display: flex; gap: var(--s2); }
+	.message .field { flex: 1; min-width: 0; }
 
 	/* `.btn.small` and `.btn.danger` are shared, in app.css. */
 	.buttons { border: 0; padding: 10px 0 0; justify-content: flex-start; font-family: inherit; }

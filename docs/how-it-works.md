@@ -745,6 +745,13 @@ Automatic commits only ever stage files this app wrote; anything changed by
 hand in an editor waits on this page for a person to choose, rather than
 being swept up automatically.
 
+**Suggest**, beside the commit message, has a model read the diffs of the
+ticked files and fill the box with one line, `docs(<scope>): <summary>`, such
+as `docs(glossary): add ten networking terms`. It uses the Commit message
+row on Settings, Haiku at low effort by default, and shows only when AI is on.
+It only fills the box: you can edit the line, and nothing is committed until
+you press Commit and push.
+
 The app's own state files, the `_hub/.state/` stamps among them, are never
 committed: they exist to survive a restart, not to be shared. If a
 copy of the vault on another device did commit them, the next pull here

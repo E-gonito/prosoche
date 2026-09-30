@@ -1,5 +1,6 @@
 import { hub } from '$server/hub';
 import { config } from '$server/config';
+import { loadSettings } from '$server/ai/settings';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -12,6 +13,8 @@ export const load: PageServerLoad = async () => {
 		undoPath: config.undoPath,
 		branch: config.git.branch,
 		commitDebounceSeconds: config.git.commitDebounceMs / 1000,
-		pullIntervalSeconds: config.git.pullIntervalMs / 1000
+		pullIntervalSeconds: config.git.pullIntervalMs / 1000,
+		/** Whether Suggest is offered: it asks a model for the commit message. */
+		aiEnabled: (await loadSettings(vault)).enabled
 	};
 };
