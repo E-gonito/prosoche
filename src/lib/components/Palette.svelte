@@ -63,8 +63,8 @@
 			placeholder: 'Shared link…',
 			submit: async (text) => {
 				const { api } = await import('$lib/client/api');
-				const result = await api<{ path: string }>('/api/capture', { text });
-				return result.ok ? `Saved to ${result.value.path}` : result.message;
+				const result = await api<{ message: string }>('/api/capture', { text });
+				return result.ok ? result.value.message : result.message;
 			}
 		});
 		palette.askText = shared;

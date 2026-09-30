@@ -267,24 +267,24 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 					title: 'Quick capture',
 					placeholder: 'Thought, link or task…',
 					submit: async (text) => {
-						const result = await api<{ path: string }>('/api/capture', { text });
-						return result.ok ? `Saved to ${result.value.path}` : result.message;
+						const result = await api<{ message: string }>('/api/capture', { text });
+						return result.ok ? result.value.message : result.message;
 					}
 				})
 		},
 		{
 			keys: 'k',
 			description: 'New card',
-			// A card is an ordinary task line, so capture writes it: the line
-			// lands in the inbox with a quadrant and stays a task wherever it
-			// is filed afterwards.
+			// A card is an ordinary task line, so capture writes it: routed like
+			// any capture (a workspace's tag or name puts it on that board),
+			// with a quadrant, and a task wherever it is filed afterwards.
 			run: () =>
 				palette.request({
 					title: 'New card',
 					placeholder: 'What needs doing?',
 					submit: async (text) => {
-						const result = await api<{ path: string }>('/api/capture', { text: `- [ ] ${text} \`Q2\`` });
-						return result.ok ? `Card written to ${result.value.path}` : result.message;
+						const result = await api<{ message: string }>('/api/capture', { text: `- [ ] ${text} \`Q2\`` });
+						return result.ok ? result.value.message : result.message;
 					}
 				})
 		},

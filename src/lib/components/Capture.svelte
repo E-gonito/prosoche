@@ -1,20 +1,24 @@
 <script lang="ts">
 	/**
-	 * One line into the inbox, from wherever the day is being looked at.
+	 * One line into the vault, from wherever the day is being looked at.
 	 *
 	 * Shaped as a row rather than as a card: it lives at the top of the
 	 * Unscheduled list, because "something I have not done yet" and "something
 	 * I have just thought of" are the same thought half a second apart. The
-	 * text goes to `Inbox/Capture.md` under today's date, never into the note
-	 * on screen, and the confirmation says which file took it.
+	 * server decides where the line goes from its words (a time range to
+	 * today's note, a workspace's tag or alias to its board, else
+	 * `Inbox/Capture.md`), and the confirmation is its sentence saying where.
 	 */
 	import { api } from '$lib/client/api';
 	let {
 		onproblem,
+		oncaptured,
 		workspace
 	}: {
 		onproblem?: (message: string) => void;
-		/** Given, the line goes to that workspace's own `Inbox.md` instead. */
+		/** Called once the line is written, for a page that lists where it went. */
+		oncaptured?: () => void;
+		/** Given, the line goes to the inbox tagged for that workspace. */
 		workspace?: string;
 	} = $props();
 
@@ -27,11 +31,12 @@
 		const value = text.trim();
 		if (!value || saving) return;
 		saving = true;
-		const result = await api<{ path: string }>('/api/capture', { text: value, workspace });
+		const result = await api<{ message: string }>('/api/capture', { text: value, workspace });
 		saving = false;
 		if (result.ok) {
 			text = '';
-			note = `Saved to ${result.value.path}`;
+			note = result.value.message;
+			oncaptured?.();
 			setTimeout(() => (note = ''), 4000);
 		} else {
 			onproblem?.(result.message);
@@ -45,7 +50,7 @@
 		bind:value={text}
 		placeholder="Capture a thought or a task…"
 		aria-label="Quick capture"
-		title="Appends to Inbox/Capture.md under today's date"
+		title="A time range goes to today, #ws/name or a workspace's name to its board, anything else to the inbox"
 		disabled={saving}
 	/>
 	<button class="btn primary add" disabled={saving || !text.trim()}>{saving ? 'Saving…' : 'Add'}</button>

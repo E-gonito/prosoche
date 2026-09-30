@@ -194,7 +194,7 @@ function blockLine(
 	return parts.join(' ');
 }
 
-/** Whether the card's own words already carry `tag`, or a tag nested under it. */
-function carries(text: string, tag: string): boolean {
+/** Whether `text` already carries `tag`, or a tag nested under it. Pure. */
+export function carries(text: string, tag: string): boolean {
 	return scanTags(text).some((t) => t.tag === tag || t.tag.startsWith(`${tag}/`));
 }
