@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { apply, markerBlock, newId, policyFor, readRegion, replaceRegion, undo, validate, type Policy } from './proposal';
 import { DEFAULT_BLAST } from './guardrails';
+import { listSnapshots, snapshot } from './undo';
 import type { Proposal, ProposalEdit, RunStamp } from '$lib/shared/ai';
 
 const STAMP: RunStamp = {
@@ -151,6 +152,15 @@ describe('apply', () => {
 		const restored = await undo(vault, result.undoId!, undoRoot);
 		expect(restored.restored).toEqual(['Inbox/Capture.md']);
 		expect((await vault.read('Inbox/Capture.md')).content).toBe('# Capture\n\n- one\n- two\n');
+	});
+
+	it('prunes snapshots past seven days each time it takes one', async () => {
+		const old = await snapshot('old', [{ path: 'Inbox/Capture.md', content: 'x' }], undoRoot, new Date(Date.now() - 8 * 86_400_000));
+		const p = accepted([{ id: 'e1', kind: 'append', path: 'Inbox/Capture.md', text: '- three', reason: 'r' }]);
+		const result = await run(p);
+		const kept = (await listSnapshots(undoRoot)).map((s) => s.id);
+		expect(kept).toEqual([result.undoId]);
+		expect(kept).not.toContain(old.id);
 	});
 
 	it('reports a conflict rather than overwriting a note changed underneath', async () => {

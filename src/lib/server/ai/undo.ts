@@ -146,6 +146,8 @@ export async function listSnapshots(undoPath: string = config.undoPath): Promise
 
 /**
  * Delete snapshots older than `days`, which the spec fixes at seven.
+ * `proposal.apply` calls it after every snapshot, which is what makes the
+ * settings page's "kept for seven days" true.
  *
  * Inputs: a retention window. Output: how many were removed.
  * Side effects: removes directories under `config.undoPath` only. Never

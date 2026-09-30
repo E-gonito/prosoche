@@ -42,7 +42,7 @@ import {
 	type BlastLimits,
 	type PathPolicy
 } from './guardrails';
-import { appliedResult, recordApplied, readSnapshot, resolvesInsideVault, snapshot } from './undo';
+import { appliedResult, pruneSnapshots, recordApplied, readSnapshot, resolvesInsideVault, snapshot } from './undo';
 import {
 	refuse,
 	type ApplyResult,
@@ -316,11 +316,13 @@ export async function apply(
 	if (writable.length === 0) return { written: [], refusals, undoId: null };
 
 	// G9: snapshot before the first write, and refuse anything not covered.
+	// Pruning here is what keeps the seven-day promise without a timer.
 	const taken = await snapshot(
 		proposal.id,
 		writable.map((p) => ({ path: p.path, content: p.before })),
 		undoPath
 	);
+	await pruneSnapshots(7, undoPath);
 	const missing = requireUndoSnapshot(
 		writable.map((p) => p.path),
 		taken.paths
