@@ -3,29 +3,20 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { subjectsOf } from './subjects';
+import { readSubject } from './subjects';
 import { progressByGoal, studySummary, subjectCard } from './summary';
-import type { Workspace } from '../workspaces';
 
 const TODAY = '2026-09-29'; // a Tuesday; the week starts on the 28th
 
-const workspace = (slug: string, folders: string[], template?: string): Workspace => ({
-	slug,
-	name: slug.toUpperCase(),
-	color: '#123456',
-	tag: `ws/${slug}`,
-	aliases: [],
-	folders,
-	template,
-	path: `_hub/workspaces/${slug}.md`
-});
+const subject = (slug: string, folders: string[], extra = '') =>
+	readSubject(`_hub/subjects/${slug}.md`, `---\nname: ${slug.toUpperCase()}\ncolor: "#123456"\ntag: ws/${slug}\nfolders:\n${folders.map((f) => `  - ${f}\n`).join('')}${extra}---\n`);
 
-const WORKSPACES = [workspace('cs', ['Study/CS', 'Computer Science'], 'study'), workspace('fil', ['Study/Filipino'], 'study'), workspace('work', ['Work'])];
+const SUBJECTS = [subject('cs', ['Study/CS', 'Computer Science']), subject('fil', ['Study/Filipino'])];
 
 describe('a subject’s summary', () => {
 	let root: string;
 	let vault: Vault;
-	const [CS, FIL] = subjectsOf(WORKSPACES);
+	const [CS, FIL] = SUBJECTS;
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-summary-'));
@@ -95,7 +86,5 @@ describe('a subject’s summary', () => {
 			streak: 3
 		});
 	});
-
-
 
 });

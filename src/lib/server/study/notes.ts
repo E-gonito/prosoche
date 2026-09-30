@@ -2,8 +2,8 @@
  * A subject's own notes: the folders a study subject names, as a tree to
  * browse and one note at a time to read, inside the subject's Notes tab.
  *
- * Read-only throughout. Which folders count is the subject's own list (its
- * workspace `folders:`), so pointing CS study at `Computer Science/` is what
+ * Read-only throughout. Which folders count is the subject's own list (the
+ * `folders:` of its file in `_hub/subjects/`), so pointing CS study at `Computer Science/` is what
  * puts those notes here; nothing is copied or indexed a second time. A note
  * outside those folders is not shown here, however it is asked for: the tab
  * is a window on the subject, and the vault-wide reader is `/notes`.

@@ -25,12 +25,11 @@ export interface StudyScope {
 }
 
 /**
- * A subject: one workspace whose `template:` says `study`, as the screens
- * need it. Its own files live in `home`; its cards come from every folder
- * its workspace names.
+ * A subject: one file in `_hub/subjects/`, as the screens need it. Its own
+ * files live in `home`; its notes come from every folder its file names.
  */
 export interface SubjectRef {
-	/** The workspace's slug, and the `/study/<slug>` segment. */
+	/** The subject file's name, and the `/study/<slug>` segment. */
 	slug: string;
 	name: string;
 	color: string;
@@ -41,7 +40,7 @@ export interface SubjectRef {
 /**
  * A goal, as every goal picker offers it. A goal is a `## ` heading in the
  * subject's `Goals.md`, and it is the subject's unit of progress: reading
- * items, sessions and card files point at one.
+ * items and sessions point at one.
  */
 export interface GoalRef {
 	/** The heading's text, verbatim. */

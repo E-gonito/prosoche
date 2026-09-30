@@ -40,7 +40,6 @@ const WORK: Workspace = {
 	tag: 'ws/work',
 	aliases: [],
 	folders: ['Work'],
-	template: 'project',
 	glossary: 'eye2gene',
 	path: '_hub/workspaces/work.md'
 };

@@ -8,6 +8,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FolderEditor from '$lib/components/FolderEditor.svelte';
 	import { formatDuration } from '$lib/shared/duration';
+	import { api } from '$lib/client/api';
 
 	let { data } = $props();
 
@@ -91,7 +92,13 @@
 	{/if}
 
 	<p class="label">Folders</p>
-	<FolderEditor slug={data.subject.slug} folders={data.subject.scope.folders ?? []} options={data.vaultFolders} />
+	<FolderEditor
+		slug={data.subject.slug}
+		folders={data.subject.scope.folders ?? []}
+		options={data.vaultFolders}
+		save={(folders) => api('/api/study/subject', { subject: data.subject.slug, folders }, { method: 'PATCH' })}
+		hint="Notes in these folders count as this subject's: its cards come from them, and its Notes tab shows them."
+	/>
 </div>
 
 <style>

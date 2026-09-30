@@ -27,6 +27,8 @@ import { config } from '../config';
 import { isIgnored, isMarkdown, isPrivate, toAbsolute, toRelative } from './paths';
 import { noSync, type SyncProvider } from './sync';
 
+export { folderList } from './paths';
+
 export interface Note {
 	/** Vault-relative path, e.g. `Journal/2026/09/21.md`. */
 	path: string;

@@ -70,7 +70,7 @@ Six tabs, drawn from one registry (`src/lib/modules/index.ts`):
 - **Workspaces** — a kanban board, overview, inbox, log, contacts and notes,
   each defined by one file in `_hub/workspaces/`.
 - **Study** — subjects with goals, a reading list, sessions and flashcards
-  scheduled by FSRS.
+  scheduled by FSRS, each defined by one file in `_hub/subjects/`.
 - **Date** — a private counter ledger and person profiles under a gitignored
   `Private/` folder.
 - **Notes** — a read-only Obsidian viewer with search and backlinks.

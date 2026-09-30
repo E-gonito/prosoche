@@ -12,6 +12,7 @@ import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
+import { adoptStudyWorkspaces, loadSubjects, type Subject } from './study/subjects';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -85,6 +86,8 @@ export interface Hub {
 	workspaces(): Promise<Workspace[]>;
 	/** The workspace with this slug, re-read on demand, or null for anything else. */
 	workspace(slug: unknown): Promise<Workspace | null>;
+	/** Study subject definitions from `_hub/subjects/`, re-read on demand. */
+	subjects(): Promise<Subject[]>;
 }
 
 let instance: Promise<Hub> | null = null;
@@ -143,6 +146,8 @@ function start(): Promise<Hub> {
 	const built = rebuild().then(
 		async (ms) => {
 			console.log(`[hub] indexed ${index.health().notes} notes in ${ms} ms`);
+			const adopted = await adoptStudyWorkspaces(vault);
+			if (adopted.length) console.log(`[hub] moved ${adopted.length} study subjects out of _hub/workspaces/ into _hub/subjects/`);
 			const seeded = await seedWorkspaces(vault);
 			if (seeded.length) console.log(`[hub] created ${seeded.length} workspace files under _hub/workspaces/`);
 			// Glossaries' cards follow every change to a glossary from here on,
@@ -166,7 +171,8 @@ function start(): Promise<Hub> {
 		subscribe: (l) => vault.subscribe(l),
 		rebuild,
 		workspaces,
-		workspace: async (slug) => (await workspaces()).find((w) => w.slug === slug) ?? null
+		workspace: async (slug) => (await workspaces()).find((w) => w.slug === slug) ?? null,
+		subjects: () => loadSubjects(vault)
 	};
 	return built.then(() => h);
 }

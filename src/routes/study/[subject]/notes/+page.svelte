@@ -33,8 +33,8 @@
 
 	{#if data.tree.length === 0}
 		<p class="callout" data-testid="subject-no-notes">
-			<b>No folders yet.</b> This subject's folders ({data.folders.join(', ') || 'none'}) hold no notes. Add a folder to
-			<code>folders</code> in its workspace file to see its notes here.
+			<b>No folders yet.</b> This subject's folders ({data.folders.join(', ') || 'none'}) hold no notes. Add a folder on
+			<a href="/study/{data.subject.slug}">its Overview</a> to see its notes here.
 		</p>
 	{:else}
 		<div class="layout">

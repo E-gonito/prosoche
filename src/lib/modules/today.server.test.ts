@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { NoteIndex } from '$server/index/index';
 import { Vault } from '$server/vault/index';
 import { loadWorkspaces } from '$server/workspaces';
+import { loadSubjects } from '$server/study/subjects';
 import { TODAY_CARDS, todayCards } from './today.server';
 import { MODULES } from './index';
 import type { Hub } from '$server/hub';
@@ -44,7 +45,8 @@ describe('TODAY_CARDS never names a private module', () => {
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
-		workspaces: async () => loadWorkspaces(vault)
+		workspaces: async () => loadWorkspaces(vault),
+		subjects: async () => loadSubjects(vault)
 	});
 
 	it('produces cards whose module is never marked private in MODULES', async () => {
@@ -90,7 +92,8 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
-		workspaces: async () => loadWorkspaces(vault)
+		workspaces: async () => loadWorkspaces(vault),
+		subjects: async () => loadSubjects(vault)
 	});
 
 	it('is absent when nothing is due', async () => {

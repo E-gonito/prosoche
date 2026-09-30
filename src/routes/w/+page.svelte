@@ -30,7 +30,7 @@
 <div class="page">
 	<div class="title">
 		<h1>Workspaces</h1>
-		<p>The areas a vault is divided into: work, study, and whatever else you split off.</p>
+		<p>The areas a vault is divided into: work, clients, and whatever else you split off.</p>
 	</div>
 
 	<div class="sheet rows">

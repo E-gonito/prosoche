@@ -6,10 +6,8 @@
 		description: string;
 		/** `#rrggbb`, drawn as the dot before the name. */
 		color?: string;
-		/** A workspace's tag, without the `#`. */
+		/** The tag that claims notes for it, without the `#`. */
 		tag?: string;
-		/** A workspace's `template:`; `study` makes it a Study subject. */
-		kind?: string;
 	}
 
 	export type DetailField = keyof Details;
@@ -55,12 +53,6 @@
 		actions?: Snippet;
 	} = $props();
 
-	/** `study` is the only kind that changes anything: it makes a Study subject. */
-	const KINDS = [
-		{ value: 'project', label: 'Project' },
-		{ value: 'study', label: 'Study subject' }
-	];
-
 	let editing = $state(false);
 	let initial = $state<Required<Details>>(blank());
 	let draft = $state<Required<Details>>(blank());
@@ -68,11 +60,11 @@
 	let problem = $state('');
 
 	function blank(): Required<Details> {
-		return { name: '', description: '', color: '', tag: '', kind: '' };
+		return { name: '', description: '', color: '', tag: '' };
 	}
 
 	function open() {
-		const now = untrack(() => ({ ...blank(), ...details, kind: details.kind || 'project' }));
+		const now = untrack(() => ({ ...blank(), ...details }));
 		initial = now;
 		draft = { ...now };
 		problem = '';
@@ -80,7 +72,6 @@
 	}
 
 	const shows = (field: DetailField) => fields.includes(field);
-	const kinds = $derived(KINDS.some((k) => k.value === initial.kind) ? KINDS : [...KINDS, { value: initial.kind, label: initial.kind }]);
 	const tagChanged = $derived(draft.tag.trim().replace(/^#/, '') !== initial.tag);
 
 	async function submit(event: SubmitEvent) {
@@ -142,17 +133,6 @@
 			{#if tagChanged}
 				<p class="hint" data-testid="details-tag-hint">Tasks tagged <code>#{initial.tag}</code> keep that tag, and stop belonging here.</p>
 			{/if}
-		{/if}
-
-		{#if shows('kind')}
-			<label class="form-row">
-				<span>Kind</span>
-				<select class="field" bind:value={draft.kind} data-testid="details-kind">
-					{#each kinds as kind (kind.value)}
-						<option value={kind.value}>{kind.label}</option>
-					{/each}
-				</select>
-			</label>
 		{/if}
 
 		{#if problem}<p class="problem" role="alert">{problem}</p>{/if}

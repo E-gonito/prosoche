@@ -14,7 +14,7 @@ export const POST = route(async ({ body, hub }) => {
 	if (!body.subject || !day || !isDayKey(day) || minutes <= 0) {
 		return refuse('invalid', 'subject, day and a positive number of minutes are required');
 	}
-	const subject = subjectOf(await hub.workspaces(), body.subject);
+	const subject = subjectOf(await hub.subjects(), body.subject);
 	if (!subject) return noSubject();
 	return logSession(hub.vault, subject.files.sessions, {
 		day,

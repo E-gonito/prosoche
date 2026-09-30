@@ -13,7 +13,7 @@ import { noSubject, refuse, route } from '../../route';
 export const POST = route<{ subject: string; hash: string; op: ReadingOp }>(
 	async ({ body, hub }) => {
 		if (!body.subject || typeof body.hash !== 'string' || !body.op) return refuse('invalid', 'subject, hash and op are required');
-		const subject = subjectOf(await hub.workspaces(), body.subject);
+		const subject = subjectOf(await hub.subjects(), body.subject);
 		return subject ? changeReadingList(hub.vault, subject, body.hash, body.op) : noSubject();
 	},
 	{ conflict: 'The reading list changed somewhere else. It has been reloaded; try again.' }

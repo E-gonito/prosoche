@@ -17,7 +17,7 @@ import type { PageServerLoad } from './$types';
  * sources to count them. Only an unknown slug is a 404. Writes nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
-	const { vault, index, workspaces } = await hub();
+	const { vault, index, workspaces, subjects } = await hub();
 	const all = await workspaces();
 	const ref = await findGlossary(vault, all, params.slug);
 	if (!ref) error(404, 'No such glossary');

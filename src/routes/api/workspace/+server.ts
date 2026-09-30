@@ -17,7 +17,7 @@ export const POST = route(
 );
 
 /**
- * Edit a workspace's definition, `{ slug, name?, color?, tag?, template?,
+ * Edit a workspace's definition, `{ slug, name?, color?, tag?,
  * description?, folders? }`: each field sent is written, and a field left
  * out is left alone (see `editWorkspace`). `folders` is every folder wanted
  * after the home. Answers `{ folders }`, the workspace's folders as now
@@ -30,7 +30,6 @@ export const PATCH = route(async ({ body, hub }) => {
 		name: str(body.name),
 		color: str(body.color),
 		tag: str(body.tag),
-		template: str(body.template),
 		description: str(body.description),
 		folders: strings(body.folders)
 	});
