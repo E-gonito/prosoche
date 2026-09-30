@@ -199,7 +199,7 @@ export async function readGoals(vault: Vault, path: string): Promise<GoalsNote> 
 	return parseGoals((await vault.read(path)).content, path);
 }
 
-export type GoalWrite = { ok: true } | { ok: false; reason: 'conflict' };
+type GoalWrite = { ok: true } | { ok: false; reason: 'conflict' };
 
 /** Append a goal to `path`, creating the note when this is its first. */
 export async function addGoal(vault: Vault, path: string, title: string, target: string | null): Promise<GoalWrite> {
@@ -209,7 +209,7 @@ export async function addGoal(vault: Vault, path: string, title: string, target:
 	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
 }
 
-export type MilestoneWrite = { ok: true; task: Task } | { ok: false; reason: 'conflict' | 'no-note' };
+type MilestoneWrite = { ok: true; task: Task } | { ok: false; reason: 'conflict' | 'no-note' };
 
 /**
  * Append a milestone under an existing goal. Refuses rather than creating the

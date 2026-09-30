@@ -156,7 +156,7 @@ export function openActions(meetings: Meeting[]): OpenAction[] {
 }
 
 /** What starting a meeting needs. */
-export interface StartInput {
+interface StartInput {
 	type: MeetingType;
 	title: string;
 	/** `YYYY-MM-DD`; the note is named and dated by it. */
@@ -322,13 +322,13 @@ export function eventForNotebook(
 }
 
 /** One part of a primer section: prose on paper, or an aside in sand. */
-export interface PrimerBlock {
+interface PrimerBlock {
 	kind: 'text' | 'callout';
 	html: string;
 }
 
 /** A primer section: the lead has no heading, the rest are `##` sections. */
-export interface PrimerSection {
+interface PrimerSection {
 	heading: string | null;
 	blocks: PrimerBlock[];
 }
@@ -398,7 +398,7 @@ function blocksOf(lines: string[], resolve: (target: string) => string | null): 
 }
 
 /** A custom HTML page of a workspace, shown as a notebook tab. */
-export interface CustomPage {
+interface CustomPage {
 	file: string;
 	title: string;
 	href: string;

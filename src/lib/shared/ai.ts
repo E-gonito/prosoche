@@ -164,7 +164,7 @@ export function refuse(guardrail: GuardrailId, message: string, path?: string): 
 }
 
 /** The fields of a task-line edit a proposal may ask for. Mirrors `TaskEdit`. */
-export interface TaskLineEdit {
+interface TaskLineEdit {
 	status?: 'todo' | 'done' | 'in-progress' | 'cancelled' | 'blocked';
 	time?: { start: string; end: string } | null;
 	quadrant?: number | null;
@@ -199,7 +199,7 @@ export type ProposalEdit =
 	 */
 	| { id: string; kind: 'revise'; path: string; text: string; expectedHash: string; reason: string };
 
-export type EditKind = ProposalEdit['kind'];
+type EditKind = ProposalEdit['kind'];
 
 export const EDIT_KIND_LABELS: Record<EditKind, string> = {
 	create: 'New note',
@@ -259,7 +259,7 @@ export interface ApplyResult {
 	undoId: string | null;
 }
 
-export type DiffRow = { kind: 'same' | 'add' | 'remove'; text: string; line: number };
+type DiffRow = { kind: 'same' | 'add' | 'remove'; text: string; line: number };
 
 /**
  * Line diff of two versions of a file, for the review view.

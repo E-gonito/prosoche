@@ -48,7 +48,7 @@
 import { scanCards, FLASHCARD_TAG, type CardKind } from './flashcards';
 
 /** One card, both sides as markdown exactly as the card finder reads them back. */
-export interface AnkiCard {
+interface AnkiCard {
 	front: string;
 	back: string;
 }

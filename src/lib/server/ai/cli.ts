@@ -57,7 +57,7 @@ export interface RunRequest {
 	jsonSchema?: Schema;
 }
 
-export type RunResult =
+type RunResult =
 	| { ok: true; text: string; json: unknown; costUsd: number; durationMs: number }
 	| {
 			ok: false;

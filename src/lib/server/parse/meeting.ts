@@ -44,7 +44,7 @@ export interface CaptureInput {
 }
 
 /** A meeting note, as the notebook shows it. */
-export interface MeetingMeta {
+interface MeetingMeta {
 	title: string;
 	type: MeetingType;
 	/** `YYYY-MM-DD`, from the file name first and the frontmatter second. */
@@ -266,7 +266,7 @@ export function setEnded(content: string, time: string): string {
 }
 
 /** What a new meeting note starts with. */
-export interface NewMeeting {
+interface NewMeeting {
 	type: MeetingType;
 	date: string;
 	title: string;

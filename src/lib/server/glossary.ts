@@ -101,7 +101,7 @@ export interface Glossary {
 }
 
 /** A glossary and its size, for a list. */
-export interface GlossarySummary {
+interface GlossarySummary {
 	name: string;
 	slug: string;
 	color: string;
@@ -135,7 +135,7 @@ export function isGlossaryPath(path: string): boolean {
  * compared ignoring case and repeated spaces, as Obsidian resolves a link.
  * Pure.
  */
-export function pointsAt(workspace: Workspace, name: string): boolean {
+function pointsAt(workspace: Workspace, name: string): boolean {
 	return Boolean(workspace.glossary) && sameName(workspace.glossary!, name);
 }
 
@@ -546,7 +546,7 @@ export async function addTerm(vault: Vault, path: string, term: { term: string; 
 }
 
 /** An edit to one term, as the glossary page sends it. */
-export interface TermEdit {
+interface TermEdit {
 	term?: string;
 	category?: string;
 	definition?: string;

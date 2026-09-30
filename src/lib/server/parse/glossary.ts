@@ -25,7 +25,7 @@
 
 import { normaliseTerm } from '$lib/shared/glossary';
 
-export interface GlossaryField {
+interface GlossaryField {
 	value: string;
 	/** 0-based line of the field in the note. */
 	line: number;
@@ -60,7 +60,7 @@ export interface GlossaryEntry {
 }
 
 /** A term to add, as "Add to glossary" writes it. */
-export interface NewEntry {
+interface NewEntry {
 	term: string;
 	guess?: string | null;
 	status?: string;

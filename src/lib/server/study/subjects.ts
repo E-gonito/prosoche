@@ -19,13 +19,13 @@ import type { StudyScope, SubjectRef } from '$lib/shared/study';
 import type { Vault } from '../vault/index';
 
 /** The `template:` value that makes a workspace a subject. */
-export const STUDY_TEMPLATE = 'study';
+const STUDY_TEMPLATE = 'study';
 
 /**
  * How many never-reviewed cards join a subject's reviews each day when its
  * workspace file does not say, with `new_per_day:`.
  */
-export const NEW_PER_DAY = 20;
+const NEW_PER_DAY = 20;
 
 /** The folder new subjects are homed under: `Study/<Name>`. */
 const STUDY_ROOT = 'Study';
@@ -76,7 +76,7 @@ export function studyHome(workspaces: Workspace[], slug: string): string | null 
 	return subjectOf(workspaces, slug)?.home ?? null;
 }
 
-export type SubjectCreated =
+type SubjectCreated =
 	| { ok: true; subject: Subject }
 	| { ok: false; reason: 'no-name' | 'exists' | 'reserved'; message: string };
 

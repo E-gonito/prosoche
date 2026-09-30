@@ -38,11 +38,11 @@ export interface Note {
 	exists: boolean;
 }
 
-export type WriteResult =
+type WriteResult =
 	| { ok: true; note: Note }
 	| { ok: false; reason: 'conflict'; current: Note; yourContent: string };
 
-export type RemoveResult =
+type RemoveResult =
 	| { ok: true }
 	/** Nothing was there to remove. */
 	| { ok: false; reason: 'missing' }
@@ -61,9 +61,9 @@ export type TreeNode =
 	| { type: 'note'; name: string; path: string };
 
 /** Which side of the private folder a call may see. */
-export type Scope = 'public' | 'private';
+type Scope = 'public' | 'private';
 
-export interface ScopeOption {
+interface ScopeOption {
 	/** Absent means public. */
 	scope?: Scope;
 }

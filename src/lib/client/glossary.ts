@@ -10,10 +10,10 @@ import type { ScannedEntry } from '$lib/shared/glossary';
 export * from '$lib/shared/glossary';
 
 /** `added` is set by add-scanned: how many entries it wrote. */
-export type GlossaryResult = { ok: true; path: string; added?: number } | { ok: false; message: string };
+type GlossaryResult = { ok: true; path: string; added?: number } | { ok: false; message: string };
 
 /** `glossary` is the glossary's slug, as in its URL. */
-export type GlossaryAction =
+type GlossaryAction =
 	| { action: 'create-glossary'; name: string }
 	| { action: 'rename-glossary'; glossary: string; name: string }
 	| { action: 'delete-glossary'; glossary: string }

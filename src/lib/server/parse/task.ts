@@ -79,14 +79,14 @@ export interface TaskLine {
 }
 
 /** A Tasks-plugin emoji field and the range it occupies, marker included. */
-export interface TaskField extends Span {
+interface TaskField extends Span {
 	marker: string;
 	/** Text after the marker: a date, an id, a recurrence rule, or '' for a priority. */
 	value: string;
 }
 
 /** A tag and the range it occupies, `#` included. */
-export interface TaskTag extends Span {
+interface TaskTag extends Span {
 	tag: string;
 }
 

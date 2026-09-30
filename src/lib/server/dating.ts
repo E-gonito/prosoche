@@ -25,7 +25,7 @@ import { personName } from './people';
 import { appendUnderHeading } from './sections';
 import { hashContent, type Vault } from './vault/index';
 
-export const DATING_FOLDER = 'Private/Dating';
+const DATING_FOLDER = 'Private/Dating';
 export const LEDGER_PATH = `${DATING_FOLDER}/Ledger.md`;
 export const PEOPLE_FOLDER = `${DATING_FOLDER}/People`;
 const DATES_HEADING = '## Dates';
@@ -44,7 +44,7 @@ function text(value: unknown): string | null {
 
 /* ------------------------------------------------------------------ Log --- */
 
-export interface DayEntry extends LedgerCounts {
+interface DayEntry extends LedgerCounts {
 	day: DayKey;
 	notes: string;
 	/** Content hash of the whole ledger, for conflict detection on save. */
@@ -66,7 +66,7 @@ export async function loadDay(vault: Vault, day: DayKey): Promise<DayEntry> {
 		: { day, ...ZERO_COUNTS, notes: '', hash };
 }
 
-export type SaveDayResult = { ok: true; hash: string } | { ok: false; reason: 'conflict' };
+type SaveDayResult = { ok: true; hash: string } | { ok: false; reason: 'conflict' };
 
 /**
  * Save one day's counters and notes.
@@ -96,7 +96,7 @@ export async function saveDay(
 
 /* --------------------------------------------------------------- Stats --- */
 
-export interface RangeStats {
+interface RangeStats {
 	/** Calendar days the range covers: 7, 30, or the span since the first logged day. */
 	days: number;
 	totals: LedgerCounts;
@@ -107,7 +107,7 @@ export interface RangeStats {
 	receivedPerDay: number | null;
 }
 
-export type RangeKind = '7d' | '30d' | 'all';
+type RangeKind = '7d' | '30d' | 'all';
 
 /**
  * Totals and rates over a range ending on `asOf` (today, by default).
@@ -145,7 +145,7 @@ export function rangeStats(entries: LedgerLine[], range: RangeKind, asOf: DayKey
 	};
 }
 
-export interface WeekPoint {
+interface WeekPoint {
 	/** The Monday-to-Sunday-style week's first day, as the range ends on `asOf`. */
 	weekStart: DayKey;
 	weekEnd: DayKey;
@@ -172,7 +172,7 @@ export function weeklyTrend(entries: LedgerLine[], weeks = 12, asOf: DayKey = to
 	return points;
 }
 
-export interface WeekdayStat {
+interface WeekdayStat {
 	weekday: string;
 	matches: number;
 }
@@ -200,7 +200,7 @@ function daysBetween(a: DayKey, b: DayKey): number {
 
 /* -------------------------------------------------------------- People --- */
 
-export interface DatingPersonSummary {
+interface DatingPersonSummary {
 	name: string;
 	path: string;
 	app: string | null;
@@ -237,7 +237,7 @@ export async function listDatingPeople(vault: Vault): Promise<DatingPersonSummar
 	return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export interface DatingPerson extends DatingPersonSummary {
+interface DatingPerson extends DatingPersonSummary {
 	exists: boolean;
 	/** Free-text notes only: the body with frontmatter removed and the `## Dates` section cut off. */
 	body: string;
@@ -269,7 +269,7 @@ function proseOnly(body: string): string {
 	return at === -1 ? body : body.split('\n').slice(0, at).join('\n');
 }
 
-export type AddPersonResult = { ok: true; path: string } | { ok: false; reason: 'no-name' | 'exists' };
+type AddPersonResult = { ok: true; path: string } | { ok: false; reason: 'no-name' | 'exists' };
 
 /** Create a new dating person's note. Refuses rather than overwrites one that already exists. */
 export async function addDatingPerson(
@@ -287,7 +287,7 @@ export async function addDatingPerson(
 	return { ok: true, path };
 }
 
-export type AddDateResult = { ok: true; line: number } | { ok: false; reason: 'no-name' | 'no-text' | 'conflict' };
+type AddDateResult = { ok: true; line: number } | { ok: false; reason: 'no-name' | 'no-text' | 'conflict' };
 
 /** Append one line to a person's `## Dates` log, creating their note when they have none. */
 export async function addDatingDate(
@@ -310,7 +310,7 @@ export async function addDatingDate(
 	return { ok: true, line: next.line };
 }
 
-export type SetStageResult = { ok: true } | { ok: false; reason: 'no-note' | 'conflict' };
+type SetStageResult = { ok: true } | { ok: false; reason: 'no-note' | 'conflict' };
 
 /** Rewrite a person's frontmatter `stage:` line alone. */
 export async function setStage(vault: Vault, rawName: string, stage: Stage): Promise<SetStageResult> {

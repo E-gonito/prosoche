@@ -49,13 +49,13 @@ import type { CardsAdded, NewCard, SourceNote } from '$lib/shared/study';
 import type { Vault } from '../vault/index';
 
 /** The card file for cards under no goal, without `.md`. */
-export const FROM_NOTES = 'From notes';
+const FROM_NOTES = 'From notes';
 
 /** Cards one add may carry. More is a second press. */
-export const MAX_NEW_CARDS = 60;
+const MAX_NEW_CARDS = 60;
 
 /** The longest side a card may have, in characters. */
-export const MAX_SIDE = 4000;
+const MAX_SIDE = 4000;
 
 /**
  * The card file cards under `goal` go to: `<home>/Flashcards/<goal>.md`, or
@@ -183,7 +183,7 @@ export function withNewCards(
 	return readsBack(before, scanCards(text, path), added) ? { content: text, added, skipped } : null;
 }
 
-export type CardsAddResult =
+type CardsAddResult =
 	| ({ ok: true } & CardsAdded)
 	| { ok: false; reason: 'invalid'; problems: string[] }
 	| { ok: false; reason: 'conflict'; problems: string[] };

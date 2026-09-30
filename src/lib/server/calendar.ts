@@ -34,7 +34,7 @@ export interface CalendarEvent {
 	link: string;
 }
 
-export type CalendarResult =
+type CalendarResult =
 	| { ok: true; events: CalendarEvent[] }
 	| { ok: false; reason: 'not-configured' | 'unreachable'; message: string };
 

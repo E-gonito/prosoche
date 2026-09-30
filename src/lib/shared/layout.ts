@@ -8,7 +8,7 @@
  * Pure, so the arithmetic can be tested without a browser.
  */
 
-export interface Positioned<T> {
+interface Positioned<T> {
 	item: T;
 	startMin: number;
 	endMin: number;

@@ -87,7 +87,7 @@ export function scanLedger(content: string): LedgerLine[] {
 	return out;
 }
 
-export interface LedgerEdit extends Partial<LedgerCounts> {
+interface LedgerEdit extends Partial<LedgerCounts> {
 	notes?: string;
 }
 

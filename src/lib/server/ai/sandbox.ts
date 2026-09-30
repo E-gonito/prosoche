@@ -101,7 +101,7 @@ async function copyTree(from: string, into: string, vaultReal: string, paths: st
 	}
 }
 
-export interface SandboxChange {
+interface SandboxChange {
 	/** Vault-relative path, as the rest of the codebase spells paths. */
 	path: string;
 	/** Contents inside the sandbox after the run. */
@@ -179,7 +179,7 @@ export async function resolvesInsideVault(path: string, vaultPath: string = conf
 
 /* ------------------------------------------------- the undo snapshot store -- */
 
-export interface SnapshotEntry {
+interface SnapshotEntry {
 	id: string;
 	/** ISO timestamp the snapshot was taken. */
 	at: string;

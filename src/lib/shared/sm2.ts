@@ -33,7 +33,7 @@ export interface Schedule {
 	ease: number;
 }
 
-export interface SchedulingRules {
+interface SchedulingRules {
 	/** Ease a card starts with. */
 	baseEase: number;
 	/** Extra multiplier when an answer was easy. */
@@ -61,7 +61,7 @@ export const OSR: SchedulingRules = {
 };
 
 /** A card the user has never answered. The plugin's first interval is one day. */
-export const NEW_INTERVAL = 1;
+const NEW_INTERVAL = 1;
 
 /**
  * The next schedule for a card, given the one it has and how it was answered.

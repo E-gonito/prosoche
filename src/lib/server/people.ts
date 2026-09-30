@@ -48,7 +48,7 @@ const FOLLOW_UPS_HEADING = '## Follow-ups';
 const LOG_LINE = /^[ \t]*[-*+][ \t]+(\d{4}-\d{2}-\d{2})[ \t]+(.*)$/;
 
 /** One line of a person's `## Log`, in the order the file has them. */
-export interface LogLine {
+interface LogLine {
 	/** The date the line starts with, or null for a line written without one. */
 	day: DayKey | null;
 	text: string;
@@ -130,7 +130,7 @@ export async function person(vault: Vault, index: NoteIndex, rawName: string): P
 	};
 }
 
-export type ContactLogged =
+type ContactLogged =
 	| { ok: true; path: string; line: number; day: DayKey; created: boolean }
 	| { ok: false; reason: 'no-name' | 'no-text' | 'conflict' };
 

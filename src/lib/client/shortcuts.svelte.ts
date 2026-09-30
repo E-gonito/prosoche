@@ -125,7 +125,7 @@ export function keyLabel(keys: string): string {
  * anything contenteditable, or inside CodeMirror. Exported because the palette
  * needs the same answer when it decides whether to take focus.
  */
-export function isTyping(target: EventTarget | null): boolean {
+function isTyping(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
 	const tag = target.tagName;
 	if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;

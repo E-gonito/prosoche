@@ -39,10 +39,10 @@ export type { Owner, WorkspaceGroup, TodayData };
  * the module layer would run that rule in reverse. The route composes the
  * two into the full `TodayData` it returns.
  */
-export type TodayDashboard = Omit<TodayData, 'cards'>;
+type TodayDashboard = Omit<TodayData, 'cards'>;
 
 /** How many of a workspace's open cards the dashboard names before collapsing the rest. */
-export const WORKSPACE_CARD_LIMIT = 3;
+const WORKSPACE_CARD_LIMIT = 3;
 
 /** How many overdue tasks the dashboard is willing to list. */
 const OVERDUE_LIMIT = 40;
@@ -51,7 +51,7 @@ const OVERDUE_LIMIT = 40;
  * "Tuesday 29 September", the title's own reading of a day. It leaves out the
  * year, since the title already says "today" or "3 days ago" right beneath it.
  */
-export function formatTitleDay(day: DayKey): string {
+function formatTitleDay(day: DayKey): string {
 	const [y, m, d] = day.split('-').map(Number);
 	return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 }
@@ -73,7 +73,7 @@ export function summaryLine(input: { total: number; done: number; plannedMinutes
 	return parts.join(' · ');
 }
 
-export interface TodayDeps {
+interface TodayDeps {
 	vault: Vault;
 	index: NoteIndex;
 	workspaces: Workspace[];

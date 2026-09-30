@@ -15,7 +15,7 @@ import { parseTaskLine, rewriteTaskLine, toTask, type TaskEdit, type TaskLine } 
 import type { Task } from '$lib/shared/task';
 import type { Vault } from './vault/index';
 
-export type TaskUpdate =
+type TaskUpdate =
 	| { ok: true; task: Task }
 	| { ok: false; reason: 'no-note' }
 	| { ok: false; reason: 'not-a-task' }

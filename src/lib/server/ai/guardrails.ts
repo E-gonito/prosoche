@@ -91,7 +91,7 @@ export function briefingException(proposal: Proposal): ProposalEdit | null {
 
 /* ------------------------------------------------------------------ G2 ---- */
 
-export interface ToolPolicy {
+interface ToolPolicy {
 	/** Tools the run may use. Empty means the model has no tools at all. */
 	allowed: string[];
 	/** Tools refused even if something else allows them. Always non-empty. */
@@ -511,7 +511,7 @@ function walk(value: unknown, schema: Schema, at: string, problems: string[]): v
 
 /* ------------------------------------------------------------------ G7 ---- */
 
-export interface Spend {
+interface Spend {
 	/** Dollars already spent today, from the audit log. */
 	todayUsd: number;
 	/** Runs in flight right now. */

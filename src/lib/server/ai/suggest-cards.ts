@@ -40,7 +40,7 @@ import { runDraft, type DraftOptions, type Source } from './meeting-drafts';
 import type { CardDraft, DraftedCard, DroppedCard, SourceBatch } from '$lib/shared/study';
 
 /** How many cards a run may be asked for; the page offers these. */
-export const CARD_COUNTS = [5, 10, 20] as const;
+const CARD_COUNTS = [5, 10, 20] as const;
 
 /** How much note text one run reads, in characters. */
 export const MAKE_CHARS = 40_000;

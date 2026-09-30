@@ -38,7 +38,7 @@ export function openInboxCount(content: string): number {
 }
 
 /** One capture, ready for the Inbox page to render and act on. */
-export interface InboxLine {
+interface InboxLine {
 	line: number;
 	raw: string;
 	/** Present when the line is already a task: tick it through `/api/task`. */

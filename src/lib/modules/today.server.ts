@@ -25,7 +25,7 @@ export interface TodayCard {
 	items: Array<{ text: string; meta?: string; href?: string }>;
 }
 
-export interface TodayCardContext {
+interface TodayCardContext {
 	/** The day being viewed, `YYYY-MM-DD`. */
 	day: string;
 	hub: Hub;

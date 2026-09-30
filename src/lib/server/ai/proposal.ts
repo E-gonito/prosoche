@@ -66,7 +66,7 @@ export interface Policy {
 }
 
 /** What a feature's policy depends on beyond the feature itself. */
-export interface PolicyContext {
+interface PolicyContext {
 	today: DayKey;
 	/** Extra paths this particular run may write: the destination capture
 	 *  proposed, the primer, meeting note or glossary a draft names. */
@@ -319,7 +319,7 @@ function toPreview(item: Resolved): EditPreview {
 }
 
 /** Where `apply` puts its snapshots, and which ids the human ticked. */
-export interface ApplyOptions {
+interface ApplyOptions {
 	/** Edit ids the user accepted. Defaults to the proposal's own list. */
 	accepted?: string[];
 	/** The vault root, for the symlink check. Defaults to `config.vaultPath`. */

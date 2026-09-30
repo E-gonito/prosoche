@@ -40,7 +40,7 @@ export function scopeOf(workspace: { folders: string[]; tag: string }): StudySco
 }
 
 /** One note, read and parsed once, as the study modules want it. */
-export interface ScopedNote {
+interface ScopedNote {
 	path: string;
 	content: string;
 	/** The note's hash as read, for a write guarded against an edit since. */

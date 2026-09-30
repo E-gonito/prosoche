@@ -50,7 +50,7 @@ export interface Source {
 }
 
 /** How much of any one note goes into a prompt. */
-export const NOTE_CHARS = 8000;
+const NOTE_CHARS = 8000;
 
 /* ------------------------------------------------------------- primer -- */
 
@@ -148,7 +148,7 @@ const PREP_SCHEMA: Schema = {
 };
 
 /** The meeting a prep is for, as the prompt describes it. */
-export interface PrepMeeting {
+interface PrepMeeting {
 	title: string;
 	day: string | null;
 	startMin: number | null;

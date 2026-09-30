@@ -26,7 +26,7 @@ import type { NoteIndex } from '../index/index';
 import type { Subject } from './subjects';
 import type { Vault } from '../vault/index';
 
-export interface StudySummary {
+interface StudySummary {
 	subject: Subject;
 	goals: GoalsNote;
 	/** The goals as every picker offers them, in file order. */
@@ -88,7 +88,7 @@ export async function dueEverywhere(
 }
 
 /** One goal's standing, as the Overview shows it. */
-export interface GoalProgress extends GoalRef {
+interface GoalProgress extends GoalRef {
 	target: string | null;
 	/** Milestones ticked, and all of them. */
 	done: number;
@@ -104,7 +104,7 @@ export interface GoalProgress extends GoalRef {
 }
 
 /** What belongs to no goal, so the Overview can say so rather than drop it. */
-export interface Unassigned {
+interface Unassigned {
 	weekMinutes: number;
 	reading: ReadingItem[];
 	due: number;
@@ -151,7 +151,7 @@ export function progressByGoal(summary: StudySummary, today: string): { goals: G
 }
 
 /** Card files under one goal, or under none. */
-export interface CardFileGroup {
+interface CardFileGroup {
 	/** Null for the files that name no goal, or one `Goals.md` does not have. */
 	goal: GoalRef | null;
 	files: CardFile[];
@@ -175,7 +175,7 @@ export function filesByGoal(summary: StudySummary): CardFileGroup[] {
 }
 
 /** A subject at a glance, for its card on the Study index. */
-export interface SubjectCard {
+interface SubjectCard {
 	slug: string;
 	name: string;
 	color: string;

@@ -42,7 +42,7 @@ import type { Proposal, Refusal, RunStamp } from '$lib/shared/ai';
 import { ENTRY_LIMITS, type ScanBatches, type ScanCandidate, type ScanDraft, type ScanPlan } from '$lib/shared/glossary';
 
 /** Terms looked up in one run; more is a second press. */
-export const LOOKUP_LIMIT = 20;
+const LOOKUP_LIMIT = 20;
 
 /* ------------------------------------------------------------- lookup -- */
 
@@ -64,7 +64,7 @@ const LOOKUP_SCHEMA: Schema = {
 	}
 };
 
-export interface Lookup {
+interface Lookup {
 	term: string;
 	definition: string;
 	relevance: string;
@@ -186,7 +186,7 @@ export const FIND_CHARS = 60_000;
 /** How much of any one note it reads. */
 export const FIND_NOTE_CHARS = 12_000;
 /** New entries one batch may propose. */
-export const FIND_LIMIT = 25;
+const FIND_LIMIT = 25;
 /** Terms found by earlier batches that one batch is told about; more are still checked. */
 const FOUND_LIMIT = 1000;
 
@@ -224,7 +224,7 @@ export interface FoundTerm {
 }
 
 /** One batch's draft, with the guardrails that stopped it, if any. */
-export interface ScanResult extends ScanDraft {
+interface ScanResult extends ScanDraft {
 	refusals: Refusal[];
 }
 

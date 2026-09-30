@@ -17,7 +17,7 @@
 import type { Task } from '$lib/shared/task';
 import { area, passedThreshold, pointInRect } from '$lib/shared/geometry';
 
-export interface DropZone {
+interface DropZone {
 	id: string;
 	element: HTMLElement;
 	/** Minute of the day at a screen position. Omitted by zones without time. */

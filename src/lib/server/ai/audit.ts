@@ -96,7 +96,7 @@ function cell(text: string): string {
 	return text.replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 160);
 }
 
-export interface DaySpend {
+interface DaySpend {
 	/** Dollars spent on the given day. */
 	usd: number;
 	runs: number;

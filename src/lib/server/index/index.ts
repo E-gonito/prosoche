@@ -17,14 +17,14 @@ import { scanTasks } from '../parse/task';
 import type { Task, TaskStatus } from '$lib/shared/task';
 import { SCHEMA, SCHEMA_VERSION } from './schema';
 
-export interface SearchHit {
+interface SearchHit {
 	path: string;
 	title: string;
 	/** Matching text with the query terms marked by «» so the UI can highlight. */
 	snippet: string;
 }
 
-export interface IndexHealth {
+interface IndexHealth {
 	notes: number;
 	tasks: number;
 	links: number;
@@ -33,19 +33,19 @@ export interface IndexHealth {
 	lastBuildMs: number | null;
 }
 
-export interface IndexedNote {
+interface IndexedNote {
 	path: string;
 	title: string;
 	mtimeMs: number;
 }
 
 /** Shared by `notes()` and `notesCount()`, so the two can never disagree on scope. */
-export interface NoteFilter {
+interface NoteFilter {
 	under?: string[];
 	excludePrefixes?: string[];
 }
 
-export interface TaskQuery {
+interface TaskQuery {
 	statuses?: TaskStatus[];
 	requireQuadrant?: boolean;
 	/** Only tasks with a due date at or before this `YYYY-MM-DD`. */

@@ -20,7 +20,7 @@ import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { captureText } from '$lib/client/api';
 import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
 
-export interface PaletteRow {
+interface PaletteRow {
 	id: string;
 	/** Heading this row appears under. */
 	group: string;

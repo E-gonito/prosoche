@@ -36,7 +36,7 @@ import type { BriefingRun, BudgetLimits, Proposal, RunSettings, RunStamp } from 
 
 export type { BriefingRun };
 
-export interface BriefingFacts {
+interface BriefingFacts {
 	day: DayKey;
 	/** Today's scheduled blocks, in clock order. */
 	scheduled: Task[];
@@ -245,7 +245,7 @@ export function openerPrompt(facts: BriefingFacts): string {
 
 /* -------------------------------------------------------------- running --- */
 
-export interface BriefingDeps {
+interface BriefingDeps {
 	vault: Vault;
 	index: NoteIndex;
 }

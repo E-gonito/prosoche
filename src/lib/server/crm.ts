@@ -34,10 +34,10 @@ import { homeFolder, type Workspace } from './workspaces';
 export { CONTACT_KINDS } from './parse/contact';
 
 /** The folder under a workspace's home that holds its contacts. */
-export const CRM_FOLDER = 'CRM';
+const CRM_FOLDER = 'CRM';
 
 /** Enough about a contact for the list. */
-export interface ContactSummary {
+interface ContactSummary {
 	/** The file name, which is also what `[[links]]` to the contact spell. */
 	name: string;
 	path: string;
@@ -51,7 +51,7 @@ export interface ContactSummary {
 }
 
 /** Everything a contact's page shows, and the hash to send back with an edit. */
-export interface Contact extends ContactSummary, ContactDetails {
+interface Contact extends ContactSummary, ContactDetails {
 	/** Free notes: the body without its frontmatter or `## History`, as markdown. */
 	notes: string;
 	/** Newest first; entries without a date follow, in file order. */
@@ -59,7 +59,7 @@ export interface Contact extends ContactSummary, ContactDetails {
 	hash: string;
 }
 
-export type ContactWrite =
+type ContactWrite =
 	| { ok: true; contact: Contact }
 	| { ok: false; reason: 'bad-name' | 'exists' | 'missing' | 'conflict' | 'no-text' | 'bad-day' | 'private' };
 

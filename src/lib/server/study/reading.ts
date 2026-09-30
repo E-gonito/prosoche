@@ -121,7 +121,7 @@ export function kindLabels(labels: string[], kind: ReadingKind): string[] {
  * did, the labels when the kind did — so an edit that changes nothing
  * rewrites nothing.
  */
-export function toBoardOp(file: BoardFile, op: ReadingOp): { ok: true; op: BoardOp | null } | { ok: false; message: string } {
+function toBoardOp(file: BoardFile, op: ReadingOp): { ok: true; op: BoardOp | null } | { ok: false; message: string } {
 	switch (op?.kind) {
 		case 'add': {
 			const fields = cleanFields(op.item);
@@ -157,7 +157,7 @@ export async function readReadingList(vault: Vault, subject: Subject): Promise<R
 	return toList(subject, await readBoardFile(vault, subject.files.reading, DEFAULT_READING_LIST));
 }
 
-export type ReadingChange =
+type ReadingChange =
 	| { ok: true; list: ReadingList }
 	/** The file changed since `hash` was read. Nothing was written; `list` is what is there now. */
 	| { ok: false; reason: 'conflict'; list: ReadingList }
