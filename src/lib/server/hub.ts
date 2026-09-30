@@ -1,7 +1,7 @@
 /**
  * The running hub: one vault, one index, one sync provider, wired together.
  *
- * Route handlers import `hub()` and nothing else from the server modules, so
+ * Route handlers await `hub()` and nothing else from the server modules, so
  * this file is the single place that decides how the pieces connect and the
  * only place that holds process-wide state.
  */
@@ -77,38 +77,46 @@ export function indexVault(vault: Vault, index: NoteIndex): () => Promise<number
 export interface Hub {
 	vault: Vault;
 	index: NoteIndex;
-	/** Resolves once the first full index build has finished. */
-	ready: Promise<void>;
 	/** Subscribe to vault changes, e.g. to feed a server-sent event stream. */
 	subscribe(listener: (change: FileChange) => void): () => void;
 	/** Throw away the index and build it again from the markdown. */
 	rebuild(): Promise<number>;
 	/** Workspace definitions from `_hub/workspaces/`, re-read on demand. */
 	workspaces(): Promise<Workspace[]>;
+	/** The workspace with this slug, re-read on demand, or null for anything else. */
+	workspace(slug: unknown): Promise<Workspace | null>;
 }
 
-let instance: Hub | null = null;
+let instance: Promise<Hub> | null = null;
 
-export function hub(): Hub {
+/**
+ * The hub, once its first full index build has finished.
+ *
+ * Output: the one process-wide hub. Side effects: the first call starts
+ * indexing, watching and syncing. Never resolves to a hub whose index is
+ * still empty, so no caller has to remember to wait; a failed first build is
+ * logged and the hub resolves anyway, serving what the vault reads.
+ */
+export function hub(): Promise<Hub> {
 	if (!instance) instance = start();
 	return instance;
 }
 
-function start(): Hub {
+function start(): Promise<Hub> {
 	const sync = new GitSync(config.vaultPath);
 	const vault = new Vault(config.vaultPath, sync);
 	const index = new NoteIndex(config.dbPath);
 
 	const rebuild = indexVault(vault, index);
 
-	const ready = rebuild().then(
+	const built = rebuild().then(
 		async (ms) => {
 			console.log(`[hub] indexed ${index.health().notes} notes in ${ms} ms`);
 			const seeded = await seedWorkspaces(vault);
 			if (seeded.length) console.log(`[hub] created ${seeded.length} workspace files under _hub/workspaces/`);
 			// Glossaries' cards follow every change to a glossary from here on,
 			// and catch up with any made while the hub was down. The catch-up
-			// runs behind `ready`, so a large first link does not hold up the
+			// runs after the hub resolves, so a large first link does not hold up the
 			// first page; syncs queue one at a time either way.
 			followGlossaryCards(vault, () => loadWorkspaces(vault));
 			void loadWorkspaces(vault)
@@ -122,12 +130,14 @@ function start(): Hub {
 		}
 	);
 
-	return {
+	const workspaces = () => loadWorkspaces(vault);
+	const h: Hub = {
 		vault,
 		index,
-		ready,
 		subscribe: (l) => vault.subscribe(l),
 		rebuild,
-		workspaces: () => loadWorkspaces(vault)
+		workspaces,
+		workspace: async (slug) => (await workspaces()).find((w) => w.slug === slug) ?? null
 	};
+	return built.then(() => h);
 }
