@@ -35,10 +35,8 @@ export interface WorkspaceGroup {
 	slug: string;
 	name: string;
 	color: string;
-	/** The open cards on the workspace's board, most urgent first, already capped. */
+	/** Every open card on the workspace's board, most urgent first. */
 	cards: OpenCard[];
-	/** How many more open cards the workspace has beyond those shown. */
-	more: number;
 	/** Unfiled lines of `Inbox/Capture.md` carrying the workspace's tag or an alias. */
 	inboxCount: number;
 }

@@ -125,14 +125,13 @@ describe('loadToday', () => {
 		expect(data.workspaces.find((w) => w.slug === 'work')?.cards ?? []).toEqual([]);
 	});
 
-	it('gives each workspace its most urgent open cards and its inbox count', async () => {
+	it('gives each workspace all its open cards, most urgent first, and its inbox count', async () => {
 		await vault.write('Work/Board.md', BOARD);
 		await vault.write('Inbox/Capture.md', '## 2026-09-29\n- [ ] Triage this #ws/work\n- [x] Already triaged #ws/work\n- 09:00 Someone else\n');
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		const work = data.workspaces.find((w) => w.slug === 'work');
 		expect(work?.inboxCount).toBe(1);
-		expect(work?.cards.map((c) => c.title)).toEqual(['Renew the lease', 'Due today', 'Send the invoice']);
-		expect(work?.more).toBe(1);
+		expect(work?.cards.map((c) => c.title)).toEqual(['Renew the lease', 'Due today', 'Send the invoice', 'No date at all']);
 	});
 
 	it('reads the inbox newest first, capped at five, and hides nothing it counts', async () => {
