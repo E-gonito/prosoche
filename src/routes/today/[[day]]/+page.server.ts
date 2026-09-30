@@ -8,12 +8,11 @@ import type { PageServerLoad } from './$types';
 
 /**
  * A day's dashboard: `/today` is always the real today, `/today/YYYY-MM-DD`
- * any other day, with the surrounding week, from the vault as it stands
- * right now. Anything else after `/today/` is a 404. `loadToday` is the core
- * reading; `todayCards` is what every other module has to add, per its own
- * contract in `$lib/modules/today.server.ts`. Composed here rather than
- * inside `loadToday`, so the core never has to import the module layer above
- * it.
+ * any other day, from the vault as it stands right now. Anything else after
+ * `/today/` is a 404. `loadToday` is the core reading; `todayCards` is what
+ * every other module has to add, per its own contract in
+ * `$lib/modules/today.server.ts`. Composed here rather than inside
+ * `loadToday`, so the core never has to import the module layer above it.
  */
 export const load: PageServerLoad = async ({ params }): Promise<TodayData> => {
 	if (params.day !== undefined && !isDayKey(params.day)) error(404, 'Not a date');

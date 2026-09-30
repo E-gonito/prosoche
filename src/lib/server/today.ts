@@ -81,16 +81,6 @@ export function summaryLine(input: { done: number; skipped: number; open: number
 /** The hour, local to the server, from which Today offers to review the day. */
 const REVIEW_FROM_HOUR = 18;
 
-/**
- * The seven days, Monday to Sunday, of the week `day` falls in. Pure; days
- * are labels, so this is calendar arithmetic on the key, not on an instant.
- */
-export function weekOf(day: DayKey): DayKey[] {
-	const [y, m, d] = day.split('-').map(Number);
-	const fromMonday = (new Date(y, m - 1, d).getDay() + 6) % 7;
-	return Array.from({ length: 7 }, (_, i) => shiftDay(day, i - fromMonday));
-}
-
 interface TodayDeps {
 	vault: Vault;
 	index: NoteIndex;
@@ -175,14 +165,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 
 	const counts = tally(tasks);
 
-	// Done against owed for each day of the week, from each day's own note as
-	// the index has it: a day with no note is 0 of 0. A skipped task is in
-	// neither number, so skipping shortens the bar rather than filling it.
-	const week = weekOf(day).map((d) => {
-		const own = tally(index.tasksIn(dailyNotePath(d)).filter((t) => !t.fenced));
-		return { day: d, done: own.done, skipped: own.skipped, total: own.done + own.open };
-	});
-
 	// A day is reviewed once it is over or nearly so: any past day, and today
 	// from the evening on. A day still ahead has nothing to review.
 	const now = options.now ?? new Date();
@@ -215,7 +197,6 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		overdueCards,
 		workspaces: workspaceGroups,
 		inbox: { count: inbox.length, lines: inbox.slice(0, INBOX_LIMIT) },
-		week,
 		summary: summaryLine({
 			...counts,
 			plannedMinutes: coveredMinutes(scheduled),

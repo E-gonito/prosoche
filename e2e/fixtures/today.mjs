@@ -1,7 +1,7 @@
 /**
  * Extra fixture data for the Today dashboard: a workspace task overdue since
- * long before any run of this suite, and a future daily note so "the rest of
- * the week" has something of its own to show.
+ * long before any run of this suite, and a future daily note for Next day to
+ * open.
  */
 
 function shiftDay(day, offset) {
