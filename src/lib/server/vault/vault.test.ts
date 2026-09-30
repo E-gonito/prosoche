@@ -234,3 +234,17 @@ describe('files', () => {
 		expect(await vault.files('Private/Pages', 'html')).toEqual([]);
 	});
 });
+
+describe('hasPrivate', () => {
+	it('is false on a vault without a private folder', async () => {
+		expect(await vault.hasPrivate()).toBe(false);
+	});
+
+	it('is true once the private folder exists, and a file of that name does not count', async () => {
+		await writeFile(join(root, 'Private'), 'not a folder');
+		expect(await vault.hasPrivate()).toBe(false);
+		await rm(join(root, 'Private'));
+		await mkdir(join(root, 'Private'));
+		expect(await vault.hasPrivate()).toBe(true);
+	});
+});

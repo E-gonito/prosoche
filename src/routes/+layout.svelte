@@ -35,6 +35,8 @@
 	});
 
 	const current = $derived(moduleFor(page.url.pathname));
+	// A private module is drawn only on a vault that has a private folder.
+	const modules = $derived(MODULES.filter((m) => !m.private || data.hasPrivate));
 	const tab = $derived(tabFor(page.url.pathname));
 </script>
 
@@ -49,7 +51,7 @@
 		</button>
 
 		<div class="modules">
-			{#each MODULES as m (m.id)}
+			{#each modules as m (m.id)}
 				{@const subs = data.sub[m.id] ?? []}
 				{@const on = subItemFor(subs, page.url.pathname)}
 				<!-- A module is the current page only when none of its sub-items is. -->
@@ -102,7 +104,7 @@
 		<div class="sheet-body">
 			<p class="label">Modules</p>
 			<div class="grid">
-				{#each MODULES as m (m.id)}
+				{#each modules as m (m.id)}
 					<a href={m.href}><Icon name={m.icon} size={20} /><span>{m.title}</span></a>
 				{/each}
 			</div>

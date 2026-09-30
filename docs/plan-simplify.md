@@ -33,7 +33,8 @@ phase agents reported:
    there, not in `server/config.ts`, because the browser previews the buttons
    too. Fuzz is on and seeded from noon UTC of the credited day.
 9. Docs for a new user: as planned. Decision 11 (hide Date on a vault with no
-   `Private/` folder) was never built; Date is always in the rail.
+   `Private/` folder) was missed by the phases and added after phase 9: the
+   rail and More sheet leave Date out; its palette command still exists.
 
 ## Why
 

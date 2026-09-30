@@ -616,6 +616,9 @@ not in Notes, not in the palette. It is backed up only by the whole-box
 backup the Proxmox host already takes, because syncing it anywhere else would
 be exactly the leak this module exists to prevent.
 
+On a vault with no `Private/` folder, Date is left out of the rail and the
+phone's More sheet, since it would have nowhere to keep anything.
+
 Log is a day stepper and four counters — likes sent, matches (from your own
 likes, whenever they arrived — liking back an incoming like is not counted as
 one, or the match rate would read higher than it really is), how many of
