@@ -88,7 +88,7 @@
 		<div class="prose">{@html html}</div>
 		<button class="btn small" data-testid="master-note-edit" onclick={edit}>Edit</button>
 	{:else}
-		<p class="none">{exists ? `${path} is empty.` : 'No overview yet: what this workspace is for, who is involved, what matters now.'}</p>
+		<p class="empty">{exists ? `${path} is empty.` : 'No overview yet: what this workspace is for, who is involved, what matters now.'}</p>
 		<button class="btn small" data-testid="master-note-edit" onclick={edit}>Write an overview</button>
 	{/if}
 </div>

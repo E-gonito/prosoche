@@ -89,7 +89,7 @@
 						onchange={(next) => (patched = { ...patched, [`${next.path}:${next.line}`]: next })}
 					/>
 				{:else}
-					<p class="none">Nothing open; a task mentioning <code>[[{data.name}]]</code> shows up here.</p>
+					<p class="empty">Nothing open; a task mentioning <code>[[{data.name}]]</code> shows up here.</p>
 				{/each}
 			</div>
 		</div>
@@ -100,7 +100,7 @@
 				{#each data.mentionedIn as note (note.path)}
 					<a class="row" href={noteHref(note.path)} data-testid="person-backlink">{note.title}</a>
 				{:else}
-					<p class="none">No notes link to <code>[[{data.name}]]</code> yet.</p>
+					<p class="empty">No notes link to <code>[[{data.name}]]</code> yet.</p>
 				{/each}
 			</div>
 
@@ -134,7 +134,6 @@
 	.day { flex: none; font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); padding-top: 2px; width: 78px; }
 	.row { display: block; padding: var(--s2); color: var(--accent); border-top: 1px solid var(--line); }
 	.row:first-child { border-top: 0; }
-	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 	.hint code { font: var(--t11) var(--mono); background: var(--soft); border-radius: 4px; padding: 1px var(--s1); }
 
 	/* This page's own two columns, narrower than the usual 1100px cutoff: the

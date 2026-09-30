@@ -130,5 +130,4 @@
 	   it is working. */
 	.go:disabled { cursor: default; opacity: 0.6; }
 	.ok { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--ok); }
-	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

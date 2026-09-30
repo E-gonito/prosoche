@@ -77,7 +77,7 @@
 
 	<p class="label">Sessions</p>
 	{#if data.study.sessions.length === 0}
-		<p class="none">Nothing logged yet.</p>
+		<p class="empty">Nothing logged yet.</p>
 	{:else}
 		<div class="sheet rows" data-testid="session-log">
 			{#each data.study.sessions as s (s.line)}
@@ -99,8 +99,8 @@
 	.row .note { flex: 2; min-width: 180px; }
 	.hint { margin: calc(var(--s2) * -1) 0 var(--s4); }
 
-	.problem { color: var(--bad); margin-bottom: var(--s3); }
-	.none { margin: 0 0 var(--s3); }
+	.problem { margin-bottom: var(--s3); }
+	.empty { margin: 0 0 var(--s3); }
 
 	.goal-row { display: flex; justify-content: space-between; align-items: center; }
 

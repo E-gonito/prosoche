@@ -202,17 +202,11 @@
 		gap: var(--s3);
 		min-width: 0;
 	}
-	.dot {
-		flex: none;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		margin-top: 6px;
-	}
-	.dot.sent { background: #b3372b; }
-	.dot.matches { background: var(--accent); }
-	.dot.type { background: var(--sand-edge); }
-	.dot.received { background: #6a5aab; }
+	.dot { margin-top: 6px; }
+	.dot.sent { --dot: #b3372b; }
+	.dot.matches { --dot: var(--accent); }
+	.dot.type { --dot: var(--sand-edge); }
+	.dot.received { --dot: #6a5aab; }
 	.about .title { font-weight: 600; }
 	.about .hint { color: var(--muted); font-size: var(--t13); margin-top: 1px; }
 
@@ -255,5 +249,4 @@
 		font-size: var(--t16);
 		min-height: 48px;
 	}
-	.problem { margin-top: var(--s2); }
 </style>

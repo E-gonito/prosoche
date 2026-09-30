@@ -244,5 +244,4 @@
 	li { margin: 0 0 2px; }
 	.draft { border-top: 1px dashed var(--line); padding-top: var(--s2); margin-top: var(--s1); }
 	.row { display: flex; gap: var(--s2); margin-top: var(--s1); }
-	.problem { margin: var(--s2) 0 0; font-size: var(--t12); color: var(--bad); }
 </style>

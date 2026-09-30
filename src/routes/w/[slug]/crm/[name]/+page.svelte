@@ -178,7 +178,7 @@
 			<span>{h.text}</span>
 		</div>
 	{:else}
-		<p class="none">Nothing yet. Add the first call, email or meeting above.</p>
+		<p class="empty">Nothing yet. Add the first call, email or meeting above.</p>
 	{/each}
 </div>
 

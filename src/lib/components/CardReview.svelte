@@ -217,7 +217,6 @@
 	.again { border-color: #e9c3c3; }
 	.easy { border-color: #bfe3cb; }
 
-	.problem { color: var(--bad); font-size: var(--t13); }
 	.where { font-size: var(--t12); margin-top: 14px; }
 
 	.finish { text-align: center; padding: 60px var(--s4); }

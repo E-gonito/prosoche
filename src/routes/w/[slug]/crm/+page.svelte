@@ -109,7 +109,7 @@
 			</span>
 		</a>
 	{:else}
-		<p class="none">
+		<p class="empty">
 			{#if data.contacts.length}Nobody matches.{:else}No contacts yet. Each one is a note in this workspace's <code>CRM/</code> folder.{/if}
 		</p>
 	{/each}

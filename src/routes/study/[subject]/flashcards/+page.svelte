@@ -82,7 +82,7 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="none">
+		<p class="empty">
 			No card files here yet. Write them yourself: a note in
 			{data.subject.name}'s folders holds cards once it carries <code>#flashcards</code> and a <code>question::answer</code> line.
 		</p>
@@ -109,7 +109,7 @@
 	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 	.path { font-family: var(--mono); font-size: var(--t12); overflow-wrap: anywhere; }
 	.goal { flex: none; width: 200px; font-size: var(--t12); }
-	.problem { color: var(--bad); margin-bottom: var(--s3); }
+	.problem { margin-bottom: var(--s3); }
 
 	@media (max-width: 720px) {
 		.review-row { flex-direction: column; align-items: stretch; }

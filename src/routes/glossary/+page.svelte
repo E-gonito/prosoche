@@ -39,7 +39,7 @@
 	<div class="sheet rows" data-testid="glossaries">
 		{#each data.glossaries as g (g.slug)}
 			<a class="glossary" href="/glossary/{g.slug}">
-				<i style="--dot: {g.color}"></i>
+				<i class="dot" style="--dot: {g.color}"></i>
 				<span class="name">{g.name}</span>
 				<span class="muted small">
 					{g.terms} term{g.terms === 1 ? '' : 's'}{g.pending ? ` · ${g.pending} to look up` : ''}
@@ -47,7 +47,7 @@
 				<Icon name="chevron-right" />
 			</a>
 		{:else}
-			<p class="none">No glossary yet. Start one below.</p>
+			<p class="empty">No glossary yet. Start one below.</p>
 		{/each}
 	</div>
 
@@ -60,7 +60,6 @@
 </div>
 
 <style>
-	i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); display: inline-block; }
 	.glossary { display: flex; align-items: center; gap: 10px; color: var(--text); }
 	a.glossary:hover { text-decoration: none; }
 	a.glossary:hover .name { color: var(--accent); }

@@ -60,7 +60,7 @@
 					<div class="subs" data-testid="sub-{m.id}">
 						{#each subs as item (item.href)}
 							<a href={item.href} aria-current={on === item ? 'page' : undefined}>
-								<i style="--dot: {item.color}"></i><span>{item.title}</span>
+								<i class="dot" style="--dot: {item.color}"></i><span>{item.title}</span>
 							</a>
 						{/each}
 					</div>
@@ -110,7 +110,7 @@
 				<p class="label">Workspaces</p>
 				<div class="list">
 					{#each data.sub.w as item (item.href)}
-						<a href={item.href}><i style="--dot: {item.color}"></i>{item.title}</a>
+						<a href={item.href}><i class="dot" style="--dot: {item.color}"></i>{item.title}</a>
 					{/each}
 				</div>
 			{/if}
@@ -184,7 +184,6 @@
 	.subs { display: flex; flex-direction: column; gap: 1px; margin: 0 0 var(--s1) 18px; padding-left: var(--s2); border-left: 1px solid var(--line); }
 	.subs a { font-size: var(--t13); padding: 5px 10px; }
 	.subs span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
 
 	.foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s3); border-top: 1px solid var(--line); }
 	.foot :global(.sync) { align-self: flex-start; margin: var(--s2) 10px 0; }
@@ -205,7 +204,6 @@
 		background: var(--panel);
 		box-shadow: var(--shadow-lg);
 	}
-	dialog.more::backdrop { background: rgba(42, 38, 34, 0.35); }
 	.sheet-body { padding: calc(var(--s5) + env(safe-area-inset-top)) var(--s5) var(--s5); }
 	.sheet-body .label:first-child { margin-top: 0; }
 	.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }

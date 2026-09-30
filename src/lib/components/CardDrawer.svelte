@@ -113,6 +113,7 @@
 </script>
 
 <dialog
+	class="modal"
 	bind:this={dialog}
 	onclose={onclose}
 	onclick={maybeBackdrop}
@@ -243,22 +244,10 @@
 </dialog>
 
 <style>
-	dialog {
-		border: 0;
-		padding: 0;
-		border-radius: var(--r-lg);
-		max-width: 560px;
-		width: calc(100% - 40px);
-		background: var(--panel);
-		color: var(--text);
-		box-shadow: var(--shadow-lg);
-	}
-	dialog::backdrop { background: rgba(31, 35, 40, 0.4); }
 	.inner { padding: var(--s4) 18px 18px; display: flex; flex-direction: column; gap: 10px; }
 	header { display: flex; align-items: center; gap: 10px; }
 	h2 { margin: 0; font-size: 15px; }
 	.ws { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t12); color: var(--muted); }
-	.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
 	header .btn { margin-left: auto; }
 
 	.row { display: flex; align-items: center; gap: 10px; }
@@ -291,7 +280,7 @@
 	footer { display: flex; align-items: center; gap: 10px; }
 	footer code { font: var(--t11) var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	footer .btn { margin-left: auto; flex: none; }
-	.problem { margin: 0; font-size: var(--t12); color: var(--bad); }
+	.problem { margin: 0; }
 
 	@media (max-width: 720px) {
 		.grid { grid-template-columns: 1fr; }

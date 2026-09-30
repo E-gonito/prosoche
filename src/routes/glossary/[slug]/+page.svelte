@@ -159,7 +159,7 @@
 				<button class="btn ghost small" type="button" onclick={() => (renaming = null)}>Cancel</button>
 			</form>
 		{:else}
-			<h1><i style="--dot: {data.glossary.color}"></i>{data.glossary.name}</h1>
+			<h1><i class="dot lg" style="--dot: {data.glossary.color}"></i>{data.glossary.name}</h1>
 		{/if}
 		<p class="sub">
 			<span>What each term means, and why it matters</span>
@@ -289,11 +289,11 @@
 					{/if}
 				</article>
 			{:else}
-				<p class="none">No term matches.</p>
+				<p class="empty">No term matches.</p>
 			{/each}
 		</div>
 	{:else}
-		<p class="none">
+		<p class="empty">
 			No terms yet. Add one above; it goes in <code>{data.glossary.path}</code>.
 		</p>
 	{/if}
@@ -301,7 +301,6 @@
 
 <style>
 	h1 { display: flex; align-items: center; gap: 10px; }
-	h1 i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
 	code { font: var(--t13) var(--mono); }
 	.cards { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
 	.cards label { font-size: var(--t12); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }

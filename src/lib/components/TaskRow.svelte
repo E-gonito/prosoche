@@ -87,7 +87,7 @@
 		<span class="time">{formatMinutes(task.startMin)}–{formatMinutes(task.endMin)}</span>
 	{/if}
 	{#if workspace}
-		<span class="ws" data-testid="task-workspace" style="--dot: {workspace.color}" title={workspace.name}></span>
+		<span class="dot" data-testid="task-workspace" style="--dot: {workspace.color}" title={workspace.name}></span>
 	{/if}
 	{#if onopen}
 		<button class="text open" data-testid="open-task" title="Open the card" onclick={() => onopen(task)}>
@@ -133,22 +133,7 @@
 		user-select: none;
 	}
 	.grip:hover { color: var(--text); }
-	.box {
-		flex: none;
-		width: var(--s4);
-		height: var(--s4);
-		padding: 0;
-		border: 1.5px solid #9aa0a6;
-		border-radius: 3px;
-		background: var(--field);
-		font-size: var(--t11);
-		line-height: 1;
-		color: #fff;
-		cursor: pointer;
-		align-self: center;
-	}
-	.box:hover { border-color: var(--accent); }
-	.done .box { background: var(--accent); border-color: var(--accent); }
+	.box { align-self: center; }
 	.done .text { text-decoration: line-through; color: var(--muted); }
 	/* A time is a number, so body text with the figures lined up. */
 	.time { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); flex: none; }
@@ -195,14 +180,7 @@
 	.text.open:hover { text-decoration: underline; }
 	.text.open:focus-visible { outline: var(--focus); outline-offset: 2px; border-radius: 3px; }
 	/* The workspace this line belongs to, by its tag, its folder or its words. */
-	.ws {
-		flex: none;
-		align-self: center;
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--dot);
-	}
+	.dot { align-self: center; }
 	/* A date is a fact about the line, so it reads like the time does, and
 	   turns the warning colour only once it has gone by. */
 	.due { font-size: var(--t11); color: var(--muted); flex: none; }

@@ -18,7 +18,7 @@
 			{#if d.notes}<span class="notes muted small">{d.notes}</span>{/if}
 		</a>
 	{:else}
-		<p class="none">Nothing logged yet.</p>
+		<p class="empty">Nothing logged yet.</p>
 	{/each}
 </div>
 

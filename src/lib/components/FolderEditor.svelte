@@ -54,7 +54,7 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="none">No folders yet. The first one you add becomes its home.</p>
+		<p class="empty">No folders yet. The first one you add becomes its home.</p>
 	{/if}
 
 	<form class="add" onsubmit={add}>

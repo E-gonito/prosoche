@@ -45,7 +45,7 @@
 						{#each matches as path (path)}
 							<li><a href={hrefFor(path)} class:active={path === data.note?.path}>{nameOf(path)}<small>{path.slice(0, path.lastIndexOf('/'))}</small></a></li>
 						{:else}
-							<li class="none">No note matches.</li>
+							<li class="empty">No note matches.</li>
 						{/each}
 					</ul>
 				{:else}
@@ -66,9 +66,9 @@
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					<div class="prose" data-testid="subject-note-body">{@html data.note.html}</div>
 				{:else if data.missing}
-					<p class="none">That note is not in {data.subject.name}'s folders any more: <code>{data.missing}</code>.</p>
+					<p class="empty">That note is not in {data.subject.name}'s folders any more: <code>{data.missing}</code>.</p>
 				{:else}
-					<p class="none">Pick a note on the left to read it here.</p>
+					<p class="empty">Pick a note on the left to read it here.</p>
 				{/if}
 			</article>
 		</div>

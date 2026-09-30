@@ -108,12 +108,12 @@
 		{#each data.trend as w, i (w.weekStart)}
 			<g>
 				<circle cx={x(i)} cy={y(w.sent)} r="8" class="hit" />
-				<circle cx={x(i)} cy={y(w.sent)} r="3" class="dot sent" />
+				<circle cx={x(i)} cy={y(w.sent)} r="3" class="pt sent" />
 				<title>Week of {w.weekStart}: {w.sent} sent</title>
 			</g>
 			<g>
 				<circle cx={x(i)} cy={y(w.matches)} r="8" class="hit" />
-				<circle cx={x(i)} cy={y(w.matches)} r="3" class="dot matches" />
+				<circle cx={x(i)} cy={y(w.matches)} r="3" class="pt matches" />
 				<title>Week of {w.weekStart}: {w.matches} matches</title>
 			</g>
 			{#if i === 0}
@@ -156,9 +156,9 @@
 	.line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 	.line.sent { stroke: var(--sand-edge); }
 	.line.matches { stroke: var(--accent); }
-	.dot { stroke: var(--panel); stroke-width: 1.5; }
-	.dot.sent { fill: var(--sand-edge); }
-	.dot.matches { fill: var(--accent); }
+	.pt { stroke: var(--panel); stroke-width: 1.5; }
+	.pt.sent { fill: var(--sand-edge); }
+	.pt.matches { fill: var(--accent); }
 	.hit { fill: transparent; }
 	.axis { font-size: 9px; fill: var(--muted); }
 

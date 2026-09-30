@@ -483,22 +483,7 @@
 		opacity: 0;
 	}
 	.card:hover .grip { opacity: 1; }
-	.box {
-		flex: none;
-		width: var(--s4);
-		height: var(--s4);
-		margin-top: 2px;
-		padding: 0;
-		border: 1.5px solid #9aa0a6;
-		border-radius: 3px;
-		background: var(--field);
-		font-size: var(--t11);
-		line-height: 1;
-		color: #fff;
-		cursor: pointer;
-	}
-	.box:hover { border-color: var(--accent); }
-	.done .box { background: var(--accent); border-color: var(--accent); }
+	.box { margin-top: 2px; }
 
 	.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 	.due { font-size: var(--t12); color: var(--muted); }
@@ -560,21 +545,6 @@
 	.add:hover { color: var(--accent); }
 	.add-field { padding: 7px var(--s2); font-size: var(--t14); }
 
-	.drag-ghost {
-		position: fixed;
-		z-index: 50;
-		pointer-events: none;
-		background: var(--text);
-		color: #fff;
-		border-radius: var(--r-sm);
-		padding: var(--s1) 9px;
-		font-size: var(--t12);
-		max-width: 260px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		box-shadow: var(--shadow);
-	}
 	:global(body.board-dragging) { cursor: grabbing; user-select: none; }
 
 	/* There is no hover on a touch screen: the grip and the menu are always

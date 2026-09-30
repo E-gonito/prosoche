@@ -77,7 +77,7 @@
 	</div>
 
 	{#if decks.length === 0}
-		<p class="none" data-testid="anki-none">There are no Anki decks under <span class="path">Flashcards/</span>.</p>
+		<p class="empty" data-testid="anki-none">There are no Anki decks under <span class="path">Flashcards/</span>.</p>
 	{:else}
 		{#if imported}
 			{@const created = withStatus('created')}

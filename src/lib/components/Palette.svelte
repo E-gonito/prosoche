@@ -161,7 +161,7 @@
 							{#if item.keys}<kbd>{keyLabel(item.keys)}</kbd>{/if}
 						</button>
 					{:else}
-						<p class="none">Nothing matched. Escape to close.</p>
+						<p class="empty">Nothing matched. Escape to close.</p>
 					{/each}
 				</div>
 			{/if}
@@ -250,7 +250,7 @@
 		padding: 1px 6px;
 	}
 	mark { background: #fef08a; color: inherit; border-radius: 2px; }
-	.none { margin: var(--s3) 6px; color: var(--muted); font-size: var(--t13); }
+	.empty { margin: var(--s3) 6px; }
 
 	@media (max-width: 720px) {
 		.scrim { padding: 6vh 8px 8px; }

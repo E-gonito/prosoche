@@ -576,7 +576,7 @@
 					}}
 				>
 					<div class="t">{formatMinutes(p.startMin)}–{formatMinutes(p.endMin)}{#if owner}<span
-							class="ws"
+							class="dot"
 							data-testid="task-workspace"
 							style="--dot: {owner.color}"
 							title={owner.name}
@@ -730,14 +730,7 @@
 	/* A time, so body text with the figures lined up rather than monospace. */
 	.t { font-size: var(--t11); font-variant-numeric: tabular-nums; line-height: 15px; color: var(--muted); }
 	/* The workspace this block belongs to, by its tag, its folder or its words. */
-	.t .ws {
-		display: inline-block;
-		width: 7px;
-		height: 7px;
-		margin-left: 5px;
-		border-radius: 50%;
-		background: var(--dot);
-	}
+	.t .dot { margin-left: 5px; }
 	/*
 	 * Clamped to the lines the block has room for, computed from its height.
 	 * Without this a long name wrapped past the bottom edge and was sliced in

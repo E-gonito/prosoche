@@ -124,7 +124,7 @@
 	</form>
 
 	{#if problem}<p class="problem" role="status" data-testid="reading-problem">{problem}</p>{/if}
-	{#if count === 0}<p class="none">Nothing on the list yet. Add the first thing above.</p>{/if}
+	{#if count === 0}<p class="empty">Nothing on the list yet. Add the first thing above.</p>{/if}
 
 	{#each current.groups as group, g (g)}
 		{#if group.items.length > 0}
@@ -236,7 +236,7 @@
 	/* `.remove`, not `.danger`, which is the global filled red button. */
 	.remove, .menu button.remove { color: var(--bad); }
 
-	.problem { color: var(--bad); margin-bottom: var(--s3); }
+	.problem { margin-bottom: var(--s3); }
 
 	@media (max-width: 720px) {
 		.form .title-field, .form .url, .form .goal { flex-basis: 100%; }

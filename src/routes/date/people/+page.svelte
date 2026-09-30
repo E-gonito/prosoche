@@ -61,7 +61,7 @@
 	</div>
 {/if}
 {#if data.people.length === 0}
-	<p class="none">Nobody logged yet.</p>
+	<p class="empty">Nobody logged yet.</p>
 {/if}
 
 <p class="label">Add person</p>

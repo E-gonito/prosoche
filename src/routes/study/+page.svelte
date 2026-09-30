@@ -44,12 +44,12 @@
 
 	<p class="label">Subjects</p>
 	{#if data.subjects.length === 0}
-		<p class="none">No subjects yet. Start one below.</p>
+		<p class="empty">No subjects yet. Start one below.</p>
 	{:else}
 		<div class="subjects">
 			{#each data.subjects as subject (subject.slug)}
 				<div class="sheet subject" data-testid="subject-card">
-					<h2><i style="--dot: {subject.color}"></i><a class="stretch" href="/study/{subject.slug}">{subject.name}</a></h2>
+					<h2><i class="dot" style="--dot: {subject.color}"></i><a class="stretch" href="/study/{subject.slug}">{subject.name}</a></h2>
 					{#if subject.goals.length}
 						<ul class="goals">
 							{#each subject.goals.slice(0, 4) as goal (goal.name)}
@@ -95,7 +95,6 @@
 	.stretch::after { content: ''; position: absolute; inset: 0; }
 	.stretch:hover { text-decoration: none; }
 	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
-	.subject h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
 	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
 	.goals li { display: flex; justify-content: space-between; gap: var(--s2); }
 	.facts { display: flex; gap: var(--s3); flex-wrap: wrap; margin: 0; color: var(--muted); }
@@ -105,5 +104,4 @@
 	.row .name { flex: 1; min-width: 160px; }
 	.row .folders { flex: 2; min-width: 200px; }
 	.hint { margin-top: var(--s2); }
-	.problem { color: var(--bad); }
 </style>

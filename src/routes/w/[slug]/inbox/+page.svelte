@@ -59,7 +59,7 @@
 			{/if}
 		</div>
 	{:else}
-		<p class="none">Nothing captured yet.</p>
+		<p class="empty">Nothing captured yet.</p>
 	{/each}
 </div>
 
@@ -70,5 +70,4 @@
 	.task-cell :global(.task) { border-top: 0; padding: 0; }
 	.bullet { flex: 1; min-width: 0; padding: 7px 0; font-size: var(--t14); }
 	.bullet.done { text-decoration: line-through; color: var(--muted); }
-	.problem { font-size: var(--t12); color: var(--bad); }
 </style>
