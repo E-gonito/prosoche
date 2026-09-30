@@ -14,6 +14,7 @@
 import { dailyNotePath, shiftDay, today as todayKey, type DayKey } from './daily';
 import { boardPath, openCards } from './kanban';
 import { workspaceFor, type Workspace } from './workspaces';
+import { belongsTo, readInbox, unfiled } from './inbox';
 import { coveredMinutes, overlappingCount } from './schedule';
 import { eventsBetween } from './calendar';
 import { readRegion } from './ai/proposal';
@@ -43,6 +44,9 @@ type TodayDashboard = Omit<TodayData, 'cards'>;
 
 /** How many of a workspace's open cards the dashboard names before collapsing the rest. */
 const WORKSPACE_CARD_LIMIT = 3;
+
+/** How many unfiled captures the Inbox card lists before "and N more". */
+const INBOX_LIMIT = 5;
 
 /** How many overdue tasks the dashboard is willing to list. */
 const OVERDUE_LIMIT = 40;
@@ -137,11 +141,14 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 	const cards = await openCards(vault, workspaces);
 	const overdueCards = cards.filter((c) => c.due !== null && c.due < real).sort((a, b) => a.due!.localeCompare(b.due!) || compareCards(a, b));
 
+	// The one inbox, newest first: the Inbox card shows the head of it, and
+	// each workspace card counts the lines that name it.
+	const inbox = unfiled(await readInbox(vault), { newestFirst: true });
+
 	const workspaceGroups: WorkspaceGroup[] = [];
 	for (const workspace of workspaces) {
 		const own = cards.filter((c) => c.workspace.slug === workspace.slug).sort(compareCards);
-		const home = workspace.folders[0];
-		const inboxCount = home ? countOpenTasks(index, `${home}/Inbox.md`) : 0;
+		const inboxCount = inbox.filter((line) => belongsTo(line, workspaces, workspace)).length;
 		if (own.length === 0 && inboxCount === 0) continue;
 		workspaceGroups.push({
 			slug: workspace.slug,
@@ -181,6 +188,7 @@ export async function loadToday(deps: TodayDeps, day: DayKey, options: { now?: D
 		overdueOwners,
 		overdueCards,
 		workspaces: workspaceGroups,
+		inbox: { count: inbox.length, lines: inbox.slice(0, INBOX_LIMIT) },
 		summary: summaryLine({
 			total: tasks.length,
 			done: doneCount,
@@ -203,18 +211,4 @@ function toTodayEvent(event: { id: string; title: string; startMin: number | nul
 		startMin: event.startMin,
 		endMin: event.endMin
 	};
-}
-
-/**
- * Open task lines in one note, or 0 when it does not exist.
- *
- * The simpler of the two readings `docs/how-it-works.md`'s Today section
- * offers for an inbox count: a capture that is not yet a task (a bare
- * thought under a day heading) is not counted, only what has already been
- * turned into a `- [ ]` line. Counting bullets too would need the inbox's own
- * day-heading grammar read a second time outside `capture.ts`, for a number
- * that is otherwise exactly what the index already tracks.
- */
-function countOpenTasks(index: NoteIndex, path: string): number {
-	return index.tasksIn(path).filter((t) => !t.fenced && isOpen(t)).length;
 }

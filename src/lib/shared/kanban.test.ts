@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareCards, dueLabel, type BoardCard } from './kanban';
+import { cardAsTask, compareCards, dueLabel, type BoardCard } from './kanban';
 
 describe('dueLabel', () => {
 	it.each([
@@ -30,5 +30,33 @@ describe('compareCards', () => {
 	it('puts priority first, then the soonest due date, then board position', () => {
 		const cards = [card(1, null, null), card(2, 2, null), card(3, 2, '2026-10-01'), card(4, 1, null), card(5, null, '2026-09-30')];
 		expect([...cards].sort(compareCards).map((c) => c.line)).toEqual([4, 3, 2, 5, 1]);
+	});
+});
+
+describe('cardAsTask', () => {
+	it('carries the card line as the conflict token and nothing it cannot say', () => {
+		const card = {
+			line: 9,
+			title: 'Draft the proposal',
+			due: '2000-01-01',
+			priority: 2,
+			labels: ['client'],
+			notes: 'Ask first.',
+			done: false,
+			workspace: { slug: 'work', name: 'Work', color: '#000' },
+			path: 'Work/Board.md',
+			hash: 'h',
+			column: 'To do',
+			raw: '- [ ] Draft the proposal @{2000-01-01} `Q2` #client'
+		};
+		expect(cardAsTask(card)).toMatchObject({
+			path: 'Work/Board.md',
+			line: 9,
+			raw: card.raw,
+			text: 'Draft the proposal',
+			startMin: null,
+			quadrant: 2,
+			status: 'todo'
+		});
 	});
 });

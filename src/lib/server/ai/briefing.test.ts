@@ -81,7 +81,8 @@ const card = (line: number, title: string, priority: number | null, due: string 
 	workspace: { slug: 'study', name: 'Study', color: '#7c3aed' },
 	path: 'Study/Board.md',
 	hash: 'h',
-	column: 'To do'
+	column: 'To do',
+	raw: `- [ ] ${title}`
 });
 const CARDS: OpenCard[] = [
 	card(8, 'Finish chapter 3', 2),

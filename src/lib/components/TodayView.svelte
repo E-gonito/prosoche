@@ -68,7 +68,9 @@
 		return registerDropZone({
 			id: 'unscheduled',
 			element: unscheduledCard,
-			drop: (task) => void clearTime(task)
+			// A task from another note (a board card) is planned onto the day
+			// with no time; one already in the day's note loses its time.
+			drop: (task) => void (task.path === data.path ? clearTime(task) : planHere(task))
 		});
 	});
 
@@ -93,6 +95,13 @@
 		if (task.startMin === null) return;
 		const result = await editTask(task, { time: null });
 		if (result.ok) applied(result.value);
+		else failed(result.message);
+	}
+
+	async function planHere(task: Task) {
+		problem = '';
+		const result = await planOnDay(data.day, task);
+		if (result.ok) await invalidateAll();
 		else failed(result.message);
 	}
 
@@ -195,10 +204,10 @@
 						</div>
 					</div>
 
-					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && drag.task.startMin !== null} bind:this={unscheduledCard}>
+					<div class="list-side" data-testid="unscheduled" class:receiving={drag.task !== null && (drag.task.startMin !== null || drag.task.path !== data.path)} bind:this={unscheduledCard}>
 						<div class="sheet">
 							<h3 class="caps">Unscheduled <span class="right num">{unscheduled.length}</span></h3>
-							<Capture onproblem={failed} />
+							<Capture oncaptured={() => invalidateAll()} onproblem={failed} />
 							<div class="rows">
 								{#each unscheduled as task (task.path + ':' + task.line)}
 									<TaskRow
@@ -242,15 +251,27 @@
 		</div>
 
 		<div class="side">
+			{#if data.inbox.count}
+				<div class="sheet inbox-card" data-testid="today-inbox">
+					<h3 class="caps">Inbox <a class="right small" href="/inbox">{data.inbox.count} to triage</a></h3>
+					<div class="rows">
+						{#each data.inbox.lines as line (line.line)}
+							<p class="inbox-line">{displayText(line.text)}</p>
+						{/each}
+					</div>
+					{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
+				</div>
+			{/if}
+
 			{#if data.workspaces.length}
 				<p class="label">From your workspaces</p>
 				<div class="workspaces" data-testid="today-workspaces">
 					{#each data.workspaces as group (group.slug)}
 						<div class="sheet" data-testid="workspace-card">
-							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<span class="right muted small">{group.inboxCount} in inbox</span>{/if}</h3>
+							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<a class="right muted small" href="/w/{group.slug}/inbox">{group.inboxCount} in inbox</a>{/if}</h3>
 							<div class="rows">
 								{#each group.cards as card (card.path + ':' + card.line)}
-									<CardRow {card} today={data.today} onproblem={failed} />
+									<CardRow {card} today={data.today} draggable={data.exists} onproblem={failed} />
 								{/each}
 							</div>
 							{#if group.more}<p class="hint">and {group.more} more</p>{/if}
@@ -332,6 +353,8 @@
 	}
 	h3 .right { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
+	.inbox-card { margin-bottom: var(--s3); }
+	.inbox-line { margin: 0; font-size: var(--t13); overflow-wrap: anywhere; }
 	.workspaces { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s3); }
 	.module-item { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; color: var(--text); }
 	a.module-item:hover { color: var(--accent); }

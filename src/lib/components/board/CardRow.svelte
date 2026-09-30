@@ -11,12 +11,14 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
-	import { dueLabel, type OpenCard } from '$lib/shared/kanban';
+	import { cardAsTask, dueLabel, type OpenCard } from '$lib/shared/kanban';
+	import { drag, startDrag } from '$lib/client/drag.svelte';
 
 	let {
 		card,
 		today,
 		showWorkspace = false,
+		draggable = false,
 		onproblem
 	}: {
 		card: OpenCard;
@@ -24,11 +26,14 @@
 		today: string;
 		/** Show the workspace's dot, for a list that mixes workspaces. */
 		showWorkspace?: boolean;
+		/** Offer the grip that drags the card onto the day. */
+		draggable?: boolean;
 		onproblem?: (message: string) => void;
 	} = $props();
 
 	let saving = $state(false);
 	let done = $state(false);
+	const dragging = $derived(drag.task?.path === card.path && drag.task?.line === card.line);
 
 	async function tick() {
 		saving = true;
@@ -43,7 +48,18 @@
 	}
 </script>
 
-<div class="card-row" class:done data-testid="board-card-row" data-line={card.line}>
+<div class="card-row" class:done class:dragging data-testid="board-card-row" data-line={card.line}>
+	{#if draggable}
+		<span
+			class="grip"
+			data-testid="card-grip"
+			role="button"
+			tabindex="-1"
+			aria-label="Drag {card.title} onto the timeline"
+			title="Drag onto the timeline to plan it for the day"
+			onpointerdown={(e) => startDrag(cardAsTask(card), e)}
+		>⠿</span>
+	{/if}
 	<button
 		class="box"
 		data-testid="board-card-done"
@@ -61,6 +77,19 @@
 <style>
 	.card-row { position: relative; z-index: 1; display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t13); }
 	.box { align-self: center; }
+	.dragging { opacity: 0.4; }
+	/* The same grip as TaskRow's, so both lists pick up the same way. */
+	.grip {
+		flex: none;
+		color: var(--muted);
+		cursor: grab;
+		align-self: center;
+		font-size: var(--t13);
+		line-height: 1;
+		touch-action: none;
+		user-select: none;
+	}
+	.grip:hover { color: var(--text); }
 	.done .text { text-decoration: line-through; color: var(--muted); }
 	.dot { align-self: center; }
 	.text { flex: 1; min-width: 0; color: var(--text); overflow-wrap: anywhere; }

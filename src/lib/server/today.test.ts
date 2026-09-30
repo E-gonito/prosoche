@@ -128,13 +128,25 @@ describe('loadToday', () => {
 
 	it('gives each workspace its most urgent open cards and its inbox count', async () => {
 		await vault.write('Work/Board.md', BOARD);
-		await vault.write('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
-		index.put('Work/Inbox.md', '- [ ] Triage this\n- [x] Already triaged\n');
+		await vault.write('Inbox/Capture.md', '## 2026-09-29\n- [ ] Triage this #ws/work\n- [x] Already triaged #ws/work\n- 09:00 Someone else\n');
 		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
 		const work = data.workspaces.find((w) => w.slug === 'work');
 		expect(work?.inboxCount).toBe(1);
 		expect(work?.cards.map((c) => c.title)).toEqual(['Renew the lease', 'Due today', 'Send the invoice']);
 		expect(work?.more).toBe(1);
+	});
+
+	it('reads the inbox newest first, capped at five, and hides nothing it counts', async () => {
+		const lines = ['## 2026-09-28', '- 08:00 oldest', '- [x] 08:05 filed', '## 2026-09-29', ...[1, 2, 3, 4, 5].map((n) => `- 09:0${n} capture ${n}`)];
+		await vault.write('Inbox/Capture.md', lines.join('\n'));
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.inbox.count).toBe(6);
+		expect(data.inbox.lines.map((l) => l.text)).toEqual(['09:05 capture 5', '09:04 capture 4', '09:03 capture 3', '09:02 capture 2', '09:01 capture 1']);
+	});
+
+	it('reads a missing inbox as empty', async () => {
+		const data = await loadToday({ vault, index, workspaces: WORKSPACES }, DAY, { now: now() });
+		expect(data.inbox).toEqual({ count: 0, lines: [] });
 	});
 
 	it('reads the calendar as not configured without failing the page', async () => {
