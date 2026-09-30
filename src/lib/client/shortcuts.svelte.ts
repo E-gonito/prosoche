@@ -88,8 +88,9 @@ function isTyping(target: EventTarget | null): boolean {
 	return Boolean(target.closest('.cm-editor'));
 }
 
+/** A key a focused element already claimed (a triage row's `t`) is its, not the app's. */
 function handle(event: KeyboardEvent): void {
-	if (event.isComposing || event.repeat) return;
+	if (event.isComposing || event.repeat || event.defaultPrevented) return;
 	if (press(describe(event), isTyping(event.target))) event.preventDefault();
 }
 

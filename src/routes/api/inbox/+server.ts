@@ -1,20 +1,33 @@
-import { fileInboxLine } from '$server/inbox';
+import { dropInboxLine, fileInboxLine, planInboxLine } from '$server/inbox';
+import { today } from '$server/daily';
 import { noWorkspace, refuse, route, str } from '../route';
 
 /**
- * "Make it a task": file one inbox line as a card on the workspace's board,
- * and mark the inbox line itself done. `{ workspace, line, expectedRaw }`;
+ * One exit for one line of `Inbox/Capture.md`, which is then ticked in place:
+ * `{ action, line, expectedRaw }` with `action` one of
+ *
+ *  - `plan`: a block with no time in today's note;
+ *  - `file`: a card on the board of `workspace` (a slug);
+ *  - `drop`: nothing else.
+ *
  * `expectedRaw` guards the write the same way `/api/task` does, so a stale
- * line cannot file the wrong words. Answers `{ path }`.
+ * line cannot act on the wrong words. Answers `{ path }`, the file the line
+ * went to.
  */
 export const POST = route(
 	async ({ body, hub }) => {
 		const expectedRaw = str(body.expectedRaw);
-		if (!body.workspace || typeof body.line !== 'number' || expectedRaw === undefined) {
-			return refuse('invalid', 'workspace, line and expectedRaw are required');
-		}
+		const line = body.line;
+		if (typeof line !== 'number' || expectedRaw === undefined) return refuse('invalid', 'line and expectedRaw are required');
+		if (body.action === 'drop') return dropInboxLine(hub.vault, line, expectedRaw);
+		if (body.action === 'plan') return planInboxLine(hub.vault, await hub.workspaces(), today(), line, expectedRaw);
+		if (body.action !== 'file') return refuse('invalid', 'action is plan, file or drop');
 		const workspace = await hub.workspace(body.workspace);
-		return workspace ? fileInboxLine(hub.vault, workspace, body.line, expectedRaw) : noWorkspace(body.workspace);
+		return workspace ? fileInboxLine(hub.vault, workspace, line, expectedRaw) : noWorkspace(body.workspace);
 	},
-	{ 'no-note': 'There is no inbox note to file from.', 'no-text': 'That line has no words to file.' }
+	{
+		'no-note': 'There is no inbox to triage.',
+		'no-text': 'That line has no words to file.',
+		'no-day': 'Today has no note yet. Create it on Today first.'
+	}
 );

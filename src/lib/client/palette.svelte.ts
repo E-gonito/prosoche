@@ -232,7 +232,7 @@ function row(parts: {
 }
 
 /** The single key that goes to each module, by module id. */
-const GO_KEYS: Record<string, string> = { today: 't', glossary: 'l', w: 'w', study: 'd', notes: 'g', sync: 'y' };
+const GO_KEYS: Record<string, string> = { today: 't', glossary: 'l', w: 'w', study: 'd', notes: 'g', inbox: 'i', sync: 'y' };
 
 /**
  * The commands, and the keys that reach them without the palette.

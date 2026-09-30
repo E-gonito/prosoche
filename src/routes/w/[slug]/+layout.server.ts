@@ -2,7 +2,8 @@ import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { homeFolder } from '$server/workspaces';
 import { readLog } from '$server/log';
-import { listInboxLines } from '$server/inbox';
+import { belongsTo, legacyInbox, readInbox, unfiled } from '$server/inbox';
+import { CAPTURE_PATH } from '$server/capture';
 import { noteHref } from '$lib/shared/links';
 import type { LayoutServerLoad } from './$types';
 
@@ -11,8 +12,9 @@ const SECTIONS = ['crm', 'inbox', 'log', 'notes'] as const;
 
 /**
  * The workspace itself, which tabs have anything to show, and the three
- * things the tabs are decided by: its inbox lines, its log entries and its
- * custom pages.
+ * things the tabs are decided by: its inbox lines (the unfiled lines of
+ * `Inbox/Capture.md` carrying its tag or an alias, plus any still open in
+ * an old `<home>/Inbox.md`), its log entries and its custom pages.
  *
  * Every page under `/w/[slug]` shares one workspace lookup, one read of each
  * of those and one tab strip, computed here so a page's own load only has to
@@ -27,23 +29,24 @@ const SECTIONS = ['crm', 'inbox', 'log', 'notes'] as const;
  * which still lists every workspace that does exist.
  */
 export const load: LayoutServerLoad = async ({ params }) => {
-	const { vault, index, workspace: find } = await hub();
+	const { vault, index, workspace: find, workspaces } = await hub();
 	const workspace = await find(params.slug);
 	if (!workspace) error(404, `There is no workspace called "${params.slug}".`);
 
 	const home = homeFolder(workspace);
-	const inboxPath = `${home}/Inbox.md`;
 	const logPath = `${home}/Log.md`;
-	const [inboxNote, logNote, pages] = await Promise.all([
-		vault.read(inboxPath),
+	const [captured, legacy, logNote, pages, all] = await Promise.all([
+		readInbox(vault),
+		legacyInbox(vault, workspace),
 		vault.read(logPath),
-		vault.files(`${home}/Pages`, 'html')
+		vault.files(`${home}/Pages`, 'html'),
+		workspaces()
 	]);
-	const inbox = listInboxLines(inboxNote.content, inboxPath);
+	const inbox = unfiled(captured).filter((line) => belongsTo(line, all, workspace));
 	const log = readLog(logNote.content);
 
 	const has: Record<(typeof SECTIONS)[number], boolean> = {
-		inbox: inbox.length > 0,
+		inbox: inbox.length + legacy.lines.length > 0,
 		log: log.length > 0,
 		crm: true,
 		notes: index.notesCount({ under: workspace.folders }) > 0
@@ -65,7 +68,7 @@ export const load: LayoutServerLoad = async ({ params }) => {
 		},
 		definitionHref: noteHref(workspace.path),
 		tabs,
-		inbox: { path: inboxPath, lines: inbox },
+		inbox: { path: CAPTURE_PATH, lines: inbox, legacy },
 		log: { path: logPath, entries: log },
 		pages
 	};
