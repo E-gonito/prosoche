@@ -91,8 +91,8 @@ command.
 ## 8. Empty the inbox
 
 Today's Inbox card lists what is waiting. Press `i` to open the triage page.
-Each line has three exits: `t` plans it onto today, `b` files it as a card on
-a board you pick, `x` drops it. Each ticks the line in the inbox file, so
+Each line has four exits: `t` plans it onto today, `b` files it as a card on
+a board you pick, `n` appends it to a workspace's Overview note, `x` drops it. Each ticks the line in the inbox file, so
 nothing is deleted.
 
 ## 9. Add workspaces

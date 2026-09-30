@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { belongsTo, dropInboxLine, fileInboxLine, legacyInbox, listInboxLines, planInboxLine, unfiled } from './inbox';
+import { belongsTo, dropInboxLine, fileInboxLine, legacyInbox, listInboxLines, noteInboxLine, planInboxLine, unfiled } from './inbox';
 import type { Workspace } from './workspaces';
 
 let root: string;
@@ -131,6 +131,37 @@ describe('belongsTo', () => {
 		['- 09:00 plain', null]
 	])('%s is %s', (text, slug) => {
 		expect(all.filter((w) => belongsTo(read(text), all, w)).map((w) => w.slug)).toEqual(slug ? [slug] : []);
+	});
+});
+
+describe('noteInboxLine', () => {
+	const WORK: Workspace = { slug: 'work', name: 'Work', color: '#2e6b85', tag: 'ws/work', aliases: [], folders: ['Work'], path: '_hub/workspaces/work.md' };
+	const INBOX = '# Capture\n\n## 2026-09-30\n- 09:05 Call the printer #ws/work\n- [ ] Buy milk `Q3`\n';
+
+	it('appends the words as a bullet at the end of Overview.md, without the stamp or the tag, and ticks the line', async () => {
+		await vault.write('Inbox/Capture.md', INBOX);
+		await vault.write('Work/Overview.md', '# Work\n\nA paragraph.\n');
+		const result = await noteInboxLine(vault, WORK, 3, '- 09:05 Call the printer #ws/work');
+		expect(result).toEqual({ ok: true, path: 'Work/Overview.md' });
+		expect((await vault.read('Work/Overview.md')).content).toBe('# Work\n\nA paragraph.\n- Call the printer\n');
+		expect((await vault.read('Inbox/Capture.md')).content).toBe(INBOX.replace('- 09:05 Call', '- [x] 09:05 Call'));
+	});
+
+	it('adds a newline first when the note lacks one, and starts a missing note with the bullet', async () => {
+		await vault.write('Inbox/Capture.md', INBOX);
+		await vault.write('Work/Overview.md', 'No newline at the end');
+		await noteInboxLine(vault, WORK, 3, '- 09:05 Call the printer #ws/work');
+		expect((await vault.read('Work/Overview.md')).content).toBe('No newline at the end\n- Call the printer\n');
+		await vault.write('Inbox/Capture.md', INBOX);
+		await vault.remove('Work/Overview.md');
+		await noteInboxLine(vault, WORK, 4, '- [ ] Buy milk `Q3`');
+		expect((await vault.read('Work/Overview.md')).content).toBe('- Buy milk `Q3`\n');
+	});
+
+	it('refuses a stale line and writes nothing', async () => {
+		await vault.write('Inbox/Capture.md', INBOX);
+		expect(await noteInboxLine(vault, WORK, 3, '- 09:05 Something else')).toEqual({ ok: false, reason: 'line-changed' });
+		expect((await vault.read('Work/Overview.md')).exists).toBe(false);
 	});
 });
 

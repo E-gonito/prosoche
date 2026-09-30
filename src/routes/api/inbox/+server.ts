@@ -1,4 +1,4 @@
-import { dropInboxLine, fileInboxLine, planInboxLine } from '$server/inbox';
+import { dropInboxLine, fileInboxLine, noteInboxLine, planInboxLine } from '$server/inbox';
 import { today } from '$server/daily';
 import { noWorkspace, refuse, route, str } from '../route';
 
@@ -8,6 +8,7 @@ import { noWorkspace, refuse, route, str } from '../route';
  *
  *  - `plan`: a block with no time in today's note;
  *  - `file`: a card on the board of `workspace` (a slug);
+ *  - `note`: a bullet at the end of that workspace's `Overview.md`;
  *  - `drop`: nothing else.
  *
  * `expectedRaw` guards the write the same way `/api/task` does, so a stale
@@ -21,9 +22,10 @@ export const POST = route(
 		if (typeof line !== 'number' || expectedRaw === undefined) return refuse('invalid', 'line and expectedRaw are required');
 		if (body.action === 'drop') return dropInboxLine(hub.vault, line, expectedRaw);
 		if (body.action === 'plan') return planInboxLine(hub.vault, await hub.workspaces(), today(), line, expectedRaw);
-		if (body.action !== 'file') return refuse('invalid', 'action is plan, file or drop');
+		if (body.action !== 'file' && body.action !== 'note') return refuse('invalid', 'action is plan, file, note or drop');
 		const workspace = await hub.workspace(body.workspace);
-		return workspace ? fileInboxLine(hub.vault, workspace, line, expectedRaw) : noWorkspace(body.workspace);
+		if (!workspace) return noWorkspace(body.workspace);
+		return body.action === 'file' ? fileInboxLine(hub.vault, workspace, line, expectedRaw) : noteInboxLine(hub.vault, workspace, line, expectedRaw);
 	},
 	{
 		'no-note': 'There is no inbox to triage.',

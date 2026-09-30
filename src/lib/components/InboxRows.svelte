@@ -1,13 +1,14 @@
 <script lang="ts">
 	/**
-	 * Unfiled lines of `Inbox/Capture.md`, each with its three exits: plan it
-	 * onto today, file it as a card on a board, drop it. Every exit ticks the
-	 * line in place through `/api/inbox`, so nothing is deleted and the row
-	 * leaves the list on the reload that follows.
+	 * Unfiled lines of `Inbox/Capture.md`, each with its four exits: plan it
+	 * onto today, file it as a card on a board, note it at the end of a
+	 * workspace's Overview.md, drop it. Every exit ticks the line in place
+	 * through `/api/inbox`, so nothing is deleted and the row leaves the list
+	 * on the reload that follows.
 	 *
-	 * A focused row answers `t`, `b` and `x` for the three, and the arrow keys
-	 * walk the list. `b` files straight to `fileTo` when it is given (a
-	 * workspace's own tab) and otherwise shows the workspaces to pick from,
+	 * A focused row answers `t`, `b`, `n` and `x` for the four, and the arrow
+	 * keys walk the list. `b` and `n` go straight to `fileTo` when it is given
+	 * (a workspace's own tab) and otherwise show the workspaces to pick from,
 	 * the line's own workspace first.
 	 */
 	import { invalidateAll } from '$app/navigation';
@@ -35,12 +36,13 @@
 		onproblem?: (message: string) => void;
 	} = $props();
 
+	type Exit = 'plan' | 'file' | 'note' | 'drop';
 	let busy = $state<number | null>(null);
-	/** The line whose board picker is open. */
-	let picking = $state<number | null>(null);
+	/** The line whose workspace picker is open, and which exit it is choosing for. */
+	let picking = $state<{ line: number; action: 'file' | 'note' } | null>(null);
 	let list: HTMLDivElement | undefined = $state();
 
-	async function act(line: InboxLine, action: 'plan' | 'file' | 'drop', workspace?: string) {
+	async function act(line: InboxLine, action: Exit, workspace?: string) {
 		if (busy !== null) return;
 		const index = lines.indexOf(line);
 		busy = line.line;
@@ -54,9 +56,10 @@
 		focusRow(Math.min(index, lines.length - 1));
 	}
 
-	async function file(line: InboxLine) {
-		if (fileTo) return act(line, 'file', fileTo);
-		picking = picking === line.line ? null : line.line;
+	/** File or note the line: straight to `fileTo`, else open the picker for that exit. */
+	async function pick(line: InboxLine, action: 'file' | 'note') {
+		if (fileTo) return act(line, action, fileTo);
+		picking = picking?.line === line.line && picking.action === action ? null : { line: line.line, action };
 		await tick();
 		list?.querySelector<HTMLElement>('[data-testid="inbox-picker"] button')?.focus();
 	}
@@ -76,7 +79,8 @@
 		const key = event.key.toLowerCase();
 		const run: Record<string, () => void> = {
 			t: () => void act(line, 'plan'),
-			b: () => void file(line),
+			b: () => void pick(line, 'file'),
+			n: () => void pick(line, 'note'),
 			x: () => void act(line, 'drop'),
 			arrowdown: () => focusRow(index + 1),
 			arrowup: () => focusRow(index - 1),
@@ -109,13 +113,15 @@
 			{#if line.task?.quadrant}<span class="q q{line.task.quadrant}">Q{line.task.quadrant}</span>{/if}
 			<span class="actions">
 				<button class="btn ghost small" data-testid="inbox-plan" title="Plan onto today (t)" onclick={() => act(line, 'plan')}>Today</button>
-				<button class="btn ghost small" data-testid="inbox-file" title="File as a board card (b)" aria-expanded={fileTo ? undefined : picking === line.line} onclick={() => file(line)}>Board</button>
+				<button class="btn ghost small" data-testid="inbox-file" title="File as a board card (b)" aria-expanded={fileTo ? undefined : picking?.line === line.line && picking.action === 'file'} onclick={() => pick(line, 'file')}>Board</button>
+				<button class="btn ghost small" data-testid="inbox-note" title="Append to a workspace's Overview.md (n)" aria-expanded={fileTo ? undefined : picking?.line === line.line && picking.action === 'note'} onclick={() => pick(line, 'note')}>Note</button>
 				<button class="btn ghost small" data-testid="inbox-drop" title="Drop: tick it, keep the line (x)" onclick={() => act(line, 'drop')}>Drop</button>
 			</span>
-			{#if picking === line.line}
-				<div class="chips picker" data-testid="inbox-picker">
+			{#if picking?.line === line.line}
+				{@const exit = picking.action}
+				<div class="chips picker" data-testid="inbox-picker" aria-label={exit === 'file' ? 'Which board' : 'Which Overview'}>
 					{#each choices(line) as w (w.slug)}
-						<button class="chip" onclick={() => act(line, 'file', w.slug)}><i class="dot" style="--dot: {w.color}"></i>{w.name}</button>
+						<button class="chip" onclick={() => act(line, exit, w.slug)}><i class="dot" style="--dot: {w.color}"></i>{w.name}</button>
 					{:else}
 						<span class="muted small">No workspaces yet.</span>
 					{/each}
