@@ -5,7 +5,7 @@
  * `Task` between registered zones and asks each zone for a minute, where a
  * board needs a column and a place among its cards, read off the cards on
  * screen. What the two share, the threshold that tells a tap from a drag, is
- * `shared/geometry`.
+ * `client/geometry`.
  *
  * The board marks itself up and this module reads the marks, so it needs no
  * registration: `[data-board-scroll]` is the element that scrolls sideways,
@@ -16,7 +16,7 @@
  * control marked `[data-nodrag]` (its checkbox, its menu) or a field.
  */
 
-import { passedThreshold } from '$lib/shared/geometry';
+import { passedThreshold } from './geometry';
 
 /** Where a dropped card would land: a column, and its place among that column's cards. */
 export interface BoardDrop {

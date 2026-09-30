@@ -14,7 +14,7 @@
 	 */
 	import { goto, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
-	import { glossaryAction } from '$lib/client/glossary';
+	import { api } from '$lib/client/api';
 	import { slugify } from '$lib/shared/slug';
 
 	let { data } = $props();
@@ -29,7 +29,7 @@
 		event.preventDefault();
 		if (renaming === null || !renaming.trim()) return;
 		problem = '';
-		const result = await glossaryAction({ action: 'rename-glossary', glossary: slug, name: renaming });
+		const result = await api('/api/glossary', { action: 'rename-glossary', glossary: slug, name: renaming });
 		if (!result.ok) {
 			problem = result.message;
 			return;
@@ -41,7 +41,7 @@
 
 	async function removeGlossary() {
 		problem = '';
-		const result = await glossaryAction({ action: 'delete-glossary', glossary: slug });
+		const result = await api('/api/glossary', { action: 'delete-glossary', glossary: slug });
 		if (!result.ok) {
 			confirmingDelete = false;
 			problem = result.message;
@@ -85,7 +85,7 @@
 	async function add(term: { term: string; category?: string | null }): Promise<boolean> {
 		adding = term.term;
 		problem = '';
-		const result = await glossaryAction({ action: 'add', glossary: slug, ...term });
+		const result = await api('/api/glossary', { action: 'add', glossary: slug, ...term });
 		adding = null;
 		if (!result.ok) problem = result.message;
 		else await invalidateAll();
@@ -103,7 +103,7 @@
 		if (!editing || !draft.term.trim()) return;
 		saving = true;
 		problem = '';
-		const result = await glossaryAction({ action: 'edit', glossary: slug, term: editing, change: draft });
+		const result = await api('/api/glossary', { action: 'edit', glossary: slug, term: editing, change: draft });
 		saving = false;
 		if (!result.ok) {
 			problem = result.message;
@@ -116,7 +116,7 @@
 	async function remove(term: string) {
 		if (!confirm(`Delete “${term}” from the glossary?`)) return;
 		problem = '';
-		const result = await glossaryAction({ action: 'delete', glossary: slug, term });
+		const result = await api('/api/glossary', { action: 'delete', glossary: slug, term });
 		if (!result.ok) problem = result.message;
 		else {
 			if (editing === term) editing = null;
@@ -131,7 +131,7 @@
 	async function link(slug: string) {
 		linking = true;
 		problem = '';
-		const result = await glossaryAction({ action: 'set-study', glossary: data.glossary.slug, study: slug });
+		const result = await api('/api/glossary', { action: 'set-study', glossary: data.glossary.slug, study: slug });
 		linking = false;
 		if (!result.ok) problem = result.message;
 		await invalidateAll();
@@ -231,7 +231,8 @@
 			<Draft
 				label="Look up all ({pending.length})"
 				title="Claude drafts every definition still to look up, in one proposal. Nothing is written until you accept."
-				request={{ feature: 'glossary-lookup', glossary: slug }}
+				endpoint="/api/glossary/lookup"
+				request={{ glossary: slug }}
 				ondone={() => invalidateAll()}
 			/>
 		{/if}
@@ -279,7 +280,8 @@
 								<Draft
 									label="Look up with Claude"
 									title="Claude drafts a definition and why it matters here. Nothing is written until you accept."
-									request={{ feature: 'glossary-lookup', glossary: slug, terms: [entry.term] }}
+									endpoint="/api/glossary/lookup"
+									request={{ glossary: slug, terms: [entry.term] }}
 									ondone={() => invalidateAll()}
 								/>
 							</div>

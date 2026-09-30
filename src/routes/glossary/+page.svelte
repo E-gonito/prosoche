@@ -6,7 +6,7 @@
 	 */
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
-	import { glossaryAction } from '$lib/client/glossary';
+	import { api } from '$lib/client/api';
 	import { slugify } from '$lib/shared/slug';
 
 	let { data } = $props();
@@ -20,7 +20,7 @@
 		if (!name.trim()) return;
 		busy = true;
 		problem = '';
-		const result = await glossaryAction({ action: 'create-glossary', name });
+		const result = await api('/api/glossary', { action: 'create-glossary', name });
 		busy = false;
 		if (!result.ok) problem = result.message;
 		// Invalidates the root layout too, so the rail gains the new glossary.

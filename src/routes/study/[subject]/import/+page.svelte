@@ -9,7 +9,7 @@
 	 * whose name matches one of this subject's folders starts ticked; the rest
 	 * start unticked, so another subject's decks are not swept in by default.
 	 */
-	import { importAnkiDecks } from '$lib/client/study';
+	import { api } from '$lib/client/api';
 	import type { DeckImport, DeckStatus } from '$lib/shared/anki-import';
 
 	let { data } = $props();
@@ -60,9 +60,9 @@
 	async function run() {
 		busy = true;
 		problem = '';
-		const result = await importAnkiDecks(data.subject.slug, [...chosen]);
+		const result = await api<{ decks: DeckImport[] }>('/api/study/import', { subject: data.subject.slug, sources: [...chosen] });
 		busy = false;
-		if (result.ok) imported = result.value;
+		if (result.ok) imported = result.value.decks;
 		else problem = result.message;
 	}
 </script>

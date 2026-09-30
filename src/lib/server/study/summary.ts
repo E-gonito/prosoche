@@ -18,7 +18,7 @@ import { dueCards, type CardQueue } from './flashcards';
 import { newCardQuotas } from './new-cards';
 import { findGoal, goalRefs, readGoals, type Goal, type GoalsNote } from './goals';
 import { readReadingList } from './reading';
-import { minutesByGoal, minutesInWeek, readSessions, streak, weekStart, type StudySession } from './sessions';
+import { minutesByGoal, minutesInWeek, monthRange, readSessions, streak, weeklyMinutes, weekStart, type StudySession } from './sessions';
 import { shiftDay } from '../daily';
 import { isDone } from '$lib/shared/task';
 import type { CardFile, GoalRef, ReadingItem, ReadingList } from '$lib/shared/study';
@@ -197,5 +197,37 @@ export function subjectCard(summary: StudySummary, today: string): SubjectCard {
 		weekMinutes: minutesInWeek(sessions, weekStart(today)),
 		due: cards.files.reduce((sum, f) => sum + f.due, 0),
 		streak: streak(sessions, today)
+	};
+}
+
+/**
+ * Everything a subject's Overview, Flashcards, Reading and Sessions tabs
+ * show, from one summary, for the subject's layout to load once. Pure.
+ *
+ * The card queue itself is left out: it holds every due card's text, which
+ * only the review needs, and the layout's data goes to every tab.
+ */
+export function subjectView(summary: StudySummary, today: string) {
+	const card = subjectCard(summary, today);
+	const { goals: progress, unassigned } = progressByGoal(summary, today);
+	const month = monthRange(today);
+	return {
+		goalRefs: summary.goalRefs,
+		progress,
+		unassigned,
+		groups: filesByGoal(summary),
+		reading: summary.reading,
+		// Newest first, so the log reads like the inbox does.
+		sessions: [...summary.sessions].sort((a, b) => b.day.localeCompare(a.day) || b.line - a.line),
+		goalHours: minutesByGoal(summary.sessions, month.from, month.to),
+		weeks: weeklyMinutes(summary.sessions, today, 8),
+		due: card.due,
+		fresh: summary.cards.fresh,
+		waiting: summary.cards.waiting,
+		total: summary.cards.total,
+		invisible: summary.cards.invisible,
+		weeklyHours: summary.goals.weeklyHours,
+		weekMinutes: card.weekMinutes,
+		streak: card.streak
 	};
 }

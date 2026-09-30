@@ -13,14 +13,15 @@
 	import { untrack } from 'svelte';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { changeReading, READING_KINDS, type ReadingFields, type ReadingItem, type ReadingOp } from '$lib/client/study';
+	import { api } from '$lib/client/api';
+	import { READING_KINDS, type ReadingFields, type ReadingItem, type ReadingList, type ReadingOp } from '$lib/shared/study';
 
 	let { data } = $props();
 
-	let current = $state(untrack(() => data.list));
+	let current = $state(untrack(() => data.study.reading));
 	// A fresh load from the server wins over whatever this copy has become.
 	$effect(() => {
-		current = data.list;
+		current = data.study.reading;
 	});
 
 	let busy = $state(false);
@@ -35,20 +36,21 @@
 	let edit = $state(blank());
 
 	const count = $derived(current.groups.reduce((sum, g) => sum + g.items.length, 0));
-	const goalNames = $derived(data.goals.map((g) => g.name));
+	const goalNames = $derived(data.study.goalRefs.map((g) => g.name));
 
 	async function run(op: ReadingOp): Promise<boolean> {
 		if (busy) return false;
 		busy = true;
 		problem = '';
 		menu = null;
-		const result = await changeReading(data.subject.slug, current.hash, op);
+		// Every answer but a lost connection carries the list as it now is.
+		const result = await api<{ list: ReadingList }>('/api/study/reading', { subject: data.subject.slug, hash: current.hash, op });
 		busy = false;
 		if (result.ok) {
-			current = result.value;
+			current = result.value.list;
 			return true;
 		}
-		if ('list' in result) current = result.list;
+		if (result.body.list) current = result.body.list;
 		problem = result.message;
 		return false;
 	}

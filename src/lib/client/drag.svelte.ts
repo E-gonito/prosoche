@@ -15,7 +15,7 @@
  */
 
 import type { Task } from '$lib/shared/task';
-import { area, passedThreshold, pointInRect } from '$lib/shared/geometry';
+import { area, passedThreshold, pointInRect } from './geometry';
 
 interface DropZone {
 	id: string;

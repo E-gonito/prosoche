@@ -27,11 +27,9 @@ import { openCards } from '../kanban';
 import { loadWorkspaces } from '../workspaces';
 import { wrapAsData } from './guardrails';
 import { markerBlock, newId, readRegion } from './proposal';
-import { runDraft } from './run';
+import { nothing, runDraft } from './run';
 import type { CliDeps } from './cli';
-import type { BriefingRun, Proposal, RunStamp } from '$lib/shared/ai';
-
-export type { BriefingRun };
+import type { DraftResult, Proposal, RunStamp } from '$lib/shared/ai';
 
 /** The comment pair in a daily note that the briefing's text sits between. */
 export const BRIEFING_MARKER = 'hub:briefing';
@@ -250,7 +248,8 @@ interface BriefingDeps {
  * Produce the day's briefing, and draft it as a proposal rather than writing it.
  *
  * Inputs: the vault and index, and the day. Output: a proposal for the card
- * to offer, or the problem that stopped one. Side effects: spawns the CLI for
+ * to offer, with the day's note as its one destination, or the problem that
+ * stopped one. Side effects: spawns the CLI for
  * the opening sentence through the shared runner, which logs the run. Never
  * writes to the vault; the caller applies the proposal through the ordinary
  * `/api/ai/proposal` accept step, the same as every other feature.
@@ -265,12 +264,12 @@ interface BriefingDeps {
  * text is not written until a second draft, run after that proposal is
  * accepted, finds them there and offers the `replace-region` edit instead.
  */
-export async function run(deps: BriefingDeps, day: DayKey, options: { cli?: Partial<CliDeps> } = {}): Promise<BriefingRun> {
+export async function run(deps: BriefingDeps, day: DayKey, options: { cli?: Partial<CliDeps> } = {}): Promise<DraftResult> {
 	const path = dailyNotePath(day);
 	// Only Obsidian makes daily notes, so a briefing has nowhere to be saved
 	// until it has. Refused before the model is called, so it costs nothing.
 	if (!(await deps.vault.read(path)).exists) {
-		return { proposal: null, problem: 'Today’s note is not here yet. Open it in Obsidian, then Brief me once it has synced.' };
+		return nothing('Today’s note is not here yet. Open it in Obsidian, then Brief me once it has synced.');
 	}
 
 	// Read here rather than taken as a dependency: a route handing this
@@ -285,12 +284,12 @@ export async function run(deps: BriefingDeps, day: DayKey, options: { cli?: Part
 		note: 'briefing opener',
 		cli: options.cli
 	});
-	if (!opener.ok && opener.refusals.some((r) => r.guardrail === 'G10')) return { proposal: null, problem: opener.problem };
+	if (!opener.ok && opener.refusals.some((r) => r.guardrail === 'G10')) return { ...nothing(opener.problem), refusals: opener.refusals };
 
 	// Any other failure is the same answer here: no sentence. Deliberately not
 	// reported as a problem, because a briefing without its opening line is a
 	// briefing, and a red message above a perfectly good list would train the
 	// user to ignore red messages.
 	const proposal = await propose(deps.vault, day, facts, opener.ok ? opener.value : '', opener.stamp);
-	return { proposal, problem: null };
+	return { proposal, problem: null, refusals: [], destinations: [path] };
 }

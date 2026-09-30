@@ -8,7 +8,7 @@
 	 * text goes to `Inbox/Capture.md` under today's date, never into the note
 	 * on screen, and the confirmation says which file took it.
 	 */
-	import { captureText } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 	let {
 		onproblem,
 		workspace
@@ -27,7 +27,7 @@
 		const value = text.trim();
 		if (!value || saving) return;
 		saving = true;
-		const result = await captureText(value, workspace);
+		const result = await api<{ path: string }>('/api/capture', { text: value, workspace });
 		saving = false;
 		if (result.ok) {
 			text = '';

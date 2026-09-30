@@ -2,10 +2,8 @@
 	/**
 	 * The Today dashboard: one day's plan, and the week around it.
 	 *
-	 * Shared by `/today` and `/today/[day]`, which differ only in which day
-	 * their `+page.server.ts` asks `loadToday` for. Everything below the title
-	 * is the same component either way, so the two routes cannot drift into
-	 * two slightly different dashboards.
+	 * Rendered by `/today/[[day]]` for `/today` and `/today/<day>` alike,
+	 * which differ only in which day the load asks `loadToday` for.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import Timeline from '$lib/components/Timeline.svelte';

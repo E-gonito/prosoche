@@ -9,8 +9,7 @@ import type { PageServerLoad } from './$types';
  * enforces on the client.
  */
 export const load: PageServerLoad = async ({ url }) => {
-	const { vault, ready } = hub();
-	await ready;
+	const { vault } = await hub();
 
 	const requested = url.searchParams.get('day');
 	const now = today();

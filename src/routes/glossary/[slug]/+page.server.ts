@@ -1,10 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
-import { renderMarkdown } from '$server/render';
+import { linkHref, renderNote } from '$server/render';
 import { findGlossary, loadGlossary } from '$server/glossary';
 import { glossaryCardsState } from '$server/study/glossary-cards';
 import { subjectsOf } from '$server/study/subjects';
-import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -13,16 +12,11 @@ import type { PageServerLoad } from './$types';
  * card folder. Only an unknown slug is a 404. Writes nothing.
  */
 export const load: PageServerLoad = async ({ params }) => {
-	const { vault, index, ready, workspaces } = hub();
-	await ready;
+	const { vault, index, workspaces } = await hub();
 	const all = await workspaces();
 	const ref = await findGlossary(vault, all, params.slug);
 	if (!ref) error(404, 'No such glossary');
 
-	const resolve = (target: string) => {
-		const found = index.resolveLink(target);
-		return found ? noteHref(found) : null;
-	};
 	const glossary = await loadGlossary(vault, ref.path);
 
 	const entries = glossary.entries.map((e) => {
@@ -33,8 +27,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			pending: e.pending,
 			lookedUp: e.status === 'looked-up',
 			drafted: (e.fields.drafted?.value ?? '').toLowerCase() === 'claude',
-			source: e.source ? { label: link ? (link[2] ?? link[1]).trim() : e.source, href: link ? resolve(link[1].trim()) : null } : null,
-			definition: e.definition ? renderMarkdown(e.definition, resolve) : '',
+			source: e.source ? { label: link ? (link[2] ?? link[1]).trim() : e.source, href: link ? linkHref(index, link[1].trim()) : null } : null,
+			definition: e.definition ? renderNote(index, e.definition) : '',
 			/** The definition as written, for the edit form. */
 			definitionRaw: e.definition,
 			relevance: e.relevance

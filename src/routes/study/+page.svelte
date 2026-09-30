@@ -5,7 +5,7 @@
 	 */
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
-	import { createSubject } from '$lib/client/study';
+	import { api } from '$lib/client/api';
 	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
@@ -21,9 +21,9 @@
 		saving = true;
 		problem = '';
 		const extra = folders.split(',').map((f) => f.trim()).filter(Boolean);
-		const result = await createSubject(name.trim(), extra);
+		const result = await api<{ subject: { slug: string } }>('/api/study/subject', { name: name.trim(), folders: extra });
 		saving = false;
-		if (result.ok) await goto(`/study/${result.value}`, { invalidateAll: true });
+		if (result.ok) await goto(`/study/${result.value.subject.slug}`, { invalidateAll: true });
 		else problem = result.message;
 	}
 </script>

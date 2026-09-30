@@ -9,8 +9,7 @@ import type { PageServerLoad } from './$types';
  */
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { subject } = await parent();
-	const { vault, index, ready } = hub();
-	await ready;
+	const { vault, index } = await hub();
 
 	const folders = subject.scope.folders ?? [];
 	const tree = subjectTree(await vault.tree(), folders);

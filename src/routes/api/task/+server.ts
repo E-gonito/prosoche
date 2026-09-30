@@ -1,43 +1,21 @@
-import { json } from '@sveltejs/kit';
-import { hub } from '$server/hub';
 import { updateTask } from '$server/tasks';
-import type { TaskStatus } from '$server/parse/task';
-import type { RequestHandler } from './$types';
-
-interface Body {
-	path?: string;
-	line?: number;
-	/** The line as the client last saw it, for per-line conflict detection. */
-	expectedRaw?: string;
-	status?: TaskStatus;
-	time?: { start: string; end: string } | null;
-	quadrant?: number | null;
-	text?: string;
-	due?: string | null;
-	id?: string | null;
-	blockedBy?: string[] | null;
-	addTags?: string[];
-	removeTags?: string[];
-}
+import type { TaskEdit } from '$server/parse/task';
+import { refuse, route, str } from '../route';
 
 /** Fields of the body that are simply passed to the rewriter, when present. */
 const EDITS = ['status', 'time', 'quadrant', 'text', 'due', 'id', 'blockedBy', 'addTags', 'removeTags'] as const;
 
 /**
- * Edit one task. Responds 409 with the current line when it changed
- * underneath, which the client shows as a refresh rather than an error.
+ * Edit one task: `{ path, line, expectedRaw }`, the line as the client last
+ * saw it, and any of `EDITS`. Answers `{ task }`. A line that changed
+ * underneath is a 409 with `current`, which the client shows as a refresh.
  */
-export const POST: RequestHandler = async ({ request }) => {
-	const body = (await request.json()) as Body;
-	if (!body.path || typeof body.line !== 'number' || typeof body.expectedRaw !== 'string') {
-		return json({ error: 'path, line and expectedRaw are required' }, { status: 400 });
+export const POST = route(async ({ body, hub }) => {
+	const path = str(body.path);
+	const expectedRaw = str(body.expectedRaw);
+	if (!path || typeof body.line !== 'number' || expectedRaw === undefined) {
+		return refuse('invalid', 'path, line and expectedRaw are required');
 	}
-
-	const { vault } = hub();
-	const edit = Object.fromEntries(EDITS.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
-	const result = await updateTask(vault, body.path, body.line, body.expectedRaw, edit);
-
-	if (result.ok) return json({ ok: true, task: result.task });
-	if (result.reason === 'line-changed') return json(result, { status: 409 });
-	return json(result, { status: result.reason === 'no-note' ? 404 : 422 });
-};
+	const edit = Object.fromEntries(EDITS.filter((key) => body[key] !== undefined).map((key) => [key, body[key]])) as TaskEdit;
+	return updateTask(hub.vault, path, body.line, expectedRaw, edit);
+});

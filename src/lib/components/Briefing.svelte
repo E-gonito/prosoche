@@ -20,9 +20,9 @@
 	 * is noise on every day but one.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import { applyProposal, checkProposal, draftBriefing } from '$lib/client/ai';
+	import { api } from '$lib/client/api';
 	import Icon from '$lib/components/Icon.svelte';
-	import type { Proposal } from '$lib/shared/ai';
+	import type { ApplyResult, DraftResult, Proposal, Validation } from '$lib/shared/ai';
 
 	let {
 		day,
@@ -74,18 +74,19 @@
 		justAddedMarkers = false;
 		drafted = null;
 
-		const result = await draftBriefing(day);
+		// Read-only: nothing is written until the proposal is accepted by Save.
+		const result = await api<DraftResult>('/api/ai/briefing', { day });
 		if (!result.ok) {
 			problem = result.message;
 			busy = false;
 			return;
 		}
-		if (result.value.briefing.problem) problem = result.value.briefing.problem;
+		if (result.value.problem) problem = result.value.problem;
 
-		const proposal = result.value.briefing.proposal;
+		const proposal = result.value.proposal;
 		if (proposal) {
 			const edit = proposal.edits[0];
-			const checked = await checkProposal(proposal, result.value.destinations);
+			const checked = await api<{ validation: Validation }>('/api/ai/proposal', { action: 'validate', proposal, destinations: result.value.destinations });
 			if (checked.ok) {
 				proposalRef = proposal;
 				drafted = {
@@ -103,14 +104,15 @@
 	async function save() {
 		if (busy || !proposalRef || !drafted) return;
 		busy = true;
-		const result = await applyProposal(proposalRef, proposalRef.edits.map((e) => e.id), drafted.destinations);
+		const accepted = proposalRef.edits.map((e) => e.id);
+		const result = await api<{ result: ApplyResult }>('/api/ai/proposal', { action: 'apply', proposal: proposalRef, accepted, destinations: drafted.destinations });
 		busy = false;
 		if (!result.ok) {
 			problem = result.message;
 			return;
 		}
-		if (result.value.written.length === 0) {
-			problem = result.value.refusals[0]?.message ?? 'Nothing was written.';
+		if (result.value.result.written.length === 0) {
+			problem = result.value.result.refusals[0]?.message ?? 'Nothing was written.';
 			return;
 		}
 		justAddedMarkers = drafted.addsMarkersOnly;

@@ -10,7 +10,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import Capture from '$lib/components/Capture.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { editTask } from '$lib/client/api';
+	import { api, editTask } from '$lib/client/api';
 	import type { Task } from '$lib/shared/task';
 
 	let { data } = $props();
@@ -27,22 +27,14 @@
 	async function makeTask(line: { line: number; raw: string }) {
 		if (filing !== null) return;
 		filing = line.line;
-		try {
-			const res = await fetch('/api/inbox', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ workspace: data.workspace.slug, line: line.line, expectedRaw: line.raw })
-			});
-			const body = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				problem = body.error ?? 'Could not file that line.';
-				return;
-			}
-			problem = '';
-			await invalidateAll();
-		} finally {
-			filing = null;
+		const result = await api('/api/inbox', { workspace: data.workspace.slug, line: line.line, expectedRaw: line.raw });
+		filing = null;
+		if (!result.ok) {
+			problem = result.message;
+			return;
 		}
+		problem = '';
+		await invalidateAll();
 	}
 </script>
 
@@ -51,9 +43,9 @@
 
 {#if problem}<p class="problem">{problem}</p>{/if}
 
-<p class="label">Inbox <span class="right">{data.lines.filter((l) => !l.done).length} open</span></p>
+<p class="label">Inbox <span class="right">{data.inbox.lines.filter((l) => !l.done).length} open</span></p>
 <div class="sheet rows">
-	{#each data.lines as line (line.line)}
+	{#each data.inbox.lines as line (line.line)}
 		<div class="row">
 			{#if line.task}
 				<div class="task-cell"><TaskRow task={line.task} onchange={() => invalidateAll()} onproblem={(m) => (problem = m)} /></div>

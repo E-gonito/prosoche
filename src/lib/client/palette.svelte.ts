@@ -17,7 +17,7 @@
 import { goto } from '$app/navigation';
 import { MODULES, SYSTEM } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
-import { captureText } from '$lib/client/api';
+import { api } from '$lib/client/api';
 import { all, register, listen, type Shortcut } from '$lib/client/shortcuts.svelte';
 
 interface PaletteRow {
@@ -209,14 +209,9 @@ class PaletteState {
 	/** Ask the server what the vault has for the current query. */
 	private async load(): Promise<void> {
 		const mine = ++this.generation;
-		try {
-			const response = await fetch(`/api/palette?q=${encodeURIComponent(this.query)}`);
-			const body = (await response.json()) as VaultRows;
-			if (mine !== this.generation) return;
-			this.vault = { notes: body.notes ?? [], tasks: body.tasks ?? [], workspaces: body.workspaces ?? [] };
-		} catch {
-			if (mine === this.generation) this.vault = EMPTY;
-		}
+		const result = await api<VaultRows>(`/api/palette?q=${encodeURIComponent(this.query)}`);
+		if (mine !== this.generation) return;
+		this.vault = result.ok ? result.value : EMPTY;
 	}
 }
 
@@ -278,7 +273,7 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 					title: 'Quick capture',
 					placeholder: 'Thought, link or task…',
 					submit: async (text) => {
-						const result = await captureText(text);
+						const result = await api<{ path: string }>('/api/capture', { text });
 						return result.ok ? `Saved to ${result.value.path}` : result.message;
 					}
 				})
@@ -294,7 +289,7 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 					title: 'New card',
 					placeholder: 'What needs doing?',
 					submit: async (text) => {
-						const result = await captureText(`- [ ] ${text} \`Q2\``);
+						const result = await api<{ path: string }>('/api/capture', { text: `- [ ] ${text} \`Q2\`` });
 						return result.ok ? `Card written to ${result.value.path}` : result.message;
 					}
 				})
@@ -304,17 +299,8 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 			description: 'Rebuild index',
 			run: async () => {
 				palette.busy = true;
-				try {
-					const response = await fetch('/api/sync', {
-						method: 'POST',
-						headers: { 'content-type': 'application/json' },
-						body: JSON.stringify({ action: 'rebuild' })
-					});
-					const body = (await response.json()) as { tookMs?: number };
-					palette.message = `Index rebuilt in ${body.tookMs ?? '?'} ms`;
-				} catch {
-					palette.message = 'Could not reach the server.';
-				}
+				const result = await api<{ tookMs: number }>('/api/sync', { action: 'rebuild' });
+				palette.message = result.ok ? `Index rebuilt in ${result.value.tookMs} ms` : result.message;
 				palette.busy = false;
 			}
 		}

@@ -11,8 +11,9 @@
 	 * big enough to hit without looking.
 	 */
 	import { GRADES, outcomes, type Grade } from '$lib/shared/scheduler';
-	import { collapseBreadcrumb } from '$lib/shared/breadcrumb';
-	import { applyShift, gradeCard, type Card } from '$lib/client/study';
+	import { collapseBreadcrumb } from '$lib/client/breadcrumb';
+	import { applyShift, gradeCard } from '$lib/client/study';
+	import type { Card } from '$lib/shared/study';
 	import Icon from '$lib/components/Icon.svelte';
 
 	let {

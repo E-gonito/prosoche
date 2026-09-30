@@ -6,20 +6,20 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
-	import { setCardFileGoal } from '$lib/client/study';
+	import { api } from '$lib/client/api';
 	import { noteHref } from '$lib/shared/links';
 
 	let { data } = $props();
 
 	const base = $derived(`/study/${data.subject.slug}`);
-	const goalNames = $derived(data.goals.map((g) => g.name));
+	const goalNames = $derived(data.study.goalRefs.map((g) => g.name));
 	let saving = $state<string | null>(null);
 	let problem = $state('');
 
 	async function setGoal(path: string, goal: string) {
 		saving = path;
 		problem = '';
-		const result = await setCardFileGoal(data.subject.slug, path, goal || null);
+		const result = await api('/api/study/card-file', { subject: data.subject.slug, path, goal: goal || null });
 		saving = null;
 		if (!result.ok) problem = result.message;
 		await invalidateAll();
@@ -33,20 +33,20 @@
 
 	<div class="review-row">
 		<p>
-			<b class="num" data-testid="cards-due">{data.due}</b> <span class="muted">due now, of {data.total} {data.total === 1 ? 'card' : 'cards'}</span>
-			{#if data.fresh || data.waiting}
-				<span class="small muted new" data-testid="cards-new">{data.fresh} new today · {data.waiting} waiting</span>
+			<b class="num" data-testid="cards-due">{data.study.due}</b> <span class="muted">due now, of {data.study.total} {data.study.total === 1 ? 'card' : 'cards'}</span>
+			{#if data.study.fresh || data.study.waiting}
+				<span class="small muted new" data-testid="cards-new">{data.study.fresh} new today · {data.study.waiting} waiting</span>
 			{/if}
 		</p>
 		<div class="buttons">
 			<a class="btn ghost small" href="{base}/import" data-testid="anki-import-link">Import Anki decks</a>
-			{#if data.due > 0}<a class="btn" href="{base}/review" data-testid="review-all">Review all</a>{/if}
+			{#if data.study.due > 0}<a class="btn" href="{base}/review" data-testid="review-all">Review all</a>{/if}
 		</div>
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 
-	{#each data.groups as group (group.goal?.slug ?? '')}
+	{#each data.study.groups as group (group.goal?.slug ?? '')}
 		<p class="label">
 			{group.goal ? group.goal.name : 'No goal'}
 			<span class="right">
@@ -88,11 +88,11 @@
 		</p>
 	{/each}
 
-	{#if data.invisible.length}
+	{#if data.study.invisible.length}
 		<p class="label">Not seen by Obsidian</p>
 		<p class="hint">These notes hold cards but no <code>#flashcards</code> tag, so neither Obsidian nor Study reviews them. Add the tag to include them.</p>
 		<div class="sheet rows">
-			{#each data.invisible as note (note.path)}
+			{#each data.study.invisible as note (note.path)}
 				<div class="file"><a href={noteHref(note.path)}>{note.title}</a><span class="num muted small">{note.cards} {note.cards === 1 ? 'card' : 'cards'}</span></div>
 			{/each}
 		</div>

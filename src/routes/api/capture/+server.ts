@@ -1,27 +1,21 @@
-import { json } from '@sveltejs/kit';
-import { hub } from '$server/hub';
 import { capture, CAPTURE_PATH } from '$server/capture';
 import { homeFolder } from '$server/workspaces';
-import type { RequestHandler } from './$types';
+import { noWorkspace, refuse, route, str } from '../route';
 
 /**
- * Capture a line, into the vault-wide inbox or one workspace's own.
- *
- * `workspace`, when given, is a slug: an unknown one is a 400 rather than a
- * silent fall-through to the vault-wide inbox, so a typo in the workspace
- * page's own request never lands where the user did not point it.
+ * Capture `{ text }` into the vault-wide inbox, or into one workspace's own
+ * with `workspace` (a slug). Answers `{ path }`, the note written. An unknown
+ * workspace is refused rather than falling through to the vault-wide inbox,
+ * so a typo never lands where the user did not point it.
  */
-export const POST: RequestHandler = async ({ request }) => {
-	const { text, workspace } = (await request.json()) as { text?: string; workspace?: string };
-	if (!text?.trim()) return json({ error: 'Nothing to capture' }, { status: 400 });
-
-	const { vault } = hub();
+export const POST = route<{ text: string; workspace: string }>(async ({ body, hub }) => {
+	const text = str(body.text);
+	if (!text?.trim()) return refuse('no-text', 'Nothing to capture.');
 	let path = CAPTURE_PATH;
-	if (workspace) {
-		const found = (await hub().workspaces()).find((w) => w.slug === workspace);
-		if (!found) return json({ error: `There is no workspace called "${workspace}".` }, { status: 400 });
+	if (body.workspace) {
+		const found = await hub.workspace(body.workspace);
+		if (!found) return noWorkspace(body.workspace);
 		path = `${homeFolder(found)}/Inbox.md`;
 	}
-
-	return json({ ok: true, path: await capture(vault, text, new Date(), path) });
-};
+	return { path: await capture(hub.vault, text, new Date(), path) };
+});

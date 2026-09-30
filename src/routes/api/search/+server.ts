@@ -1,10 +1,7 @@
-import { json } from '@sveltejs/kit';
-import { hub } from '$server/hub';
-import type { RequestHandler } from './$types';
+import { route } from '../route';
 
-export const GET: RequestHandler = async ({ url }) => {
-	const { index, ready } = hub();
-	await ready;
+/** `?q=`: full-text search over the notes. Answers `{ query, hits }`. */
+export const GET = route(({ url, hub }) => {
 	const query = url.searchParams.get('q') ?? '';
-	return json({ query, hits: index.search(query) });
-};
+	return { query, hits: hub.index.search(query) };
+});

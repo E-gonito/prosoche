@@ -121,3 +121,16 @@ export function matchKey(text: string): string {
 		.replace(/\s+/g, ' ')
 		.trim();
 }
+
+/** What the card drawer shows about one task: the line, and everything around it. */
+export interface CardContext {
+	task: Task;
+	/** The task's indented sub-bullets, as written. Read-only context. */
+	block: string[];
+	/** Title of the note the task lives in. */
+	title: string;
+	/** The workspace the task belongs to now, by tag, folder or alias. */
+	workspace: { slug: string; name: string; color: string } | null;
+	/** Every workspace, with the tag that puts a task in it. */
+	workspaces: Array<{ slug: string; name: string; color: string; tag: string }>;
+}

@@ -1,21 +1,63 @@
 /**
- * The browser's side of the JSON API.
+ * The browser's side of the JSON API: one call, `api`, and the two named
+ * functions that do more than send, because they locate a task.
  *
  * Every call returns a discriminated result rather than throwing, so callers
  * handle a conflict the same way they handle success: by rendering it. A
  * network failure is reported as an offline result, because a planner on a
  * phone will lose its connection and must not lose the user's intent.
+ *
+ * Designed twice. (a) This: one generic `api<T>(path, body?, { method })`,
+ * the answer's type named at the call. (b) A table of every endpoint's body
+ * and answer types, with `api` typed from it. (a) won: the routes' answers
+ * are their domain modules' results passed straight through, so (b)'s table
+ * would be a second copy of types that already exist, kept in step by hand.
  */
 
 import type { Task, TaskStatus } from '$lib/shared/task';
-import type { Board, BoardOp } from '$lib/shared/kanban';
 
-export type { Task, TaskStatus, Board, BoardOp };
-
+/**
+ * An answer. A failure carries the server's sentence as `message` and its
+ * whole answer as `body`, for the routes that send more than a sentence
+ * back (the board or reading list as it now is, the other version of a note).
+ */
 export type Result<T> =
 	| { ok: true; value: T }
-	| { ok: false; kind: 'conflict'; message: string }
-	| { ok: false; kind: 'offline' | 'error'; message: string };
+	| { ok: false; kind: 'conflict' | 'error' | 'offline'; message: string; body: Record<string, any> };
+
+/**
+ * Send one request to `path` and read the JSON answer.
+ *
+ * Inputs: the path (with any query string), a body to send as JSON, and the
+ * method, POST when there is a body and GET when there is none. Output: the
+ * answer as `T` for a 2xx; otherwise `conflict` for a 409 and `error` for
+ * any other status, with the server's own sentence, which is written to be
+ * shown to a person; `offline` when there was no answer at all. Never throws.
+ */
+export async function api<T = Record<string, never>>(
+	path: string,
+	body?: unknown,
+	{ method = body === undefined ? 'GET' : 'POST' }: { method?: string } = {}
+): Promise<Result<T>> {
+	let res: Response;
+	try {
+		res = await fetch(path, {
+			method,
+			headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+			body: body === undefined ? undefined : JSON.stringify(body)
+		});
+	} catch {
+		return { ok: false, kind: 'offline', message: 'No connection. Nothing was changed.', body: {} };
+	}
+	const parsed = await res.json().catch(() => ({}));
+	if (res.ok) return { ok: true, value: parsed as T };
+	return {
+		ok: false,
+		kind: res.status === 409 ? 'conflict' : 'error',
+		message: typeof parsed.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+		body: parsed
+	};
+}
 
 export interface TaskEdit {
 	status?: TaskStatus;
@@ -31,163 +73,22 @@ export interface TaskEdit {
 	removeTags?: string[];
 }
 
-/** Apply an edit to one task line. */
+/** Which line a task is, and the line as the browser last saw it: the conflict token. */
+function locate(task: Task) {
+	return { path: task.path, line: task.line, expectedRaw: task.raw };
+}
+
+/** Apply an edit to one task line. Returns the task as now written. */
 export async function editTask(task: Task, edit: TaskEdit): Promise<Result<Task>> {
-	return post('/api/task', { path: task.path, line: task.line, expectedRaw: task.raw, ...edit }, (body) => body.task);
+	const result = await api<{ task: Task }>('/api/task', { ...locate(task), ...edit });
+	return result.ok ? { ok: true, value: result.value.task } : result;
 }
 
 /**
  * Plan a card from another note onto a day, as a block in the day's note that
  * links back to it. The card's own line is not touched. Returns the new block.
  */
-export async function planOnDay(
-	day: string,
-	task: Task,
-	time?: { startMin: number; endMin: number }
-): Promise<Result<Task>> {
-	return post(
-		`/api/day/${day}/plan`,
-		{ path: task.path, line: task.line, expectedRaw: task.raw, ...time },
-		(body) => body.task
-	);
-}
-
-/** Append a line to the capture inbox, or to one workspace's own inbox. */
-export async function captureText(text: string, workspace?: string): Promise<Result<{ path: string }>> {
-	return post('/api/capture', { text, workspace }, (body) => ({ path: body.path }));
-}
-
-/**
- * Append one dated line to a person's log.
- *
- * Creates their note when this is the first thing written about them, which
- * is why the result says so: the page reports "created" differently from
- * "added a line to what was there".
- */
-export async function logContact(
-	name: string,
-	text: string
-): Promise<Result<{ logged: string; created: boolean }>> {
-	return post('/api/person', { name, text }, (body) => ({
-		logged: body.logged as string,
-		created: Boolean(body.created)
-	}));
-}
-
-/** A contact's details as the CRM forms send them. Links are one per item. */
-export interface ContactDetails {
-	kind?: string;
-	company?: string;
-	role?: string;
-	email?: string;
-	phone?: string;
-	links?: string[];
-}
-
-/**
- * Create a contact in a workspace's CRM. Refused, with a message saying why,
- * for a name that cannot be a file name or that another contact already has.
- */
-export async function createContact(
-	workspace: string,
-	name: string,
-	details: ContactDetails & { notes?: string }
-): Promise<Result<{ name: string }>> {
-	return post('/api/crm', { workspace, name, ...details }, (body) => ({ name: body.name as string }));
-}
-
-/**
- * Change a contact: set or clear `fields` (an empty value clears), add one
- * history `entry`, or both. `expectedHash` is the hash the page loaded; a
- * contact changed since comes back as a conflict and nothing is written.
- */
-export async function updateContact(
-	workspace: string,
-	name: string,
-	expectedHash: string,
-	change: { fields?: ContactDetails; entry?: { day: string; text: string } }
-): Promise<Result<{ hash: string }>> {
-	return post('/api/crm', { workspace, name, expectedHash, ...change }, (body) => ({ hash: body.hash as string }), 'PATCH');
-}
-
-/**
- * Set every folder a workspace reads after its home, which never changes.
- * Answers with the workspace's folders as now written, home first.
- */
-export async function setWorkspaceFolders(slug: string, folders: string[]): Promise<Result<string[]>> {
-	return post('/api/workspace', { slug, folders }, (body) => body.folders as string[], 'PATCH');
-}
-
-/** Save a whole note. A conflict carries the other version. */
-export async function saveNote(
-	path: string,
-	content: string,
-	expectedHash: string
-): Promise<Result<{ hash: string }> | { ok: false; kind: 'conflict'; message: string; current: string; currentHash: string }> {
-	try {
-		const res = await fetch('/api/note', {
-			method: 'PUT',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ path, content, expectedHash })
-		});
-		const body = await res.json().catch(() => ({}));
-		if (res.ok) return { ok: true, value: { hash: body.hash } };
-		if (res.status === 409) {
-			return {
-				ok: false,
-				kind: 'conflict',
-				message: 'This note changed on another device.',
-				current: body.current ?? '',
-				currentHash: body.currentHash ?? ''
-			};
-		}
-		return { ok: false, kind: 'error', message: body.error ?? `Save failed (${res.status})` };
-	} catch {
-		return { ok: false, kind: 'offline', message: 'No connection. Your text is still here.' };
-	}
-}
-
-/**
- * Apply one operation to a workspace's board. `hash` is the board's hash as
- * the page has it. Every answer but a lost connection carries the board as
- * it now is, so the caller replaces what it shows with that and never has to
- * guess: after a success, a conflict (someone else changed the file first,
- * nothing written) or a refusal (the op made no sense, nothing written).
- */
-export async function changeBoard(
-	workspace: string,
-	hash: string,
-	op: BoardOp
-): Promise<Result<Board> | { ok: false; kind: 'conflict' | 'error'; message: string; board: Board }> {
-	try {
-		const res = await fetch('/api/board', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ workspace, hash, op })
-		});
-		const body = await res.json().catch(() => ({}));
-		if (res.ok) return { ok: true, value: body.board };
-		if (body.board) return { ok: false, kind: res.status === 409 ? 'conflict' : 'error', message: body.error ?? 'That did not work.', board: body.board };
-		return { ok: false, kind: 'error', message: body.error ?? `Request failed (${res.status})` };
-	} catch {
-		return { ok: false, kind: 'offline', message: 'No connection. Nothing was changed.' };
-	}
-}
-
-async function post<T>(url: string, body: unknown, pick: (body: any) => T, method = 'POST'): Promise<Result<T>> {
-	try {
-		const res = await fetch(url, {
-			method,
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(body)
-		});
-		const parsed = await res.json().catch(() => ({}));
-		if (res.ok) return { ok: true, value: pick(parsed) };
-		if (res.status === 409) {
-			return { ok: false, kind: 'conflict', message: parsed.error ?? 'That line changed on another device. Reloading.' };
-		}
-		return { ok: false, kind: 'error', message: parsed.error ?? `Request failed (${res.status})` };
-	} catch {
-		return { ok: false, kind: 'offline', message: 'No connection.' };
-	}
+export async function planOnDay(day: string, task: Task, time?: { startMin: number; endMin: number }): Promise<Result<Task>> {
+	const result = await api<{ task: Task }>(`/api/day/${day}/plan`, { ...locate(task), ...time });
+	return result.ok ? { ok: true, value: result.value.task } : result;
 }

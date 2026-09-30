@@ -44,7 +44,7 @@ describe('TODAY_CARDS never names a private module', () => {
 	const fakeHub = (): Hub => ({
 		vault,
 		index,
-		ready: Promise.resolve(),
+		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
 		workspaces: async () => loadWorkspaces(vault)
@@ -90,7 +90,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 	const fakeHub = (): Hub => ({
 		vault,
 		index,
-		ready: Promise.resolve(),
+		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
 		workspaces: async () => loadWorkspaces(vault)

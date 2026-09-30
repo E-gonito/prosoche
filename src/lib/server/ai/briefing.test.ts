@@ -338,6 +338,7 @@ describe('run', () => {
 		const result = await run({ vault, index }, DAY, { cli: { executable, vaultPath: root } });
 
 		expect(result.proposal?.edits).toHaveLength(1);
+		expect(result.destinations).toEqual([TODAY_PATH]);
 		expect(result.proposal?.edits[0].kind).toBe('replace-region');
 		if (result.proposal?.edits[0].kind === 'replace-region') {
 			expect(result.proposal.edits[0].text).toContain('A calm start to the day.');

@@ -10,7 +10,7 @@
 	 * is; nothing else here writes.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import { changeBoard } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 	import { dueLabel, type OpenCard } from '$lib/shared/kanban';
 
 	let {
@@ -33,7 +33,7 @@
 	async function tick() {
 		saving = true;
 		done = true;
-		const result = await changeBoard(card.workspace.slug, card.hash, { kind: 'toggle-card', line: card.line, done: true });
+		const result = await api('/api/board', { workspace: card.workspace.slug, hash: card.hash, op: { kind: 'toggle-card', line: card.line, done: true } });
 		saving = false;
 		if (!result.ok) {
 			done = false;

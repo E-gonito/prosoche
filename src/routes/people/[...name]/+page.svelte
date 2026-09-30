@@ -8,7 +8,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { logContact } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 	import { noteHref } from '$lib/shared/links';
 	import type { Task } from '$lib/shared/task';
 
@@ -27,7 +27,7 @@
 		if (busy) return;
 		busy = true;
 		problem = '';
-		const result = await logContact(data.name, text);
+		const result = await api('/api/person', { name: data.name, text });
 		busy = false;
 		if (!result.ok) {
 			problem = result.message;

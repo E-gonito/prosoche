@@ -6,8 +6,7 @@ import type { PageServerLoad } from './$types';
  * shown in the form, and the colour choices on offer.
  */
 export const load: PageServerLoad = async () => {
-	const { ready, workspaces } = hub();
-	await ready;
+	const { workspaces } = await hub();
 
 	return {
 		existing: (await workspaces()).map((w) => ({ slug: w.slug, name: w.name })),

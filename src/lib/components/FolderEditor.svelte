@@ -9,7 +9,7 @@
 	 * before a workspace is pointed at it.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import { setWorkspaceFolders } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 
 	let { slug, folders, options }: { slug: string; folders: string[]; options: string[] } = $props();
 
@@ -24,7 +24,7 @@
 	async function save(next: string[]) {
 		busy = true;
 		problem = '';
-		const result = await setWorkspaceFolders(slug, next);
+		const result = await api('/api/workspace', { slug, folders: next }, { method: 'PATCH' });
 		busy = false;
 		if (!result.ok) {
 			problem = result.message;

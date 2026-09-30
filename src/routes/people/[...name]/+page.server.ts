@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { person, personName } from '$server/people';
-import { renderMarkdown } from '$server/render';
+import { renderNote } from '$server/render';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -15,16 +15,11 @@ export const load: PageServerLoad = async ({ params }) => {
 	const name = personName(params.name);
 	if (!name) error(404, 'No such person');
 
-	const { vault, index, ready } = hub();
-	await ready;
+	const { vault, index } = await hub();
 
 	const who = await person(vault, index, name);
 	return {
 		...who,
-		html: who.exists ? renderMarkdown(who.body, (t) => linkTo(index.resolveLink(t))) : ''
+		html: who.exists ? renderNote(index, who.body) : ''
 	};
 };
-
-function linkTo(path: string | null): string | null {
-	return path ? `/notes/${path.split('/').map(encodeURIComponent).join('/')}` : null;
-}

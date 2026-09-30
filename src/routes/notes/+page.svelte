@@ -5,6 +5,7 @@
 	 * Editing is Obsidian's job. The one write here is the capture box, which
 	 * appends a line to `Inbox/Capture.md` and never touches a note on screen.
 	 */
+	import { api } from '$lib/client/api';
 	import FileTree from '$lib/components/FileTree.svelte';
 	import Capture from '$lib/components/Capture.svelte';
 	import { noteHref, relativeDay } from '$lib/shared/links';
@@ -26,8 +27,8 @@
 			return;
 		}
 		timer = setTimeout(async () => {
-			const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-			hits = ((await response.json()) as { hits: Hit[] }).hits;
+			const result = await api<{ hits: Hit[] }>(`/api/search?q=${encodeURIComponent(q)}`);
+			hits = result.ok ? result.value.hits : [];
 		}, 150);
 	}
 

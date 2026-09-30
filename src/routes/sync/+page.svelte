@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
 	import Confirm from '$lib/components/Confirm.svelte';
 
@@ -32,21 +33,12 @@
 		busy = action;
 		note = '';
 		problem = '';
-		try {
-			const res = await fetch('/api/sync', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ action, ...body })
-			});
-			const result = await res.json().catch(() => ({}));
-			if (!res.ok || result.error) problem = result.error ?? `Failed (${res.status})`;
-			return result;
-		} catch (e) {
-			problem = e instanceof Error ? e.message : String(e);
-			return null;
-		} finally {
-			busy = '';
-		}
+		// A pull or push that git refused still answers 200, with its `error`.
+		const result = await api<Record<string, any>>('/api/sync', { action, ...body });
+		busy = '';
+		if (!result.ok) problem = result.message;
+		else if (result.value.error) problem = result.value.error;
+		return result.ok ? result.value : null;
 	}
 
 	async function doCommit() {
@@ -82,22 +74,16 @@
 
 	async function showDiff(path: string) {
 		busy = `diff:${path}`;
-		try {
-			const res = await fetch(`/api/sync/diff?path=${encodeURIComponent(path)}`);
-			diff = res.ok ? await res.json() : null;
-		} finally {
-			busy = '';
-		}
+		const result = await api<NonNullable<typeof diff>>(`/api/sync/diff?path=${encodeURIComponent(path)}`);
+		diff = result.ok ? result.value : null;
+		busy = '';
 	}
 
 	async function inspectConflict(path: string) {
 		busy = `conflict:${path}`;
-		try {
-			const res = await fetch(`/api/sync/conflict?path=${encodeURIComponent(path)}`);
-			conflict = res.ok ? await res.json() : null;
-		} finally {
-			busy = '';
-		}
+		const result = await api<NonNullable<typeof conflict>>(`/api/sync/conflict?path=${encodeURIComponent(path)}`);
+		conflict = result.ok ? result.value : null;
+		busy = '';
 	}
 
 	let conflict = $state<{ path: string; mine: string; theirs: string } | null>(null);

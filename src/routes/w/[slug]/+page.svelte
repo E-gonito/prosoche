@@ -14,6 +14,10 @@
 
 	let { data } = $props();
 
+	/** The newest six captures and the latest log entry, from the layout's reads. */
+	const inboxPreview = $derived(data.inbox.lines.slice(-6).reverse());
+	const latestLog = $derived(data.log.entries[0] ?? null);
+
 	const slug = $derived(data.workspace?.slug);
 </script>
 
@@ -34,8 +38,8 @@
 	<section>
 		<p class="label">Inbox <span class="right"><a href="/w/{slug}/inbox">Inbox</a></span></p>
 		<div class="sheet rows">
-			{#each data.inboxPreview as line (line)}
-				<p class="capture">{line.replace(/^[ \t]*[-*+][ \t]+/, '')}</p>
+			{#each inboxPreview as line (line.line)}
+				<p class="capture">{line.raw.replace(/^[ \t]*[-*+][ \t]+/, '')}</p>
 			{:else}
 				<p class="none">Nothing captured yet.</p>
 			{/each}
@@ -44,10 +48,10 @@
 
 	<section>
 		<p class="label">Log <span class="right"><a href="/w/{slug}/log">Log</a></span></p>
-		{#if data.latestLog}
+		{#if latestLog}
 			<div class="sheet rows">
-				<p class="day">{data.latestLog.day}</p>
-				{#each data.latestLog.lines as line (line)}
+				<p class="day">{latestLog.day}</p>
+				{#each latestLog.lines as line (line)}
 					<p class="capture">{line.replace(/^[ \t]*[-*+][ \t]+/, '')}</p>
 				{/each}
 			</div>

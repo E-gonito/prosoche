@@ -1,49 +1,31 @@
 import { hub } from '$server/hub';
 import { homeFolder } from '$server/workspaces';
 import { readBoard } from '$server/kanban';
-import { readLog } from '$server/log';
 import { basename, parseNote } from '$server/parse/note';
-import { renderMarkdown } from '$server/render';
+import { renderNote } from '$server/render';
 import { today } from '$server/daily';
-import { noteHref, relativeDay } from '$lib/shared/links';
+import { relativeDay } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
 
 /** How many of each list the overview shows before "see all" is the better tool. */
 const LIMIT = 6;
 
 /**
- * A workspace's overview: its board, its master note, what has come in, the
- * latest log entry, the notes that changed most recently, and every folder
- * in the vault, to offer when pointing the workspace at another.
+ * A workspace's overview: its board, its master note, the notes that changed
+ * most recently, and every folder in the vault, to offer when pointing the
+ * workspace at another. What has come in and the latest log entry are the
+ * layout's.
  *
  * The master note is `<home>/Overview.md`, sent both as its raw bytes, for
  * the editor, and rendered, for reading; a missing one is empty with
  * `exists: false`, and the first save creates it.
  */
 export const load: PageServerLoad = async ({ params }) => {
-	const { vault, index, ready, workspaces } = hub();
-	await ready;
+	const { vault, index, workspace: find } = await hub();
+	const workspace = (await find(params.slug))!;
 
-	const defs = await workspaces();
-	const workspace = defs.find((w) => w.slug === params.slug)!;
-	const home = homeFolder(workspace);
-
-	const overviewPath = `${home}/Overview.md`;
-	const [board, overview, inbox, log, vaultFolders] = await Promise.all([
-		readBoard(vault, workspace),
-		vault.read(overviewPath),
-		vault.read(`${home}/Inbox.md`),
-		vault.read(`${home}/Log.md`),
-		vault.folders()
-	]);
-
-	const inboxPreview = inbox.content
-		.split('\n')
-		.filter((line) => /^[ \t]*[-*+][ \t]+/.test(line))
-		.slice(-LIMIT)
-		.reverse();
-
-	const latestLog = readLog(log.content)[0] ?? null;
+	const overviewPath = `${homeFolder(workspace)}/Overview.md`;
+	const [board, overview, vaultFolders] = await Promise.all([readBoard(vault, workspace), vault.read(overviewPath), vault.folders()]);
 
 	const day = today();
 	const notes = index
@@ -63,14 +45,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			raw: overview.content,
 			hash: overview.hash,
 			html: overview.content.trim()
-				? renderMarkdown(parseNote(overview.content, overviewPath).body, (target) => {
-						const found = index.resolveLink(target);
-						return found ? noteHref(found) : null;
-					})
-				: ''
+? renderNote(index, parseNote(overview.content, overviewPath).body) : ''
 		},
-		inboxPreview,
-		latestLog,
 		notes,
 		vaultFolders
 	};

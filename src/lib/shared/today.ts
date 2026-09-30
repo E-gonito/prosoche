@@ -4,7 +4,7 @@
  *
  * A page component may not import `$lib/server/*` — that boundary is what
  * keeps the filesystem and the database out of the browser bundle — so the
- * one contract between the two lives here, the same way `BriefingRun` does
+ * one contract between the two lives here, the same way `DraftResult` does
  * in `shared/ai.ts`. Everything below is data; nothing here reads a clock or
  * touches a vault.
  */

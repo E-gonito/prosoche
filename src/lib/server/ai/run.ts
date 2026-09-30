@@ -19,16 +19,9 @@ import { checkBudget, checkKillSwitch, validateModelOutput, type Schema } from '
 import { loadSettings } from './settings';
 import { logRun, spentOn } from './audit';
 import { runClaude, type CliDeps } from './cli';
-import type { FeatureId, GuardrailId, Proposal, Refusal, RunStamp } from '$lib/shared/ai';
+import type { DraftResult, FeatureId, GuardrailId, Refusal, RunStamp } from '$lib/shared/ai';
 
-/** What every draft returns: a proposal, or why there is none. */
-export interface DraftResult {
-	proposal: Proposal | null;
-	problem: string | null;
-	refusals: Refusal[];
-	/** The one path the proposal may write, for the per-run path policy. */
-	destinations: string[];
-}
+export type { DraftResult };
 
 export interface DraftOptions {
 	cli?: Partial<CliDeps>;

@@ -18,7 +18,7 @@
 		type AiSettings,
 		type FeatureId
 	} from '$lib/shared/ai';
-	import { saveAiSettings, undoProposal } from '$lib/client/ai';
+	import { api } from '$lib/client/api';
 
 	let { data } = $props();
 
@@ -36,10 +36,10 @@
 		busy = true;
 		saved = '';
 		problem = '';
-		const result = await saveAiSettings(settings);
+		const result = await api<{ settings: AiSettings }>('/api/ai/settings', settings);
 		busy = false;
 		if (result.ok) {
-			settings = result.value;
+			settings = result.value.settings;
 			saved = `Saved to ${data.settingsPath}.`;
 		} else {
 			problem = result.message;
@@ -48,10 +48,10 @@
 
 	async function revert(id: string) {
 		busy = true;
-		const result = await undoProposal(id);
+		const result = await api<{ undone: { restored: string[]; skipped: string[] } }>('/api/ai/proposal', { action: 'undo', undoId: id });
 		busy = false;
 		saved = result.ok
-			? `Put back ${result.value.restored.length} file${result.value.restored.length === 1 ? '' : 's'}.`
+			? `Put back ${result.value.undone.restored.length} file${result.value.undone.restored.length === 1 ? '' : 's'}.`
 			: '';
 		problem = result.ok ? '' : result.message;
 	}

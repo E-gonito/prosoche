@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { api } from '$lib/client/api';
 	// Shows how fresh the server's copy of the vault is. Staleness is visible
 	// rather than silent, because the user's Mac may only pull occasionally.
 	type Status = {
@@ -14,11 +15,8 @@
 	let status = $state<Status | null>(null);
 
 	async function refresh() {
-		try {
-			status = await (await fetch('/api/sync')).json();
-		} catch {
-			status = null;
-		}
+		const result = await api<Status>('/api/sync');
+		status = result.ok ? result.value : null;
 	}
 
 	$effect(() => {

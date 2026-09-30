@@ -12,7 +12,7 @@
 	 * first save creates it.
 	 */
 	import { invalidateAll } from '$app/navigation';
-	import { saveNote } from '$lib/client/api';
+	import { api } from '$lib/client/api';
 
 	let {
 		path,
@@ -39,7 +39,7 @@
 	async function save() {
 		saving = true;
 		problem = '';
-		const result = await saveNote(path, text, openedWith);
+		const result = await api('/api/note', { path, content: text, expectedHash: openedWith }, { method: 'PUT' });
 		saving = false;
 		if (result.ok) {
 			editing = false;

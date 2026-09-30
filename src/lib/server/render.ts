@@ -12,6 +12,7 @@
  */
 
 import { marked } from 'marked';
+import { noteHref } from '$lib/shared/links';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -30,6 +31,21 @@ export function renderMarkdown(body: string, resolve: (target: string) => string
 		return href ? `[${label}](${href})` : `<span class="wl-missing" title="No note called ${escapeAttr(target)}">${escapeHtml(label)}</span>`;
 	});
 	return marked.parse(withLinks, { async: false });
+}
+
+/**
+ * Render a note body with its wikilinks resolved the way Notes resolves
+ * them: to the note `index` finds for the target, or shown as unresolved.
+ * Reads the index only.
+ */
+export function renderNote(index: { resolveLink(target: string): string | null }, body: string): string {
+	return renderMarkdown(body, (target) => linkHref(index, target));
+}
+
+/** The `/notes/…` URL of the note a wikilink target names, or null for none. Reads the index only. */
+export function linkHref(index: { resolveLink(target: string): string | null }, target: string): string | null {
+	const path = index.resolveLink(target);
+	return path ? noteHref(path) : null;
 }
 
 function escapeHtml(s: string): string {

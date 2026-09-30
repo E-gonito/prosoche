@@ -4,6 +4,7 @@
 	 * first. The file itself keeps whatever order it was written in; only the
 	 * display is reversed.
 	 */
+	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
@@ -17,15 +18,10 @@
 		const value = text.trim();
 		if (!value || saving) return;
 		saving = true;
-		const res = await fetch('/api/log', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ workspace: data.workspace.slug, text: value })
-		});
-		const body = await res.json().catch(() => ({}));
+		const result = await api('/api/log', { workspace: data.workspace.slug, text: value });
 		saving = false;
-		if (!res.ok) {
-			problem = body.error ?? 'Could not save that.';
+		if (!result.ok) {
+			problem = result.message;
 			return;
 		}
 		problem = '';
@@ -42,7 +38,7 @@
 {#if problem}<p class="problem">{problem}</p>{/if}
 
 <p class="label">Sessions</p>
-{#each data.entries as entry (entry.day)}
+{#each data.log.entries as entry (entry.day)}
 	<div class="sheet rows entry" data-testid="log-entry">
 		<p class="day">{entry.day}</p>
 		{#each entry.lines as line (line)}

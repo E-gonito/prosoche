@@ -11,8 +11,7 @@ import type { LayoutServerLoad } from './$types';
  * only: the rail is a way in, not a report.
  */
 export const load: LayoutServerLoad = async () => {
-	const { vault, ready, workspaces } = hub();
-	await ready;
+	const { vault, workspaces } = await hub();
 	const all = await workspaces();
 	const sub: Record<string, SubItem[]> = {
 		w: all.map((w) => ({ href: `/w/${w.slug}`, title: w.name, color: w.color })),

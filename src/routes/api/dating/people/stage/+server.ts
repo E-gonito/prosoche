@@ -1,25 +1,14 @@
-import { json } from '@sveltejs/kit';
-import { hub } from '$server/hub';
-import { setStage, STAGES, type Stage } from '$server/dating';
-import type { RequestHandler } from './$types';
+import { setStage, STAGES } from '$server/dating';
+import { refuse, route, str } from '../../../route';
 
-const REFUSED = {
-	'no-note': 'There is no note for that name yet.',
-	conflict: 'Their note changed on another device. Reloading.'
-} as const;
-
-/** Rewrite a person's frontmatter `stage:` line alone. */
-export const POST: RequestHandler = async ({ request }) => {
-	const body = (await request.json().catch(() => ({}))) as { name?: string; stage?: string };
-	if (!body.name) return json({ error: 'name is required' }, { status: 400 });
-	if (!(STAGES as readonly string[]).includes(body.stage ?? '')) {
-		return json({ error: `stage must be one of ${STAGES.join(', ')}` }, { status: 400 });
-	}
-
-	const { vault, ready } = hub();
-	await ready;
-
-	const result = await setStage(vault, body.name, body.stage as Stage);
-	if (result.ok) return json({ ok: true });
-	return json({ error: REFUSED[result.reason] }, { status: result.reason === 'conflict' ? 409 : 404 });
-};
+/** Rewrite a person's frontmatter `stage:` line alone: `{ name, stage }`. */
+export const POST = route(
+	async ({ body, hub }) => {
+		const name = str(body.name);
+		const stage = STAGES.find((s) => s === body.stage);
+		if (!name) return refuse('invalid', 'name is required');
+		if (!stage) return refuse('invalid', `stage must be one of ${STAGES.join(', ')}`);
+		return setStage(hub.vault, name, stage);
+	},
+	{ 'no-note': 'There is no note for that name yet.' }
+);

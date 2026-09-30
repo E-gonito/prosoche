@@ -1,24 +1,16 @@
-import { json } from '@sveltejs/kit';
-import { hub } from '$server/hub';
 import { importAnkiDecks } from '$server/study/anki-decks';
 import { studyHome } from '$server/study/subjects';
-import type { RequestHandler } from './$types';
+import { refuse, route, strings } from '../../route';
 
 /**
  * Import the Anki decks under `Flashcards/` into subject `{ subject }`: write a
  * card file for every deck named in `sources` (every deck, when absent) that
- * does not have one yet, and answer with every
- * deck and what happened to it. Which decks and where they go is decided
- * here, from the vault as it is now, never from what the preview page last
- * saw. 404 for a slug that is not a subject.
+ * does not have one yet, and answer `{ decks }`, every deck and what happened
+ * to it. Which decks and where they go is decided here, from the vault as it
+ * is now, never from what the preview page last saw.
  */
-export const POST: RequestHandler = async ({ request }) => {
-	const body = (await request.json().catch(() => ({}))) as { subject?: unknown; sources?: unknown };
-	const { vault, ready, workspaces } = hub();
-	await ready;
-
-	const home = studyHome(await workspaces(), typeof body.subject === 'string' ? body.subject : '');
-	if (!home) return json({ error: 'There is no study subject by that name.' }, { status: 404 });
-	const only = Array.isArray(body.sources) ? body.sources.filter((s): s is string => typeof s === 'string') : undefined;
-	return json({ decks: await importAnkiDecks(vault, home, { apply: true, only }) });
-};
+export const POST = route(async ({ body, hub }) => {
+	const home = studyHome(await hub.workspaces(), body.subject);
+	if (!home) return refuse('not-found', 'There is no study subject by that name.');
+	return { decks: await importAnkiDecks(hub.vault, home, { apply: true, only: strings(body.sources) }) };
+});
