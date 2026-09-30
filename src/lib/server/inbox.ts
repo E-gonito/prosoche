@@ -124,7 +124,8 @@ export type Triaged =
  * when the board has no column. A missing board is created as the default
  * one. Writes the board first and the inbox second, so a failure between the
  * two leaves the line unticked: the worst case is a card filed twice, never
- * a capture lost. The capture time is left off the card.
+ * a capture lost. The capture time and the workspace's own tag are left off
+ * the card.
  */
 export async function fileInboxLine(vault: Vault, workspace: Workspace, line: number, expectedRaw: string): Promise<Triaged> {
 	const found = await lineAt(vault, line, expectedRaw);
@@ -132,7 +133,9 @@ export async function fileInboxLine(vault: Vault, workspace: Workspace, line: nu
 
 	const board = await readBoard(vault, workspace);
 	if (board.columns.length === 0) return { ok: false, reason: 'no-column' };
-	const filed = await changeBoard(vault, workspace, board.hash, { kind: 'add-card', column: 0, text: found.words });
+	// On its own board a card needs no tag saying whose it is.
+	const words = found.words.split(' ').filter((w) => w !== `#${workspace.tag}`).join(' ');
+	const filed = await changeBoard(vault, workspace, board.hash, { kind: 'add-card', column: 0, text: words });
 	if (!filed.ok) return { ok: false, reason: 'line-changed' };
 
 	return tickLine(vault, line, expectedRaw, board.path);

@@ -117,12 +117,8 @@ with `.num`, which lines figures up without changing the typeface.
 - **`Draft`**: a button that asks Claude for a proposal and shows it as a diff
   with Accept and Reject. Every AI write goes through it, but the briefing's
   Save, which previews the text and writes it only on Save.
-- **`Capture`**: one line, sent where its words say (see `capture.ts`).
-  **`FileTree`**: the vault's folders.
-- **`InboxRows`**: unfiled inbox lines in a `.sheet.rows`, each a focusable
-  row with Today, Board and Drop buttons that are also its `t`, `b` and `x`.
-- **`WeekBars`**: a bar chart with no library; a bar with a total is drawn
-  pale behind its value (Today's week, done against planned).
+- **`Capture`**: one line, sent where its words say. **`FileTree`**: folders.
+- **`InboxRows`**: focusable rows, Today/Board/Drop on `t` `b` `x`. **`WeekBars`**: bars.
 - **`board/Board`**: a workspace's board. Columns are unboxed, a small-caps
   heading over a stack of cards; the cards are the boxes, because a card is
   the thing you act on. Columns sit side by side at 230px or more and scroll

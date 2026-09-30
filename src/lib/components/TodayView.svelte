@@ -269,7 +269,7 @@
 					<h3 class="caps">Inbox <a class="right small" href="/inbox">{data.inbox.count} to triage</a></h3>
 					<div class="rows">
 						{#each data.inbox.lines as line (line.line)}
-							<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span> {/if}{displayText(line.text)}</p>
+							<p class="inbox-line">{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</p>
 						{/each}
 					</div>
 					{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}

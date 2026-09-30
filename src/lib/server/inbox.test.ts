@@ -53,6 +53,12 @@ describe('fileInboxLine', () => {
 		expect(await board()).toBe(before.replace('- [ ] Already there\n', '- [ ] Already there\n- [ ] First\n'));
 	});
 
+	it("leaves the workspace's own tag off its card", async () => {
+		await vault.write('Inbox/Capture.md', '- 09:00 Call the printer #ws/work\n');
+		await fileInboxLine(vault, WORK, 0, '- 09:00 Call the printer #ws/work');
+		expect(await board()).toMatch(/## To do\n\n- \[ \] Call the printer\n/);
+	});
+
 	it('never deletes the inbox line, only ticks it', async () => {
 		await vault.write('Inbox/Capture.md', '- 09:00 Keep me\n');
 		await fileInboxLine(vault, WORK, 0, '- 09:00 Keep me');
