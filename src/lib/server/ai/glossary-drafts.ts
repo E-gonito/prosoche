@@ -55,8 +55,10 @@ const LOOKUP_SCHEMA: Schema = {
 				fields: {
 					term: { type: 'string', minLength: 1, maxLength: 200 },
 					definition: { type: 'string', minLength: 1, maxLength: 1500 },
-					relevance: { type: 'string', maxLength: 600 }
-				}
+					relevance: { type: 'string', maxLength: 600 },
+					category: { type: 'string', maxLength: ENTRY_LIMITS.category }
+				},
+				optional: ['category']
 			}
 		}
 	}
@@ -66,18 +68,24 @@ interface Lookup {
 	term: string;
 	definition: string;
 	relevance: string;
+	/** Asked for only when the entry has none; one of the glossary's own where one fits. */
+	category?: string;
 }
 
 /**
  * The prompt for glossary look-ups. Pure. The user's guess is passed along,
  * because a definition that says where the guess was right or wrong is worth
- * more than one that ignores it.
+ * more than one that ignores it. A term with no category is marked, and the
+ * glossary's `categories` are listed so one is chosen from them: the point
+ * is to file it where its neighbours already are, not to grow a new
+ * category for every term.
  */
-export function lookupPrompt(input: { glossary: string; entries: GlossaryEntry[]; sources: Source[] }): string {
+export function lookupPrompt(input: { glossary: string; entries: GlossaryEntry[]; categories: string[]; sources: Source[] }): string {
 	const terms = input.entries.map((e) => {
-		const extra = [e.guess ? `their guess: ${e.guess}` : null, e.category ? `category: ${e.category}` : null].filter(Boolean);
-		return `- ${e.term}${extra.length ? ` (${extra.join('; ')})` : ''}`;
+		const extra = [e.guess ? `their guess: ${e.guess}` : null, e.category ? `category: ${e.category}` : 'no category yet'].filter(Boolean);
+		return `- ${e.term} (${extra.join('; ')})`;
 	});
+	const uncategorised = input.entries.some((e) => !e.category);
 	return [
 		`Look up these terms for the user's "${input.glossary}" glossary:`,
 		...terms,
@@ -85,6 +93,14 @@ export function lookupPrompt(input: { glossary: string; entries: GlossaryEntry[]
 		'For each, write a definition of two or three plain sentences saying what it is, and a relevance of one',
 		`sentence beginning "For ${input.glossary}," saying why it matters there, grounded in the notes below.`,
 		'If the notes say nothing about it, say how it would plausibly come up, and hedge. Return each term exactly as given.',
+		...(uncategorised
+			? [
+					'',
+					'For a term with no category yet, also give a category: the one it sits most naturally in among',
+					input.categories.length ? `the glossary's own, exactly as written: ${input.categories.join(', ')}.` : 'none so far, so one or two words.',
+					'Only if none of those fits at all, give a new one of one or two words. Leave category out for a term that has one.'
+				]
+			: []),
 		'',
 		wrapAsData(input.sources)
 	].join('\n');
@@ -92,9 +108,10 @@ export function lookupPrompt(input: { glossary: string; entries: GlossaryEntry[]
 
 /**
  * The look-ups as one proposal: each definition and relevance inserted under
- * its entry, its status set to looked-up, and `drafted:: Claude` recorded.
- * Pure. An answer for a term that is not a pending entry is dropped. Returns
- * null when nothing is left to change.
+ * its entry, its status set to looked-up, `drafted:: Claude` recorded, and,
+ * for an entry with no category, the one suggested, spelled as the glossary
+ * already spells it. A category the entry already has is never replaced. Pure. An answer for a term that is not a
+ * pending entry is dropped. Returns null when nothing is left to change.
  */
 export function lookupProposal(
 	path: string,
@@ -104,22 +121,31 @@ export function lookupProposal(
 ): Proposal | null {
 	let text = glossary.content;
 	const done: string[] = [];
+	// A suggestion is written as the glossary already spells it, so "web"
+	// files under Web rather than starting a second category.
+	const spelled = new Map(categoriesOf(parseGlossary(glossary.content)).map((c) => [c.toLowerCase(), c]));
+	/** "Term → Category" for each category suggested, to say so in the summary. */
+	const filedUnder: string[] = [];
 	for (const lookup of lookups) {
 		const entry = findEntry(text, lookup.term);
 		if (!entry || !entry.pending || done.includes(normaliseTerm(entry.term))) continue;
 		const withDefinition = insertDefinition(text, entry.term, lookup.definition, lookup.relevance);
 		const looked = withDefinition && setField(withDefinition, entry.term, 'status', 'looked-up');
 		const drafted = looked && setField(looked, entry.term, 'drafted', 'Claude');
-		if (!drafted) continue;
-		text = drafted;
+		const suggested = lookup.category?.trim();
+		const category = suggested && (spelled.get(suggested.toLowerCase()) ?? suggested);
+		const filed = drafted && category && !entry.category ? setField(drafted, entry.term, 'category', category) : drafted;
+		if (!filed) continue;
+		text = filed;
 		done.push(normaliseTerm(entry.term));
+		if (filed !== drafted) filedUnder.push(`${entry.term} → ${category}`);
 	}
 	if (done.length === 0) return null;
 	return {
 		id: newId('lookup'),
 		feature: 'glossary-lookup',
 		stamp,
-		summary: `Definitions for ${done.length} term${done.length === 1 ? '' : 's'} in ${basename(path)}.`,
+		summary: `Definitions for ${done.length} term${done.length === 1 ? '' : 's'} in ${basename(path)}.${filedUnder.length ? ` Filed: ${filedUnder.join(', ')}.` : ''}`,
 		edits: [
 			{
 				id: newId('edit'),
@@ -127,7 +153,7 @@ export function lookupProposal(
 				path,
 				text,
 				expectedHash: glossary.hash,
-				reason: 'Each definition and its "why it matters here" line go under the term, and its status becomes looked-up.'
+				reason: 'Each definition and its "why it matters here" line go under the term, and its status becomes looked-up; a term with no category gets the one suggested.'
 			}
 		],
 		accepted: []
@@ -145,17 +171,16 @@ export async function draftLookups(vault: Vault, glossary: GlossaryRef, terms: s
 	const destinations = [glossary.path];
 	const note = await vault.read(glossary.path);
 	const wanted = terms ? new Set(terms.map(normaliseTerm)) : null;
-	const entries = parseGlossary(note.content)
-		.filter((e) => e.pending && (!wanted || wanted.has(normaliseTerm(e.term))))
-		.slice(0, LOOKUP_LIMIT);
+	const all = parseGlossary(note.content);
+	const entries = all.filter((e) => e.pending && (!wanted || wanted.has(normaliseTerm(e.term)))).slice(0, LOOKUP_LIMIT);
 	if (entries.length === 0) return { ...nothing('Nothing is waiting to be looked up.'), destinations };
 
 	const sources = await gather(vault, glossary.linked.map((w) => w.path));
 
 	const run = await runDraft<{ entries: Lookup[] }>(vault, {
 		feature: 'glossary-lookup',
-		prompt: lookupPrompt({ glossary: glossary.name, entries, sources }),
-		system: 'You define terms for one person\'s glossary. Answer only with JSON: {"entries":[{"term":"…","definition":"…","relevance":"…"}]}.',
+		prompt: lookupPrompt({ glossary: glossary.name, entries, categories: categoriesOf(all), sources }),
+		system: 'You define terms for one person\'s glossary. Answer only with JSON: {"entries":[{"term":"…","definition":"…","relevance":"…","category":"…"}]}, category only where asked for.',
 		schema: LOOKUP_SCHEMA,
 		paths: [glossary.path],
 		note: `${entries.length} term${entries.length === 1 ? '' : 's'} drafted`,
@@ -164,6 +189,11 @@ export async function draftLookups(vault: Vault, glossary: GlossaryRef, terms: s
 	if (!run.ok) return { ...nothing(run.problem), refusals: run.refusals, destinations };
 	const proposal = lookupProposal(glossary.path, note, run.value.entries, run.stamp);
 	return { proposal, problem: proposal ? null : 'The answer matched none of the terms asked about.', refusals: [], destinations };
+}
+
+/** A glossary's categories, each once, in the order they first appear. Pure. */
+function categoriesOf(entries: GlossaryEntry[]): string[] {
+	return [...new Set(entries.map((e) => e.category).filter((c): c is string => Boolean(c)))];
 }
 
 /* --------------------------------------------------------------- scan -- */
@@ -401,7 +431,7 @@ export async function draftScan(vault: Vault, glossary: GlossaryRef, input: { pa
 	const entries = parseGlossary(current.content);
 	const known = entries.map((e) => e.term);
 	const found = strings(input.found);
-	const categories = [...new Set(entries.map((e) => e.category).filter((c): c is string => Boolean(c)))];
+	const categories = categoriesOf(entries);
 
 	const run = await runDraft<{ entries: FoundTerm[] }>(vault, {
 		feature: 'glossary-scan',

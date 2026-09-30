@@ -86,10 +86,10 @@ const found = (over: Partial<FoundTerm>): FoundTerm => ({
 describe('look-ups', () => {
 	it('lists each pending term with its guess and asks why it matters to the glossary', () => {
 		const entries = parseGlossary(GLOSSARY).filter((e) => e.pending);
-		const prompt = lookupPrompt({ glossary: 'eye2gene', entries, sources: [] });
+		const prompt = lookupPrompt({ glossary: 'eye2gene', entries, categories: ['ML', 'Cloud'], sources: [] });
 		expect(prompt).toContain('"eye2gene" glossary');
-		expect(prompt).toContain('- Cookie Cutter (their guess: something for AI models)');
-		expect(prompt).toContain('- MLflow\n');
+		expect(prompt).toContain('- Cookie Cutter (their guess: something for AI models; no category yet)');
+		expect(prompt).toContain('- MLflow (no category yet)\n');
 		expect(prompt).not.toContain('- DVC');
 		expect(prompt).toContain('beginning "For eye2gene,"');
 	});
@@ -114,6 +114,32 @@ describe('look-ups', () => {
 		expect(entries[1].fields.drafted.value).toBe('Claude');
 		expect(entries[2].pending).toBe(true);
 		expect(p.summary).toBe('Definitions for 1 term in eye2gene.');
+	});
+
+	it('asks for a category from the glossary’s own only when a term has none', () => {
+		const entries = parseGlossary(GLOSSARY).filter((e) => e.pending);
+		expect(lookupPrompt({ glossary: 'eye2gene', entries, categories: ['ML', 'Cloud'], sources: [] })).toContain("the glossary's own, exactly as written: ML, Cloud.");
+		const filed = parseGlossary(GLOSSARY.replace('- status:: to-look-up\n`', '- status:: to-look-up\n- category:: ML\n`'));
+		const onlyFiled = filed.filter((e) => e.pending && e.category);
+		expect(lookupPrompt({ glossary: 'eye2gene', entries: onlyFiled, categories: ['ML'], sources: [] })).not.toContain('also give a category');
+	});
+
+	it('files an uncategorised term under the suggested category, and never replaces one it has', () => {
+		const withCategory = GLOSSARY.replace('## MLflow\n- status:: to-look-up\n', '## MLflow\n- status:: to-look-up\n- category:: Cloud\n');
+		const p = lookupProposal(
+			PATH,
+			{ content: withCategory, hash: 'g' },
+			[
+				{ term: 'Cookie Cutter', definition: 'A project template tool.', relevance: 'For eye2gene, scaffolding.', category: 'ml' },
+				{ term: 'MLflow', definition: 'ML lifecycle.', relevance: 'For eye2gene, runs.', category: 'ML' }
+			],
+			stamp('glossary-lookup')
+		)!;
+		const edit = p.edits[0];
+		const entries = parseGlossary('text' in edit ? edit.text : '');
+		expect(entries.find((e) => e.term === 'Cookie Cutter')!.category).toBe('ML');
+		expect(entries.find((e) => e.term === 'MLflow')!.category).toBe('Cloud');
+		expect(p.summary).toBe('Definitions for 2 terms in eye2gene. Filed: Cookie Cutter → ML.');
 	});
 
 	it('proposes nothing when no answer matches a pending entry', () => {
