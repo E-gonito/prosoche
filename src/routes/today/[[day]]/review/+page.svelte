@@ -82,6 +82,7 @@
 					class="review-row"
 					class:closed={done || skipped}
 					class:busy={busy === task.line}
+					aria-busy={busy === task.line}
 					data-testid="review-row"
 					data-line={task.line}
 					tabindex="0"

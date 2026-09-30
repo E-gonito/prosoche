@@ -14,6 +14,8 @@ async function act(page: Page, press: () => Promise<void>): Promise<Array<[strin
 	const before = vaultFile(TODAY_NOTE);
 	await press();
 	expect(await waitForFile(TODAY_NOTE, (c) => c !== before)).toBe(true);
+	// Settled: the page has reloaded the line it will send with the next press.
+	await expect(page.locator('[data-testid="review-row"][aria-busy="true"]')).toHaveCount(0);
 	return changedChars(before, vaultFile(TODAY_NOTE));
 }
 
