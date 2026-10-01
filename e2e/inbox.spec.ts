@@ -204,6 +204,20 @@ test.describe('Inbox', () => {
 		expect(vaultFile(CAPTURE)).toBe(before.replace('- 09:05 Call the printer', '- [x] 09:05 Call the printer'));
 	});
 
+	test('s adds a line to the only subject’s reading list, under To read, and ticks it', async ({ page }) => {
+		const before = vaultFile(CAPTURE);
+		const list = vaultFile('Study/Reading List.md');
+		await page.goto('/inbox');
+		await page.getByTestId('inbox-row').filter({ hasText: 'standing desk' }).focus();
+		await page.keyboard.press('s');
+		await expect(page.getByTestId('inbox-row')).toHaveCount(3);
+
+		expect(vaultFile('Study/Reading List.md')).toBe(
+			list.replace('- [ ] The Pragmatic Programmer #book\n', '- [ ] The Pragmatic Programmer #book\n- [ ] Look into a standing desk\n')
+		);
+		expect(vaultFile(CAPTURE)).toBe(before.replace('- 09:30 Look into', '- [x] 09:30 Look into'));
+	});
+
 	test('a workspace’s Inbox tab is the inbox filtered to it, and its capture is tagged', async ({ page }) => {
 		await page.goto('/w/work/inbox');
 		await expect(page.getByTestId('inbox-row')).toHaveCount(1);

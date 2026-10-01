@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Inbox triage: each captured line leaves by one of three doors, and the
+	 * Inbox triage: each captured line leaves by one of five doors, and the
 	 * list is done when it is empty. Grouped by the day it was captured,
 	 * newest first.
 	 */
@@ -24,10 +24,10 @@
 		<p class="hint">Today has no note yet, so <b>Today</b> cannot plan anything. <a href="/today">Create it on Today</a>.</p>
 	{/if}
 
-	<InboxRows lines={data.lines} workspaces={data.workspaces} owners={data.owners} byDay onproblem={(m) => (problem = m)} />
+	<InboxRows lines={data.lines} workspaces={data.workspaces} subjects={data.subjects} owners={data.owners} byDay onproblem={(m) => (problem = m)} />
 
 	{#if data.lines.length}
-		<p class="hint keys">Focus a row, then <kbd>t</kbd> plans it onto today, <kbd>b</kbd> files it on a board, <kbd>x</kbd> drops it. Every line is ticked, never deleted.</p>
+		<p class="hint keys">Focus a row, then <kbd>t</kbd> plans it onto today, <kbd>b</kbd> files it on a board, <kbd>n</kbd> notes it in an Overview, <kbd>s</kbd> adds it to a subject's reading list, <kbd>x</kbd> drops it. Every line is ticked, never deleted.</p>
 	{/if}
 </div>
 

@@ -3,7 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from './vault/index';
-import { belongsTo, dropInboxLine, fileInboxLine, legacyInbox, listInboxLines, noteInboxLine, planInboxLine, unfiled } from './inbox';
+import { belongsTo, dropInboxLine, fileInboxLine, legacyInbox, listInboxLines, noteInboxLine, planInboxLine, studyInboxLine, unfiled } from './inbox';
+import { readReadingList } from './study/reading';
+import { readSubject } from './study/subjects';
 import type { Workspace } from './workspaces';
 
 let root: string;
@@ -162,6 +164,41 @@ describe('noteInboxLine', () => {
 		await vault.write('Inbox/Capture.md', INBOX);
 		expect(await noteInboxLine(vault, WORK, 3, '- 09:05 Something else')).toEqual({ ok: false, reason: 'line-changed' });
 		expect((await vault.read('Work/Overview.md')).exists).toBe(false);
+	});
+});
+
+describe('studyInboxLine', () => {
+	const CS = readSubject('_hub/subjects/cs.md', '---\nname: CS\ntag: cs\nfolders:\n  - Study/CS\n---\n');
+	const items = async () => (await readReadingList(vault, CS)).groups[0].items.map((i) => [i.title, i.url, i.kind]);
+
+	it('adds the words under To read on a new reading list, without the stamp or the subject tag, and ticks the line', async () => {
+		await vault.write('Inbox/Capture.md', '## 2026-10-01\n- 09:00 Read SICP chapter 3 #cs #book\n');
+		const result = await studyInboxLine(vault, CS, 1, '- 09:00 Read SICP chapter 3 #cs #book');
+		expect(result).toEqual({ ok: true, path: 'Study/CS/Reading List.md' });
+
+		expect(await items()).toEqual([['Read SICP chapter 3', null, 'book']]);
+		expect((await vault.read('Inbox/Capture.md')).content).toBe('## 2026-10-01\n- [x] 09:00 Read SICP chapter 3 #cs #book\n');
+	});
+
+	it('reads a lone link as the item\'s link, at the bottom of To read, leaving the other items alone', async () => {
+		await vault.write('Inbox/Capture.md', '- 09:00 https://example.com/paper\n');
+		const before = '---\n\nkanban-plugin: board\n\n---\n\n## To read\n\n- [ ] Old book #book\n\n## Reading\n\n- [ ] Halfway\n';
+		await vault.write('Study/CS/Reading List.md', before);
+		await studyInboxLine(vault, CS, 0, '- 09:00 https://example.com/paper');
+		expect((await vault.read('Study/CS/Reading List.md')).content).toBe(
+			before.replace('- [ ] Old book #book\n', '- [ ] Old book #book\n- [ ] https://example.com/paper\n')
+		);
+	});
+
+	it('refuses a stale line and writes no reading list', async () => {
+		await vault.write('Inbox/Capture.md', '- 09:00 Read SICP\n');
+		expect(await studyInboxLine(vault, CS, 0, '- 09:00 Something else')).toEqual({ ok: false, reason: 'line-changed' });
+		expect((await vault.read('Study/CS/Reading List.md')).exists).toBe(false);
+	});
+
+	it('refuses a line that is only the subject tag', async () => {
+		await vault.write('Inbox/Capture.md', '- 09:00 #cs\n');
+		expect(await studyInboxLine(vault, CS, 0, '- 09:00 #cs')).toEqual({ ok: false, reason: 'no-text' });
 	});
 });
 
