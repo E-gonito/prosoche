@@ -14,6 +14,7 @@
 	import SyncBadge from '$lib/components/SyncBadge.svelte';
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import Mark from '$lib/components/Mark.svelte';
 	import { MODULES, SYSTEM, TABS, moduleFor, subItemFor, tabFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
@@ -42,7 +43,7 @@
 
 <div class="shell">
 	<nav class="rail" aria-label="Modules">
-		<a class="brand" href="/today">prosoche</a>
+		<a class="brand" href="/today"><Mark />prosoche</a>
 
 		<button class="jump" onclick={() => palette.show()} data-testid="jump">
 			<Icon name="search" />
@@ -82,7 +83,7 @@
 
 	<header class="top">
 		<div class="bar">
-			<a class="brand" href="/today">prosoche</a>
+			<a class="brand" href="/today"><Mark />prosoche</a>
 			<button class="icon-btn" onclick={() => palette.show()} aria-label="Search or jump"><Icon name="search" size={20} /></button>
 			<SyncBadge />
 		</div>
@@ -143,6 +144,9 @@
 		overflow-y: auto;
 	}
 	.brand {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		font: 600 22px/1 var(--serif);
 		color: var(--text);
 		letter-spacing: -0.02em;
