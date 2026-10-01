@@ -150,7 +150,11 @@ describe('runClaude against a fake executable', () => {
 	it('reports a missing executable rather than throwing', async () => {
 		const result = await runClaude({ prompt: 'x', settings: READ_ONLY }, deps(join(scratch, 'not-here')));
 		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('spawn-failed');
+		if (!result.ok) {
+			expect(result.reason).toBe('spawn-failed');
+			expect(result.message).toMatch(/^The Claude CLI is not installed on this server/);
+			expect(result.message).toContain('HUB_CLAUDE_BIN');
+		}
 	});
 
 	it('kills a run that says too much', async () => {
