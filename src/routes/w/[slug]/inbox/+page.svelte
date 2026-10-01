@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
 	 * A workspace's inbox: the lines of `Inbox/Capture.md` that carry its tag
-	 * or an alias, with the same three exits as the triage page, and `b`
-	 * filing straight to this workspace's board. The capture box here writes
+	 * or an alias, with the same exits as the triage page, and `b` filing
+	 * straight to this workspace's board. The capture box here writes
 	 * the same file with the workspace's tag appended.
 	 *
 	 * An old `<home>/Inbox.md` is no longer written; its open lines are
@@ -27,6 +27,7 @@
 <InboxRows
 	lines={data.inbox.lines}
 	workspaces={[data.workspace]}
+	subjects={data.subjects}
 	fileTo={data.workspace.slug}
 	onproblem={(m) => (problem = m)}
 />

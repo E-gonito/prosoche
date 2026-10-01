@@ -622,7 +622,7 @@ the newer version. With no `Overview.md` yet there is a "Write an overview"
 button instead, and the first save creates the file.
 
 **Inbox** is the one inbox, `Inbox/Capture.md`, filtered to the lines that
-carry the workspace's tag or name it by an alias, with the same three exits
+carry the workspace's tag or name it by an alias, with the same exits
 as the triage page (see Inbox); **Board** files straight onto this
 workspace's board. Its capture box writes the same file with the
 workspace's tag appended, so the line shows here. `<home>/Inbox.md` is no
@@ -691,7 +691,7 @@ written within a day. It is reached from Today's Inbox card, the evening
 review, the palette's `i` and the rail's foot, and it is done when it is
 empty.
 
-Each line leaves by one of four doors, as a button or, with the row
+Each line leaves by one of five doors, as a button or, with the row
 focused, a key:
 
 - **Today** (`t`) plans it onto today as a block with no time, linked back
@@ -706,9 +706,15 @@ focused, a key:
   `Overview.md`, for a thought that belongs to the project rather than to
   its to-do list. The same picker, and the same words as a card would get.
   A missing Overview.md starts as that one bullet.
+- **Study** (`s`) adds it to a study subject's `Reading List.md`, at the
+  bottom of To read, for something to read, watch or work through. The
+  subjects are offered to pick from, or it goes straight to the only one.
+  The words are read the way the reading list reads any item, so a link is
+  the item's link and a trailing `#book` is its kind. There is no Study
+  button until there is a subject.
 - **Drop** (`x`) does nothing else.
 
-All four tick the line in the inbox, so the file stays a record of what
+All five tick the line in the inbox, so the file stays a record of what
 came in and the row leaves the list. Nothing is deleted. A line that changed
 in the file since the page loaded is refused and the list reloads.
 

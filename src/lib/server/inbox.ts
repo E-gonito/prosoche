@@ -4,7 +4,7 @@
  * `capture.ts` writes the file; this module reads it for Today's Inbox card,
  * the `/inbox` triage page and each workspace's Inbox tab (the same list,
  * filtered to lines carrying the workspace's tag or an alias word), and gives
- * each unfiled line its four exits:
+ * each unfiled line its five exits:
  *
  *  - **plan** it onto a day, as a linked block through `day-plan.ts`;
  *  - **file** it as a card on a workspace's board, read the way quick-add
@@ -12,9 +12,11 @@
  *  - **note** it: append its words as a bullet to the end of a workspace's
  *    `Overview.md`, for a thought that belongs to the project rather than
  *    to its to-do list;
+ *  - **study** it: add it to a study subject's reading list, under To read,
+ *    for something to read, watch or work through;
  *  - **drop** it.
  *
- * All four tick the inbox line in place, so the file stays a true record of
+ * All five tick the inbox line in place, so the file stays a true record of
  * what came in and what has since been dealt with, and the row leaves the
  * list. Nothing is ever deleted. Every exit is guarded by the line as the
  * caller last saw it, the way `updateTask` guards a task edit.
@@ -24,6 +26,8 @@ import { CAPTURE_PATH } from './capture';
 import { addToDay } from './day-plan';
 import { dailyNotePath, type DayKey } from './daily';
 import { changeBoard, readBoard } from './kanban';
+import { changeReadingList, readReadingList } from './study/reading';
+import type { Subject } from './study/subjects';
 import { homeFolder, workspaceFor, type Workspace } from './workspaces';
 import { parseTaskLine, rewriteTaskLine, toTask } from './parse/task';
 import { scanTags } from './parse/note';
@@ -198,6 +202,33 @@ export async function noteInboxLine(vault: Vault, workspace: Workspace, line: nu
 	if (!written.ok) return { ok: false, reason: 'line-changed' };
 
 	return tickLine(vault, line, expectedRaw, path);
+}
+
+/**
+ * Add the inbox line at `line` to the subject's `Reading List.md` as an item
+ * at the bottom of its first column, To read, and tick the inbox line.
+ * Answers the reading list's path.
+ *
+ * The words are the line's, less the capture time and the subject's own
+ * tags, read as the reading list reads any card: a `[title](url)` or a lone
+ * URL is the item's link, and a trailing `#book` or other kind is its kind.
+ * Refuses before writing anything when the line is not the one the caller
+ * saw or has no words. A missing list is created with its four columns.
+ * Writes the list first and the inbox second, so a failure between the two
+ * leaves the line unticked.
+ */
+export async function studyInboxLine(vault: Vault, subject: Subject, line: number, expectedRaw: string): Promise<Triaged> {
+	const found = await lineAt(vault, line, expectedRaw);
+	if (!found.ok) return found;
+
+	const own = new Set((subject.scope.tags ?? []).map((t) => `#${t}`));
+	const words = found.words.split(' ').filter((w) => !own.has(w)).join(' ');
+	if (!words) return { ok: false, reason: 'no-text' };
+	const list = await readReadingList(vault, subject);
+	const added = await changeReadingList(vault, subject, list.hash, { kind: 'add', group: 0, item: { title: words, url: null, kind: 'other', goal: null } });
+	if (!added.ok) return { ok: false, reason: 'line-changed' };
+
+	return tickLine(vault, line, expectedRaw, added.list.path);
 }
 
 /** Tick the inbox line at `line` and nothing else: "drop". Answers the inbox's path. */

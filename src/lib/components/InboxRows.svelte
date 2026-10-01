@@ -1,15 +1,17 @@
 <script lang="ts">
 	/**
-	 * Unfiled lines of `Inbox/Capture.md`, each with its four exits: plan it
+	 * Unfiled lines of `Inbox/Capture.md`, each with its five exits: plan it
 	 * onto today, file it as a card on a board, note it at the end of a
-	 * workspace's Overview.md, drop it. Every exit ticks the line in place
+	 * workspace's Overview.md, add it to a study subject's reading list, drop
+	 * it. Every exit ticks the line in place
 	 * through `/api/inbox`, so nothing is deleted and the row leaves the list
 	 * on the reload that follows.
 	 *
-	 * A focused row answers `t`, `b`, `n` and `x` for the four, and the arrow
-	 * keys walk the list. `b` and `n` go straight to `fileTo` when it is given
-	 * (a workspace's own tab) and otherwise show the workspaces to pick from,
-	 * the line's own workspace first.
+	 * A focused row answers `t`, `b`, `n`, `s` and `x` for the five, and the
+	 * arrow keys walk the list. `b` and `n` go straight to `fileTo` when it is
+	 * given (a workspace's own tab) and otherwise show the workspaces to pick
+	 * from, the line's own workspace first. `s` shows the subjects, or files
+	 * straight to the only one; with no subjects there is no Study exit.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { tick } from 'svelte';
@@ -20,6 +22,7 @@
 	let {
 		lines,
 		workspaces,
+		subjects = [],
 		owners = {},
 		fileTo,
 		byDay = false,
@@ -27,6 +30,8 @@
 	}: {
 		lines: InboxLine[];
 		workspaces: Array<{ slug: string; name: string; color: string }>;
+		/** The study subjects a line can go to the reading list of. */
+		subjects?: Array<{ slug: string; name: string; color: string }>;
 		/** The workspace each line names by tag or alias, keyed by line number. */
 		owners?: Record<number, string>;
 		/** Given, `b` files to this workspace without asking. */
@@ -36,18 +41,24 @@
 		onproblem?: (message: string) => void;
 	} = $props();
 
-	type Exit = 'plan' | 'file' | 'note' | 'drop';
+	type Exit = 'plan' | 'file' | 'note' | 'study' | 'drop';
+	type Picked = 'file' | 'note' | 'study';
 	let busy = $state<number | null>(null);
 	/** The line whose workspace picker is open, and which exit it is choosing for. */
-	let picking = $state<{ line: number; action: 'file' | 'note' } | null>(null);
+	let picking = $state<{ line: number; action: Picked } | null>(null);
 	let list: HTMLDivElement | undefined = $state();
 
-	async function act(line: InboxLine, action: Exit, workspace?: string) {
+	async function act(line: InboxLine, action: Exit, target?: string) {
 		if (busy !== null) return;
 		const index = lines.indexOf(line);
 		busy = line.line;
 		picking = null;
-		const result = await api('/api/inbox', { action, line: line.line, expectedRaw: line.raw, workspace });
+		const result = await api('/api/inbox', {
+			action,
+			line: line.line,
+			expectedRaw: line.raw,
+			...(action === 'study' ? { subject: target } : { workspace: target })
+		});
 		busy = null;
 		if (!result.ok) onproblem?.(result.message);
 		await invalidateAll();
@@ -56,16 +67,23 @@
 		focusRow(Math.min(index, lines.length - 1));
 	}
 
-	/** File or note the line: straight to `fileTo`, else open the picker for that exit. */
-	async function pick(line: InboxLine, action: 'file' | 'note') {
-		if (fileTo) return act(line, action, fileTo);
+	/**
+	 * File, note or study the line: straight to `fileTo` (or the only subject),
+	 * else open the picker for that exit.
+	 */
+	async function pick(line: InboxLine, action: Picked) {
+		if (action === 'study') {
+			if (subjects.length === 0) return;
+			if (subjects.length === 1) return act(line, action, subjects[0].slug);
+		} else if (fileTo) return act(line, action, fileTo);
 		picking = picking?.line === line.line && picking.action === action ? null : { line: line.line, action };
 		await tick();
 		list?.querySelector<HTMLElement>('[data-testid="inbox-picker"] button')?.focus();
 	}
 
-	/** The workspaces in picker order: the one the line names first. */
-	function choices(line: InboxLine) {
+	/** The picker's choices: subjects for Study, else workspaces with the one the line names first. */
+	function choices(line: InboxLine, action: Picked) {
+		if (action === 'study') return subjects;
 		const own = owners[line.line];
 		return own ? [...workspaces.filter((w) => w.slug === own), ...workspaces.filter((w) => w.slug !== own)] : workspaces;
 	}
@@ -81,6 +99,7 @@
 			t: () => void act(line, 'plan'),
 			b: () => void pick(line, 'file'),
 			n: () => void pick(line, 'note'),
+			s: () => void pick(line, 'study'),
 			x: () => void act(line, 'drop'),
 			arrowdown: () => focusRow(index + 1),
 			arrowup: () => focusRow(index - 1),
@@ -115,12 +134,15 @@
 				<button class="btn ghost small" data-testid="inbox-plan" title="Plan onto today (t)" onclick={() => act(line, 'plan')}>Today</button>
 				<button class="btn ghost small" data-testid="inbox-file" title="File as a board card (b)" aria-expanded={fileTo ? undefined : picking?.line === line.line && picking.action === 'file'} onclick={() => pick(line, 'file')}>Board</button>
 				<button class="btn ghost small" data-testid="inbox-note" title="Append to a workspace's Overview.md (n)" aria-expanded={fileTo ? undefined : picking?.line === line.line && picking.action === 'note'} onclick={() => pick(line, 'note')}>Note</button>
+				{#if subjects.length}
+					<button class="btn ghost small" data-testid="inbox-study" title="Add to a subject's reading list (s)" aria-expanded={subjects.length === 1 ? undefined : picking?.line === line.line && picking.action === 'study'} onclick={() => pick(line, 'study')}>Study</button>
+				{/if}
 				<button class="btn ghost small" data-testid="inbox-drop" title="Drop: tick it, keep the line (x)" onclick={() => act(line, 'drop')}>Drop</button>
 			</span>
 			{#if picking?.line === line.line}
 				{@const exit = picking.action}
-				<div class="chips picker" data-testid="inbox-picker" aria-label={exit === 'file' ? 'Which board' : 'Which Overview'}>
-					{#each choices(line) as w (w.slug)}
+				<div class="chips picker" data-testid="inbox-picker" aria-label={exit === 'file' ? 'Which board' : exit === 'note' ? 'Which Overview' : 'Which subject'}>
+					{#each choices(line, exit) as w (w.slug)}
 						<button class="chip" onclick={() => act(line, exit, w.slug)}><i class="dot" style="--dot: {w.color}"></i>{w.name}</button>
 					{:else}
 						<span class="muted small">No workspaces yet.</span>
