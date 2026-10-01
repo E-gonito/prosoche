@@ -202,6 +202,18 @@ function numberOr(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * What to tell the user when the CLI could not be started. A missing
+ * executable is the usual case, on a server the CLI was never installed on,
+ * and says how to fix it rather than showing the raw `spawn claude ENOENT`.
+ */
+function spawnFailure(executable: string, e: unknown): string {
+	if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') {
+		return `The Claude CLI is not installed on this server: there is no "${executable}" to run. Install Claude Code here, or set HUB_CLAUDE_BIN to its path.`;
+	}
+	return e instanceof Error ? e.message : String(e);
+}
+
 type Collected =
 	| { ok: true; stdout: string }
 	| { ok: false; reason: 'timeout' | 'too-large' | 'exit' | 'spawn-failed'; message: string };
@@ -224,7 +236,7 @@ function collect(deps: CliDeps, args: string[], cwd: string, timeoutMs: number):
 				stdio: ['ignore', 'pipe', 'pipe']
 			});
 		} catch (e) {
-			resolve({ ok: false, reason: 'spawn-failed', message: e instanceof Error ? e.message : String(e) });
+			resolve({ ok: false, reason: 'spawn-failed', message: spawnFailure(deps.executable, e) });
 			return;
 		}
 
@@ -257,7 +269,7 @@ function collect(deps: CliDeps, args: string[], cwd: string, timeoutMs: number):
 			stderr = (stderr + chunk.toString('utf8')).slice(0, 4000);
 		});
 
-		child.on('error', (e: Error) => finish({ ok: false, reason: 'spawn-failed', message: e.message }));
+		child.on('error', (e: Error) => finish({ ok: false, reason: 'spawn-failed', message: spawnFailure(deps.executable, e) }));
 		child.on('close', (code: number | null) => {
 			if (code === 0) finish({ ok: true, stdout });
 			else finish({ ok: false, reason: 'exit', message: stderr.trim() || envelopeError(stdout) || `The CLI exited with code ${code}.` });

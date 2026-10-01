@@ -17,7 +17,8 @@ there is meant to serve the app any more.
 | Deploy log | `/var/log/prosoche-deploy.log` |
 
 The unit sets `PORT=3100`, `HOST=0.0.0.0`, `HUB_VAULT=/srv/vault` and
-`HUB_DB=/var/lib/prosoche/index.db`. Nothing else is set.
+`HUB_DB=/var/lib/prosoche/index.db`, and a drop-in adds `HUB_CLAUDE_BIN`
+(see The AI features).
 
 ## Deploying
 
@@ -54,15 +55,17 @@ the app to another machine means copying `Private/` over by hand, as `app`.
 
 ## The AI features
 
-The Claude CLI is not installed in the container, and `HUB_CLAUDE_BIN` is not
-set. Every AI feature therefore shows its "not connected" state. These are
-the morning briefing, glossary look-up and scan, the Sync commit-message
-suggestion and Date insights. To turn them on:
+Claude Code is installed for the user `app` at `/home/app/.local/bin/claude`
+and signed in with the owner's claude.ai account. The drop-in
+`/etc/systemd/system/prosoche.service.d/claude.conf` sets
+`HUB_CLAUDE_BIN=/home/app/.local/bin/claude`. That turns on the morning
+briefing, glossary look-up and scan, the Sync commit-message suggestion and
+Date insights.
 
-1. Install Claude Code for the user `app` and sign in once.
-2. Add a drop-in `/etc/systemd/system/prosoche.service.d/claude.conf` with
-   `Environment=HUB_CLAUDE_BIN=/home/app/.local/bin/claude`.
-3. Run `systemctl daemon-reload && systemctl restart prosoche`.
+If the sign-in lapses, sign in again from the Proxmox host: run
+`pct enter 108`, then `su - app`, then `claude`, then `/login`. Check it with
+`runuser -u app -- /home/app/.local/bin/claude auth status`. When the CLI is
+missing, the features say so and name `HUB_CLAUDE_BIN`.
 
 ## Reaching it from `dev`
 
@@ -101,7 +104,8 @@ Open points:
   `HOST=100.104.242.57` limits it to the tailnet.
 - **`Private/` has no copy outside the container** (see above). Check that
   LXC 108 is in a Proxmox backup job.
-- **The AI features are off** until the Claude CLI is installed (see above).
+- **The AI features were off**, because the Claude CLI was not installed. It
+  was installed and signed in on 2026-10-01 (see above).
 - **The retired copy on `dev`**, the user unit `prosoche.service` on
   `100.106.156.121:3100`, was stopped and disabled the same day, after
   `Private/` was copied into the container. Do not start it again. Two
