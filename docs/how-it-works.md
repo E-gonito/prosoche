@@ -113,8 +113,12 @@ is appended under `# Tasks` in the day's note; dropped on the unscheduled
 list, the same block with no time. The card stays where it is on its board,
 untouched; the block is the time spent on it.
 
-Beyond that, any module may add a card of its own — Flashcards offers one
-line for the cards to review across every deck, once something is. A private module never does: nothing of
+Beyond that, any module may add a card of its own. **Study next** gives,
+for each subject, the step to do now in the goal its Overview is focused on,
+with the goal, which step of how many and when it is due ("late" once that
+has passed), linking to the subject; it is absent when no subject has a step
+open. Flashcards offers one line for the cards to review across every deck,
+once something is. A private module never does: nothing of
 Date's appears here, or anywhere outside its own screen.
 
 A note that still has git conflict markers in it says so, with a link to the

@@ -126,6 +126,20 @@ test.describe('Subject overview', () => {
 	});
 });
 
+test.describe('Today', () => {
+	test('shows the step to do now in a Study next card that opens the subject', async ({ page, request }) => {
+		await resetVault(request);
+		await page.goto('/today');
+		const card = page.locator('[data-testid="module-card"][data-module="study"]');
+		await expect(card).toContainText('Study next');
+		await expect(card).toContainText('Two practice exams');
+		await expect(card).toContainText(`${AWS} · step 2 of 2`);
+		await card.getByRole('link', { name: /Two practice exams/ }).click();
+		await expect(page).toHaveURL(BASE);
+		await expect(page.getByTestId('step-now')).toContainText('Two practice exams');
+	});
+});
+
 test.describe('Goals', () => {
 	test.beforeEach(async ({ page, request }) => {
 		await resetVault(request);

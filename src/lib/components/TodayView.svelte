@@ -413,6 +413,8 @@
 	}
 
 	@media (max-width: 720px) {
+		/* A long line, such as a study step, keeps the width; what it says about itself goes under it. */
+		.module-item { flex-direction: column; gap: 2px; }
 		.segmented {
 			display: grid;
 			grid-template-columns: 1fr 1fr;

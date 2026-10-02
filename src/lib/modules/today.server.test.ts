@@ -128,3 +128,59 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		expect(await todayCards({ day: '2026-09-29', hub: fakeHub() })).toEqual([]);
 	});
 });
+
+describe('studyNext', () => {
+	let root: string;
+	let vault: Vault;
+	let index: NoteIndex;
+
+	beforeEach(async () => {
+		root = await mkdtemp(join(tmpdir(), 'hub-today-study-'));
+		vault = new Vault(root);
+		index = new NoteIndex(':memory:');
+		await vault.write('_hub/subjects/cs.md', '---\nname: CS\nfolders:\n  - Study/CS\n---\n');
+	});
+	afterEach(async () => {
+		index.close();
+		await vault.close();
+		await rm(root, { recursive: true, force: true });
+	});
+
+	const fakeHub = (): Hub => ({
+		vault,
+		index,
+		workspace: async () => null,
+		subscribe: () => () => {},
+		rebuild: async () => 0,
+		workspaces: async () => loadWorkspaces(vault),
+		subjects: async () => loadSubjects(vault)
+	});
+	const study = async (day = '2026-10-02') => (await todayCards({ day, hub: fakeHub() })).find((c) => c.module === 'study');
+
+	it('is absent when no subject has a step open', async () => {
+		expect(await study()).toBeUndefined();
+		await vault.write('Study/CS/Goals.md', '## Networks\n- [x] TCP\n');
+		expect(await study()).toBeUndefined();
+	});
+
+	it('gives the step to do now in the goal in focus, which step it is and when it is due', async () => {
+		await vault.write('Study/CS/Goals.md', '## Done\n- [x] all\n\n## Networks\n- [x] TCP\n- [ ] `dig` a DNS name 📅 2026-10-11\n- [ ] BGP\n');
+		expect(await study()).toEqual({
+			module: 'study',
+			title: 'Study next',
+			href: '/study',
+			items: [{ text: 'dig a DNS name', meta: 'Networks · step 2 of 3 · due 11 Oct', href: '/study/cs' }]
+		});
+	});
+
+	it('says late once the step’s day has passed, and names subjects when there are several', async () => {
+		await vault.write('Study/CS/Goals.md', '## Networks\n- [ ] DNS 📅 2026-09-30\n');
+		await vault.write('_hub/subjects/fil.md', '---\nname: Filipino\nfolders:\n  - Study/Filipino\n---\n');
+		await vault.write('Study/Filipino/Goals.md', '---\nfocus: Verbs\n---\n## Nouns\n- [ ] aso\n\n## Verbs\n- [ ] kumain\n');
+		const card = await study();
+		expect(card?.items.map((i) => [i.text, i.meta])).toEqual([
+			['DNS', 'CS · Networks · step 1 of 1 · late, due 30 Sept'],
+			['kumain', 'Filipino · Verbs · step 1 of 1']
+		]);
+	});
+});

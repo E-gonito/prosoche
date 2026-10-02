@@ -15,6 +15,9 @@
 
 import type { Hub } from '$server/hub';
 import { flashcardsOverview } from '$server/flashcards/decks';
+import { focusOn, studySummary } from '$server/study/summary';
+import { dueLabel } from '$lib/shared/kanban';
+import { displayText } from '$lib/shared/task';
 
 export interface TodayCard {
 	/** The module this card speaks for, e.g. `flashcards`. Must not be private. */
@@ -54,13 +57,45 @@ async function flashcardsDue({ day, hub: h }: TodayCardContext): Promise<TodayCa
 }
 
 /**
+ * What to study next: for each subject, the step to do now in the goal its
+ * Overview is focused on (`focusOn`), linking to that Overview. The line is
+ * the step itself; beside it, the goal, which step of how many, and when it
+ * is due, "late" once that has passed. A subject's name leads only when
+ * more than one has a step, since with one it says nothing.
+ *
+ * Inputs: the viewed day and the hub. Output: the card, or null when no
+ * subject has a step open. Side effects: reads the vault; never writes.
+ */
+async function studyNext({ day, hub: h }: TodayCardContext): Promise<TodayCard | null> {
+	const subjects = await h.subjects();
+	const lines = [];
+	for (const subject of subjects) {
+		const focus = focusOn(await studySummary(h.vault, subject), day);
+		const now = focus?.steps.find((s) => s.state === 'now');
+		if (!focus || !now) continue;
+		const counted = focus.steps.filter((s) => s.state !== 'skipped');
+		const due = now.task.due ? (now.daysLeft !== null && now.daysLeft < 0 ? `late, due ${dueLabel(now.task.due, day)}` : `due ${dueLabel(now.task.due, day)}`) : null;
+		const meta = [focus.name, `step ${counted.indexOf(now) + 1} of ${focus.total}`, due].filter(Boolean).join(' · ');
+		lines.push({ subject: subject.name, text: displayText(now.task.text), meta, href: `/study/${subject.slug}` });
+	}
+	if (!lines.length) return null;
+	const named = lines.length > 1;
+	return {
+		module: 'study',
+		title: 'Study next',
+		href: '/study',
+		items: lines.map(({ subject, text, meta, href }) => ({ text, meta: named ? `${subject} · ${meta}` : meta, href }))
+	};
+}
+
+/**
  * Every module's contributor, in the order their cards should appear.
  *
  * Adding a card is adding a function here, not changing Today's route: the
  * dashboard asks each of these and drops whatever comes back null, so a
  * module with nothing to say today is simply absent rather than an empty box.
  */
-export const TODAY_CARDS: Array<(ctx: TodayCardContext) => Promise<TodayCard | null>> = [flashcardsDue];
+export const TODAY_CARDS: Array<(ctx: TodayCardContext) => Promise<TodayCard | null>> = [studyNext, flashcardsDue];
 
 /** Every card Today has to show, run in parallel and with the nulls dropped. */
 export async function todayCards(ctx: TodayCardContext): Promise<TodayCard[]> {
