@@ -73,7 +73,7 @@ Seven tabs, drawn from one registry (`src/lib/modules/index.ts`):
   each defined by one file in `_hub/workspaces/`.
 - **Study** — subjects with goals, a reading list and sessions, each defined
   by one file in `_hub/subjects/`.
-- **Date** — a private counter ledger and person profiles under a gitignored
+- **Date** — a private counter ledger, person profiles and scored like forecasts under a gitignored
   `Private/` folder.
 - **Notes** — a read-only Obsidian viewer with search and backlinks.
 

@@ -756,6 +756,70 @@ ended — with free notes and a dates log, one line per date. Changing a
 person's stage, or adding a date, touches only that one line or appends one
 new one; nothing already written is rewritten.
 
+**Likes** treats each like sent as a forecast to be scored. The outcome is
+always the same: **yes means she replies after matching**, so a match she
+never answers is a no. Logging one (on Likes, or under the counters on Log)
+takes a nickname, not a full name, the day (today unless changed), a forecast
+in 5% steps or any whole number, four tags (out of my league, fits my type,
+liked on a photo or a prompt, commented) and an age. Each tag starts unknown
+and stays so unless tapped. Unknown is never counted as no. A forecast of 0
+is saved as 2 and 100 as 98, since nothing is certain. The like is
+frontmatter on her person note, at stage liked:
+
+    liked: 2026-10-01
+    chance: 10
+    status: pending
+    resolved: 2026-10-09
+    resolved_by: auto
+    out_of_league: true
+    fits_type: false
+    age: 27
+    liked_on: prompt
+    commented: true
+
+`liked:` and `chance:` are the names the app used before, so older notes
+needed no renaming. When a like is first read, the app migrates its note:
+
+- it gives it `status: pending`, or yes if her stage already says she replied;
+- it clamps the forecast;
+- it supplies a missing day from the note's last change and marks it
+  `liked_migrated: true`.
+
+A like still pending **seven days** after it was sent becomes no,
+`resolved_by: auto`, dated the day the rule applied. You can still change it
+afterwards. Each change rewrites only the lines it changes.
+
+- **Pending list:** pending likes, oldest first, each showing how long it
+  has waited, with a Yes and a No.
+- **Yes:** also moves a person at liked or matched to talking.
+- **Stage change:** moving someone to talking, date planned or dating
+  resolves her pending like to yes. Matched does not, because a match is not
+  a reply.
+- **All likes:** every like, filterable by outcome, each opening an editor.
+  The nickname is the note's name and is not edited there.
+- **My type:** your own note, `Private/Dating/Type.md`, shown beside "fits
+  my type" and edited in place.
+- **Export and import:** export downloads every record as JSON. Import takes
+  that file, or the old shape named the way the notes spell it (`name`,
+  `liked`, `chance`, `stage`). It adds likes that are missing and fills in or
+  corrects the ones that exist. It never clears a field and never deletes.
+
+Stats scores the resolved likes only:
+
+- **Base rate:** yes ÷ resolved.
+- **Bias:** mean forecast less the base rate, in percentage points. Below
+  zero, the forecasts run pessimistic.
+- **Brier score:** shown next to the Brier of always forecasting the base
+  rate.
+- **Calibration table:** forecasts of ≤5%, 6–15%, 16–30% and ≥31%.
+- **Splits:** by each tag and by age band (<25, 25–26, 27–30, 31+). A like
+  whose tag is unknown is left out of that split.
+- **Type share:** the share of likes that fit your type, counted over every
+  like where you said, pending ones included.
+
+Every group shows its n. One under ten says "not enough data" instead of its
+numbers.
+
 ## Sync
 
 The index — notes, tasks, links, tags — is rebuildable and never

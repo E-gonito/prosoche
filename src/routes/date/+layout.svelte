@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * The Dating shell: a page column and the four tabs the artifact's own
-	 * bottom nav names (Log, Stats, History, Data — ours is People, since
-	 * that is what the tab actually holds).
+	 * The Dating shell: a page column and its tabs: the artifact's own Log,
+	 * Stats, History and Data (ours is People, since that is what the tab
+	 * actually holds), plus Likes, where each like sent is a forecast.
 	 *
 	 * Private end to end: nothing here calls the index or search, and every
 	 * page under this layout reads and writes through `$server/dating`, the
@@ -14,6 +14,7 @@
 
 	const TABS = [
 		{ href: '/date', title: 'Log' },
+		{ href: '/date/likes', title: 'Likes' },
 		{ href: '/date/stats', title: 'Stats' },
 		{ href: '/date/history', title: 'History' },
 		{ href: '/date/people', title: 'People' }

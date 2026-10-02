@@ -5,14 +5,15 @@
 	 * plain link, so it works with no JavaScript too); editing a counter is
 	 * local until Save writes it in one request.
 	 *
-	 * Under it, "Sent a like": a name and a guess that she replies, which
-	 * adds her to People at the `liked` stage straight away, on its own
-	 * request. It leaves the counters alone; "Likes sent" is still tapped.
+	 * Under it, the like quick add (the same form as on Likes), which adds her
+	 * to People at the `liked` stage straight away, on its own request. It
+	 * leaves the counters alone; "Likes sent" is still tapped.
 	 */
 	import { api } from '$lib/client/api';
 	import { goto } from '$app/navigation';
 	import { relativeDay } from '$lib/shared/links';
 	import Icon from '$lib/components/Icon.svelte';
+	import LikeQuickAdd from '$lib/components/likes/LikeQuickAdd.svelte';
 
 	let { data } = $props();
 
@@ -84,29 +85,6 @@
 		}
 		hash = result.value.hash;
 		saved = true;
-	}
-
-	let likeName = $state('');
-	let chance = $state(50);
-	let liking = $state(false);
-	let liked = $state('');
-	let likeProblem = $state('');
-
-	async function logLike() {
-		if (liking || !likeName.trim()) return;
-		liking = true;
-		likeProblem = '';
-		liked = '';
-		const name = likeName.trim();
-		const result = await api('/api/dating/people', { name, stage: 'liked', liked: data.day, chance });
-		liking = false;
-		if (!result.ok) {
-			likeProblem = result.message;
-			return;
-		}
-		liked = name;
-		likeName = '';
-		chance = 50;
 	}
 </script>
 
@@ -185,31 +163,7 @@
 {#if problem}<p class="problem">{problem}</p>{/if}
 
 <p class="label">Sent a like</p>
-<form class="sheet like-form" onsubmit={(e) => { e.preventDefault(); void logLike(); }} data-testid="dating-like-form">
-	<input
-		class="field"
-		placeholder="Her name"
-		bind:value={likeName}
-		oninput={() => (liked = '')}
-		aria-label="Name"
-		required
-		data-testid="dating-like-name"
-	/>
-	<label class="chance">
-		<span>Chance she replies</span>
-		<b class="num" data-testid="dating-like-chance-value">{chance}%</b>
-		<input type="range" min="0" max="100" step="5" bind:value={chance} aria-label="Chance she replies" data-testid="dating-like-chance" />
-	</label>
-	<button class="btn" type="submit" disabled={liking} data-testid="dating-like-submit">
-		{liking ? 'Adding…' : 'Add to People'}
-	</button>
-</form>
-{#if likeProblem}<p class="problem">{likeProblem}</p>{/if}
-{#if liked}
-	<p class="hint" data-testid="dating-like-added">
-		Added <a href="/date/people/{encodeURIComponent(liked)}">{liked}</a> to People.
-	</p>
-{/if}
+<LikeQuickAdd today={data.today} typeHtml={data.typeHtml} />
 
 <style>
 	.stepper {
@@ -294,11 +248,6 @@
 	.notes-row label { font-weight: 600; }
 	textarea { margin-top: var(--s2); }
 
-	.like-form { display: flex; flex-direction: column; gap: var(--s3); }
-	.chance { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: var(--s2); font-weight: 600; }
-	.chance input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
-	.chance b { color: var(--accent); font-size: var(--t20); }
-	.like-form .btn { justify-content: center; min-height: 44px; }
 
 	.save {
 		display: block;

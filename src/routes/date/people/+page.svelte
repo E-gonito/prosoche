@@ -46,7 +46,7 @@
 			{#each g.people as p (p.path)}
 				<a class="person-row" href="/date/people/{encodeURIComponent(p.name)}">
 					<b>{p.name}</b>
-					<span class="muted small">{[p.chance !== null ? `${p.chance}% she replies` : null, p.app, p.place, p.job].filter(Boolean).join(' · ') || '—'}</span>
+					<span class="muted small">{[p.chance !== null ? `forecast ${p.chance}%` : null, p.app, p.place, p.job].filter(Boolean).join(' · ') || '—'}</span>
 				</a>
 			{/each}
 		</div>

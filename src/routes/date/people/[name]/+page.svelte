@@ -6,6 +6,7 @@
 	 */
 	import { api } from '$lib/client/api';
 	import { invalidateAll } from '$app/navigation';
+	import { FORECAST_LABEL } from '$lib/shared/likes';
 
 	let { data } = $props();
 
@@ -89,7 +90,7 @@
 	<b>Place</b><span>{data.place ?? '—'}</span>
 	<b>Job</b><span>{data.job ?? '—'}</span>
 	{#if data.liked}<b>Liked</b><span>{data.liked}</span>{/if}
-	{#if data.chance !== null}<b>Chance she replies</b><span data-testid="dating-profile-chance">{data.chance}%</span>{/if}
+	{#if data.chance !== null}<b>{FORECAST_LABEL}</b><span data-testid="dating-profile-chance">{data.chance}%</span>{/if}
 </div>
 
 {#if data.html}

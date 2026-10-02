@@ -1,6 +1,7 @@
 import { hub } from '$server/hub';
 import { today } from '$server/daily';
-import { bestDayOfWeek, likeOdds, listDatingPeople, loadLedger, rangeStats, weeklyTrend } from '$server/dating';
+import { bestDayOfWeek, loadLedger, loadLikes, rangeStats, weeklyTrend } from '$server/dating';
+import { calibration } from '$server/like-stats';
 import type { PageServerLoad } from './$types';
 
 const WEEKS = 12;
@@ -19,6 +20,6 @@ export const load: PageServerLoad = async () => {
 		},
 		trend: weeklyTrend(entries, WEEKS, day),
 		bestDay: bestDayOfWeek(entries),
-		odds: likeOdds(await listDatingPeople(vault))
+		calibration: calibration(await loadLikes(vault, day))
 	};
 };
