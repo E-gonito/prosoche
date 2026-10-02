@@ -71,7 +71,7 @@ Seven tabs, drawn from one registry (`src/lib/modules/index.ts`):
   FSRS, with a shared number of new cards a day across every deck.
 - **Workspaces** — a kanban board, overview, inbox, log, contacts and notes,
   each defined by one file in `_hub/workspaces/`.
-- **Study** — subjects with goals, a reading list and sessions, each defined
+- **Study** — subjects with goals and a reading list, each defined
   by one file in `_hub/subjects/`. A subject's Overview walks one goal at a
   time, step by step.
 - **Date** — a private counter ledger, person profiles and scored like forecasts under a gitignored

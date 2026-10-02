@@ -5,10 +5,8 @@
 	 * module's list; a subject's own pages only show them.
 	 */
 	import { goto, invalidateAll } from '$app/navigation';
-	import Icon from '$lib/components/Icon.svelte';
 	import EditDetails from '$lib/components/EditDetails.svelte';
 	import { api, saveSubject } from '$lib/client/api';
-	import { formatDuration } from '$lib/shared/duration';
 
 	let { data } = $props();
 
@@ -41,7 +39,7 @@
 <div class="page">
 	<div class="title">
 		<h1>Study</h1>
-		<p>One subject per thing you are learning, each with its own goals, reading and sessions.</p>
+		<p>One subject per thing you are learning, each with its own goals and reading.</p>
 	</div>
 
 	<p class="label">Subjects</p>
@@ -63,10 +61,6 @@
 					{:else}
 						<p class="muted small">No goals yet.</p>
 					{/if}
-					<p class="facts small">
-						<span class="num">{formatDuration(subject.weekMinutes, ' ')} this week</span>
-						{#if subject.streak > 0}<span class="num"><Icon name="flame" size={13} /> {subject.streak}</span>{/if}
-					</p>
 					<div class="own small">
 						<EditDetails
 							details={subject}
@@ -110,8 +104,6 @@
 	.subject h2 { margin: 0; display: flex; align-items: center; gap: var(--s2); font: 600 var(--t16) var(--serif); }
 	.goals { list-style: none; margin: 0; padding: 0; font-size: var(--t13); display: flex; flex-direction: column; gap: 2px; }
 	.goals li { display: flex; justify-content: space-between; gap: var(--s2); }
-	.facts { display: flex; gap: var(--s3); flex-wrap: wrap; margin: 0; color: var(--muted); }
-	.facts span { display: inline-flex; align-items: center; gap: 3px; }
 
 	.row { display: flex; flex-wrap: wrap; gap: var(--s2); }
 	.row .name { flex: 1; min-width: 160px; }

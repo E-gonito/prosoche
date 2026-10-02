@@ -20,18 +20,10 @@ const NOTE = [
 ].join('\n');
 
 describe('parseGoals', () => {
-	it('reads the weekly hours target from the frontmatter', () => {
-		expect(parseGoals(NOTE).weeklyHours).toBe(6);
-	});
-
 	it('reads the focus from the frontmatter, and none when it is blank or missing', () => {
 		expect(parseGoals('---\nfocus: Read three papers a month\n---\n## Read three papers a month\n').focus).toBe('Read three papers a month');
 		expect(parseGoals('---\nfocus:\n---\n## A goal\n').focus).toBeNull();
 		expect(parseGoals(NOTE).focus).toBeNull();
-	});
-
-	it('has no weekly target when the note names none', () => {
-		expect(parseGoals('## A goal\n- [ ] Milestone\n').weeklyHours).toBeNull();
 	});
 
 	it('finds one goal per heading, in file order', () => {
@@ -68,7 +60,7 @@ describe('parseGoals', () => {
 	});
 
 	it('is empty for a note with no goals yet', () => {
-		expect(parseGoals('')).toEqual({ weeklyHours: null, focus: null, goals: [] });
+		expect(parseGoals('')).toEqual({ focus: null, goals: [] });
 	});
 
 	it('ends a goal at a deeper heading too, matching where appendUnderHeading would insert', () => {

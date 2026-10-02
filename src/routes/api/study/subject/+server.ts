@@ -32,8 +32,8 @@ export const PATCH = route(async ({ body, hub }) => {
 });
 
 /**
- * Delete a subject's file, `{ subject }`. Its folders, goals, reading list,
- * sessions and cards are untouched (see `deleteSubject`).
+ * Delete a subject's file, `{ subject }`. Its folders, goals, reading list
+ * and cards are untouched (see `deleteSubject`).
  */
 export const DELETE = route(async ({ body, hub }) => {
 	const result = await deleteSubject(hub.vault, str(body.subject) ?? '');

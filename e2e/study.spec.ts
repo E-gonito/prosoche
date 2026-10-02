@@ -9,44 +9,16 @@ import { lineWith, resetVault, TODAY, VAULT, vaultFile, waitForFile } from './he
 
 const BASE = '/study/study';
 const GOALS = 'Study/Goals.md';
-const SESSIONS = 'Study/Sessions.md';
 const READING = 'Study/Reading List.md';
 const AWS = 'Pass AWS Solutions Architect';
 const PAPERS = 'Read three papers a month';
 
-/** `YYYY-MM-DD`, `offset` days from `from`, matching `e2e/fixtures/study.mjs`. */
+/** `YYYY-MM-DD`, `offset` days from `from`. */
 function shift(from: string, offset: number): string {
 	const at = new Date(`${from}T00:00:00Z`);
 	at.setUTCDate(at.getUTCDate() + offset);
 	return at.toISOString().slice(0, 10);
 }
-
-/** Mirrors `weekStart` in `src/lib/server/study/sessions.ts`. */
-function weekStartOf(dayKey: string): string {
-	const at = new Date(`${dayKey}T00:00:00Z`);
-	const back = (at.getUTCDay() + 6) % 7;
-	at.setUTCDate(at.getUTCDate() - back);
-	return at.toISOString().slice(0, 10);
-}
-
-/** Mirrors `formatDuration` in `src/lib/shared/duration.ts`, with the gap Overview uses. */
-function formatDuration(minutes: number): string {
-	const hours = Math.floor(minutes / 60);
-	const rest = minutes % 60;
-	if (!hours) return `${rest}m`;
-	return rest ? `${hours}h ${rest}m` : `${hours}h`;
-}
-
-/** The fixture's two goal sessions, yesterday and today, both on AWS. */
-const weekMinutes = () => {
-	const start = weekStartOf(TODAY);
-	return [
-		{ day: shift(TODAY, -1), minutes: 30 },
-		{ day: TODAY, minutes: 90 }
-	]
-		.filter((s) => s.day >= start)
-		.reduce((sum, s) => sum + s.minutes, 0);
-};
 
 const item = (page: Page, title: string) => page.getByTestId('reading-item').filter({ hasText: title });
 
@@ -74,7 +46,7 @@ test.describe('Study index', () => {
 		expect(file).toContain('\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
 		expect(vaultFile('_hub/workspaces/filipino.md')).toBe('');
 		// Every tab shows, even for a subject with nothing in it yet.
-		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list', 'Sessions']);
+		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list']);
 	});
 
 
@@ -83,6 +55,8 @@ test.describe('Study index', () => {
 		await expect(page).toHaveURL(`${BASE}/reading`);
 		await page.goto('/study/goals');
 		await expect(page).toHaveURL(`${BASE}/goals`);
+		await page.goto('/study/sessions');
+		await expect(page).toHaveURL(BASE);
 	});
 });
 
@@ -100,7 +74,6 @@ test.describe('Subject overview', () => {
 		await expect(focus.getByRole('heading')).toHaveText(AWS);
 		await expect(focus).not.toContainText(PAPERS);
 		await expect(focus.getByTestId('focus-progress')).toHaveText('1 of 2 steps done');
-		await expect(focus.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes())} on it this week`);
 		await expect(focus.getByTestId('step-now')).toContainText('step 2 of 2');
 		await expect(focus.getByTestId('step-now')).toContainText('Two practice exams');
 		await expect(focus.getByTestId('focus-resources')).toContainText('AWS whitepapers');
@@ -150,22 +123,6 @@ test.describe('Subject overview', () => {
 		await expect(due).toHaveText('Yesterday');
 		await expect(due).toHaveClass(/late/);
 		await expect(page.getByTestId('goal-pill').filter({ hasText: AWS }).getByTestId('goal-due')).toHaveCount(0);
-	});
-
-	test('Log time logs a session against the goal in focus', async ({ page }) => {
-		await page.getByTestId('log-open').click();
-		await page.getByTestId('log-minutes').fill('25');
-		await page.getByTestId('log-note').fill('one practice exam');
-		await page.getByTestId('log-save').click();
-
-		await expect(page.getByTestId('step-now')).toContainText('Logged 25m.');
-		expect(vaultFile(SESSIONS)).toContain(`\n- ${TODAY} 25m [[Goals#${AWS}]] one practice exam\n`);
-		await expect(page.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes() + 25)} on it this week`);
-	});
-
-	test('shows this week’s time against the weekly target, and the streak', async ({ page }) => {
-		await expect(page.getByTestId('week-time')).toHaveText(`${formatDuration(weekMinutes())} of 6h`);
-		await expect(page.getByTestId('streak')).toContainText('2 days in a row');
 	});
 });
 
@@ -272,42 +229,6 @@ test.describe('Reading list', () => {
 		expect(await waitForFile(READING, (c) => c === before.replace('- [ ] The Pragmatic Programmer #book\n', ''))).toBe(true);
 	});
 });
-
-test.describe('Sessions', () => {
-	test.beforeEach(async ({ page, request }) => {
-		await resetVault(request);
-		await page.goto(`${BASE}/sessions`);
-	});
-
-	test('logging a session against a goal appends the exact expected line', async ({ page }) => {
-		await page.getByTestId('session-goal').selectOption(PAPERS);
-		await page.getByTestId('session-minutes').fill('45');
-		await page.getByTestId('session-note').fill('a note about it');
-		await page.getByTestId('log-session').click();
-
-		const expected = `- ${TODAY} 45m [[Goals#${PAPERS}]] a note about it`;
-		expect(await waitForFile(SESSIONS, (c) => c.includes(expected))).toBe(true);
-	});
-
-	test('shows hours per goal this month, and an old topic as it is written', async ({ page }) => {
-		const month = TODAY.slice(0, 7);
-		const minutes = [
-			{ day: shift(TODAY, -1), minutes: 30 },
-			{ day: TODAY, minutes: 90 }
-		]
-			.filter((s) => s.day.slice(0, 7) === month)
-			.reduce((sum, s) => sum + s.minutes, 0);
-
-		await expect(page.getByTestId('goal-hours')).toContainText(AWS);
-		await expect(page.getByTestId('goal-hours')).toContainText(formatDuration(minutes));
-		await expect(page.getByTestId('session-log')).toContainText('[[Algorithms]]');
-	});
-
-	test('draws eight bars, one per week', async ({ page }) => {
-		await expect(page.getByTestId('week-chart').locator('path.bar, .bar')).toHaveCount(8);
-	});
-});
-
 
 test.describe('Phone layout', () => {
 	test.beforeEach(async ({ request }) => {

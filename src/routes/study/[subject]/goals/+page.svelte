@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * A subject's goals and their milestones. Goals are the subject's topics:
-	 * reading, sessions and card files point at one. A milestone is an
+	 * reading items point at one. A milestone is an
 	 * ordinary task, so ticking one is the same rewrite `/api/task` does
 	 * everywhere else in the hub.
 	 */
@@ -83,7 +83,7 @@
 <div class="page">
 	<StudyTabs
 		subject={data.subject}
-		lede={data.weeklyHours ? `Goals and the milestones on the way. A target of ${data.weeklyHours}h a week.` : 'Goals and the milestones on the way.'}
+		lede="Goals and the milestones on the way."
 	/>
 
 	{#if problem}<p class="problem">{problem}</p>{/if}

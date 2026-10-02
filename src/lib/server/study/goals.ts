@@ -4,7 +4,6 @@
  * One note, `<study home>/Goals.md`, holds every goal:
  *
  *     ---
- *     weekly_hours: 6
  *     focus: Pass AWS Solutions Architect
  *     ---
  *     ## Pass AWS Solutions Architect
@@ -14,9 +13,9 @@
  *
  * A `## ` heading names a goal; an optional `target::` line beneath it is the
  * day the whole goal is due; every task line under it, up to the next heading
- * of any level, is a milestone. `weekly_hours:` in the note's frontmatter is
- * read by Overview for the week's target, and `focus:` names the goal
- * Overview shows, the one being worked on now (see `setFocus`).
+ * of any level, is a milestone. `focus:` in the note's frontmatter names the
+ * goal Overview shows, the one being worked on now (see `setFocus`). Any
+ * other frontmatter, such as an old `weekly_hours:`, is left alone.
  *
  * A milestone is not a shape of its own: it is a `Task`, identified by `path`
  * and `line` exactly as `/api/task` expects, so ticking one is the ordinary
@@ -47,8 +46,6 @@ export interface Goal {
 }
 
 export interface GoalsNote {
-	/** `weekly_hours:` from the frontmatter, or null when it names none. */
-	weeklyHours: number | null;
 	/** `focus:` from the frontmatter, as written, or null when it names none. */
 	focus: string | null;
 	goals: Goal[];
@@ -69,7 +66,6 @@ const FENCE = /^[ \t]*(```|~~~)/;
  */
 export function parseGoals(content: string, path = ''): GoalsNote {
 	const { frontmatter } = parseNote(content, path);
-	const weeklyHours = typeof frontmatter.weekly_hours === 'number' ? frontmatter.weekly_hours : null;
 	const focus = typeof frontmatter.focus === 'string' && frontmatter.focus.trim() ? frontmatter.focus.trim() : null;
 
 	const lines = content.split('\n');
@@ -106,7 +102,7 @@ export function parseGoals(content: string, path = ''): GoalsNote {
 			return { title: h.title, line: h.line, target, milestones };
 		});
 
-	return { weeklyHours, focus, goals };
+	return { focus, goals };
 }
 
 /**

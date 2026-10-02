@@ -6,7 +6,7 @@ import { Vault } from '../vault/index';
 import { readSubject } from './subjects';
 import { focusOn, progressByGoal, studySummary, subjectCard } from './summary';
 
-const TODAY = '2026-09-29'; // a Tuesday; the week starts on the 28th
+const TODAY = '2026-09-29';
 
 const subject = (slug: string, folders: string[], extra = '') =>
 	readSubject(`_hub/subjects/${slug}.md`, `---\nname: ${slug.toUpperCase()}\ncolor: "#123456"\ntag: ws/${slug}\nfolders:\n${folders.map((f) => `  - ${f}\n`).join('')}${extra}---\n`);
@@ -22,18 +22,6 @@ describe('a subject’s summary', () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-summary-'));
 		vault = new Vault(root);
 		await vault.write('Study/CS/Goals.md', '## Networks\n- [x] TCP\n- [ ] DNS 📅 2026-10-10\n\n## Operating Systems\n');
-		await vault.write(
-			'Study/CS/Sessions.md',
-			[
-				'## 2026-09',
-				'- 2026-09-27 1h [[Goals#Networks]] last week',
-				'- 2026-09-28 30m [[Goals#networks]] case differs',
-				'- 2026-09-29 45m [[Goals#Operating Systems]]',
-				'- 2026-09-29 20m [[Algorithms]] an old topic',
-				'- 2026-09-29 10m [[Goals#Retired goal]]',
-				''
-			].join('\n')
-		);
 		await vault.write(
 			'Study/CS/Reading List.md',
 			[
@@ -52,23 +40,17 @@ describe('a subject’s summary', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
-	it('rolls milestones, hours and reading up by goal', async () => {
-		const { goals, unassigned } = progressByGoal(await studySummary(vault, CS), TODAY);
-		expect(goals.map((g) => [g.name, g.done, g.total, g.weekMinutes, g.reading.map((r) => r.title)])).toEqual([
-			['Networks', 1, 2, 30, ['TCP/IP Illustrated']],
-			['Operating Systems', 0, 0, 45, []]
+	it('gives each goal its steps done out of total, and the next', async () => {
+		const goals = progressByGoal(await studySummary(vault, CS));
+		expect(goals.map((g) => [g.name, g.done, g.total, g.next])).toEqual([
+			['Networks', 1, 2, { text: 'DNS', due: '2026-10-10' }],
+			['Operating Systems', 0, 0, null]
 		]);
-		expect(goals[0].next).toEqual({ text: 'DNS', due: '2026-10-10' });
-		expect(unassigned).toMatchObject({ weekMinutes: 30 });
-		expect(unassigned.reading.map((r) => r.title)).toEqual(['Loose ends']);
 	});
-
-
-
 
 	it('focuses on the first goal with a step open, as steps to take', async () => {
 		const focus = focusOn(await studySummary(vault, CS), TODAY)!;
-		expect(focus).toMatchObject({ name: 'Networks', index: 0, chosen: false, done: 1, total: 2, weekMinutes: 30, daysLeft: null });
+		expect(focus).toMatchObject({ name: 'Networks', index: 0, chosen: false, done: 1, total: 2, daysLeft: null });
 		expect(focus.steps.map((s) => [s.task.text, s.state, s.daysLeft])).toEqual([
 			['TCP', 'done', null],
 			['DNS', 'now', 11]
@@ -104,21 +86,18 @@ describe('a subject’s summary', () => {
 	it('keeps subjects apart', async () => {
 		const fil = await studySummary(vault, FIL);
 		expect(fil.goals.goals).toEqual([]);
-		expect(fil.sessions).toEqual([]);
-		expect(subjectCard(fil, TODAY)).toMatchObject({ slug: 'fil', goals: [], weekMinutes: 0 });
+		expect(subjectCard(fil)).toMatchObject({ slug: 'fil', goals: [] });
 	});
 
 	it('gives each subject an index card', async () => {
-		expect(subjectCard(await studySummary(vault, CS), TODAY)).toEqual({
+		expect(subjectCard(await studySummary(vault, CS))).toEqual({
 			slug: 'cs',
 			name: 'CS',
 			color: '#123456',
 			goals: [
 				{ name: 'Networks', done: 1, total: 2 },
 				{ name: 'Operating Systems', done: 0, total: 0 }
-			],
-			weekMinutes: 105,
-			streak: 3
+			]
 		});
 	});
 

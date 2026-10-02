@@ -7,11 +7,12 @@ import type { LayoutServerLoad } from './$types';
 
 /**
  * The old single-subject tab URLs, `/study/goals` and the rest, and the tab
- * each is now under `/study/<subject>`.
+ * each is now under `/study/<subject>`. Sessions are gone, so theirs opens
+ * the Overview.
  */
 const OLD_TABS: Record<string, string> = {
 	goals: '/goals',
-	sessions: '/sessions',
+	sessions: '',
 	resources: '/reading',
 	reading: '/reading'
 };
@@ -19,7 +20,7 @@ const OLD_TABS: Record<string, string> = {
 /**
  * Which subject every page under `/study/<subject>` is about, what its
  * heading says (the name, description, colour and tag in its file in
- * `_hub/subjects/`), and what its Overview, Goals, Reading and Sessions
+ * `_hub/subjects/`), and what its Overview, Goals and Reading
  * tabs show (`subjectView`), read once here so those tabs need no load of
  * their own.
  *

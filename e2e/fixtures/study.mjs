@@ -1,24 +1,14 @@
 /**
  * Fixtures for the Study module: one subject, the base vault's `study`
  * subject (`_hub/subjects/study.md`, home `Study/`), with two goals and their
- * milestones, a session log with one entry yesterday and one today (both on
- * a goal) and an older one on a pre-goal `[[Topic]]`, and a reading list.
+ * milestones, and a reading list.
  *
  * All under `Study/`, the subject's home, so these land in the same scope
  * the base vault's `Study/Algorithms.md` and `Study/Syllabus.md` already
  * occupy.
  */
 
-/** `YYYY-MM-DD`, `offset` days from `from`. */
-function day(from, offset) {
-	const at = new Date(`${from}T00:00:00Z`);
-	at.setUTCDate(at.getUTCDate() + offset);
-	return at.toISOString().slice(0, 10);
-}
-
-export default function ({ TODAY }) {
-	const month = TODAY.slice(0, 7);
-
+export default function () {
 	return {
 		'Study/Goals.md': [
 			'---',
@@ -32,16 +22,6 @@ export default function ({ TODAY }) {
 			'## Read three papers a month',
 			'- [ ] Paper one',
 			'- [ ] Paper two',
-			''
-		].join('\n'),
-
-		'Study/Sessions.md': [
-			`## ${day(TODAY, -40).slice(0, 7)}`,
-			`- ${day(TODAY, -40)} 20m [[Algorithms]] from before goals`,
-			'',
-			`## ${month}`,
-			`- ${day(TODAY, -1)} 30m [[Goals#Pass AWS Solutions Architect]] revised the reading`,
-			`- ${TODAY} 1h30m [[Goals#Pass AWS Solutions Architect]] graph search, finally clicked`,
 			''
 		].join('\n'),
 

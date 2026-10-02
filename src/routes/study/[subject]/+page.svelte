@@ -8,15 +8,13 @@
 	 * whose next step is due within a week shows that date, so a deadline
 	 * on a goal not in focus is not missed.
 	 * The card says where the goal stands, then the one step to do now, with
-	 * Done and Log time beside it and what to read for it, then every step in
-	 * order. Ticking a step is the ordinary task rewrite; logging time is the
-	 * Sessions tab's write, against this goal.
+	 * Done beside it and what to read for it, then every step in order.
+	 * Ticking a step is the ordinary task rewrite.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { api, editTask } from '$lib/client/api';
-	import { formatDuration } from '$lib/shared/duration';
 	import { dueLabel } from '$lib/shared/kanban';
 	import { daysBetween } from '$lib/shared/time';
 	import type { FocusStep } from '$lib/shared/study';
@@ -27,7 +25,6 @@
 	const base = $derived(`/study/${data.subject.slug}`);
 	const focus = $derived(data.study.focus);
 	const goals = $derived(data.study.progress);
-	const weekTarget = $derived(data.study.weeklyHours ? data.study.weeklyHours * 60 : null);
 	const now = $derived(focus?.steps.find((s) => s.state === 'now') ?? null);
 	/** Its number among the steps that count, so a skipped one does not take a number. */
 	const counted = $derived(focus ? focus.steps.filter((s) => s.state !== 'skipped') : []);
@@ -71,30 +68,6 @@
 		if (result.ok) await invalidateAll();
 		else problem = result.message;
 	}
-
-	let logging = $state(false);
-	let minutes = $state('');
-	let note = $state('');
-	let logged = $state('');
-
-	async function log(event: Event) {
-		event.preventDefault();
-		const mins = Number(minutes);
-		if (!focus || !mins || mins <= 0 || busy) return;
-		busy = true;
-		problem = '';
-		const result = await api('/api/study/session', { subject: data.subject.slug, day: data.today, minutes: mins, goal: focus.name, note: note.trim() });
-		busy = false;
-		if (result.ok) {
-			logged = `Logged ${formatDuration(mins, ' ')}.`;
-			minutes = '';
-			note = '';
-			logging = false;
-			await invalidateAll();
-		} else {
-			problem = result.message;
-		}
-	}
 </script>
 
 {#snippet words(text: string)}
@@ -105,18 +78,6 @@
 
 <div class="page">
 	<StudyTabs subject={data.subject} lede="One goal at a time, one step at a time." />
-
-	<p class="week small">
-		<span class="num" data-testid="week-time">
-			{formatDuration(data.study.weekMinutes, ' ')}{weekTarget ? ` of ${formatDuration(weekTarget, ' ')}` : ''}
-		</span>
-		this week
-		<span class="streak" data-testid="streak">
-			<Icon name="flame" size={13} label="Streak" />
-			<b class="num">{data.study.streak}</b>
-			{data.study.streak === 1 ? 'day' : 'days'} in a row
-		</span>
-	</p>
 
 	{#if !focus}
 		<p class="empty">
@@ -162,7 +123,6 @@
 			<div class="bar" aria-hidden="true"><i style="width: {pct(focus.done, focus.total)}%"></i></div>
 			<p class="facts small muted">
 				<span class="num" data-testid="focus-progress">{focus.done} of {focus.total} steps done</span>
-				<span class="num" data-testid="goal-hours">{formatDuration(focus.weekMinutes, ' ')} on it this week</span>
 			</p>
 
 			{#if now}
@@ -178,18 +138,7 @@
 						<button class="btn primary" disabled={busy} onclick={() => tick(now.task, true)} data-testid="step-done">
 							<Icon name="check" size={15} /> Done
 						</button>
-						<button class="btn" disabled={busy} aria-expanded={logging} onclick={() => (logging = !logging)} data-testid="log-open">
-							Log time
-						</button>
-						{#if logged}<span class="muted small" role="status">{logged}</span>{/if}
 					</div>
-					{#if logging}
-						<form class="log" onsubmit={log} data-testid="log-form">
-							<input class="field minutes" type="number" min="1" inputmode="numeric" bind:value={minutes} placeholder="Minutes" aria-label="Minutes" data-testid="log-minutes" />
-							<input class="field" bind:value={note} placeholder="What did you do? (optional)" aria-label="What you did" data-testid="log-note" />
-							<button class="btn primary" disabled={!Number(minutes) || busy} data-testid="log-save">Log</button>
-						</form>
-					{/if}
 				</div>
 			{:else if focus.total > 0}
 				<div class="now finished" data-testid="goal-finished">
@@ -243,19 +192,12 @@
 		</section>
 
 		<p class="more small muted">
-			<a href="{base}/goals">Edit goals and steps</a> · <a href="{base}/reading">Reading list</a> ·
-			<a href="{base}/sessions">Time logged</a>
+			<a href="{base}/goals">Edit goals and steps</a> · <a href="{base}/reading">Reading list</a>
 		</p>
 	{/if}
 </div>
 
 <style>
-	.week { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s2); margin: 0 0 var(--s4); color: var(--muted); }
-	.week > .num { color: var(--text); font-weight: 600; }
-	.streak { display: inline-flex; align-items: center; gap: 4px; margin-left: var(--s2); }
-	.streak :global(svg) { color: var(--sand-edge); }
-	.streak b { color: var(--text); }
-
 	/* The goals, in priority order: a row that scrolls sideways on a phone. */
 	.switch { display: flex; gap: var(--s2); overflow-x: auto; padding-bottom: var(--s2); margin-bottom: var(--s3); scrollbar-width: thin; }
 	.pill {
@@ -286,9 +228,6 @@
 	.now .task { margin: var(--s2) 0 var(--s3); font-size: var(--t16); line-height: 1.45; }
 	.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 	.actions .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
-	.log { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
-	.log .field { flex: 1; min-width: 160px; }
-	.log .minutes { flex: none; width: 110px; min-width: 0; }
 	code { font: 0.92em var(--mono); background: var(--soft); padding: 0 4px; border-radius: var(--r-sm); }
 	.now code { background: var(--panel); }
 

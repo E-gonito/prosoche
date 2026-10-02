@@ -35,14 +35,14 @@ export interface SubjectRef {
 	slug: string;
 	name: string;
 	color: string;
-	/** Home folder: where `Goals.md`, `Reading List.md` and `Sessions.md` live. */
+	/** Home folder: where `Goals.md` and `Reading List.md` live. */
 	home: string;
 }
 
 /**
  * A goal, as every goal picker offers it. A goal is a `## ` heading in the
  * subject's `Goals.md`, and it is the subject's unit of progress: reading
- * items and sessions point at one.
+ * items point at one.
  */
 export interface GoalRef {
 	/** The heading's text, verbatim. */
@@ -121,8 +121,6 @@ export interface StudyFocus extends GoalRef {
 	/** Steps ticked, and all of them but the skipped. */
 	done: number;
 	total: number;
-	/** Minutes logged against it this week. */
-	weekMinutes: number;
 	/** Its place among the goals, 0-based, in file order. */
 	index: number;
 	/** True when `focus:` in `Goals.md` chose it, false when it was picked as the first unfinished. */
@@ -147,6 +145,5 @@ export const STUDY_TABS: StudyTab[] = [
 	{ title: 'Overview', path: '' },
 	{ title: 'Notes', path: '/notes' },
 	{ title: 'Goals', path: '/goals' },
-	{ title: 'Reading list', path: '/reading' },
-	{ title: 'Sessions', path: '/sessions' }
+	{ title: 'Reading list', path: '/reading' }
 ];

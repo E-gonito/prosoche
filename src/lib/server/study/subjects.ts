@@ -6,7 +6,7 @@
  * a subject is never a workspace, never shows among them, and claims no task
  * or note for one. There can be any number of subjects. Nothing is shared
  * between two but the code: each has its own home folder holding its own
- * `Goals.md`, `Reading List.md` and `Sessions.md`, and its own scope, its
+ * `Goals.md` and `Reading List.md`, and its own scope, its
  * folders and tag, for its notes. Flashcards are not Study's; they are the
  * glossaries' (see `flashcards/decks.ts`).
  *
@@ -49,7 +49,6 @@ export interface Subject extends SubjectRef {
 	files: {
 		goals: string;
 		reading: string;
-		sessions: string;
 	};
 }
 
@@ -121,7 +120,7 @@ export interface SubjectEdit {
  * else. Frontmatter through `parse/frontmatter.ts`, the description through
  * `setLede`, so every other byte is kept. The slug, which is the file name,
  * never changes, and neither does the home, which stays first: its goals,
- * reading list and sessions are there. A subject whose file names no
+ * and reading list are there. A subject whose file names no
  * folder is homed at `Study/<name>`, and that is the home kept.
  *
  * Refuses, writing nothing, an empty name, a colour that is not `#rrggbb`, a
@@ -162,7 +161,7 @@ export async function editSubject(vault: Vault, subject: Subject, edit: SubjectE
 
 /**
  * Delete a subject: remove its file, `_hub/subjects/<slug>.md`, and nothing
- * else. Its home folder, goals, reading list, sessions and notes stay
+ * else. Its home folder, goals, reading list and notes stay
  * where they are; git history still has the file. Refuses an unknown slug.
  */
 export async function deleteSubject(vault: Vault, slug: string): Promise<{ ok: true } | { ok: false; reason: 'not-found' }> {
@@ -221,8 +220,7 @@ export function readSubject(path: string, content: string): Subject {
 		path,
 		files: {
 			goals: `${home}/Goals.md`,
-			reading: `${home}/Reading List.md`,
-			sessions: `${home}/Sessions.md`
+			reading: `${home}/Reading List.md`
 		}
 	};
 }
@@ -239,8 +237,8 @@ ${folders.map((f) => `  - ${JSON.stringify(f)}`).join('\n')}
 Created from Study.
 
 Edit this file to change the subject: its name, colour, and the folders its
-notes come from. The first folder is its home, where its goals, reading
-list and sessions are kept.
+notes come from. The first folder is its home, where its goals and reading
+list are kept.
 `;
 }
 

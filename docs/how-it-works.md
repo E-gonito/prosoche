@@ -442,8 +442,8 @@ never shows in Study. Nothing is shared between two subjects but the code.
     ---
 
 A subject's own files live in its home folder, the first folder its file
-names (`Study/<name>` when it names none): `Goals.md`, `Reading List.md`
-and `Sessions.md`. Its notes come from every folder it names, so reference
+names (`Study/<name>` when it names none): `Goals.md` and `Reading
+List.md`. Its notes come from every folder it names, so reference
 notes kept elsewhere can sit beside the home as further folders, and, when
 the file has a `tag:`, from any note carrying that tag. Flashcards are not
 Study's; they are the glossaries' (see Flashcards). Folders, at the foot of a subject's Notes tab, adds or removes those:
@@ -461,7 +461,7 @@ stay where they are: a glossary's are moved to its deck (see Glossary), and
 anything else, such as Anki imports, is left untouched and unreviewed.
 
 **The Study page** shows one card per subject — its goals with milestones
-done out of total, this week's hours and its streak. New subject takes a
+done out of total. New subject takes a
 name and, optionally, reference folders, and writes the subject's file,
 homed at `Study/<name>`; a name another subject already has is refused. A
 workspace of the same name is no clash. The old single-subject addresses,
@@ -469,9 +469,11 @@ such as `/study/goals`, open that tab of the only subject, or this page when
 there are several; `/study/flashcards` and `/study/review` open the
 Flashcards page.
 
-Every subject has five tabs, always shown, because a new subject should
-invite filling in rather than hide: Overview, Notes, Goals, Reading list and
-Sessions.
+Every subject has four tabs, always shown, because a new subject should
+invite filling in rather than hide: Overview, Notes, Goals and Reading list.
+There is no time tracking: Sessions, which logged sittings against goals,
+was taken out before it was ever used, and its old address opens the
+Overview. A `Sessions.md` or a `weekly_hours:` left in a vault is ignored.
 
 **Notes** is the subject's own folders from the vault, as a tree on the left
 and the chosen note read in place on the right (on a phone, the tree above
@@ -486,8 +488,8 @@ with an optional `target::` date and its milestones as ordinary task lines
 underneath, due-dated with the same `📅` field every task in the vault
 uses. A milestone is a task, so ticking one is the ordinary task rewrite;
 "Add a goal" appends a heading and "Add a milestone" appends a task line
-under one. Reading items and sessions each point at a goal, which is how
-progress rolls up: every goal picker in Study offers the same
+under one. Reading items each point at a goal, which is how
+they gather under it: every goal picker in Study offers the same
 list, the headings of `Goals.md` in order. A goal is matched by its name
 ignoring case and punctuation, and one naming a goal that is no longer in
 `Goals.md` counts as belonging to none.
@@ -502,16 +504,12 @@ so it stays the focus on every device until another is picked. A goal not
 in focus whose next step is due within a week shows that date on its
 button, red once it has passed.
 
-The card gives the goal's target and the days left, its steps done and its
-hours this week, then **Now**: the first open milestone, its due date and
-how far off it is, with Done, which ticks it through the ordinary task
-rewrite, and Log time, which logs a session against this goal. Below are
+The card gives the goal's target and the days left and its steps done,
+then **Now**: the first open milestone, its due date and how far off it
+is, with Done, which ticks it through the ordinary task rewrite. Below are
 the reading items for the goal, Reading before To read, and every step in
 order, each tickable, a cancelled one shown struck through and left out of
-the count. A goal picked and finished says so and offers the next. Above it
-all is this week's time against a `weekly_hours:` target from the same
-frontmatter, and the streak of consecutive days with a session logged. The
-Sessions tab starts its goal picker on the goal in focus.
+the count. A goal picked and finished says so and offers the next.
 
 **Reading list** is `Reading List.md`, which prosoche owns as it owns a
 workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's
@@ -533,14 +531,6 @@ own byte-exact edit — a move cuts the card's lines and splices them in
 elsewhere, an edit rewrites only what changed, a delete removes only the
 card — and carries the version of the file it was made against, so an edit
 made in Obsidian meanwhile is refused and the list reloads.
-
-**Sessions** is `Sessions.md`: one line per sitting, `- YYYY-MM-DD
-<duration> [[Goals#<goal>]] a note`, filed under a `## YYYY-MM` heading.
-Durations read as `1h30m`, `90m` or `1h`. The page logs a new one against a
-goal picked from the list, and shows hours per goal this month and a
-bar-per-week chart of the last eight weeks. A session from before goals,
-`[[Topic]]`, still reads, and is shown as it is written rather than folded
-into a goal.
 
 ## Workspaces
 
