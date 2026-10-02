@@ -38,7 +38,20 @@ describe('releaseNew', () => {
 		['lets none in once the day is used up', { left: 0, pools: [pool('A')] }, []],
 		['lets in nothing outside every pool', { left: 5, pools: [pool('Z')] }, []]
 	])('%s', (_name, plan, expected) => {
-		expect([...releaseNew(plan, UNSEEN)].map((c) => c.question).sort()).toEqual(expected);
+		const { cards, held } = releaseNew(plan, UNSEEN);
+		expect([...cards].map((c) => c.question).sort()).toEqual(expected);
+		expect(held).toBe(0);
+	});
+
+	it.each<[string, number, NewCardPlan, string[], number]>([
+		['holds back the last card let in for each review overdue', 2, { left: 4, pools: [pool('A'), pool('B'), pool('C')] }, ['a1', 'b1'], 2],
+		['holds back no more than would have joined', 9, { left: 4, pools: [pool('A'), pool('B'), pool('C')] }, [], 4],
+		['holds back from what joins, not from the allowance', 2, { left: 15, pools: [pool('B'), pool('C')] }, ['b1'], 2],
+		['with nothing overdue, holds nothing back', 0, { left: 2, pools: [pool('A')] }, ['a1', 'a2'], 0]
+	])('%s', (_name, overdue, plan, expected, held) => {
+		const out = releaseNew(plan, UNSEEN, overdue);
+		expect([...out.cards].map((c) => c.question).sort()).toEqual(expected);
+		expect(out.held).toBe(held);
 	});
 });
 

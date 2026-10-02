@@ -8,6 +8,9 @@ import { recordIntroduced } from './new-cards';
 
 const TODAY = '2026-09-30';
 
+/** Web's card file: one reviewed card, `Old`, due on `due`, and two new ones. */
+const web = (due: string) => `#flashcards\n\nOld::due\n<!--SR:!${due},4,250-->\n\n${cards('web', 2).slice('#flashcards\n\n'.length)}`;
+
 /** A card file of `n` new cards, `<prefix>1` to `<prefix>n`. */
 const cards = (prefix: string, n: number) => `#flashcards\n\n${Array.from({ length: n }, (_, i) => `${prefix}${i + 1}::x`).join('\n\n')}\n`;
 
@@ -23,7 +26,7 @@ describe('decks', () => {
 		await vault.write('Glossaries/Wisdom.md', '---\nstudy: wisdom\n---\n# Glossary\n');
 		await vault.write('Glossaries/Off.md', '# Glossary\n');
 		await vault.write('Flashcards/Computer Science/Cloud (cards).md', cards('cloud', 8));
-		await vault.write('Flashcards/Computer Science/Web (cards).md', `#flashcards\n\nOld::due\n<!--SR:!2026-09-01,4,250-->\n\n${cards('web', 2).slice('#flashcards\n\n'.length)}`);
+		await vault.write('Flashcards/Computer Science/Web (cards).md', web('2026-09-30'));
 		await vault.write('Flashcards/Filipino/Tagalog (cards).md', cards('tl', 10));
 		await vault.write('Flashcards/Wisdom/Stoicism (cards).md', cards('st', 10));
 		await vault.write('Flashcards/Off/Nope (cards).md', cards('off', 3));
@@ -85,7 +88,13 @@ describe('decks', () => {
 	it('has nothing to review with no decks', async () => {
 		expect(await flashcardsOverview(vault, [], TODAY).then((o) => o.decks.length)).toBe(3);
 		for (const name of ['Computer Science', 'Filipino', 'Wisdom']) await vault.remove(`Glossaries/${name}.md`);
-		expect(await flashcardsOverview(vault, [], TODAY)).toEqual({ decks: [], due: 0, fresh: 0, perDay: 15 });
+		expect(await flashcardsOverview(vault, [], TODAY)).toEqual({ decks: [], due: 0, fresh: 0, held: 0, perDay: 15 });
+	});
+
+	it('holds a new card back for each review overdue, so a missed day adds none', async () => {
+		const path = 'Flashcards/Computer Science/Web (cards).md';
+		await vault.write(path, web('2026-09-28'), (await vault.read(path)).hash);
+		expect(await flashcardsOverview(vault, [], TODAY)).toMatchObject({ due: 1, fresh: 14, held: 1 });
 	});
 });
 

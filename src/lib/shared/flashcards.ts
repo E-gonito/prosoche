@@ -72,6 +72,8 @@ export interface CardQueue {
 	fresh: number;
 	/** Cards never reviewed that are not among today's new cards: they wait for a later day. */
 	waiting: number;
+	/** New cards held back today, one per review overdue; among `waiting`. Catching up lets them in. */
+	held: number;
 	/** Total cards in scope, reviewed or not. */
 	total: number;
 	/** Every card file in scope, in path order. */

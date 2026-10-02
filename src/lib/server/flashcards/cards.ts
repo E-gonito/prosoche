@@ -184,9 +184,10 @@ interface DueQuery {
  * Deliberately deterministic where the plugin shuffles, so a review session
  * can be resumed and a test can name a card.
  *
- * A card never reviewed is ready only when `newCards` lets it in today; the
- * others are counted as `waiting`. `files` lists every card source swept,
- * with its counts.
+ * A card never reviewed is ready only when `newCards` lets it in today, and
+ * each card overdue (due before `on`) holds one of those back (see
+ * `releaseNew`); the others are counted as `waiting`, the held ones as
+ * `held` too. `files` lists every card source swept, with its counts.
  *
  * Reads every markdown file in the folders, because review state lives in
  * the markdown and the index holds no card table, from one sweep of the
@@ -201,10 +202,11 @@ export async function dueCards(vault: Vault, query: DueQuery): Promise<CardQueue
 		if (found.length && isCardSource(parsed.tags, content)) sources.push({ path, cards: found });
 	}
 
-	const released = query.newCards ? releaseNew(query.newCards, unseenIn(sources)) : null;
-	const isReady = (c: Card) => (c.schedule === null ? released === null || released.has(c) : c.schedule.due <= query.on);
-	const files: CardFile[] = sources.map((s) => ({ path: s.path, cards: s.cards.length, due: s.cards.filter(isReady).length }));
 	const cards = sources.flatMap((s) => s.cards);
+	const overdue = cards.filter((c) => c.schedule !== null && c.schedule.due < query.on).length;
+	const released = query.newCards ? releaseNew(query.newCards, unseenIn(sources), overdue) : null;
+	const isReady = (c: Card) => (c.schedule === null ? released === null || released.cards.has(c) : c.schedule.due <= query.on);
+	const files: CardFile[] = sources.map((s) => ({ path: s.path, cards: s.cards.length, due: s.cards.filter(isReady).length }));
 
 	// The pool each card is dealt out under: the first whose folder holds it.
 	const pools = query.newCards?.pools ?? [];
@@ -218,6 +220,7 @@ export async function dueCards(vault: Vault, query: DueQuery): Promise<CardQueue
 		due: reviewed.length,
 		fresh: fresh.length,
 		waiting: cards.filter((c) => c.schedule === null && !isReady(c)).length,
+		held: released?.held ?? 0,
 		total: cards.length,
 		files: files.sort((a, b) => a.path.localeCompare(b.path))
 	};

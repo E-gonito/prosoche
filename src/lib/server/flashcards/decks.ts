@@ -139,13 +139,14 @@ export async function setNewCardsPerDay(vault: Vault, value: unknown): Promise<P
 /**
  * What the Flashcards page shows: every deck with its cards due, new today
  * and in all, and each of its categories with its cards and those ready;
- * the totals across decks; and the new cards a day. Never writes.
+ * the totals across decks, with the new cards held back while reviews are
+ * overdue; and the new cards a day. Never writes.
  */
 export async function flashcardsOverview(
 	vault: Vault,
 	workspaces: Workspace[],
 	day: string
-): Promise<{ decks: DeckView[]; due: number; fresh: number; perDay: number }> {
+): Promise<{ decks: DeckView[]; due: number; fresh: number; held: number; perDay: number }> {
 	const [all, perDay] = await Promise.all([decks(vault, workspaces), newCardsPerDay(vault)]);
 	const queue = await deckQueue(vault, all, day, perDay);
 	const views = all.map((deck): DeckView => {
@@ -161,7 +162,7 @@ export async function flashcardsOverview(
 			categories: files.map((f) => ({ name: categoryOfFile(f.path), cards: f.cards, ready: f.due }))
 		};
 	});
-	return { decks: views, due: queue.due, fresh: queue.fresh, perDay };
+	return { decks: views, due: queue.due, fresh: queue.fresh, held: queue.held, perDay };
 }
 
 /**

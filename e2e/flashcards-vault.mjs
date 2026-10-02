@@ -6,7 +6,8 @@
  *
  * `Networks` has three terms in two categories, TCP reviewed before and
  * overdue by three days (a legacy `<!--SR:…-->` comment, rewritten as FSRS
- * state when graded). `Tagalog` has twenty new words, more than the day's
+ * state when graded), so it holds back one new card until it is graded.
+ * `Tagalog` has twenty new words, more than the day's
  * fifteen, so the page has new cards waiting. A generated Anki `.txt` sits
  * beside Networks' cards, as the real vault's generator leaves them, and
  * nothing may touch it.
