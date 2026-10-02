@@ -122,25 +122,57 @@ test.describe.serial('Date', () => {
 		expect(searchBody.hits ?? []).toEqual([]);
 	});
 
-	test('logs a like sent with a chance, adding her to People at liked', async ({ page }) => {
+	test('logs a like with the quick add, clamps a 0, and settles it with one tap', async ({ page }) => {
 		await page.goto('/date');
-		await page.getByTestId('dating-like-name').fill('Iris');
-		await page.getByTestId('dating-like-chance').fill('70');
-		await expect(page.getByTestId('dating-like-chance-value')).toHaveText('70%');
-		await page.getByTestId('dating-like-submit').click();
-		await expect(page.getByTestId('dating-like-added')).toContainText('Iris');
+		await page.getByTestId('like-label').fill('Iris');
+		await page.getByTestId('like-forecast').fill('0');
+		await expect(page.getByTestId('like-forecast-clamp')).toContainText('Saves as 2%');
+		await page.getByTestId('like-fits-type').getByRole('button', { name: 'Yes' }).click();
+		await page.getByTestId('like-age').fill('27');
+		await page.getByTestId('like-submit').click();
+		await expect(page.getByTestId('like-added')).toContainText('Iris');
 
-		const note = vaultFile('Private/Dating/People/Iris.md');
+		const path = 'Private/Dating/People/Iris.md';
+		const note = vaultFile(path);
 		expect(note).toContain('stage: liked');
 		expect(note).toContain(`liked: ${TODAY}`);
-		expect(note).toContain('chance: 70');
+		expect(note).toContain('chance: 2\n');
+		expect(note).toContain('fits_type: true');
+		expect(note).toContain('age: 27');
+		expect(note).toContain('status: pending');
+		expect(note).not.toContain('out_of_league');
 
-		await page.goto('/date/people');
-		await expect(page.getByRole('link', { name: /Iris/ })).toContainText('70% she replies');
+		await page.goto('/date/likes');
+		const row = page.getByTestId('like-pending').filter({ hasText: 'Iris' });
+		await expect(row).toContainText('2% · today');
+		await row.getByTestId('like-yes').click();
+		await expect(page.getByTestId('like-pending').filter({ hasText: 'Iris' })).toHaveCount(0);
+		expect(vaultFile(path)).toContain('status: yes');
+		expect(vaultFile(path)).toContain('stage: talking');
+
+		// It is still there after a reload, under its outcome.
+		await page.reload();
+		await page.getByTestId('likes-filter').getByRole('button', { name: 'yes' }).click();
+		await expect(page.getByTestId('like-row').filter({ hasText: 'Iris' })).toContainText('yes');
 
 		await page.goto('/date/stats');
-		await expect(page.getByTestId('dating-odds-mean')).toHaveText('70%');
-		await expect(page.getByTestId('dating-odds-replied')).toHaveText('0');
+		await expect(page.getByTestId('cal-resolved')).toContainText('1');
+		await expect(page.getByTestId('cal-base-rate')).toHaveText('100%');
+		await expect(page.getByTestId('cal-buckets')).toContainText('not enough data');
+	});
+
+	test('phone layout: the pending Yes and No are comfortably tappable', async ({ page, request }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		const added = await request.post('/api/dating/likes', { data: { label: 'June', forecast: 10 } });
+		expect(added.ok()).toBe(true);
+		await page.goto('/date/likes');
+		for (const testId of ['like-yes', 'like-no']) {
+			const box = await page.getByTestId('like-pending').filter({ hasText: 'June' }).getByTestId(testId).boundingBox();
+			expect(box!.width).toBeGreaterThanOrEqual(44);
+			expect(box!.height).toBeGreaterThanOrEqual(44);
+		}
+		const form = await page.getByTestId('like-quick-add').boundingBox();
+		expect(form!.width).toBeLessThanOrEqual(390);
 	});
 
 	test('phone layout: the day stepper and counters are comfortably tappable', async ({ page }) => {

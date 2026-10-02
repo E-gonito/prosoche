@@ -11,17 +11,23 @@
  *
  *     Private/Dating/Ledger.md          one line per day, `parse/ledger.ts`
  *     Private/Dating/People/<Name>.md   the shared person format, `parse/dating-person.ts`
+ *     Private/Dating/Type.md            the user's own note on their type, read and saved whole
  *
- * A person enters at `stage: liked` when the user logs a like they sent,
- * with `liked:` (the day) and `chance:` (their guess, 0–100, that she
- * replies) in frontmatter. Moving her to any later stage is the reply;
- * `likeOdds` sets the guesses against what happened.
+ * A person enters at `stage: liked` when the user logs a like they sent.
+ * The like is a record in her note's frontmatter (`parse/like.ts`): the day,
+ * a forecast that she replies after matching, tags, and whether she did.
+ * `loadLikes` brings every record in line with the rules before reading it
+ * (the migration, and auto-resolving a like left pending too long), and
+ * `like-stats.ts` scores the forecasts.
  *
  * The stats functions are pure — they take entries already read, not a vault
  * — so they can be table-tested without touching the filesystem at all.
  */
 
-import { shiftDay, today, type DayKey } from './daily';
+import { isDayKey, shiftDay, today, type DayKey } from './daily';
+import { AUTO_RESOLVE_DAYS, clampForecast, LIKE_STATUSES, OUTCOME, type Like, type LikeFields, type LikeStatus } from '$lib/shared/likes';
+import { editLike, isLike, isLikedOn, readLike, settleLike, stageMeansReply, type LikeChange } from './parse/like';
+import { renderMarkdown } from './render';
 import { newDateLine, scanDates, type DateEntry } from './parse/dating-person';
 import { setFrontmatterField } from './parse/frontmatter';
 import { newLedgerLine, saveLedgerDay, scanLedger, ZERO_COUNTS, type LedgerCounts, type LedgerLine } from './parse/ledger';
@@ -34,6 +40,7 @@ import { daysBetween } from '$lib/shared/time';
 const DATING_FOLDER = 'Private/Dating';
 export const LEDGER_PATH = `${DATING_FOLDER}/Ledger.md`;
 export const PEOPLE_FOLDER = `${DATING_FOLDER}/People`;
+export const TYPE_NOTE_PATH = `${DATING_FOLDER}/Type.md`;
 const DATES_HEADING = '## Dates';
 
 export const STAGES = ['liked', 'matched', 'talking', 'date planned', 'dating', 'ended'] as const;
@@ -211,39 +218,6 @@ export function bestDayOfWeek(entries: LedgerLine[]): WeekdayStat | null {
 	return totals[best] > 0 ? { weekday: names[best], matches: totals[best] } : null;
 }
 
-interface LikeOdds {
-	/** Logged likes that carry a guess. */
-	rated: number;
-	/** The mean guess, 0–1. */
-	meanChance: number;
-	/** How many replies the guesses add up to: the sum of every chance. */
-	expected: number;
-	/** Rated likes whose person has moved past `liked`. */
-	replied: number;
-	/** Rated likes still at `liked`: no reply yet, or none coming. */
-	waiting: number;
-}
-
-/**
- * The user's guesses at a reply set against what happened, or null when no
- * like carries a guess. Pure. A person counts as having replied once she is
- * at any stage past `liked`, and as waiting while she is still there; it
- * never decides on the user's behalf that a like has gone unanswered.
- */
-export function likeOdds(people: Array<{ stage: Stage | null; chance: number | null }>): LikeOdds | null {
-	const rated = people.filter((p): p is { stage: Stage | null; chance: number } => p.chance !== null);
-	if (!rated.length) return null;
-	const expected = rated.reduce((n, p) => n + p.chance / 100, 0);
-	const waiting = rated.filter((p) => p.stage === 'liked').length;
-	return {
-		rated: rated.length,
-		meanChance: expected / rated.length,
-		expected,
-		replied: rated.filter((p) => p.stage !== null && p.stage !== 'liked').length,
-		waiting
-	};
-}
-
 /* -------------------------------------------------------------- People --- */
 
 interface DatingPersonSummary {
@@ -378,13 +352,21 @@ export async function addDatingDate(
 
 type SetStageResult = { ok: true } | { ok: false; reason: 'no-note' | 'conflict' };
 
-/** Rewrite a person's frontmatter `stage:` line alone. */
-export async function setStage(vault: Vault, rawName: string, stage: Stage): Promise<SetStageResult> {
+/**
+ * Rewrite a person's frontmatter `stage:` line. When the new stage means she
+ * replied (talking, date planned, dating) and her like is still pending, the
+ * like resolves to yes by hand today in the same write, so the outcome and
+ * the stage never disagree. Nothing else in the note changes.
+ */
+export async function setStage(vault: Vault, rawName: string, stage: Stage, day: DayKey = today()): Promise<SetStageResult> {
 	const path = personPath(rawName);
 	const note = await vault.read(path, { scope: 'private' });
 	if (!note.exists) return { ok: false, reason: 'no-note' };
 
-	const result = await vault.write(path, setFrontmatterField(note.content, 'stage', stage), note.hash, { scope: 'private' });
+	let next = setFrontmatterField(note.content, 'stage', stage);
+	const like = readLike(path, note.content, note.hash, day);
+	if (like?.status === 'pending' && stageMeansReply(stage)) next = editLike(next, resolution('yes', day));
+	const result = await vault.write(path, next, note.hash, { scope: 'private' });
 	if (!result.ok) return { ok: false, reason: 'conflict' };
 	return { ok: true };
 }
@@ -405,6 +387,333 @@ function newPersonNote(name: string, fields: NewPersonFields): string {
 	].join('\n');
 	const notes = (fields.notes ?? '').trim();
 	return `${frontmatter}\n\n# ${name}\n${notes ? `\n${notes}\n` : ''}`;
+}
+
+/* --------------------------------------------------------------- Likes --- */
+
+/**
+ * Every like sent, oldest first, each brought in line with the rules before
+ * it is read (see `settleLike`): a forecast clamped to 2–98, a missing
+ * status made pending, a missing day supplied from the note's last change
+ * and marked migrated, and a like pending more than `AUTO_RESOLVE_DAYS`
+ * after it was sent resolved to no by `auto`.
+ *
+ * Side effects: writes each note that needed one of those, as span edits of
+ * its frontmatter lines and nothing else, guarded by the hash just read. A
+ * note that changed in between is read as it is and settled next time.
+ * Never deletes and never touches a note that is not a like.
+ */
+export async function loadLikes(vault: Vault, day: DayKey = today()): Promise<Like[]> {
+	const paths = (await vault.list({ scope: 'private' })).filter((p) => p.startsWith(`${PEOPLE_FOLDER}/`));
+	const likes: Like[] = [];
+	for (const path of paths) {
+		let note = await vault.read(path, { scope: 'private' });
+		if (!note.exists || !isLike(note.content)) continue;
+		const fallbackDay = today(new Date(note.mtimeMs));
+		const change = settleLike(note.content, { today: day, fallbackDay, days: AUTO_RESOLVE_DAYS });
+		if (Object.keys(change).length) {
+			const written = await vault.write(path, editLike(note.content, change), note.hash, { scope: 'private' });
+			if (written.ok) note = written.note;
+		}
+		const like = readLike(path, note.content, note.hash, fallbackDay);
+		if (like) likes.push(like);
+	}
+	return likes.sort((a, b) => a.sentDate.localeCompare(b.sentDate) || a.label.localeCompare(b.label));
+}
+
+/** What the quick-add form sends. `null` and absent both mean unknown. */
+export type NewLike = { label: string; sentDate?: string; forecast: number; notes?: string } & Partial<Omit<LikeFields, 'sentDate' | 'forecast'>>;
+
+type LikeResult = { ok: true; like: Like } | { ok: false; reason: 'no-name' | 'exists' | 'bad-day' | 'invalid' | 'no-note' | 'not-found' | 'conflict' };
+
+/**
+ * Log a like sent: a new person note at `stage: liked` holding the record,
+ * pending, sent on `sentDate` (today when absent), with the forecast clamped
+ * to 2–98. Unknown tags are left out of the note. Refuses a label that
+ * cannot be a file name (`no-name`), one that already has a note (`exists`,
+ * never overwritten), a day that is not `YYYY-MM-DD` (`bad-day`) and a
+ * forecast that is not a number (`invalid`).
+ */
+export async function addLike(vault: Vault, input: NewLike, day: DayKey = today()): Promise<LikeResult> {
+	const name = personName(input.label ?? '');
+	if (!name) return { ok: false, reason: 'no-name' };
+	const sentDate = input.sentDate ?? day;
+	if (!isDayKey(sentDate)) return { ok: false, reason: 'bad-day' };
+	if (typeof input.forecast !== 'number' || !Number.isFinite(input.forecast)) return { ok: false, reason: 'invalid' };
+	const checked = likeFields(input);
+	if (!checked) return { ok: false, reason: 'invalid' };
+
+	const path = personPath(name);
+	if ((await vault.read(path, { scope: 'private' })).exists) return { ok: false, reason: 'exists' };
+	const base = newPersonNote(name, { stage: 'liked', liked: sentDate, chance: input.forecast, notes: input.notes });
+	// The day is already on its `liked:` line; only the rest is added to the new note.
+	const { sentDate: _day, ...tags } = checked;
+	const content = editLike(base, { ...tags, forecast: input.forecast, status: 'pending' });
+	const result = await vault.write(path, content, hashContent(''), { scope: 'private' });
+	if (!result.ok) return { ok: false, reason: 'exists' };
+	return { ok: true, like: readLike(path, result.note.content, result.note.hash, day)! };
+}
+
+/** One edit to a like: any of its fields, its status, or both. */
+export interface LikeEdit {
+	fields?: Partial<LikeFields>;
+	status?: LikeStatus;
+}
+
+/**
+ * Edit a like, if its note still has `expectedHash`.
+ *
+ * Fields are span edits of their own lines; a new `sentDate` clears the
+ * migrated mark. Setting the status to yes or no resolves it by hand on
+ * `day`; setting it back to pending clears the resolution, and a like old
+ * enough is then resolved by `auto` again on the next `loadLikes`. Yes on a
+ * person still at liked or matched moves her stage to talking, since a reply
+ * is what talking means; no never touches the stage.
+ *
+ * Refusals: `no-note`, `not-found` for a note that is not a like,
+ * `conflict` for a note changed since it was read, and `invalid` or
+ * `bad-day` for a value that cannot be stored. A refusal writes nothing.
+ */
+export async function updateLike(vault: Vault, rawName: string, edit: LikeEdit, expectedHash: string, day: DayKey = today()): Promise<LikeResult> {
+	const path = personPath(rawName);
+	const note = await vault.read(path, { scope: 'private' });
+	if (!note.exists) return { ok: false, reason: 'no-note' };
+	if (note.hash !== expectedHash) return { ok: false, reason: 'conflict' };
+	const current = readLike(path, note.content, note.hash, day);
+	if (!current) return { ok: false, reason: 'not-found' };
+
+	const fields = likeFields(edit.fields ?? {});
+	if (!fields) return { ok: false, reason: 'invalid' };
+	if (fields.sentDate !== undefined && !isDayKey(fields.sentDate)) return { ok: false, reason: 'bad-day' };
+	if (edit.status !== undefined && !(LIKE_STATUSES as readonly string[]).includes(edit.status)) return { ok: false, reason: 'invalid' };
+
+	const change: LikeChange = { ...fields };
+	if (fields.sentDate !== undefined && current.sentDateMigrated) change.sentDateMigrated = null;
+	if (edit.status !== undefined && edit.status !== current.status) Object.assign(change, resolution(edit.status, day));
+
+	let next = editLike(note.content, change);
+	const stage = asStage(parseNote(note.content).frontmatter.stage);
+	if (change.status === 'yes' && (stage === 'liked' || stage === 'matched')) next = setFrontmatterField(next, 'stage', 'talking');
+
+	const result = await vault.write(path, next, note.hash, { scope: 'private' });
+	if (!result.ok) return { ok: false, reason: 'conflict' };
+	return { ok: true, like: readLike(path, result.note.content, result.note.hash, day)! };
+}
+
+/** The fields that set `status` by hand on `day`: resolved for yes or no, cleared for pending. */
+function resolution(status: LikeStatus, day: DayKey): LikeChange {
+	return status === 'pending' ? { status, resolvedDate: null, resolvedBy: null } : { status, resolvedDate: day, resolvedBy: 'manual' };
+}
+
+/**
+ * The record fields in an untrusted object, checked, with `undefined` for
+ * any not given and `null` for unknown; null when one cannot be stored.
+ */
+function likeFields(raw: Partial<Record<keyof LikeFields, unknown>>): Partial<LikeFields> | null {
+	const out: Partial<LikeFields> = {};
+	for (const key of ['outOfLeague', 'fitsType', 'commented'] as const) {
+		const v = raw[key];
+		if (v === undefined) continue;
+		if (v !== null && typeof v !== 'boolean') return null;
+		out[key] = v;
+	}
+	if (raw.age !== undefined) {
+		if (raw.age !== null && !(typeof raw.age === 'number' && Number.isInteger(raw.age) && raw.age > 0 && raw.age < 130)) return null;
+		out.age = raw.age;
+	}
+	if (raw.likedOn !== undefined) {
+		if (raw.likedOn !== null && !isLikedOn(raw.likedOn)) return null;
+		out.likedOn = raw.likedOn;
+	}
+	if (raw.forecast !== undefined) {
+		if (typeof raw.forecast !== 'number' || !Number.isFinite(raw.forecast)) return null;
+		out.forecast = raw.forecast;
+	}
+	if (raw.sentDate !== undefined) {
+		if (typeof raw.sentDate !== 'string') return null;
+		out.sentDate = raw.sentDate;
+	}
+	return out;
+}
+
+/** Every like as the export's JSON: the record schema, oldest first, with what the forecasts predict. */
+export async function exportLikes(vault: Vault, day: DayKey = today()) {
+	const likes = await loadLikes(vault, day);
+	return {
+		format: 'prosoche-likes',
+		version: 1,
+		outcome: OUTCOME,
+		exported: day,
+		records: likes.map(({ hash: _hash, ...record }) => record)
+	};
+}
+
+interface ImportReport {
+	ok: true;
+	created: number;
+	updated: number;
+	unchanged: number;
+	/** One line per record that could not be imported, saying why. */
+	problems: string[];
+}
+
+/**
+ * Import likes from an export, this one's (`{ records: [...] }`) or the old
+ * shape (a bare array, or records named the way the notes spell them:
+ * `name`, `liked`, `chance`, `stage`, `out_of_league` and so on).
+ *
+ * A record whose label has no note becomes a new like, as `addLike` makes
+ * one, with its status and resolution as given. A record whose label has a
+ * note updates that note's fields one line each with every value given that
+ * is not null: an import fills in and corrects, and never forgets what a
+ * note knows or deletes anything. The next `loadLikes` settles all of it.
+ * Never throws on a bad record; it is reported in `problems` and skipped.
+ */
+export async function importLikes(vault: Vault, data: unknown, day: DayKey = today()): Promise<ImportReport | { ok: false; reason: 'invalid' }> {
+	const records = Array.isArray(data) ? data : data && typeof data === 'object' && Array.isArray((data as { records?: unknown }).records) ? (data as { records: unknown[] }).records : null;
+	if (!records) return { ok: false, reason: 'invalid' };
+	const report: ImportReport = { ok: true, created: 0, updated: 0, unchanged: 0, problems: [] };
+
+	for (const [i, item] of records.entries()) {
+		const r = normaliseImport(item);
+		const where = `Record ${i + 1}${r?.label ? ` (${r.label})` : ''}`;
+		if (!r) {
+			report.problems.push(`${where}: needs a label and a forecast.`);
+			continue;
+		}
+		const fields = likeFields(r.fields);
+		if (!fields || (r.fields.sentDate !== undefined && !isDayKey(String(r.fields.sentDate)))) {
+			report.problems.push(`${where}: a field has a value that cannot be stored.`);
+			continue;
+		}
+		const resolved: LikeChange = {};
+		if (r.status) Object.assign(resolved, { status: r.status, resolvedDate: r.resolvedDate, resolvedBy: r.resolvedBy });
+
+		const path = personPath(r.label);
+		const note = await vault.read(path, { scope: 'private' });
+		if (!note.exists) {
+			const added = await addLike(vault, { ...fields, label: r.label, notes: r.notes ?? undefined, forecast: r.fields.forecast as number }, day);
+			if (!added.ok) {
+				report.problems.push(`${where}: ${added.reason}.`);
+				continue;
+			}
+			if (r.status) {
+				const after = await vault.read(path, { scope: 'private' });
+				await vault.write(path, editLike(after.content, dropNulls(resolved)), after.hash, { scope: 'private' });
+			}
+			report.created++;
+			continue;
+		}
+		const current = readLike(path, note.content, note.hash, day);
+		const next = editLike(note.content, changedFrom(current, dropNulls({ ...fields, ...resolved })));
+		if (next === note.content) {
+			report.unchanged++;
+			continue;
+		}
+		const written = await vault.write(path, next, note.hash, { scope: 'private' });
+		if (written.ok) report.updated++;
+		else report.problems.push(`${where}: its note changed while importing.`);
+	}
+	return report;
+}
+
+/**
+ * Only the fields of `change` whose value differs from what `like` already
+ * reads as, so an import that agrees with a note leaves its bytes alone.
+ * Everything, when the note is not a like yet.
+ */
+function changedFrom(like: Like | null, change: LikeChange): LikeChange {
+	if (!like) return change;
+	return Object.fromEntries(
+		Object.entries(change).filter(([k, v]) => (k === 'forecast' ? clampForecast(v as number) : v) !== like[k as keyof Like])
+	) as LikeChange;
+}
+
+/** `change` without its null values, so an import never clears what a note knows. */
+function dropNulls(change: LikeChange): LikeChange {
+	return Object.fromEntries(Object.entries(change).filter(([, v]) => v !== null && v !== undefined)) as LikeChange;
+}
+
+/**
+ * One imported record in either shape, with its fields under the record's
+ * names; null when it has no label or no numeric forecast.
+ */
+function normaliseImport(item: unknown): {
+	label: string;
+	notes: string | null;
+	status: LikeStatus | null;
+	resolvedDate: string | null;
+	resolvedBy: 'manual' | 'auto' | null;
+	fields: Partial<Record<keyof LikeFields, unknown>>;
+} | null {
+	if (!item || typeof item !== 'object') return null;
+	const o = item as Record<string, unknown>;
+	const pick = (...keys: string[]) => keys.map((k) => o[k]).find((v) => v !== undefined);
+	const label = pick('label', 'name', 'id');
+	const forecast = Number(pick('forecast', 'chance'));
+	if (typeof label !== 'string' || !personName(label) || !Number.isFinite(forecast)) return null;
+
+	const bool = (v: unknown) => (typeof v === 'boolean' ? v : v === 'true' || v === 'yes' ? true : v === 'false' || v === 'no' ? false : null);
+	const day = (v: unknown) => (typeof v === 'string' && isDayKey(v) ? v : v instanceof Date ? v.toISOString().slice(0, 10) : undefined);
+	const statusRaw = pick('status');
+	const stage = pick('stage');
+	const status = (LIKE_STATUSES as readonly string[]).includes(String(statusRaw))
+		? (statusRaw as LikeStatus)
+		: typeof stage === 'string' && stageMeansReply(stage)
+			? 'yes'
+			: null;
+	const ageRaw = pick('age');
+	const age = ageRaw === null || ageRaw === undefined || ageRaw === '' ? null : Number(ageRaw);
+	const likedOn = pick('likedOn', 'liked_on');
+	const sent = pick('sentDate', 'liked', 'date');
+	const resolvedBy = pick('resolvedBy', 'resolved_by');
+
+	return {
+		label: personName(label),
+		notes: typeof o.notes === 'string' ? o.notes : null,
+		status,
+		resolvedDate: day(pick('resolvedDate', 'resolved')) ?? (status && status !== 'pending' ? (day(sent) ?? null) : null),
+		resolvedBy: resolvedBy === 'manual' || resolvedBy === 'auto' ? resolvedBy : status && status !== 'pending' ? 'manual' : null,
+		fields: {
+			forecast,
+			sentDate: sent === undefined ? undefined : day(sent) ?? String(sent),
+			outOfLeague: bool(pick('outOfLeague', 'out_of_league')),
+			fitsType: bool(pick('fitsType', 'fits_type')),
+			commented: bool(pick('commented')),
+			age: age !== null && Number.isInteger(age) && age > 0 ? age : null,
+			likedOn: likedOn === 'photo' || likedOn === 'prompt' ? likedOn : null
+		}
+	};
+}
+
+/* ---------------------------------------------------------------- Type --- */
+
+/**
+ * The user's own note on their type, `Private/Dating/Type.md`: its text as
+ * on disk, rendered, and the hash to save with. A missing note reads as
+ * empty. Never writes.
+ */
+export async function loadTypeNote(vault: Vault): Promise<{ path: string; exists: boolean; raw: string; hash: string; html: string }> {
+	const note = await vault.read(TYPE_NOTE_PATH, { scope: 'private' });
+	return {
+		path: TYPE_NOTE_PATH,
+		exists: note.exists,
+		raw: note.content,
+		hash: note.exists ? note.hash : hashContent(''),
+		html: note.exists ? renderMarkdown(parseNote(note.content, TYPE_NOTE_PATH).body) : ''
+	};
+}
+
+/**
+ * Save the type note whole: the user's own text, typed into the editor, so a
+ * whole-file write is allowed. Refuses with `conflict`, writing nothing, when
+ * the note changed since `expectedHash` was read; the first save creates it.
+ */
+export async function saveTypeNote(vault: Vault, content: string, expectedHash: string): Promise<{ ok: true } | { ok: false; reason: 'conflict' }> {
+	const note = await vault.read(TYPE_NOTE_PATH, { scope: 'private' });
+	if ((note.exists ? note.hash : hashContent('')) !== expectedHash) return { ok: false, reason: 'conflict' };
+	const result = await vault.write(TYPE_NOTE_PATH, content, expectedHash, { scope: 'private' });
+	return result.ok ? { ok: true } : { ok: false, reason: 'conflict' };
 }
 
 /* ------------------------------------------------------------ Insights --- */

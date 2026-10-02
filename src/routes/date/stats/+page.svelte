@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
 	 * Stats: totals and rates over three ranges, a twelve-week trend, the best
-	 * day of the week, the user's guesses at a reply against the replies, and
-	 * the Insights button.
+	 * day of the week, how well calibrated the forecasts on likes sent are
+	 * (`like-stats.ts`), and the Insights button.
 	 *
 	 * The trend is a small inline SVG — two thin lines, no library — built
 	 * from `data.trend`, which the server already reduced to one point per
@@ -10,6 +10,7 @@
 	 * own caution about a match rate that only counts likes the user sent.
 	 */
 	import { api } from '$lib/client/api';
+	import { OUTCOME, type LikeGroup } from '$lib/shared/likes';
 	let { data } = $props();
 
 	interface Range {
@@ -31,6 +32,12 @@
 	}
 	function per(n: number | null): string {
 		return n === null ? '—' : n.toFixed(1);
+	}
+	function pp(n: number | null): string {
+		return n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)} pp`;
+	}
+	function brier(n: number | null): string {
+		return n === null ? '—' : n.toFixed(3);
 	}
 
 	// --- the trend chart: pure geometry, no library --------------------------
@@ -134,22 +141,54 @@
 	<p class="hint">Best day of the week for matches: <b>{data.bestDay.weekday}</b> ({data.bestDay.matches} total).</p>
 {/if}
 
-{#if data.odds}
-	<p class="label">Your guesses <span class="right muted small">likes logged with a chance</span></p>
-	<div class="sheet" data-testid="dating-like-odds">
+{#if data.calibration.resolved + data.calibration.pending > 0}
+	{@const c = data.calibration}
+	<p class="label">Forecasts <span class="right muted small">resolved likes only</span></p>
+	<div class="sheet" data-testid="like-calibration">
 		<div class="kv odds">
-			<b>Likes rated</b><span class="num">{data.odds.rated}</span>
-			<b>Average guess</b><span class="num" data-testid="dating-odds-mean">{pct(data.odds.meanChance)}</span>
-			<b>Replies you expected</b><span class="num">{per(data.odds.expected)}</span>
-			<b>Replied</b><span class="num" data-testid="dating-odds-replied">{data.odds.replied}</span>
-			<b>Still waiting</b><span class="num">{data.odds.waiting}</span>
+			<b>Resolved</b><span class="num" data-testid="cal-resolved">{c.resolved} <span class="muted small">({c.yes} yes · {c.pending} pending)</span></span>
+			<b>Base rate</b><span class="num" data-testid="cal-base-rate">{pct(c.baseRate)}</span>
+			<b>Mean forecast</b><span class="num">{pct(c.meanForecast)}</span>
+			<b>Bias</b><span class="num" data-testid="cal-bias">{pp(c.biasPp)}</span>
+			<b>Brier score</b><span class="num" data-testid="cal-brier">{brier(c.brier)} <span class="muted small">vs {brier(c.referenceBrier)} always forecasting the base rate</span></span>
 		</div>
 	</div>
 	<p class="hint definitions">
-		She counts as replied once you move her past <b>liked</b> on People. Your guesses run high if the replies
-		fall short of the ones you expected once nobody is left waiting.
+		Yes means {OUTCOME}. Bias is the mean forecast less the base rate: below zero, your forecasts run pessimistic. A lower
+		Brier score is better, and one below the base rate's own means the forecasts tell the likes apart.
+	</p>
+
+	<p class="label">Calibration</p>
+	<div class="sheet">{@render table('Forecast', c.buckets, 'cal-buckets')}</div>
+
+	<p class="label">Splits</p>
+	{#each c.splits as split (split.name)}
+		<div class="sheet split">{@render table(split.name, split.groups, `cal-split-${split.name}`)}</div>
+	{/each}
+	<p class="hint definitions" data-testid="cal-type-share">
+		Fit your type: {c.typeShare.fits} of the {c.typeShare.known} likes where you said ({pct(c.typeShare.share)}), over every like logged.
+		A tag you left unknown is out of its split, never counted as no.
 	</p>
 {/if}
+
+{#snippet table(title: string, groups: LikeGroup[], testid: string)}
+	<table class="cal" data-testid={testid}>
+		<thead><tr><th>{title}</th><th class="num">n</th><th class="num">Forecast</th><th class="num">Actual</th></tr></thead>
+		<tbody>
+			{#each groups as g (g.name)}
+				<tr>
+					<td>{g.name}</td>
+					<td class="num">{g.n}</td>
+					{#if g.enough}
+						<td class="num">{pct(g.meanForecast)}</td><td class="num">{pct(g.rate)}</td>
+					{:else}
+						<td class="muted small" colspan="2">not enough data</td>
+					{/if}
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+{/snippet}
 
 <p class="label">Insights</p>
 <div class="sheet insights">
@@ -167,6 +206,12 @@
 	.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s4); margin-bottom: var(--s3); }
 	.card-stat .kv, .kv.odds { grid-template-columns: 1fr auto; }
 	.definitions { margin-bottom: var(--s3); }
+	.split { margin-bottom: var(--s2); }
+	.cal { width: 100%; border-collapse: collapse; font-size: var(--t14); }
+	.cal th { text-align: left; font-size: var(--t12); color: var(--muted); font-weight: 600; padding-bottom: var(--s1); }
+	.cal td { padding: 6px 0; border-top: 1px solid var(--line); }
+	.cal .num { text-align: right; padding-left: var(--s3); }
+	.cal td.muted { text-align: right; }
 
 	.trend-card { padding: var(--s4); }
 	svg { width: 100%; height: auto; display: block; }

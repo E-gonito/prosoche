@@ -1,7 +1,7 @@
 import { setStage, STAGES } from '$server/dating';
 import { refuse, route, str } from '../../../route';
 
-/** Rewrite a person's frontmatter `stage:` line alone: `{ name, stage }`. */
+/** Set a person's stage, `{ name, stage }`; a stage that means she replied also resolves her pending like (see `setStage`). */
 export const POST = route(
 	async ({ body, hub }) => {
 		const name = str(body.name);

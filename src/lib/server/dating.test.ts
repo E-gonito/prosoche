@@ -10,7 +10,13 @@ import {
 	addDatingPerson,
 	bestDayOfWeek,
 	gatherInsightsSource,
-	likeOdds,
+	addLike,
+	exportLikes,
+	importLikes,
+	loadLikes,
+	loadTypeNote,
+	saveTypeNote,
+	updateLike,
 	loadDatingPerson,
 	loadDay,
 	loadLedger,
@@ -231,20 +237,134 @@ describe('People', () => {
 	});
 });
 
-describe('likeOdds', () => {
-	it('has nothing to say when no like carries a chance', () => {
-		expect(likeOdds([{ stage: 'talking', chance: null }])).toBeNull();
+/** A like exactly as the app wrote one before the record grew: stage, day and chance, nothing else. */
+const oldLike = (day: string, chance: number) =>
+	`---\ntype: person\napp: \nage: \nplace: \njob: \nstage: liked\nliked: ${day}\nchance: ${chance}\n---\n\n# Someone\n`;
+const read = async (name: string) => (await vault.read(`${PEOPLE_FOLDER}/${name}.md`, { scope: 'private' })).content;
+
+describe('likes', () => {
+	const TODAY = '2026-10-02';
+
+	it('migrates every existing like: pending, forecasts kept, a 0 clamped to 2, and nothing else in the note changes', async () => {
+		const live: Array<[string, string, number]> = [
+			['A', '2026-09-30', 5], ['B', '2026-09-30', 10], ['C', '2026-09-30', 35], ['D', '2026-10-01', 25],
+			['E', '2026-10-02', 0], ['F', '2026-10-02', 10], ['G', '2026-09-30', 15]
+		];
+		for (const [name, day, chance] of live) await vault.write(`${PEOPLE_FOLDER}/${name}.md`, oldLike(day, chance), undefined, { scope: 'private' });
+		await addDatingPerson(vault, { name: 'Hand', stage: 'matched' });
+
+		const likes = await loadLikes(vault, TODAY);
+		expect(likes.map((l) => [l.label, l.sentDate, l.forecast, l.status])).toEqual(
+			[...live].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0])).map(([n, d, c]) => [n, d, c === 0 ? 2 : c, 'pending'])
+		);
+		for (const [name, day, chance] of live) {
+			const expected = oldLike(day, chance === 0 ? 2 : chance).replace('---\n\n#', 'status: pending\n---\n\n#');
+			expect(await read(name)).toBe(expected);
+		}
+		// A person with no forecast is not a like, and her note is left alone.
+		expect(likes.some((l) => l.label === 'Hand')).toBe(false);
+		// Settling twice writes nothing more.
+		const before = await read('A');
+		await loadLikes(vault, TODAY);
+		expect(await read('A')).toBe(before);
 	});
 
-	it('sets the guesses against who moved past liked', () => {
-		expect(
-			likeOdds([
-				{ stage: 'liked', chance: 20 },
-				{ stage: 'matched', chance: 60 },
-				{ stage: 'ended', chance: 70 },
-				{ stage: 'dating', chance: null }
-			])
-		).toEqual({ rated: 3, meanChance: 0.5, expected: 1.5, replied: 2, waiting: 1 });
+	it('supplies a missing day from the note, marked migrated', async () => {
+		await vault.write(`${PEOPLE_FOLDER}/Undated.md`, '---\ntype: person\nstage: liked\nchance: 20\n---\n', undefined, { scope: 'private' });
+		const [like] = await loadLikes(vault, TODAY);
+		expect(like).toMatchObject({ forecast: 20, sentDateMigrated: true, status: 'pending' });
+		expect(await read('Undated')).toMatch(/liked: "?\d{4}-\d{2}-\d{2}"?\n(status: pending\n)?liked_migrated: true\n/);
+	});
+
+	it.each<[string, number, string]>([
+		['pending for N days stays pending', 7, 'pending'],
+		['pending for N+1 days becomes no, by auto', 8, 'no']
+	])('%s', async (_name, daysAgo, status) => {
+		const sent = new Date(Date.UTC(2026, 9, 2 - daysAgo)).toISOString().slice(0, 10);
+		await vault.write(`${PEOPLE_FOLDER}/Old.md`, oldLike(sent, 10), undefined, { scope: 'private' });
+		const [like] = await loadLikes(vault, TODAY);
+		expect(like.status).toBe(status);
+		if (status === 'no') expect(like).toMatchObject({ resolvedBy: 'auto', resolvedDate: TODAY });
+	});
+
+	it('clamps a forecast of 0 to 2 and of 100 to 98 when logging a like', async () => {
+		const low = await addLike(vault, { label: 'Low', forecast: 0 }, TODAY);
+		const high = await addLike(vault, { label: 'High', forecast: 100 }, TODAY);
+		expect(low.ok && low.like.forecast).toBe(2);
+		expect(high.ok && high.like.forecast).toBe(98);
+		expect(await read('Low')).toContain('chance: 2\n');
+		expect(await read('High')).toContain('chance: 98\n');
+	});
+
+	it('logs a like with its tags, unknown ones left out, and refuses a taken nickname', async () => {
+		const added = await addLike(vault, { label: 'Ivy', forecast: 15, sentDate: '2026-10-01', fitsType: true, age: 27, likedOn: 'prompt', commented: null }, TODAY);
+		expect(added.ok && added.like).toMatchObject({ sentDate: '2026-10-01', fitsType: true, outOfLeague: null, age: 27, likedOn: 'prompt', commented: null, status: 'pending' });
+		const note = await read('Ivy');
+		expect(note).toContain('stage: liked\n');
+		expect(note).not.toMatch(/commented|out_of_league/);
+		expect(await addLike(vault, { label: 'ivy', forecast: 10 }, TODAY)).toMatchObject({ ok: true });
+		expect(await addLike(vault, { label: 'Ivy', forecast: 10 }, TODAY)).toEqual({ ok: false, reason: 'exists' });
+	});
+
+	it('resolves by hand, moving her stage to talking on a yes, and survives a reload', async () => {
+		const added = await addLike(vault, { label: 'Jo', forecast: 30 }, TODAY);
+		if (!added.ok) throw new Error('not added');
+		const yes = await updateLike(vault, 'Jo', { status: 'yes' }, added.like.hash, TODAY);
+		expect(yes.ok && yes.like).toMatchObject({ status: 'yes', resolvedBy: 'manual', resolvedDate: TODAY });
+		expect(await read('Jo')).toContain('stage: talking\n');
+
+		// A stale hash writes nothing.
+		expect(await updateLike(vault, 'Jo', { status: 'no' }, added.like.hash, TODAY)).toEqual({ ok: false, reason: 'conflict' });
+
+		// A fresh Vault over the same folder is a reload: everything is still there.
+		const again = new Vault(root);
+		const [like] = await loadLikes(again, TODAY);
+		await again.close();
+		expect(like).toMatchObject({ label: 'Jo', forecast: 30, status: 'yes', resolvedBy: 'manual' });
+	});
+
+	it('resolves a pending like to yes when her stage moves to one that means she replied, and not for matched', async () => {
+		await addLike(vault, { label: 'Kit', forecast: 10 }, TODAY);
+		await setStage(vault, 'Kit', 'matched', TODAY);
+		expect((await loadLikes(vault, TODAY))[0].status).toBe('pending');
+		await setStage(vault, 'Kit', 'talking', TODAY);
+		expect((await loadLikes(vault, TODAY))[0]).toMatchObject({ status: 'yes', resolvedBy: 'manual' });
+	});
+
+	it('exports every record and imports it back, and takes the old shape too, never deleting', async () => {
+		await addLike(vault, { label: 'Lou', forecast: 40, fitsType: false }, TODAY);
+		const exported = await exportLikes(vault, TODAY);
+		expect(exported).toMatchObject({ format: 'prosoche-likes', outcome: 'she replies after matching' });
+		expect(Object.keys(exported.records[0]).sort()).toEqual(
+			['age', 'commented', 'fitsType', 'forecast', 'id', 'label', 'likedOn', 'notes', 'outOfLeague', 'resolvedBy', 'resolvedDate', 'sentDate', 'sentDateMigrated', 'status'].sort()
+		);
+		expect(await importLikes(vault, exported, TODAY)).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
+
+		const old = [
+			{ name: 'Mo', liked: '2026-10-01', chance: 0, stage: 'liked' },
+			{ name: 'Lou', chance: 40, out_of_league: true },
+			{ name: 'Nameless' },
+			{ name: 'Ned', liked: '2026-09-29', chance: 60, stage: 'dating' }
+		];
+		const report = await importLikes(vault, old, TODAY);
+		expect(report).toMatchObject({ created: 2, updated: 1, unchanged: 0 });
+		expect(report.ok && report.problems).toHaveLength(1);
+
+		const byName = Object.fromEntries((await loadLikes(vault, TODAY)).map((l) => [l.label, l]));
+		expect(byName.Mo).toMatchObject({ forecast: 2, status: 'pending', sentDate: '2026-10-01' });
+		expect(byName.Ned).toMatchObject({ forecast: 60, status: 'yes' });
+		// Lou keeps what the import did not say (fitsType) and gains what it did.
+		expect(byName.Lou).toMatchObject({ fitsType: false, outOfLeague: true, forecast: 40 });
+	});
+
+	it('reads and saves the type note whole, refusing a stale save', async () => {
+		const empty = await loadTypeNote(vault);
+		expect(empty).toMatchObject({ exists: false, html: '' });
+		expect(await saveTypeNote(vault, '# My type\n\n- Wanting children\n', empty.hash)).toEqual({ ok: true });
+		const saved = await loadTypeNote(vault);
+		expect(saved.html).toContain('Wanting children');
+		expect(await saveTypeNote(vault, 'other', empty.hash)).toEqual({ ok: false, reason: 'conflict' });
+		expect((await vault.read('Private/Dating/Type.md')).exists).toBe(false);
 	});
 });
 

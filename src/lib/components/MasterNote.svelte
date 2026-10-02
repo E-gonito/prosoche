@@ -10,6 +10,10 @@
 	 * allowed here. A save that meets a newer version writes nothing and says
 	 * so, keeping what was typed; a missing note offers to be written, and the
 	 * first save creates it.
+	 *
+	 * `saveTo` is the endpoint the save goes to, `/api/note` unless the note
+	 * is one only its own module may write (the type note under `Private/`);
+	 * `empty` and `action` are what a missing note says and offers.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
@@ -19,8 +23,11 @@
 		exists,
 		raw,
 		hash,
-		html
-	}: { path: string; exists: boolean; raw: string; hash: string; html: string } = $props();
+		html,
+		saveTo = '/api/note',
+		empty = 'No overview yet: what this workspace is for, who is involved, what matters now.',
+		action = 'Write an overview'
+	}: { path: string; exists: boolean; raw: string; hash: string; html: string; saveTo?: string; empty?: string; action?: string } = $props();
 
 	let editing = $state(false);
 	let text = $state('');
@@ -39,7 +46,7 @@
 	async function save() {
 		saving = true;
 		problem = '';
-		const result = await api('/api/note', { path, content: text, expectedHash: openedWith }, { method: 'PUT' });
+		const result = await api(saveTo, { path, content: text, expectedHash: openedWith }, { method: 'PUT' });
 		saving = false;
 		if (result.ok) {
 			editing = false;
@@ -66,7 +73,7 @@
 		<textarea
 			class="field"
 			data-testid="master-note-text"
-			aria-label="Overview.md"
+			aria-label={path.split('/').pop()}
 			bind:value={text}
 			use:focus
 			rows="14"
@@ -88,8 +95,8 @@
 		<div class="prose">{@html html}</div>
 		<button class="btn small" data-testid="master-note-edit" onclick={edit}>Edit</button>
 	{:else}
-		<p class="empty">{exists ? `${path} is empty.` : 'No overview yet: what this workspace is for, who is involved, what matters now.'}</p>
-		<button class="btn small" data-testid="master-note-edit" onclick={edit}>Write an overview</button>
+		<p class="empty">{exists ? `${path} is empty.` : empty}</p>
+		<button class="btn small" data-testid="master-note-edit" onclick={edit}>{action}</button>
 	{/if}
 </div>
 
