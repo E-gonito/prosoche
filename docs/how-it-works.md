@@ -742,11 +742,14 @@ be exactly the leak this module exists to prevent.
 On a vault with no `Private/` folder, Date is left out of the rail and the
 phone's More sheet, since it would have nowhere to keep anything.
 
-Log is a day stepper and four counters — likes sent, matches (from your own
+Log is a day stepper and three counters — likes sent, matches (from your own
 likes, whenever they arrived — liking back an incoming like is not counted as
-one, or the match rate would read higher than it really is), how many of
-those fit your type, and likes received — plus optional notes. The button
-reads "Save as a zero day" when every counter is still zero. Stepping to a day
+one, or the match rate would read higher than it really is) and likes
+received — plus optional notes. Whether she fits your type is asked once per
+like, in the like form below, not counted per day: a `type::` count already
+on a day's line is kept as it is when that day is saved, and a new line
+writes `type:: 0`. The button reads "Save as a zero day" when every counter
+is still zero. Stepping to a day
 that already has a line loads it back; saving never goes past today.
 
 Stats shows totals and rates over the last 7 days, the last 30, and all time,

@@ -130,8 +130,6 @@ interface RangeStats {
 	totals: LedgerCounts;
 	/** matches / sent. Null when nothing was sent, rather than zero. */
 	matchRate: number | null;
-	/** type / matches. Null when there were no matches. */
-	typeRate: number | null;
 	receivedPerDay: number | null;
 }
 
@@ -168,7 +166,6 @@ export function rangeStats(entries: LedgerLine[], range: RangeKind, asOf: DayKey
 		days,
 		totals,
 		matchRate: totals.sent > 0 ? totals.matches / totals.sent : null,
-		typeRate: totals.matches > 0 ? totals.type / totals.matches : null,
 		receivedPerDay: days > 0 ? totals.received / days : null
 	};
 }

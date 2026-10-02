@@ -17,7 +17,6 @@
 		days: number;
 		totals: { sent: number; matches: number; type: number; received: number };
 		matchRate: number | null;
-		typeRate: number | null;
 		receivedPerDay: number | null;
 	}
 
@@ -88,10 +87,8 @@
 			<div class="kv">
 				<b>Likes sent</b><span class="num">{r.totals.sent}</span>
 				<b>Matches</b><span class="num">{r.totals.matches}</span>
-				<b>Your type</b><span class="num">{r.totals.type}</span>
 				<b>Likes received</b><span class="num">{r.totals.received}</span>
 				<b>Match rate</b><span class="num" data-testid="dating-match-rate-{card.key}">{pct(r.matchRate)}</span>
-				<b>Type rate</b><span class="num">{pct(r.typeRate)}</span>
 				<b>Received / day</b><span class="num">{per(r.receivedPerDay)}</span>
 			</div>
 		</div>
@@ -101,7 +98,7 @@
 <p class="hint definitions">
 	<b>Match rate</b> is matches divided by likes sent, counting only matches from your own likes — liking back an
 	incoming like is not a match "from" a like you sent, so it is excluded here and would otherwise read the rate
-	higher than it is. <b>Type rate</b> is, of those matches, how many you marked as your type. <b>Received / day</b>
+	higher than it is. <b>Received / day</b>
 	is incoming likes divided by the days the range covers.
 </p>
 

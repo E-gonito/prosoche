@@ -120,7 +120,7 @@ describe('Log: loadDay and saveDay', () => {
 });
 
 describe('Stats: rangeStats, weeklyTrend, bestDayOfWeek', () => {
-	it('computes match rate and type rate as defined: from your own likes', async () => {
+	it('computes the match rate as defined: from your own likes', async () => {
 		const { entries } = await stageLedger(vault, [
 			{ day: '2026-09-28', sent: 10, matches: 5, type: 2, received: 3 },
 			{ day: '2026-09-29', sent: 10, matches: 5, type: 3, received: 1 }
@@ -128,14 +128,12 @@ describe('Stats: rangeStats, weeklyTrend, bestDayOfWeek', () => {
 		const stats = rangeStats(entries, '7d', '2026-09-29');
 		expect(stats.totals).toEqual({ sent: 20, matches: 10, type: 5, received: 4 });
 		expect(stats.matchRate).toBe(0.5);
-		expect(stats.typeRate).toBe(0.5);
 		expect(stats.days).toBe(7);
 		expect(stats.receivedPerDay).toBeCloseTo(4 / 7);
 	});
 
 	it('reads an empty range as null rates, not zero or NaN', () => {
 		expect(rangeStats([], '7d', '2026-09-29').matchRate).toBeNull();
-		expect(rangeStats([], '7d', '2026-09-29').typeRate).toBeNull();
 	});
 
 	it('buckets a weekly trend into 7-day blocks ending on the given day', async () => {

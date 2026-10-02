@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { test, expect } from '@playwright/test';
 import { TODAY, VAULT, vaultFile, lineWith } from './helpers';
@@ -16,7 +17,8 @@ test.describe.serial('Date', () => {
 
 		await tap(page, 'dating-sent-plus', 3);
 		await tap(page, 'dating-matches-plus', 2);
-		await tap(page, 'dating-type-plus', 1);
+		// No type counter: whether she fits is asked per like instead.
+		await expect(page.getByTestId('dating-type-plus')).toHaveCount(0);
 		await tap(page, 'dating-received-plus', 1);
 		await page.getByTestId('dating-notes').fill('good energy today');
 
@@ -25,7 +27,7 @@ test.describe.serial('Date', () => {
 		await expect(page.getByTestId('dating-save')).toHaveText('Saved');
 
 		expect(lineWith(LEDGER, TODAY).text).toBe(
-			`- ${TODAY} sent:: 3 matches:: 2 type:: 1 received:: 1 notes:: good energy today`
+			`- ${TODAY} sent:: 3 matches:: 2 type:: 0 received:: 1 notes:: good energy today`
 		);
 		// The line notes.mjs seeded is still there, untouched.
 		expect(vaultFile(LEDGER)).toContain('- 2026-09-01 sent:: 3 matches:: 1');
@@ -41,7 +43,7 @@ test.describe.serial('Date', () => {
 		await expect(page.getByTestId('dating-save')).toHaveText('Saved');
 
 		expect(lineWith(LEDGER, TODAY).text).toBe(
-			`- ${TODAY} sent:: 4 matches:: 2 type:: 1 received:: 1 notes:: good energy today`
+			`- ${TODAY} sent:: 4 matches:: 2 type:: 0 received:: 1 notes:: good energy today`
 		);
 		expect(vaultFile(LEDGER)).toContain('- 2026-09-01 sent:: 3 matches:: 1');
 	});
@@ -51,6 +53,18 @@ test.describe.serial('Date', () => {
 		await expect(page.getByTestId('dating-sent-value')).toHaveText('3');
 		await expect(page.getByTestId('dating-matches-value')).toHaveText('1');
 		await expect(page.getByTestId('dating-save')).toHaveText('Save');
+	});
+
+	test('a type count already in the ledger survives a save of that day', async ({ page }) => {
+		const old = '- 2026-09-02 sent:: 0 matches:: 0 type:: 2 received:: 0';
+		const before = vaultFile(LEDGER);
+		writeFileSync(`${VAULT}/${LEDGER}`, before.replace(/^(- 2026-09-01 .*)$/m, `$1\n${old}`));
+
+		await page.goto('/date?day=2026-09-02');
+		await page.getByTestId('dating-notes').fill('kept');
+		await page.getByTestId('dating-save').click();
+		await expect(page.getByTestId('dating-save')).toHaveText('Saved');
+		expect(lineWith(LEDGER, '2026-09-02').text).toBe(`${old} notes:: kept`);
 	});
 
 	test('shows the right match rate on Stats', async ({ page }) => {

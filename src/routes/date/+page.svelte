@@ -1,7 +1,9 @@
 <script lang="ts">
 	/**
-	 * Log: a day stepper and four big counters, exactly the artifact's shape,
-	 * warmed to our tokens. Stepping the day re-loads it from the server (a
+	 * Log: a day stepper and three big counters: likes sent, matches and likes
+	 * received. Whether she fits your type is asked per like, in the quick add
+	 * below, so the day keeps no type count of its own; a count already in the
+	 * ledger is carried through a save unchanged. Stepping the day re-loads it from the server (a
 	 * plain link, so it works with no JavaScript too); editing a counter is
 	 * local until Save writes it in one request.
 	 *
@@ -24,10 +26,9 @@
 		received: number;
 	}
 
-	const COUNTERS: Array<{ key: keyof Counts; dot: string; title: string; hint: string }> = [
+	const COUNTERS: Array<{ key: Exclude<keyof Counts, 'type'>; dot: string; title: string; hint: string }> = [
 		{ key: 'sent', dot: 'sent', title: 'Likes sent', hint: 'Outgoing likes you sent' },
 		{ key: 'matches', dot: 'matches', title: 'Matches', hint: 'From your likes, whenever they arrived' },
-		{ key: 'type', dot: 'type', title: 'Your type', hint: 'Of those matches, how many fit your type' },
 		{ key: 'received', dot: 'received', title: 'Likes received', hint: 'Incoming likes' }
 	];
 
@@ -50,7 +51,7 @@
 		problem = '';
 	});
 
-	const isZero = $derived(counts.sent === 0 && counts.matches === 0 && counts.type === 0 && counts.received === 0);
+	const isZero = $derived(counts.sent === 0 && counts.matches === 0 && counts.received === 0);
 	const isToday = $derived(data.day === data.today);
 	const prevDay = $derived(shiftDayLabel(data.day, -1));
 	const nextDay = $derived(shiftDayLabel(data.day, 1));
