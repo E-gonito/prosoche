@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { lineWith, resetVault, TODAY, vaultFile, waitForFile } from './helpers';
+import { writeFileSync } from 'node:fs';
+import { lineWith, resetVault, TODAY, VAULT, vaultFile, waitForFile } from './helpers';
 
 /**
  * Study, against `fixtures/study.mjs`: one subject, the base vault's `study`
@@ -92,13 +93,74 @@ test.describe('Subject overview', () => {
 	});
 
 
-	test('shows each goal’s milestones, hours and reading', async ({ page }) => {
-		const aws = page.getByTestId('goal').filter({ hasText: AWS });
-		await expect(aws).toContainText('1 of 2');
-		await expect(aws).toContainText('Two practice exams');
-		await expect(aws.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes())} this week`);
-		await expect(aws.getByTestId('goal-reading')).toContainText('AWS whitepapers');
-		await expect(page.getByTestId('goal').filter({ hasText: PAPERS })).toContainText('0 of 2');
+	test('shows one goal, the first unfinished, as the step to do now and the steps in order', async ({ page }) => {
+		const focus = page.getByTestId('focus');
+		await expect(page.getByTestId('goal-pill')).toHaveCount(2);
+		await expect(page.getByTestId('goal-pill').first()).toHaveAttribute('aria-current', 'true');
+		await expect(focus.getByRole('heading')).toHaveText(AWS);
+		await expect(focus).not.toContainText(PAPERS);
+		await expect(focus.getByTestId('focus-progress')).toHaveText('1 of 2 steps done');
+		await expect(focus.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes())} on it this week`);
+		await expect(focus.getByTestId('step-now')).toContainText('step 2 of 2');
+		await expect(focus.getByTestId('step-now')).toContainText('Two practice exams');
+		await expect(focus.getByTestId('focus-resources')).toContainText('AWS whitepapers');
+		await expect(focus.getByTestId('step')).toHaveText([/Finish the networking module/, /Two practice exams/]);
+	});
+
+	test('Done ticks the step now, and finishing the goal moves on to the next unfinished one', async ({ page }) => {
+		const before = vaultFile(GOALS);
+		const { index } = lineWith(GOALS, 'Two practice exams');
+		await page.getByTestId('step-done').click();
+
+		await expect(page.getByTestId('focus').getByRole('heading')).toHaveText(PAPERS);
+		await expect(page.getByTestId('step-now')).toContainText('Paper one');
+		expect(vaultFile(GOALS)).toBe(before.split('\n').map((l, i) => (i === index ? '- [x] Two practice exams 📅 2026-11-20' : l)).join('\n'));
+	});
+
+	test('a goal picked and finished says so, and offers the next', async ({ page }) => {
+		await page.getByTestId('goal-pill').filter({ hasText: PAPERS }).click();
+		await expect(page.getByTestId('step-now')).toContainText('Paper one');
+		await page.getByTestId('step-done').click();
+		await expect(page.getByTestId('step-now')).toContainText('Paper two');
+		await page.getByTestId('step-done').click();
+
+		await expect(page.getByTestId('goal-finished')).toContainText('Every step of this goal is done.');
+		await page.getByTestId('next-goal').click();
+		await expect(page.getByTestId('focus').getByRole('heading')).toHaveText(AWS);
+		expect(vaultFile(GOALS)).toContain('---\nweekly_hours: 6\nfocus: Pass AWS Solutions Architect\n---\n');
+	});
+
+	test('picking a goal makes it the focus, adding only its focus: line', async ({ page }) => {
+		const before = vaultFile(GOALS);
+		await page.getByTestId('goal-pill').filter({ hasText: PAPERS }).click();
+
+		await expect(page.getByTestId('focus').getByRole('heading')).toHaveText(PAPERS);
+		await expect(page.getByTestId('goal-pill').nth(1)).toHaveAttribute('aria-current', 'true');
+		expect(vaultFile(GOALS)).toBe(before.replace('weekly_hours: 6\n', 'weekly_hours: 6\nfocus: Read three papers a month\n'));
+
+		// Still the focus on the next visit.
+		await page.reload();
+		await expect(page.getByTestId('focus').getByRole('heading')).toHaveText(PAPERS);
+	});
+
+	test('a goal not in focus shows when its next step is due within the week', async ({ page }) => {
+		writeFileSync(`${VAULT}/${GOALS}`, vaultFile(GOALS).replace('- [ ] Paper one', `- [ ] Paper one 📅 ${shift(TODAY, -1)}`));
+		await page.reload();
+		const due = page.getByTestId('goal-pill').filter({ hasText: PAPERS }).getByTestId('goal-due');
+		await expect(due).toHaveText('Yesterday');
+		await expect(due).toHaveClass(/late/);
+		await expect(page.getByTestId('goal-pill').filter({ hasText: AWS }).getByTestId('goal-due')).toHaveCount(0);
+	});
+
+	test('Log time logs a session against the goal in focus', async ({ page }) => {
+		await page.getByTestId('log-open').click();
+		await page.getByTestId('log-minutes').fill('25');
+		await page.getByTestId('log-note').fill('one practice exam');
+		await page.getByTestId('log-save').click();
+
+		await expect(page.getByTestId('step-now')).toContainText('Logged 25m.');
+		expect(vaultFile(SESSIONS)).toContain(`\n- ${TODAY} 25m [[Goals#${AWS}]] one practice exam\n`);
+		await expect(page.getByTestId('goal-hours')).toHaveText(`${formatDuration(weekMinutes() + 25)} on it this week`);
 	});
 
 	test('shows this week’s time against the weekly target, and the streak', async ({ page }) => {
@@ -263,11 +325,27 @@ test.describe('Phone layout', () => {
 		await expect(page).toHaveURL('/study');
 		await expect(page.getByTestId('subject-card')).toBeVisible();
 	});
+
+	test('a subject’s Overview puts the step to do now on the first screen, with room to tap', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto(BASE);
+
+		const done = page.getByTestId('step-done');
+		await expect(done).toBeInViewport();
+		expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(40);
+		// The goals row scrolls on its own; the page never scrolls sideways.
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+	});
 });
 
 test.describe('A subject’s Notes tab', () => {
 	test.beforeEach(async ({ request }) => {
 		await resetVault(request);
+	});
+
+	test('lists the folders its notes come from, to edit', async ({ page }) => {
+		await page.goto('/study/study/notes');
+		await expect(page.getByTestId('folder-chips')).toContainText('Study/');
 	});
 
 	test('browses the subject’s folders and reads a note in place', async ({ page }) => {

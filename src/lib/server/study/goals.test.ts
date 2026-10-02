@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { addGoal, addMilestone, findGoal, goalLink, goalOf, goalRefs, goalTarget, parseGoals, withNewGoal, withNewMilestone } from './goals';
+import { addGoal, addMilestone, findGoal, setFocus, goalLink, goalOf, goalRefs, goalTarget, parseGoals, withNewGoal, withNewMilestone } from './goals';
 
 const NOTE = [
 	'---',
@@ -22,6 +22,12 @@ const NOTE = [
 describe('parseGoals', () => {
 	it('reads the weekly hours target from the frontmatter', () => {
 		expect(parseGoals(NOTE).weeklyHours).toBe(6);
+	});
+
+	it('reads the focus from the frontmatter, and none when it is blank or missing', () => {
+		expect(parseGoals('---\nfocus: Read three papers a month\n---\n## Read three papers a month\n').focus).toBe('Read three papers a month');
+		expect(parseGoals('---\nfocus:\n---\n## A goal\n').focus).toBeNull();
+		expect(parseGoals(NOTE).focus).toBeNull();
 	});
 
 	it('has no weekly target when the note names none', () => {
@@ -62,7 +68,7 @@ describe('parseGoals', () => {
 	});
 
 	it('is empty for a note with no goals yet', () => {
-		expect(parseGoals('')).toEqual({ weeklyHours: null, goals: [] });
+		expect(parseGoals('')).toEqual({ weeklyHours: null, focus: null, goals: [] });
 	});
 
 	it('ends a goal at a deeper heading too, matching where appendUnderHeading would insert', () => {
@@ -202,5 +208,22 @@ describe('reading and writing the vault', () => {
 		const result = await addMilestone(vault, PATH, 'First', 'b', '2026-11-01');
 		expect(result).toMatchObject({ ok: true, task: { path: PATH, text: 'b', due: '2026-11-01', status: 'todo' } });
 		expect((await vault.read(PATH)).content).toBe('## First\n- [ ] a\n- [ ] b 📅 2026-11-01\n');
+	});
+
+	it('sets the focus as one frontmatter line, spelt as the heading is, leaving the goals as they were', async () => {
+		await vault.write(PATH, NOTE);
+		expect(await setFocus(vault, PATH, 'read three papers a month')).toEqual({ ok: true });
+		const after = (await vault.read(PATH)).content;
+		expect(after).toBe(NOTE.replace('weekly_hours: 6\n', 'weekly_hours: 6\nfocus: Read three papers a month\n'));
+
+		expect(await setFocus(vault, PATH, 'Pass AWS Solutions Architect')).toEqual({ ok: true });
+		expect((await vault.read(PATH)).content).toBe(NOTE.replace('weekly_hours: 6\n', 'weekly_hours: 6\nfocus: Pass AWS Solutions Architect\n'));
+	});
+
+	it('refuses a focus on a goal the note does not have', async () => {
+		await vault.write(PATH, NOTE);
+		expect(await setFocus(vault, PATH, 'Learn Rust')).toEqual({ ok: false, reason: 'no-goal' });
+		expect((await vault.read(PATH)).content).toBe(NOTE);
+		expect(await setFocus(vault, 'Study/None/Goals.md', 'Learn Rust')).toEqual({ ok: false, reason: 'no-goal' });
 	});
 });

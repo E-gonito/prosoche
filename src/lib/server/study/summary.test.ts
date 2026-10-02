@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
 import { readSubject } from './subjects';
-import { progressByGoal, studySummary, subjectCard } from './summary';
+import { focusOn, progressByGoal, studySummary, subjectCard } from './summary';
 
 const TODAY = '2026-09-29'; // a Tuesday; the week starts on the 28th
 
@@ -65,6 +65,41 @@ describe('a subject’s summary', () => {
 
 
 
+
+	it('focuses on the first goal with a step open, as steps to take', async () => {
+		const focus = focusOn(await studySummary(vault, CS), TODAY)!;
+		expect(focus).toMatchObject({ name: 'Networks', index: 0, chosen: false, done: 1, total: 2, weekMinutes: 30, daysLeft: null });
+		expect(focus.steps.map((s) => [s.task.text, s.state, s.daysLeft])).toEqual([
+			['TCP', 'done', null],
+			['DNS', 'now', 11]
+		]);
+		// Reading before To read; Done and items for other goals are left out.
+		expect(focus.resources.map((r) => [r.title, r.group])).toEqual([
+			['TCP/IP Illustrated', 'Reading'],
+			['Queued', 'To read']
+		]);
+	});
+
+	it('skips a finished goal, and follows focus: when it names a goal that is there', async () => {
+		await vault.write('Study/CS/Goals.md', '## Done already\n- [x] all of it\n\n## Networks\ntarget:: 2026-09-20\n- [-] dropped\n- [ ] DNS 📅 2026-09-27\n- [ ] BGP\n\n## Operating Systems\n');
+		const picked = focusOn(await studySummary(vault, CS), TODAY)!;
+		expect(picked).toMatchObject({ name: 'Networks', index: 1, chosen: false, total: 2, daysLeft: -9 });
+		expect(picked.steps.map((s) => [s.task.text, s.state, s.daysLeft])).toEqual([
+			['dropped', 'skipped', null],
+			['DNS', 'now', -2],
+			['BGP', 'later', null]
+		]);
+
+		await vault.write('Study/CS/Goals.md', '---\nfocus: operating systems\n---\n## Networks\n- [ ] DNS\n\n## Operating Systems\n');
+		expect(focusOn(await studySummary(vault, CS), TODAY)).toMatchObject({ name: 'Operating Systems', index: 1, chosen: true, steps: [] });
+
+		await vault.write('Study/CS/Goals.md', '---\nfocus: Retired goal\n---\n## Networks\n- [x] DNS\n');
+		expect(focusOn(await studySummary(vault, CS), TODAY)).toMatchObject({ name: 'Networks', chosen: false });
+	});
+
+	it('has no focus without goals', async () => {
+		expect(focusOn(await studySummary(vault, FIL), TODAY)).toBeNull();
+	});
 
 	it('keeps subjects apart', async () => {
 		const fil = await studySummary(vault, FIL);

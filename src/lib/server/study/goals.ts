@@ -5,6 +5,7 @@
  *
  *     ---
  *     weekly_hours: 6
+ *     focus: Pass AWS Solutions Architect
  *     ---
  *     ## Pass AWS Solutions Architect
  *     target:: 2026-12-15
@@ -14,7 +15,8 @@
  * A `## ` heading names a goal; an optional `target::` line beneath it is the
  * day the whole goal is due; every task line under it, up to the next heading
  * of any level, is a milestone. `weekly_hours:` in the note's frontmatter is
- * this section's only other field, read by Overview for the week's target.
+ * read by Overview for the week's target, and `focus:` names the goal
+ * Overview shows, the one being worked on now (see `setFocus`).
  *
  * A milestone is not a shape of its own: it is a `Task`, identified by `path`
  * and `line` exactly as `/api/task` expects, so ticking one is the ordinary
@@ -25,6 +27,7 @@
  */
 
 import { parseNote } from '../parse/note';
+import { setFrontmatterField } from '../parse/frontmatter';
 import { FIELD, parseTaskLine, toTask } from '../parse/task';
 import { appendUnderHeading } from '../sections';
 import { slugify } from '$lib/shared/slug';
@@ -46,6 +49,8 @@ export interface Goal {
 export interface GoalsNote {
 	/** `weekly_hours:` from the frontmatter, or null when it names none. */
 	weeklyHours: number | null;
+	/** `focus:` from the frontmatter, as written, or null when it names none. */
+	focus: string | null;
 	goals: Goal[];
 }
 
@@ -65,6 +70,7 @@ const FENCE = /^[ \t]*(```|~~~)/;
 export function parseGoals(content: string, path = ''): GoalsNote {
 	const { frontmatter } = parseNote(content, path);
 	const weeklyHours = typeof frontmatter.weekly_hours === 'number' ? frontmatter.weekly_hours : null;
+	const focus = typeof frontmatter.focus === 'string' && frontmatter.focus.trim() ? frontmatter.focus.trim() : null;
 
 	const lines = content.split('\n');
 	const headings: Array<{ level: number; title: string; line: number }> = [];
@@ -100,7 +106,7 @@ export function parseGoals(content: string, path = ''): GoalsNote {
 			return { title: h.title, line: h.line, target, milestones };
 		});
 
-	return { weeklyHours, goals };
+	return { weeklyHours, focus, goals };
 }
 
 /**
@@ -206,6 +212,21 @@ export async function addGoal(vault: Vault, path: string, title: string, target:
 	const note = await vault.read(path);
 	const content = withNewGoal(note.content, title, target);
 	const written = await vault.write(path, content, note.exists ? note.hash : undefined);
+	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
+}
+
+/**
+ * Make `goal` the one Overview shows, by writing it as `focus:` in the
+ * note's frontmatter. Only that line changes (or is added); the goals
+ * themselves are never touched. Refuses a goal that is not in the note, so
+ * a stale page cannot point the focus at a heading that has gone. The goal
+ * is matched as `findGoal` matches, and written as its heading spells it.
+ */
+export async function setFocus(vault: Vault, path: string, goal: string): Promise<GoalWrite | { ok: false; reason: 'no-goal' }> {
+	const note = await vault.read(path);
+	const found = findGoal(goalRefs(parseGoals(note.content, path)), goal);
+	if (!note.exists || !found) return { ok: false, reason: 'no-goal' };
+	const written = await vault.write(path, setFrontmatterField(note.content, 'focus', found.name), note.hash);
 	return written.ok ? { ok: true } : { ok: false, reason: 'conflict' };
 }
 

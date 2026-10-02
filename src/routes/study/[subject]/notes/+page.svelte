@@ -6,9 +6,11 @@
 	 * list of matching note names.
 	 *
 	 * Read-only: editing stays in Obsidian. The note links on to the vault-wide
-	 * reader.
+	 * reader. Below it, which folders the subject's notes come from, to edit.
 	 */
 	import FileTree from '$lib/components/FileTree.svelte';
+	import FolderEditor from '$lib/components/FolderEditor.svelte';
+	import { api } from '$lib/client/api';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import { noteHref } from '$lib/shared/links';
 
@@ -33,8 +35,8 @@
 
 	{#if data.tree.length === 0}
 		<p class="callout" data-testid="subject-no-notes">
-			<b>No folders yet.</b> This subject's folders ({data.folders.join(', ') || 'none'}) hold no notes. Add a folder on
-			<a href="/study/{data.subject.slug}">its Overview</a> to see its notes here.
+			<b>No folders yet.</b> This subject's folders ({data.folders.join(', ') || 'none'}) hold no notes. Add a folder
+			below to see its notes here.
 		</p>
 	{:else}
 		<div class="layout">
@@ -73,6 +75,15 @@
 			</article>
 		</div>
 	{/if}
+
+	<p class="label">Folders</p>
+	<FolderEditor
+		slug={data.subject.slug}
+		folders={data.folders}
+		options={data.vaultFolders}
+		save={(folders) => api('/api/study/subject', { subject: data.subject.slug, folders }, { method: 'PATCH' })}
+		hint="Notes in these folders count as this subject's, and this tab shows them."
+	/>
 </div>
 
 <style>

@@ -15,7 +15,9 @@
 		data.study.weeks.map((w) => ({ key: w.start, label: weekLabel(w.start), value: w.minutes, text: formatDuration(w.minutes, ' ') }))
 	);
 
-	let goal = $state('');
+	/** The goal in focus, so a sitting is logged against what is being worked on unless changed. */
+	const focusGoal = () => data.study.focus?.name ?? '';
+	let goal = $state(focusGoal());
 	let minutes = $state('');
 	let note = $state('');
 	let saving = $state(false);
@@ -30,7 +32,7 @@
 		const result = await api('/api/study/session', { subject: data.subject.slug, day: data.today, minutes: mins, goal: goal || null, note: note.trim() });
 		saving = false;
 		if (result.ok) {
-			goal = '';
+			goal = focusGoal();
 			minutes = '';
 			note = '';
 			await invalidateAll();

@@ -446,7 +446,7 @@ names (`Study/<name>` when it names none): `Goals.md`, `Reading List.md`
 and `Sessions.md`. Its notes come from every folder it names, so reference
 notes kept elsewhere can sit beside the home as further folders, and, when
 the file has a `tag:`, from any note carrying that tag. Flashcards are not
-Study's; they are the glossaries' (see Flashcards). Folders, at the foot of a subject's page, adds or removes those:
+Study's; they are the glossaries' (see Flashcards). Folders, at the foot of a subject's Notes tab, adds or removes those:
 the home stays first and never moves, and each change rewrites only the
 `folders:` lines. The heading's Edit changes the name, description, colour
 and tag in the same file, and Delete, after asking in place, removes that
@@ -492,11 +492,26 @@ list, the headings of `Goals.md` in order. A goal is matched by its name
 ignoring case and punctuation, and one naming a goal that is no longer in
 `Goals.md` counts as belonging to none.
 
-**Overview** shows each goal with its milestones done out of its total and
-what is next, the hours logged on it this week and what is in the Reading
-group for it; then whatever points at no goal. Above them are this week's
-time against a `weekly_hours:` target from `Goals.md`'s frontmatter, and the
-streak of consecutive days with a session logged.
+**Overview shows one goal at a time**, as the steps it takes. The goal is
+the one `focus:` in `Goals.md`'s frontmatter names; with none, or one no
+longer there, it is the first goal with a step still open, so the order of
+the headings is the order of priority, and finishing a goal moves on to the
+next. Above it the goals sit in a row, numbered in that order with their
+steps done out of total; picking one writes it as `focus:` (that line only),
+so it stays the focus on every device until another is picked. A goal not
+in focus whose next step is due within a week shows that date on its
+button, red once it has passed.
+
+The card gives the goal's target and the days left, its steps done and its
+hours this week, then **Now**: the first open milestone, its due date and
+how far off it is, with Done, which ticks it through the ordinary task
+rewrite, and Log time, which logs a session against this goal. Below are
+the reading items for the goal, Reading before To read, and every step in
+order, each tickable, a cancelled one shown struck through and left out of
+the count. A goal picked and finished says so and offers the next. Above it
+all is this week's time against a `weekly_hours:` target from the same
+frontmatter, and the streak of consecutive days with a session logged. The
+Sessions tab starts its goal picker on the goal in focus.
 
 **Reading list** is `Reading List.md`, which prosoche owns as it owns a
 workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's

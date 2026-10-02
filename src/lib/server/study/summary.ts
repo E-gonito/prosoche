@@ -16,8 +16,9 @@ import { findGoal, goalRefs, readGoals, type Goal, type GoalsNote } from './goal
 import { readReadingList } from './reading';
 import { minutesByGoal, minutesInWeek, monthRange, readSessions, streak, weeklyMinutes, weekStart, type StudySession } from './sessions';
 import { shiftDay } from '../daily';
-import { isDone, isOpen, isSkipped } from '$lib/shared/task';
-import type { GoalRef, ReadingItem, ReadingList } from '$lib/shared/study';
+import { daysBetween } from '$lib/shared/time';
+import { isDone, isOpen, isSkipped, type Task } from '$lib/shared/task';
+import type { FocusStep, GoalRef, ReadingItem, ReadingList, StudyFocus } from '$lib/shared/study';
 import type { Subject } from './subjects';
 import type { Vault } from '../vault/index';
 
@@ -99,6 +100,58 @@ export function progressByGoal(summary: StudySummary, today: string): { goals: G
 	return { goals, unassigned };
 }
 
+/** The reading-list groups a goal's resources come from, in the order shown: what is open first. */
+const RESOURCE_GROUPS = [
+	{ key: 'reading', group: 'Reading' },
+	{ key: 'to read', group: 'To read' }
+] as const;
+
+/**
+ * The one goal Overview shows, laid out as steps to take. Pure.
+ *
+ * The goal is the one `focus:` names in `Goals.md`; when it names none, or
+ * one that is no longer there, it is the first goal, in file order, with a
+ * step still open, so the order of the headings is the order of priority.
+ * When every goal is finished it is the first goal. Null when there are no
+ * goals.
+ *
+ * Its milestones become steps in file order: the first open one is `now`,
+ * the open ones after it `later`, ticked ones `done`, and a cancelled one
+ * `skipped`, out of the count. `daysLeft` is from `today` to the step's own
+ * due date, negative once it has passed. Its resources are the reading
+ * items that name it in Reading, then To read; Paused and Done are left out.
+ */
+export function focusOn(summary: StudySummary, today: string): StudyFocus | null {
+	const { goals: progress } = progressByGoal(summary, today);
+	const goals = summary.goals.goals;
+	if (!goals.length) return null;
+
+	const named = findGoal(summary.goalRefs, summary.goals.focus);
+	const at = named ? summary.goalRefs.indexOf(named) : Math.max(0, goals.findIndex((g) => g.milestones.some(isOpen)));
+	const goal = goals[at];
+	const now = goal.milestones.find(isOpen) ?? null;
+	const steps = goal.milestones.map((task: Task): FocusStep => ({
+		task,
+		state: task === now ? 'now' : isDone(task) ? 'done' : isSkipped(task) ? 'skipped' : 'later',
+		daysLeft: task.due ? daysBetween(today, task.due) : null
+	}));
+	const owner = (written: string | null) => findGoal(summary.goalRefs, written)?.name ?? null;
+	const resources = RESOURCE_GROUPS.flatMap(({ key, group }) =>
+		(summary.reading.groups.find((g) => g.title.trim().toLowerCase() === key)?.items ?? [])
+			.filter((item) => owner(item.goal) === goal.title)
+			.map((item) => ({ ...item, group }))
+	);
+
+	return {
+		...progress[at],
+		index: at,
+		chosen: named !== null,
+		daysLeft: goal.target && /^\d{4}-\d{2}-\d{2}$/.test(goal.target) ? daysBetween(today, goal.target) : null,
+		steps,
+		resources
+	};
+}
+
 /** A subject at a glance, for its card on the Study index. */
 interface SubjectCard {
 	slug: string;
@@ -133,6 +186,7 @@ export function subjectView(summary: StudySummary, today: string) {
 	return {
 		goalRefs: summary.goalRefs,
 		progress,
+		focus: focusOn(summary, today),
 		unassigned,
 		reading: summary.reading,
 		// Newest first, so the log reads like the inbox does.

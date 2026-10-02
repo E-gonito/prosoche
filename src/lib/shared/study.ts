@@ -13,6 +13,8 @@
  * `$lib/shared/flashcards`.
  */
 
+import type { Task } from './task';
+
 /**
  * Which part of the vault a study query covers: a subject's folders and tag.
  * Empty means the whole vault.
@@ -104,6 +106,34 @@ export type ReadingOp =
 	/** `index` is the item's position in the target group once it is there. */
 	| { kind: 'move'; line: number; group: number; index: number }
 	| { kind: 'delete'; line: number };
+
+/** One milestone of the goal in focus, as a step: done, the one to do now, one for later, or skipped. */
+export interface FocusStep {
+	task: Task;
+	state: 'done' | 'now' | 'later' | 'skipped';
+	/** Days from today to the step's due date, negative once it has passed; null with no date. */
+	daysLeft: number | null;
+}
+
+/** The one goal a subject's Overview shows, and what it takes, step by step. */
+export interface StudyFocus extends GoalRef {
+	target: string | null;
+	/** Steps ticked, and all of them but the skipped. */
+	done: number;
+	total: number;
+	/** Minutes logged against it this week. */
+	weekMinutes: number;
+	/** Its place among the goals, 0-based, in file order. */
+	index: number;
+	/** True when `focus:` in `Goals.md` chose it, false when it was picked as the first unfinished. */
+	chosen: boolean;
+	/** Days from today to its `target::`, negative once it has passed; null with none. */
+	daysLeft: number | null;
+	/** Its milestones in file order. */
+	steps: FocusStep[];
+	/** Reading items for it, Reading first, then To read. */
+	resources: Array<ReadingItem & { group: 'Reading' | 'To read' }>;
+}
 
 /** One tab of a subject's own tab bar. Every one always shows. */
 interface StudyTab {
