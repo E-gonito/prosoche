@@ -8,7 +8,15 @@
  * `releaseNew` does the choosing, a card at a time to whichever pool has
  * begun the fewest today, for `dueCards`, so turning another glossary's
  * cards on changes the mix rather than the total. This module also says how
- * many each pool has already begun, which needs a record. Each first review
+ * many each pool has already begun, which needs a record.
+ *
+ * A review left overdue holds back one of the day's new cards, so a day
+ * missed makes the next day lighter in new cards rather than heavier in
+ * everything: the reviews already owed come first, and each one caught up
+ * lets a held card back in the same day. Unseen cards never pile up, since a
+ * day's allowance that goes unused is not carried over.
+ *
+ * Each first review
  * of a card is counted, per pool and day, in one small file:
  *
  *     _hub/.state/new-cards.json
@@ -72,7 +80,8 @@ export async function newCardPlan(vault: Vault, pools: NewCardPool[], day: strin
 }
 
 /**
- * The unseen cards that join today's reviews under `plan`. Pure.
+ * The unseen cards that join today's reviews under `plan`, and how many more
+ * would have joined but for `overdue`. Pure.
  *
  * `unseen` is every card never reviewed that might, in the queue's stable
  * order. Cards are let in one at a time, each to the pool that has begun the
@@ -83,10 +92,15 @@ export async function newCardPlan(vault: Vault, pools: NewCardPool[], day: strin
  * have had. So the choice is stable through the day: a deck that did its
  * five this morning gets none of the ten still to come.
  *
+ * `overdue` is how many reviewed cards were due before today. Each holds
+ * back the last card that would have been let in, down to none; those are
+ * counted as `held`. Because the order is fixed, a held card is the same
+ * card that joins once a review is caught up.
+ *
  * A card in no pool's folder never joins.
  */
-export function releaseNew(plan: NewCardPlan, unseen: Card[]): Set<Card> {
-	const out = new Set<Card>();
+export function releaseNew(plan: NewCardPlan, unseen: Card[], overdue = 0): { cards: Set<Card>; held: number } {
+	const order: Card[] = [];
 	const turns = plan.pools.map((p) => ({
 		begun: p.begun,
 		room: p.room ?? Infinity,
@@ -97,11 +111,12 @@ export function releaseNew(plan: NewCardPlan, unseen: Card[]): Set<Card> {
 		let turn: (typeof turns)[number] | null = null;
 		for (const t of turns) if (t.room > 0 && t.next < t.queue.length && (!turn || t.begun < turn.begun)) turn = t;
 		if (!turn) break;
-		out.add(turn.queue[turn.next++]);
+		order.push(turn.queue[turn.next++]);
 		turn.begun++;
 		turn.room--;
 	}
-	return out;
+	const held = Math.min(Math.max(0, overdue), order.length);
+	return { cards: new Set(order.slice(0, order.length - held)), held };
 }
 
 /**

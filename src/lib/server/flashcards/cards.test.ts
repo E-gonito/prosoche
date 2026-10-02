@@ -314,7 +314,8 @@ describe('dueCards', () => {
 
 	it('lets in only the unseen cards the plan does, and counts the rest as waiting', async () => {
 		const plan = { left: 5, pools: [pool('CS', 0, 0), pool('Art')] };
-		const one = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
+		// The day the first card falls due, so nothing is overdue to hold a new card back.
+		const one = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: plan });
 		expect(one.cards.map((c) => c.question)).toEqual(['Overdue', 'Hue']);
 		expect(one).toMatchObject({ due: 1, fresh: 1, waiting: 1, total: 4 });
 		// A file's count is the same rule: CS's new card waits.
@@ -322,16 +323,29 @@ describe('dueCards', () => {
 			['Art/Colour.md', 1],
 			['CS/Due.md', 1]
 		]);
-		const none = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: { left: 5, pools: [] } });
+		const none = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: { left: 5, pools: [] } });
 		expect(none).toMatchObject({ due: 1, fresh: 0, waiting: 2 });
 	});
 
 	it('takes the pools in turn, reviews before new cards', async () => {
-		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-10,4,250-->\n\nTint::light\n<!--SR:!2026-09-11,4,250-->\n');
-		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-02,4,250-->\n');
+		// All due the same day and none overdue, so no new card is held back.
+		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-01,4,250-->\n\nTint::light\n<!--SR:!2026-09-01,4,250-->\n');
+		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-01,4,250-->\n');
 		const plan = { left: 5, pools: [pool('CS'), pool('Art')] };
-		const queue = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
+		const queue = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: plan });
 		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'Shade', 'Stale', 'Tint', 'New', 'Hue']);
+	});
+
+	it('holds a new card back for each review overdue, and lets it in once that is caught up', async () => {
+		const plan = { left: 5, pools: [pool('CS'), pool('Art')] };
+		const behind = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
+		expect(behind.cards.map((c) => c.question)).toEqual(['Overdue', 'New']);
+		expect(behind).toMatchObject({ due: 1, fresh: 1, waiting: 1, held: 1 });
+
+		await vault.write('CS/Due.md', '#flashcards\n\nOverdue::yes\n<!--SR:!2026-09-25,4,250-->\n\nLater::no\n<!--SR:!2027-01-01,4,250-->\n\nNew::card\n');
+		const caughtUp = await dueCards(vault, { on: '2026-09-21', folders: ['Art', 'CS'], newCards: plan });
+		expect(caughtUp.cards.map((c) => c.question)).toEqual(['New', 'Hue']);
+		expect(caughtUp).toMatchObject({ due: 0, fresh: 2, waiting: 0, held: 0 });
 	});
 
 	it('sees a card file changed since the last read', async () => {

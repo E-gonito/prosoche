@@ -380,6 +380,14 @@ is counted per deck and day in `_hub/.state/new-cards.json`, which is never
 committed and holds only today; the review comments cannot tell a first
 review from a later one, so the count is kept rather than worked out.
 
+**A missed day costs new cards, not more cards.** Each review overdue (due
+before today) holds back one of the day's new cards, the last that would
+have joined, and the page says how many wait. A day's unused allowance is
+never carried over either, so skipping a day makes the next one lighter in
+new cards instead of heavier overall. Catching up a review lets its held card
+in the same day: twelve reviews owed and fifteen new a day shows twelve and
+three, and once the twelve are done the other twelve new cards follow.
+
 **Reviewing.** Cards already reviewed come first, then the new ones, and
 within each the decks take turns, a card from each, so a day with three
 decks is a mix rather than three decks in a row. The queue is fixed when the

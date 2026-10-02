@@ -24,24 +24,27 @@ test.describe('Flashcards', () => {
 		// The page reads the vault once the watcher has seen the new files.
 		await expect(async () => {
 			await page.goto('/flashcards');
-			await expect(page.getByTestId('due-count')).toHaveText('16', { timeout: 1000 });
+			await expect(page.getByTestId('due-count')).toHaveText('15', { timeout: 1000 });
 		}).toPass();
 	});
 
 	test('shares fifteen new cards a day between the decks, and shows each deck’s categories', async ({ page }) => {
-		// TCP is due; Networks' two new cards and thirteen of Tagalog's make fifteen.
-		await expect(page.getByTestId('due-count')).toHaveText('16');
+		// TCP is overdue; Networks' two new cards and thirteen of Tagalog's make
+		// fifteen, less the one TCP holds back until it is caught up.
+		await expect(page.getByTestId('due-count')).toHaveText('15');
+		await expect(page.getByTestId('held')).toContainText('1 new card waits until the overdue reviews are done');
 		const networks = page.getByTestId('deck').filter({ hasText: 'Networks' });
 		await expect(networks).toContainText('1 due · 2 new · 3 cards');
 		await expect(networks.getByTestId('deck-categories').getByRole('link')).toHaveText([/Naming\s*1/, /Protocols\s*2/]);
-		await expect(page.getByTestId('deck').filter({ hasText: 'Tagalog' })).toContainText('0 due · 13 new · 20 cards');
+		await expect(page.getByTestId('deck').filter({ hasText: 'Tagalog' })).toContainText('0 due · 12 new · 20 cards');
 	});
 
 	test('the number a day is saved to _hub/flashcards.md and shared out again', async ({ page }) => {
 		await page.getByTestId('per-day').fill('3');
 		await page.getByTestId('new-per-day').getByRole('button', { name: 'Save' }).click();
 		expect(await waitForFile('_hub/flashcards.md', (c) => c.includes('new_per_day: 3'))).toBe(true);
-		await expect(page.getByTestId('due-count')).toHaveText('4');
+		// TCP, and three new cards less the one it holds back.
+		await expect(page.getByTestId('due-count')).toHaveText('3');
 	});
 
 	test('a category’s review grades its card and rewrites the legacy comment as FSRS state', async ({ page }) => {
@@ -59,6 +62,11 @@ test.describe('Flashcards', () => {
 		expect(vaultFile(PROTOCOLS).replace(fsrs, 'COMMENT')).toBe(before.replace(/<!--SR:[^\n]*-->/, 'COMMENT'));
 		// The generated Anki deck beside it is not the app's to touch.
 		expect(vaultFile('Flashcards/Networks/Old deck.txt')).toBe('front\tback\n');
+
+		// Caught up, so the new card TCP held back joins today.
+		await page.goto('/flashcards');
+		await expect(page.getByTestId('due-count')).toHaveText('15');
+		await expect(page.getByTestId('held')).toHaveCount(0);
 	});
 
 	test('Review all takes the decks in turn', async ({ page }) => {
@@ -69,7 +77,7 @@ test.describe('Flashcards', () => {
 
 	test('Today has one line for every deck, leading to the review of them all', async ({ page }) => {
 		await page.goto('/today');
-		const line = page.getByRole('link', { name: /16 cards to review/ });
+		const line = page.getByRole('link', { name: /15 cards to review/ });
 		await expect(line).toHaveAttribute('href', '/flashcards/review');
 	});
 

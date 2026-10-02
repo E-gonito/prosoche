@@ -45,6 +45,11 @@
 		<span class="muted">{ready === 1 ? 'card' : 'cards'} to review today{#if data.fresh}, {data.fresh} of them new{/if}</span>
 		{#if ready > 0}<a class="btn primary" href="/flashcards/review" data-testid="review-all">Review all</a>{/if}
 	</div>
+	{#if data.held}
+		<p class="hint" data-testid="held">
+			{data.held} new {data.held === 1 ? 'card waits' : 'cards wait'} until the overdue reviews are done. Each one you catch up lets one in.
+		</p>
+	{/if}
 
 	<form class="per-day" onsubmit={savePerDay} data-testid="new-per-day">
 		<label for="per-day">New cards a day, shared between every deck</label>
