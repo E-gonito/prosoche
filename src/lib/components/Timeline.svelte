@@ -14,6 +14,12 @@
 	 * which moves with the scroll, so nothing here has to know the scroll
 	 * offset — and a block keeps following the pointer while the window
 	 * scrolls out from under it.
+	 *
+	 * A finger does not drag. On a phone a block under the thumb would take
+	 * every scroll that started on it, and a day is mostly blocks, so a touch
+	 * leaves the window free to scroll and a tap opens the block (`onopen`)
+	 * instead; a tap on an empty stretch offers its time (`onslot`). The
+	 * mouse keeps dragging, and has both taps as clicks too.
 	 */
 	import { layoutBlocks, snap, timelineRange, timelineScrollTop } from '$lib/client/layout';
 	import Icon from '$lib/components/Icon.svelte';
@@ -34,6 +40,7 @@
 		onplanned,
 		onproblem,
 		onopen,
+		onslot,
 		owners = {}
 	}: {
 		tasks: Task[];
@@ -52,8 +59,10 @@
 		onchange?: (task: Task) => void;
 		onplanned?: (task: Task) => void;
 		onproblem?: (message: string) => void;
-		/** Given, a block that was clicked rather than dragged opens the card. */
+		/** Given, a block that was clicked or tapped rather than dragged opens the card. */
 		onopen?: (task: Task) => void;
+		/** Given, a click or tap on an empty stretch of the grid offers its minute, snapped. */
+		onslot?: (minute: number) => void;
 		/** Workspace per task, keyed `path:line`, worked out by the server. */
 		owners?: Record<string, { slug: string; name: string; color: string }>;
 	} = $props();
@@ -311,8 +320,12 @@
 		return (minutes - range.fromMin) * PX_PER_MIN;
 	}
 
+	/** Whether the last press was a finger, which taps rather than drags; see the header. */
+	let touched = false;
+
 	function start(event: PointerEvent, task: Task, mode: 'move' | 'resize') {
-		if (event.button !== 0) return;
+		touched = event.pointerType === 'touch';
+		if (touched || event.button !== 0) return;
 		event.preventDefault();
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		pointer = { x: event.clientX, y: event.clientY };
@@ -472,6 +485,12 @@
 	}
 
 	const dragging = $derived(drag !== null);
+
+	/** A click on the grid itself, not on a block in it, is a click on a time. */
+	function gridClick(event: MouseEvent) {
+		if (!onslot || (event.target as HTMLElement).closest('.block')) return;
+		onslot(minuteAt(event.clientY));
+	}
 </script>
 
 <div class="wrap">
@@ -491,8 +510,11 @@
 			class="timeline"
 			data-testid="timeline"
 			class:dragging
+			class:tappable={onslot !== undefined}
 			bind:this={grid}
 			style="height: {heightPx}px"
+			role="presentation"
+			onclick={gridClick}
 		>
 			{#each hours as hour (hour)}
 				<div class="hour" style="top: {top(hour)}px"><span>{formatMinutes(hour)}</span></div>
@@ -506,7 +528,7 @@
 
 			{#if blocks.length === 0}
 				<p class="vacant">
-					<span>{listDrag.task ? 'Drop to schedule it here' : 'Nothing time-blocked on this day.'}</span>
+					<span>{listDrag.task ? 'Drop to schedule it here' : onslot ? 'Nothing time-blocked yet. Tap a time to put a task there.' : 'Nothing time-blocked on this day.'}</span>
 				</p>
 			{/if}
 
@@ -553,6 +575,9 @@
 					tabindex="0"
 					aria-label="{task.text}, {formatMinutes(p.startMin)} to {formatMinutes(p.endMin)}"
 					onpointerdown={(e) => start(e, task, 'move')}
+					onclick={() => {
+						if (touched) onopen?.(task);
+					}}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') { e.preventDefault(); onopen?.(task); }
 						if (e.key === 'ArrowUp') { e.preventDefault(); nudge(task, -SNAP); }
@@ -589,7 +614,8 @@
 			{/each}
 		</div>
 	</div>
-	<p class="hint">Drag to move, the bottom edge to resize, arrow keys to nudge. Snaps to {SNAP} minutes.</p>
+	<p class="hint fine">Drag to move, the bottom edge to resize, arrow keys to nudge. Snaps to {SNAP} minutes.{#if onslot} Click a time to put a task there.{/if}</p>
+	<p class="hint coarse">Tap a block to change its time. Tap an empty time to put a task there.</p>
 </div>
 
 <style>
@@ -620,6 +646,19 @@
 	}
 	.dragging { cursor: grabbing; user-select: none; }
 	.block, .handle { touch-action: none; }
+	.tappable { cursor: copy; }
+	.hint.coarse { display: none; }
+	/*
+	 * A finger taps rather than drags (see the header), so the block keeps
+	 * no hold on a scroll, and the resize edge and the small ✕, which are
+	 * drag-sized targets, give way to the sheet a tap opens.
+	 */
+	@media (pointer: coarse) {
+		.block { touch-action: pan-y; }
+		.handle, .clear { display: none; }
+		.hint.fine { display: none; }
+		.hint.coarse { display: block; }
+	}
 	.receiving { outline: 2px dashed var(--accent); outline-offset: -2px; }
 	.dropping { opacity: 0.7; }
 

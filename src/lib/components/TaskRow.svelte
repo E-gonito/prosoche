@@ -11,6 +11,7 @@
 		onproblem,
 		onopen,
 		onadd,
+		onschedule,
 		workspace = null,
 		overdue = false,
 		showPath = false,
@@ -26,6 +27,8 @@
 		 * a row that is already on the day has nothing to add it to.
 		 */
 		onadd?: (task: Task) => void | Promise<void>;
+		/** Given, a clock button asks for this task to be given a time. */
+		onschedule?: (task: Task) => void;
 		/** The workspace this task belongs to, worked out by the server. */
 		workspace?: { slug: string; name: string; color: string } | null;
 		/** Whether the due date has passed, decided by the server's today. */
@@ -111,6 +114,15 @@
 	{#if task.due}<span class="due num" class:overdue data-testid="task-due">{task.due}</span>{/if}
 	{#if task.quadrant}<span class="q q{task.quadrant}">Q{task.quadrant}</span>{/if}
 	{#if showPath}<span class="path">{task.path.split('/').pop()?.replace(/\.md$/, '')}</span>{/if}
+	{#if onschedule}
+		<button
+			class="when"
+			data-testid="schedule-task"
+			onclick={() => onschedule(task)}
+			aria-label="Give &quot;{displayText(task.text)}&quot; a time"
+			title="Give it a time"
+		><Icon name="clock" size={16} /></button>
+	{/if}
 </div>
 
 <style>
@@ -188,4 +200,28 @@
 	.due { font-size: var(--t11); color: var(--muted); flex: none; }
 	.due.overdue { color: var(--warn); font-weight: 600; }
 	.path { font-size: var(--t11); color: var(--muted); flex: none; }
+	/*
+	 * Give it a time without dragging. Like the grip, out of the way until
+	 * the row is pointed at; on a phone, where nothing is pointed at and the
+	 * grip is no use, always there and the size of a thumb, while the grip
+	 * goes.
+	 */
+	.when {
+		flex: none;
+		align-self: center;
+		display: grid;
+		place-items: center;
+		border: 0;
+		background: none;
+		padding: 0 2px;
+		color: var(--muted);
+		cursor: pointer;
+		opacity: 0;
+	}
+	.when:hover { color: var(--accent); }
+	:hover > .when, .when:focus-visible { opacity: 1; }
+	@media (pointer: coarse) {
+		.grip { display: none; }
+		.when { opacity: 1; min-width: 40px; min-height: 40px; margin: -8px -6px -8px 0; }
+	}
 </style>

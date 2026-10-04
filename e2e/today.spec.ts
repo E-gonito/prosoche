@@ -49,6 +49,30 @@ test.describe('Today', () => {
 		expect(after[changed[0]!]).toBe('- [ ] 15:00 - 15:30 Read a book `Q2`');
 	});
 
+	test('the clock on a workspace card plans it at a time as one new line, leaving Board.md alone', async ({ page }) => {
+		const board = vaultFile('Work/Board.md');
+		const note = vaultFile(TODAY_NOTE);
+		const row = page.getByTestId('today-workspaces').getByTestId('board-card-row').filter({ hasText: 'Book the venue' });
+		await row.getByTestId('schedule-card').click();
+		const sheet = page.getByTestId('schedule-sheet');
+		await sheet.getByTestId('schedule-start').fill('08:00');
+		await sheet.getByTestId('schedule-save').click();
+
+		await expect(page.getByTestId('block').filter({ hasText: 'Book the venue' })).toBeVisible();
+		const after = vaultFile(TODAY_NOTE);
+		expect(after.split('\n').length).toBe(note.split('\n').length + 1);
+		expect(after).toContain('- [ ] 08:00 - 08:30 Book the venue [[Work/Board]] #ws/work');
+		expect(vaultFile('Work/Board.md')).toBe(board);
+	});
+
+	test('a click on an empty time on the desktop offers the same choice', async ({ page }) => {
+		const scroll = page.getByTestId('timeline-scroll');
+		const box = (await scroll.boundingBox())!;
+		await page.mouse.click(box.x + box.width - 20, box.y + 10);
+		await expect(page.getByTestId('schedule-sheet')).toContainText('What goes at');
+		await expect(page.getByTestId('schedule-choice').filter({ hasText: 'Twenty push ups' })).toBeVisible();
+	});
+
 	test('the Unscheduled box adds a task to the day’s note, not the inbox', async ({ page }) => {
 		const inbox = vaultFile('Inbox/Capture.md');
 		const capture = page.getByTestId('unscheduled').getByTestId('capture-row');
@@ -109,7 +133,7 @@ test.describe('Today', () => {
 });
 
 test.describe('Today on a phone', () => {
-	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 	test.beforeEach(async ({ request }) => await resetVault(request));
 
@@ -127,5 +151,78 @@ test.describe('Today on a phone', () => {
 		await page.reload();
 		await expect(page.getByTestId('segment-list')).toHaveAttribute('aria-selected', 'true');
 		await expect(page.getByTestId('unscheduled')).toBeVisible();
+	});
+
+	/** The lines of the day's note that differ, by index. */
+	const changed = (before: string, after: string) => {
+		const a = before.split('\n');
+		return after.split('\n').flatMap((line, i) => (line === a[i] ? [] : [i]));
+	};
+
+	test('a tap on an empty time offers the day’s tasks, and Schedule writes only that line', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE);
+		await page.goto('/');
+		await page.getByTestId('timeline-scroll').scrollIntoViewIfNeeded();
+		await expect(page.getByText('Tap a block to change its time. Tap an empty time to put a task there.')).toBeVisible();
+		const box = (await page.getByTestId('timeline-scroll').boundingBox())!;
+		await page.touchscreen.tap(box.x + box.width / 2, box.y + 20);
+
+		const sheet = page.getByTestId('schedule-sheet');
+		await expect(sheet).toContainText('What goes at');
+		await sheet.getByTestId('schedule-choice').filter({ hasText: 'Twenty push ups' }).tap();
+		await sheet.getByTestId('schedule-start').fill('07:00');
+		await sheet.getByTestId('schedule-length').filter({ hasText: /^15m$/ }).tap();
+		await expect(sheet.getByTestId('schedule-save')).toHaveText('Schedule 07:00–07:15');
+		await sheet.getByTestId('schedule-save').tap();
+
+		await expect(sheet).toHaveCount(0);
+		await expect(page.getByTestId('block').filter({ hasText: 'Twenty push ups' })).toBeVisible();
+		const after = vaultFile(TODAY_NOTE);
+		expect(changed(before, after).map((i) => after.split('\n')[i])).toEqual(['- [ ] 07:00 - 07:15 Twenty push ups']);
+	});
+
+	test('a tap on a block opens its time, not a drag, and can move or unschedule it', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE);
+		await page.goto('/');
+		const block = page.getByTestId('block').filter({ hasText: 'Read a book' });
+		await block.scrollIntoViewIfNeeded();
+		await block.tap();
+
+		const sheet = page.getByTestId('schedule-sheet');
+		await expect(sheet).toContainText('Change the time');
+		await expect(sheet.getByTestId('schedule-start')).toHaveValue('14:00');
+		await sheet.getByTestId('schedule-length').filter({ hasText: /^1h$/ }).tap();
+		await sheet.getByTestId('schedule-save').tap();
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('14:00 - 15:00 Read a book'))).toBe(true);
+		expect(changed(before, vaultFile(TODAY_NOTE))).toHaveLength(1);
+
+		await page.getByTestId('block').filter({ hasText: 'Read a book' }).tap();
+		await page.getByTestId('schedule-unschedule').tap();
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('- [ ] Read a book `Q2`'))).toBe(true);
+		expect(changed(before, vaultFile(TODAY_NOTE))).toHaveLength(1);
+	});
+
+	test('the clock on an unscheduled task offers the first free time, and says what it did', async ({ page }) => {
+		await page.goto('/');
+		await page.getByTestId('segment-list').tap();
+		const row = page.getByTestId('unscheduled').getByTestId('task-row').filter({ hasText: 'Walk the dog' });
+		await row.getByTestId('schedule-task').tap();
+
+		const sheet = page.getByTestId('schedule-sheet');
+		await expect(sheet.getByTestId('schedule-task-name')).toHaveText('Walk the dog, refill the water');
+		await sheet.getByTestId('schedule-start').fill('06:00');
+		await sheet.getByTestId('schedule-save').tap();
+		await expect(page.getByTestId('schedule-notice')).toHaveText('Walk the dog, refill the water: 06:00–06:30.');
+		expect(await waitForFile(TODAY_NOTE, (c) => c.includes('- [ ] 06:00 - 06:30 Walk the dog, refill the water `Q1`'))).toBe(true);
+	});
+
+	test('a finger on the timeline scrolls it rather than dragging a block', async ({ page }) => {
+		const before = vaultFile(TODAY_NOTE);
+		await page.goto('/');
+		const block = page.getByTestId('block').filter({ hasText: 'Client project' });
+		await block.scrollIntoViewIfNeeded();
+		expect(await block.evaluate((el) => getComputedStyle(el).touchAction)).toBe('pan-y');
+		await expect(page.getByTestId('resize').first()).toBeHidden();
+		expect(vaultFile(TODAY_NOTE)).toBe(before);
 	});
 });

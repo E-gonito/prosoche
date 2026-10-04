@@ -59,14 +59,29 @@ the Unscheduled list, press its ✕, or press Backspace on it, to take the time
 off again. Everything snaps to ten minutes, and only the time on that line
 changes — the note keeps its own order regardless of where the UI displays a
 task. Your Google Calendar events for the day sit on the same grid as sand
-blocks rather than teal ones, read-only, and linking nowhere. On a phone, a segmented control switches between the timeline and
-the plain list; the choice is remembered on that device.
+blocks rather than teal ones, read-only, and linking nowhere.
+
+**Or tap, which is how a phone plans the day.** Tapping (or clicking) a
+block opens a sheet with its start and end, lengths from 15 minutes to two
+hours a tap each, Unschedule, and Edit card for the full editor. Tapping an
+empty time asks what goes there, listing the day's unscheduled tasks and
+then every workspace's open cards; "Put a task on the timeline" asks the
+same at the first free time. Each unscheduled task and workspace card has a
+clock button that opens the sheet for it, its start the first free stretch
+from now on today (from 09:00 on any other day). What the sheet writes is
+what a drag or a drop would: the time on the task's own line, or a new
+block for a card. On a touch screen a block never drags, so a finger on the
+timeline always scrolls it; the ⠿ grips, the resize edge and the ✕ give way
+to the taps. A segmented control switches between the timeline, most of the
+screen tall, and the plain list, and the choice is remembered on that
+device; the inbox shows its newest two lines, leaving the rest to "to
+triage", so the day is on the first screen.
 
 The box at the top of the Unscheduled list adds a task to the day. What you
 type goes into the day's note under `# Tasks` as a `- [ ]` line: with a
 time range, `10:00 - 10:30 Dentist`, it lands on the timeline; without one
-it joins the unscheduled list, where its ⠿ grip can drag it onto the
-timeline. A `#ws/kaya` tag stays on the line, which is what puts a daily
+it joins the unscheduled list, where its ⠿ grip or its clock puts it on
+the timeline. A `#ws/kaya` tag stays on the line, which is what puts a daily
 task in that workspace. On a day with no note the line goes to
 `Inbox/Capture.md` instead and the message says so; nothing is created.
 
@@ -107,7 +122,8 @@ most urgent first — priority first, then the soonest due date — in a list
 that scrolls past the first three and a half, plus how many lines of the
 inbox carry its tag or an alias. A card's
 title opens its workspace, where the board is; its checkbox ticks it in
-`Board.md`. Its ⠿ grip drags it onto the day: dropped on the timeline, a
+`Board.md`. Its ⠿ grip drags it onto the day, and its clock plans it at a
+time without dragging: dropped on the timeline, a
 block such as `- [ ] 10:00 - 10:30 Book the venue [[Work/Board]] #ws/work`
 is appended under `# Tasks` in the day's note; dropped on the unscheduled
 list, the same block with no time. The card stays where it is on its board,

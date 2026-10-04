@@ -80,6 +80,31 @@ export function snap(minutes: number, step = 10): number {
 }
 
 /**
+ * The first start, at or after `fromMin`, where a block of `duration`
+ * minutes fits without overlapping any of `taken`. Starts land on `step`
+ * boundaries, rounding `fromMin` up, so a slot offered at 10:03 reads 10:10.
+ * When nothing fits before midnight, it is `fromMin` rounded up, clamped so
+ * the block still ends by midnight: the caller offers a time either way, and
+ * an overlap is the user's to accept. Pure.
+ */
+export function firstFree(taken: Array<{ startMin: number; endMin: number }>, fromMin: number, duration: number, step = 10): number {
+	const up = (m: number) => Math.ceil(m / step) * step;
+	const latest = 1440 - duration;
+	const sorted = [...taken].sort((a, b) => a.startMin - b.startMin);
+	let start = up(fromMin);
+	for (let moved = true; moved && start <= latest; ) {
+		moved = false;
+		for (const b of sorted) {
+			if (b.startMin < start + duration && b.endMin > start) {
+				start = up(b.endMin);
+				moved = true;
+			}
+		}
+	}
+	return start <= latest ? start : Math.max(0, Math.min(up(fromMin), latest));
+}
+
+/**
  * Where a timeline should be scrolled when it first appears.
  *
  * The grid is two pixels a minute inside a card that is capped at the height

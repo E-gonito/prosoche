@@ -11,9 +11,13 @@
 	import CardRow from '$lib/components/board/CardRow.svelte';
 	import CardDrawer from '$lib/components/CardDrawer.svelte';
 	import Capture from '$lib/components/Capture.svelte';
+	import ScheduleSheet from '$lib/components/ScheduleSheet.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { api, editTask, planOnDay } from '$lib/client/api';
 	import { displayText, type Task } from '$lib/shared/task';
+	import { formatMinutes } from '$lib/shared/time';
+	import { cardAsTask } from '$lib/shared/kanban';
+	import { firstFree } from '$lib/client/layout';
 	import { registerDropZone, drag } from '$lib/client/drag.svelte';
 	import type { TodayData } from '$lib/shared/today';
 
@@ -127,6 +131,67 @@
 	}
 
 	/**
+	 * Giving a time by tapping rather than dragging: the sheet, and what it
+	 * was opened with. `task` null is "what goes at this time?", from a tap
+	 * on an empty stretch of the timeline; a timed task is a block tapped to
+	 * change it; an untimed one is a row's clock button.
+	 */
+	let sheet = $state<{ task: Task | null; startMin: number; duration: number } | null>(null);
+	/** Said once a time is written, since on a phone the timeline may be on the other tab. */
+	let notice = $state('');
+
+	/** Where a new block is offered: the first free stretch from now on today, from 09:00 on any other day. */
+	function offeredStart(duration: number): number {
+		const now = new Date();
+		const from = data.isToday ? now.getHours() * 60 + now.getMinutes() : 9 * 60;
+		const taken = scheduled.map((t) => ({ startMin: t.startMin!, endMin: t.endMin! }));
+		return firstFree(taken, from, duration);
+	}
+
+	function scheduleTask(task: Task) {
+		sheet = { task, startMin: offeredStart(30), duration: 30 };
+	}
+
+	function changeBlock(task: Task) {
+		sheet = { task, startMin: task.startMin ?? offeredStart(30), duration: (task.endMin ?? 0) - (task.startMin ?? 0) || 30 };
+	}
+
+	/** What a tap on an empty time can place: the day's own tasks first, then each workspace's open cards. */
+	const choices = $derived([
+		{ title: 'Unscheduled', tasks: unscheduled.filter((t) => t.status === 'todo' || t.status === 'in-progress') },
+		...data.workspaces.map((group) => ({ title: group.name, tasks: group.cards.map(cardAsTask) }))
+	]);
+
+	/**
+	 * Write a time for `task`. One already in the day's note has the time put
+	 * on its own line; a card from anywhere else is planned onto the day as a
+	 * block at that time, as dropping it on the timeline does. Answers a
+	 * problem to show, or null.
+	 */
+	async function place(task: Task, startMin: number, endMin: number): Promise<string | null> {
+		const range = `${formatMinutes(startMin)}–${formatMinutes(endMin % 1440)}`;
+		if (task.path === data.path) {
+			const result = await editTask(task, { time: { start: formatMinutes(startMin), end: formatMinutes(endMin % 1440) } });
+			if (!result.ok) return result.message;
+			applied(result.value);
+		} else {
+			const result = await planOnDay(data.day, task, { startMin, endMin });
+			if (!result.ok) return result.message;
+			await invalidateAll();
+		}
+		notice = `${displayText(task.text)}: ${range}.`;
+		return null;
+	}
+
+	async function unplace(task: Task): Promise<string | null> {
+		const result = await editTask(task, { time: null });
+		if (!result.ok) return result.message;
+		applied(result.value);
+		notice = `${displayText(task.text)}: no time.`;
+		return null;
+	}
+
+	/**
 	 * Add a card to the real today with no time on it — "Add to today" from a
 	 * workspace's list, "Plan for today" from Overdue. The same action either
 	 * way: a block with no time, ready to be dragged onto the timeline.
@@ -157,6 +222,7 @@
 	</div>
 
 	{#if problem}<p class="problem" role="status">{problem}</p>{/if}
+	{#if notice}<p class="notice small" role="status" data-testid="schedule-notice">{notice}</p>{/if}
 	{#if data.conflicted}
 		<p class="problem" data-testid="conflict">
 			This note has git conflict markers. Resolve it in Obsidian or on the <a href="/sync">sync page</a>.
@@ -179,7 +245,7 @@
 					>{#if line.stamp}<span class="num muted">{line.stamp}</span>{" "}{/if}{displayText(line.text)}</button>
 				{/each}
 			</div>
-			{#if data.inbox.count > data.inbox.lines.length}<p class="hint">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
+			{#if data.inbox.count > data.inbox.lines.length}<p class="hint more-lines">and {data.inbox.count - data.inbox.lines.length} more</p>{/if}
 		{/if}
 	</div>
 
@@ -222,6 +288,9 @@
 						{/if}
 						{#if data.calendarProblem}<p class="hint">{data.calendarProblem}</p>{/if}
 						<div class="sheet timeline-card">
+							<button class="btn small add-block" onclick={() => (sheet = { task: null, startMin: offeredStart(30), duration: 30 })} data-testid="add-block">
+								<Icon name="plus" size={14} /> Put a task on the timeline
+							</button>
 							{#key data.day + segment}
 								<Timeline
 									tasks={scheduled}
@@ -233,7 +302,8 @@
 									onchange={applied}
 									onplanned={planned}
 									onproblem={failed}
-									onopen={(task) => (opened = task)}
+									onopen={changeBlock}
+									onslot={(minute) => (sheet = { task: null, startMin: minute, duration: 30 })}
 								/>
 							{/key}
 						</div>
@@ -252,13 +322,15 @@
 										onchange={applied}
 										onproblem={failed}
 										onopen={(t) => (opened = t)}
+										onschedule={scheduleTask}
 									/>
 								{/each}
 							</div>
 							{#if unscheduled.length}
-								<p class="hint">Drag the ⠿ grip onto the timeline to give one a time.</p>
+								<p class="hint fine">Drag the ⠿ grip onto the timeline, or use the clock, to give one a time.</p>
+								<p class="hint coarse">Tap the clock to give one a time.</p>
 							{:else}
-								<p class="hint">Drag a block off the timeline onto this card to take its time off.</p>
+								<p class="hint fine">Drag a block off the timeline onto this card to take its time off.</p>
 							{/if}
 						</div>
 					</div>
@@ -294,7 +366,7 @@
 							<h3 class="caps"><i class="dot" style="--dot: {group.color}"></i>{group.name} {#if group.inboxCount}<a class="right muted small" href="/w/{group.slug}/inbox">{group.inboxCount} in inbox</a>{/if}</h3>
 							<div class="rows scroll">
 								{#each group.cards as card (card.path + ':' + card.line)}
-									<CardRow {card} today={data.today} draggable={data.exists} onproblem={failed} />
+									<CardRow {card} today={data.today} draggable={data.exists} onschedule={data.exists ? scheduleTask : undefined} onproblem={failed} />
 								{/each}
 							</div>
 							{#if !group.cards.length}<p class="empty">Nothing open.</p>{/if}
@@ -331,6 +403,24 @@
 	</div>
 </div>
 
+{#if sheet}
+	<ScheduleSheet
+		task={sheet.task}
+		startMin={sheet.startMin}
+		duration={sheet.duration}
+		{choices}
+		onsave={place}
+		onunschedule={unplace}
+		onedit={sheet.task?.startMin != null
+			? (task) => {
+					sheet = null;
+					opened = task;
+				}
+			: undefined}
+		onclose={() => (sheet = null)}
+	/>
+{/if}
+
 {#if opened}
 	<CardDrawer task={opened} onclose={() => (opened = null)} onchange={applied} />
 {/if}
@@ -365,6 +455,13 @@
 		padding: var(--s3);
 	}
 	.all-day { margin-bottom: 0; }
+	.add-block { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin-bottom: var(--s2); }
+	.notice { margin: 0 0 var(--s3); color: var(--muted); }
+	.hint.coarse { display: none; }
+	@media (pointer: coarse) {
+		.hint.fine { display: none; }
+		.hint.coarse { display: block; }
+	}
 	.receiving { outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: var(--r-lg); }
 
 	h3 {
@@ -441,6 +538,10 @@
 		.split.showing-list .timeline-side { display: none; }
 		.split.showing-list .list-side { display: block; }
 
-		.timeline-card { --today-chrome: calc(var(--header-h) + var(--tabbar-h) + 300px); }
+		/* Most of the screen: the timeline is what this tab is for, and the page scrolls past it to the rest. */
+		.timeline-card { height: 72vh; height: 72dvh; max-height: none; min-height: 0; }
+		/* The inbox's newest two, so the day itself is on the first screen; "to triage" has the rest. */
+		.inbox-line:nth-child(n + 3), .more-lines { display: none; }
+		.add-block { align-self: stretch; justify-content: center; min-height: 44px; font-size: var(--t14); }
 	}
 </style>

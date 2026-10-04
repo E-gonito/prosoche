@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutBlocks, timelineRange, snap, timelineScrollTop } from './layout';
+import { firstFree, layoutBlocks, timelineRange, snap, timelineScrollTop } from './layout';
 
 const at = (b: { startMin: number; endMin: number }) => b;
 const block = (startMin: number, endMin: number, name = '') => ({ startMin, endMin, name });
@@ -108,5 +108,24 @@ describe('timelineScrollTop', () => {
 		expect(
 			timelineScrollTop({ ...view, viewportPx: 2000, nowMin: 877, firstBlockMin: 540 })
 		).toBe(0);
+	});
+});
+
+describe('firstFree', () => {
+	const taken = [block(600, 630), block(630, 700), block(720, 780)];
+	const cases: Array<[string, number, number, number]> = [
+		['an empty stretch is taken as it is', 540, 30, 540],
+		['a start is rounded up to the next ten minutes', 543, 30, 550],
+		['a block in the way moves the start past it, and past every one it then meets', 600, 30, 780],
+		['a gap too short for the duration is skipped', 690, 30, 780],
+		['a gap just long enough is used', 700, 20, 700]
+	];
+	for (const [name, from, duration, expected] of cases) {
+		it(name, () => expect(firstFree(taken, from, duration)).toBe(expected));
+	}
+
+	it('falls back to the asked-for time when nothing fits before midnight', () => {
+		expect(firstFree([block(1380, 1440)], 1370, 30)).toBe(1370);
+		expect(firstFree([], 1435, 30)).toBe(1410);
 	});
 });

@@ -13,12 +13,15 @@
 	import { api } from '$lib/client/api';
 	import { cardAsTask, dueLabel, type OpenCard } from '$lib/shared/kanban';
 	import { drag, startDrag } from '$lib/client/drag.svelte';
+	import Icon from '$lib/components/Icon.svelte';
+	import type { Task } from '$lib/shared/task';
 
 	let {
 		card,
 		today,
 		showWorkspace = false,
 		draggable = false,
+		onschedule,
 		onproblem
 	}: {
 		card: OpenCard;
@@ -28,6 +31,8 @@
 		showWorkspace?: boolean;
 		/** Offer the grip that drags the card onto the day. */
 		draggable?: boolean;
+		/** Given, a clock button asks for the card to be planned onto the day at a time. */
+		onschedule?: (task: Task) => void;
 		onproblem?: (message: string) => void;
 	} = $props();
 
@@ -72,6 +77,15 @@
 	<a class="text" href="/w/{card.workspace.slug}" title="On {card.workspace.name}'s board, in {card.column}">{card.title}</a>
 	{#if card.due}<span class="due num" class:overdue={card.due < today} data-testid="board-card-due">{dueLabel(card.due, today)}</span>{/if}
 	{#if card.priority}<span class="q q{card.priority}">Q{card.priority}</span>{/if}
+	{#if onschedule}
+		<button
+			class="when"
+			data-testid="schedule-card"
+			onclick={() => onschedule(cardAsTask(card))}
+			aria-label="Plan &quot;{card.title}&quot; at a time today"
+			title="Plan it at a time"
+		><Icon name="clock" size={16} /></button>
+	{/if}
 </div>
 
 <style>
@@ -96,4 +110,28 @@
 	.text:hover { color: var(--accent); }
 	.due { flex: none; font-size: var(--t11); color: var(--muted); }
 	.due.overdue { color: var(--bad); font-weight: 600; }
+	/*
+	 * Give it a time without dragging. Like the grip, out of the way until
+	 * the row is pointed at; on a phone, where nothing is pointed at and the
+	 * grip is no use, always there and the size of a thumb, while the grip
+	 * goes.
+	 */
+	.when {
+		flex: none;
+		align-self: center;
+		display: grid;
+		place-items: center;
+		border: 0;
+		background: none;
+		padding: 0 2px;
+		color: var(--muted);
+		cursor: pointer;
+		opacity: 0;
+	}
+	.when:hover { color: var(--accent); }
+	:hover > .when, .when:focus-visible { opacity: 1; }
+	@media (pointer: coarse) {
+		.grip { display: none; }
+		.when { opacity: 1; min-width: 40px; min-height: 40px; margin: -8px -6px -8px 0; }
+	}
 </style>
