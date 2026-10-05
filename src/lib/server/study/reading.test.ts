@@ -74,7 +74,7 @@ describe('the reading list file', () => {
 		home: 'Study/CS',
 		scope: { folders: ['Study/CS'] },
 		path: '_hub/subjects/cs.md',
-		files: { goals: 'Study/CS/Goals.md', reading: 'Study/CS/Reading List.md' }
+		files: { goals: 'Study/CS/Goals.md', reading: 'Study/CS/Reading List.md', principles: 'Study/CS/Principles.md' }
 	};
 	const PATH = SUBJECT.files.reading;
 	const LIST = [

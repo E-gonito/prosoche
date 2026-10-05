@@ -29,7 +29,8 @@ describe('readSubject', () => {
 			scope: { folders: ['Study/Computer Science', 'Computer Science'], tags: ['ws/cs-study'] },
 			files: {
 				goals: 'Study/Computer Science/Goals.md',
-				reading: 'Study/Computer Science/Reading List.md'
+				reading: 'Study/Computer Science/Reading List.md',
+				principles: 'Study/Computer Science/Principles.md'
 			}
 		});
 	});

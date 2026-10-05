@@ -124,6 +124,16 @@ test.describe('Subject overview', () => {
 		await expect(due).toHaveClass(/late/);
 		await expect(page.getByTestId('goal-pill').filter({ hasText: AWS }).getByTestId('goal-due')).toHaveCount(0);
 	});
+
+	test('principles: a missing Principles.md offers to be written, and the first save creates it in the home', async ({ page }) => {
+		const note = page.getByTestId('principles');
+		await expect(note).toContainText('No principles yet');
+		await note.getByTestId('master-note-edit').click();
+		await note.getByTestId('master-note-text').fill('1. **Build it from scratch.**\n');
+		await note.getByTestId('master-note-save').click();
+		await expect(note.locator('.prose strong')).toHaveText('Build it from scratch.');
+		expect(vaultFile('Study/Principles.md')).toBe('1. **Build it from scratch.**\n');
+	});
 });
 
 test.describe('Today', () => {

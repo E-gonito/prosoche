@@ -6,7 +6,7 @@
  * a subject is never a workspace, never shows among them, and claims no task
  * or note for one. There can be any number of subjects. Nothing is shared
  * between two but the code: each has its own home folder holding its own
- * `Goals.md` and `Reading List.md`, and its own scope, its
+ * `Goals.md`, `Reading List.md` and `Principles.md`, and its own scope, its
  * folders and tag, for its notes. Flashcards are not Study's; they are the
  * glossaries' (see `flashcards/decks.ts`).
  *
@@ -49,6 +49,8 @@ export interface Subject extends SubjectRef {
 	files: {
 		goals: string;
 		reading: string;
+		/** The rules the user studies this subject by, shown on its Overview. */
+		principles: string;
 	};
 }
 
@@ -220,7 +222,8 @@ export function readSubject(path: string, content: string): Subject {
 		path,
 		files: {
 			goals: `${home}/Goals.md`,
-			reading: `${home}/Reading List.md`
+			reading: `${home}/Reading List.md`,
+			principles: `${home}/Principles.md`
 		}
 	};
 }

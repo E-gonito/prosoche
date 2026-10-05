@@ -9,11 +9,13 @@
 	 * on a goal not in focus is not missed.
 	 * The card says where the goal stands, then the one step to do now, with
 	 * Done beside it and what to read for it, then every step in order.
-	 * Ticking a step is the ordinary task rewrite.
+	 * Ticking a step is the ordinary task rewrite. Below it all, the
+	 * subject's principles, `Principles.md`, read rendered and edited raw.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import MasterNote from '$lib/components/MasterNote.svelte';
 	import { api, editTask } from '$lib/client/api';
 	import { dueLabel } from '$lib/shared/kanban';
 	import { daysBetween } from '$lib/shared/time';
@@ -195,6 +197,15 @@
 			<a href="{base}/goals">Edit goals and steps</a> · <a href="{base}/reading">Reading list</a>
 		</p>
 	{/if}
+
+	<section class="principles" data-testid="principles">
+		<p class="caps sub">Principles</p>
+		<MasterNote
+			{...data.principles}
+			empty="No principles yet: the rules you want to study this subject by."
+			action="Write principles"
+		/>
+	</section>
 </div>
 
 <style>
@@ -250,4 +261,5 @@
 	.steps .is-now { font-weight: 600; }
 
 	.more { margin-top: var(--s4); }
+	.principles { margin-top: var(--s5); }
 </style>
