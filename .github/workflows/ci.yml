@@ -1,0 +1,42 @@
+# Every push runs the checks CLAUDE.md asks for: types, unit tests, a build
+# and the browser suite. The deploy timer on the container reads this job's
+# result for a commit on main and deploys it only when it passed
+# (see docs/deploy.md), so the job's name, `ci`, is part of that contract.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      # vault-conformance.test.ts skips itself without VAULT_PATH: the real
+      # vault is private, so that check stays a local one before touching parse/.
+      - run: npm test
+      - run: npm run build
+      # The e2e vault is a git repo it commits to, which needs an identity.
+      - run: |
+          git config --global user.name ci
+          git config --global user.email ci@localhost
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: test-results
+          if-no-files-found: ignore
