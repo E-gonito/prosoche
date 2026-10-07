@@ -12,7 +12,9 @@ log(){ echo "$(date "+%F %T") $*" | tee -a "$LOG"; }
 # queued, in_progress, none (no run yet) or unknown (GitHub unreachable).
 # The newest run of the job named `ci` counts, so a re-run replaces a red one.
 ci_verdict(){
-  curl -fsS --max-time 15 -H 'Accept: application/vnd.github+json' \
+  # The container's DNS sometimes times out on the first lookup, so retry.
+  curl -fsS --connect-timeout 15 --max-time 20 --retry 3 --retry-all-errors --retry-delay 3 \
+    -H 'Accept: application/vnd.github+json' \
     "https://api.github.com/repos/$GITHUB_REPO/commits/$1/check-runs?check_name=ci" 2>/dev/null | python3 -c '
 import json, sys
 try:
@@ -22,7 +24,7 @@ except Exception:
 if not runs:
     print("none"); sys.exit()
 run = max(runs, key=lambda r: r["id"])
-print(run["conclusion"] if run["status"] == "completed" else run["status"])' || echo unknown
+print(run["conclusion"] if run["status"] == "completed" else run["status"])'
 }
 
 cd "$REPO" || exit 1
