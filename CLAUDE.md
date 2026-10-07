@@ -64,9 +64,10 @@ found it.
 
 The live copy is the Proxmox container `prosoche` at
 `http://100.104.242.57:3100`. A timer there deploys whatever reaches `main`
-on GitHub within about two minutes, so pushing to `main` is deploying. Date
-data under `Private/` is not in git and exists only in that container.
-Setup, access from `dev` and the latest audit are in `docs/deploy.md`.
+on GitHub within about two minutes of CI passing on it, so pushing to `main`
+is deploying. Date data under `Private/` is not in git and exists only in
+that container. Setup, access from `dev` and the latest audit are in
+`docs/deploy.md`.
 
 ## Checks
 
