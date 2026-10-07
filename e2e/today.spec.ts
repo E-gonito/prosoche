@@ -164,6 +164,9 @@ test.describe('Today on a phone', () => {
 		await page.goto('/');
 		await page.getByTestId('timeline-scroll').scrollIntoViewIfNeeded();
 		await expect(page.getByText('Tap a block to change its time. Tap an empty time to put a task there.')).toBeVisible();
+		// The grid opens scrolled to now or the first block, which depends on the
+		// time of day. The top of the day has nothing in it.
+		await page.getByTestId('timeline-scroll').evaluate((el) => (el.scrollTop = 0));
 		const box = (await page.getByTestId('timeline-scroll').boundingBox())!;
 		await page.touchscreen.tap(box.x + box.width / 2, box.y + 20);
 
