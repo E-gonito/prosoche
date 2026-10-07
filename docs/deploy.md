@@ -13,7 +13,7 @@ there is meant to serve the app any more.
 | Code | `/srv/prosoche/repo`, a clone of `E-gonito/prosoche` |
 | Vault | `/srv/vault`, a clone of `E-gonito/obsideon-notes` |
 | Index | `/var/lib/prosoche/index.db`, safe to delete |
-| Deploy | `prosoche-deploy.timer` runs `/usr/local/bin/prosoche-deploy` every 2 minutes |
+| Deploy | `prosoche-deploy.timer` runs `/usr/local/bin/prosoche-deploy` every 2 minutes; the script is `deploy/prosoche-deploy` in this repo |
 | Deploy log | `/var/log/prosoche-deploy.log` |
 
 The unit sets `PORT=3100`, `HOST=0.0.0.0`, `HUB_VAULT=/srv/vault` and
@@ -22,23 +22,43 @@ The unit sets `PORT=3100`, `HOST=0.0.0.0`, `HUB_VAULT=/srv/vault` and
 
 ## Deploying
 
-**A push to `main` on GitHub is a deploy.** Within about two minutes the timer
-does the following:
+**A push to `main` on GitHub is a deploy, once CI passes on it.** Every push
+runs `.github/workflows/ci.yml` on GitHub Actions: `npm run check`, `npm test`,
+a build and the whole e2e suite, as one job named `ci`. Within about two
+minutes of that job passing on the new `main` commit, the timer does the
+following:
 
 1. Fetches `origin/main`, and stops there if nothing moved.
-2. Resets the checkout to it, then runs `npm ci` and `npm run build` as `app`.
-3. Restarts the service and checks that `http://127.0.0.1:3100/` answers.
-4. If the build or the check fails, puts the previous `build/` and commit back
+2. Asks GitHub for the result of the `ci` job on that commit. Success goes on.
+   A run still queued or in progress, or none yet, waits for the next tick. A
+   failed run is skipped and logged once, so a red commit never deploys; push
+   a fix and that commit is judged on its own. If GitHub cannot be reached it
+   does not deploy either, and says so.
+3. Resets the checkout to it, then runs `npm ci` and `npm run build` as `app`.
+4. Restarts the service and checks that `http://127.0.0.1:3100/` answers.
+5. If the build or the check fails, puts the previous `build/` and commit back
    and restarts again. Every step is logged to the deploy log.
 
-So nothing half-finished goes to `main`. Run `npm test`, `npm run check` and
-the e2e suite on the merge commit before pushing (see `CLAUDE.md`).
+So nothing half-finished goes to `main`, and a push still goes live within
+minutes of CI finishing (about five). Still run `npm test`, `npm run check`
+and the e2e suite locally before pushing, as `CLAUDE.md` says: CI is a second
+look, not a reason to push untested. `vault-conformance.test.ts` needs the real
+vault, which is private, so CI skips it; run it locally with `VAULT_PATH`
+before touching anything in `parse/`.
+
+The gate reads the public GitHub API without a token, once per tick while
+`main` has moved. To deploy a commit CI has not passed (GitHub down, Actions
+off), use `--force` below.
+
+Changing the script: edit `deploy/prosoche-deploy`, then copy it to the
+container (`scp deploy/prosoche-deploy root@100.104.242.57:/usr/local/bin/prosoche-deploy`).
+A push does not update it.
 
 To deploy at once, or to rebuild the same commit:
 
 ```bash
 ssh root@100.104.242.57 systemctl start prosoche-deploy          # only if main moved
-ssh root@100.104.242.57 /usr/local/bin/prosoche-deploy --force   # rebuild regardless
+ssh root@100.104.242.57 /usr/local/bin/prosoche-deploy --force   # rebuild regardless, CI or not
 ```
 
 ## The vault
