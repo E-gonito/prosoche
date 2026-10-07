@@ -34,7 +34,7 @@
  */
 
 import { basename, parseNote, type ParsedNote } from '../parse/note';
-import { recordIntroduced, releaseNew, type NewCardPlan, type NewCardPool } from './new-cards';
+import { inScope, recordIntroduced, releaseNew, type NewCardPlan, type NewCardPool } from './new-cards';
 import { fromSm2, outcomes, type CardState, type Grade, type Schedule } from '$lib/shared/scheduler';
 import type { Card, CardFile, CardKind, CardQueue } from '$lib/shared/flashcards';
 import type { Vault } from '../vault/index';
@@ -167,19 +167,27 @@ interface DueQuery {
 	limit?: number;
 	/**
 	 * Which cards never reviewed may join today, shared out between the
-	 * pools by `releaseNew` (see `new-cards.ts`); the pools are also what the
-	 * queue deals its cards out by. Absent means every unseen card is ready,
-	 * and one pool.
+	 * pools by `releaseNew` (see `new-cards.ts`); the new cards are dealt out
+	 * by those pools too. Absent means every unseen card is ready, and one
+	 * pool.
 	 */
 	newCards?: NewCardPlan;
+	/**
+	 * The scopes (folders or card files) cards already reviewed take turns
+	 * by, in order. Absent, or a card in none, is one pile. Kept apart from
+	 * the pools because a focus narrows where new cards come from, not
+	 * which decks' reviews are due.
+	 */
+	dealBy?: string[];
 }
 
 /**
  * The cards to review in `folders`, and what else is there.
  *
  * Cards already reviewed come first, then cards never reviewed. Within each,
- * the pools in `newCards` take turns, a card from each in their order, so a
- * day with three decks is a mix rather than three decks in a row; each
+ * the scopes in `dealBy` (reviewed) and the pools in `newCards` (never
+ * reviewed) take turns, a card from each in their order, so a day with
+ * three decks is a mix rather than three decks in a row; each
  * pool's own cards stay most overdue first, then by position in the vault.
  * Deliberately deterministic where the plugin shuffles, so a review session
  * can be resumed and a test can name a card.
@@ -208,13 +216,15 @@ export async function dueCards(vault: Vault, query: DueQuery): Promise<CardQueue
 	const isReady = (c: Card) => (c.schedule === null ? released === null || released.cards.has(c) : c.schedule.due <= query.on);
 	const files: CardFile[] = sources.map((s) => ({ path: s.path, cards: s.cards.length, due: s.cards.filter(isReady).length }));
 
-	// The pool each card is dealt out under: the first whose folder holds it.
-	const pools = query.newCards?.pools ?? [];
-	const turnOf = (c: Card) => Math.max(0, pools.findIndex((p) => inFolder(c.path, p.folder)));
+	// The turn each card is dealt out under: the first scope that holds it.
+	const turnBy = (scopes: string[]) => (c: Card) => Math.max(0, scopes.findIndex((scope) => inScope(c.path, scope)));
 	const ready = cards.filter(isReady).sort(byUrgency);
 	const reviewed = ready.filter((c) => c.schedule !== null);
 	const fresh = ready.filter((c) => c.schedule === null);
-	const queue = [...takeTurns(reviewed, turnOf), ...takeTurns(fresh, turnOf)];
+	const queue = [
+		...takeTurns(reviewed, turnBy(query.dealBy ?? [])),
+		...takeTurns(fresh, turnBy((query.newCards?.pools ?? []).map((p) => p.scope)))
+	];
 	return {
 		cards: queue.slice(0, query.limit ?? 200),
 		due: reviewed.length,
@@ -313,7 +323,7 @@ type Reviewed =
 
 /**
  * Grade the card at `at` as the browser last saw it, and count a first review
- * against today's new cards of the pool holding it.
+ * against today's new cards, under its note.
  *
  * The card, and its current schedule, are read back out of the note, so a
  * stale page cannot post a schedule of its own; `at.expectedRaw` is a
@@ -329,14 +339,14 @@ export async function gradeAt(
 	grade: Grade,
 	day: string
 ): Promise<Reviewed | { ok: false; reason: 'no-card' }> {
-	if (!pools.some((p) => inFolder(at.path, p.folder))) return { ok: false, reason: 'no-card' };
+	if (!pools.some((p) => inScope(at.path, p.scope))) return { ok: false, reason: 'no-card' };
 	const note = await vault.read(at.path);
 	if (!note.exists) return { ok: false, reason: 'no-note', current: null };
 	const card = scanCards(note.content, at.path).find((c) => c.line === at.line && c.index === at.index);
 	if (!card) return { ok: false, reason: 'no-card' };
 	if (at.expectedRaw !== undefined && card.expectedRaw !== at.expectedRaw) return { ok: false, reason: 'changed', current: card.expectedRaw };
 	const result = await review(vault, card, grade, day);
-	if (result.ok && card.schedule === null) await recordIntroduced(vault, pools, card.path, day);
+	if (result.ok && card.schedule === null) await recordIntroduced(vault, card.path, day);
 	return result;
 }
 

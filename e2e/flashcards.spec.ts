@@ -47,6 +47,27 @@ test.describe('Flashcards', () => {
 		await expect(page.getByTestId('due-count')).toHaveText('3');
 	});
 
+	test('a focus, chosen on a phone, takes the new cards from those categories only, and clears', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.getByTestId('choose-focus').click();
+		// Tapping chips writes nothing until Save.
+		await page.getByTestId('pick-category').filter({ hasText: 'Naming' }).click();
+		await page.getByTestId('pick-category').filter({ hasText: 'Protocols' }).click();
+		expect(vaultFile('_hub/flashcards.md')).not.toContain('focus:');
+		await page.getByTestId('save-focus').click();
+		expect(await waitForFile('_hub/flashcards.md', (c) => /focus:\n {2}- Networks\/Naming\n {2}- Networks\/Protocols\n/.test(c))).toBe(true);
+
+		// TCP is due; Networks' two new cards are all there are, and TCP holds one back.
+		await expect(page.getByTestId('focus-line')).toHaveText('New cards today come only from Naming, Protocols.');
+		await expect(page.getByTestId('due-count')).toHaveText('2');
+		await expect(page.getByTestId('deck').filter({ hasText: 'Tagalog' })).toContainText('0 due · 0 new · 20 cards');
+
+		await page.getByTestId('choose-focus').click();
+		await page.getByTestId('clear-focus').click();
+		await expect(page.getByTestId('focus-line')).toHaveCount(0);
+		await expect(page.getByTestId('due-count')).toHaveText('15');
+	});
+
 	test('a category’s review grades its card and rewrites the legacy comment as FSRS state', async ({ page }) => {
 		const before = vaultFile(PROTOCOLS);
 		await page.getByTestId('deck').filter({ hasText: 'Networks' }).getByRole('link', { name: /^Protocols/ }).click();

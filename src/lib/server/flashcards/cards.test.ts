@@ -267,7 +267,7 @@ describe('dueCards', () => {
 	let root: string;
 	let vault: Vault;
 
-	const pool = (folder: string, begun = 0, room: number | null = null) => ({ folder, begun, room });
+	const pool = (scope: string, begun = 0, room: number | null = null) => ({ scope, begun, room });
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), 'hub-due-'));
@@ -332,8 +332,17 @@ describe('dueCards', () => {
 		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-01,4,250-->\n\nTint::light\n<!--SR:!2026-09-01,4,250-->\n');
 		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-01,4,250-->\n');
 		const plan = { left: 5, pools: [pool('CS'), pool('Art')] };
-		const queue = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: plan });
+		const queue = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: plan, dealBy: ['CS', 'Art'] });
 		expect(queue.cards.map((c) => c.question)).toEqual(['Overdue', 'Shade', 'Stale', 'Tint', 'New', 'Hue']);
+	});
+
+	it('deals reviews by dealBy and new cards by the pools, so a pool is not a pile of reviews', async () => {
+		await vault.write('Art/Old.md', '#flashcards\n\nShade::dark\n<!--SR:!2026-09-01,4,250-->\n\nTint::light\n<!--SR:!2026-09-01,4,250-->\n');
+		await vault.write('CS/More.md', '#flashcards\n\nStale::yes\n<!--SR:!2026-09-01,4,250-->\n');
+		// Pools of one card file each; reviews still take the folders in turn.
+		const plan = { left: 5, pools: [pool('Art/Colour.md'), pool('CS/Due.md')] };
+		const queue = await dueCards(vault, { on: '2026-09-01', folders: ['Art', 'CS'], newCards: plan, dealBy: ['Art', 'CS'] });
+		expect(queue.cards.map((c) => c.question)).toEqual(['Shade', 'Overdue', 'Tint', 'Stale', 'Hue', 'New']);
 	});
 
 	it('holds a new card back for each review overdue, and lets it in once that is caught up', async () => {
@@ -370,13 +379,13 @@ describe('gradeAt', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
-	const POOLS = [{ key: 'deck/deck', folder: 'Deck', perDay: null }];
+	const POOLS = [{ scope: 'Deck', perDay: null }];
 
 	it('grades a card in a deck and counts its first review there', async () => {
 		const result = await gradeAt(vault, POOLS, { path: 'Deck/Cards.md', line: 2, index: 0 }, 'good', '2026-09-21');
 		expect(result.ok).toBe(true);
 		expect((await vault.read('Deck/Cards.md')).content).toMatch(/^#flashcards\n\nQ::A\n<!--fsrs:/);
-		expect(JSON.parse((await vault.read('_hub/.state/new-cards.json')).content)).toEqual({ day: '2026-09-21', introduced: { 'deck/deck': 1 } });
+		expect(JSON.parse((await vault.read('_hub/.state/new-cards.json')).content)).toEqual({ day: '2026-09-21', introduced: { 'Deck/Cards.md': 1 } });
 	});
 
 	it('never writes a note outside every deck', async () => {

@@ -396,9 +396,28 @@ the choice is stable through the day and the next ones follow tomorrow; a
 deck that did its share this morning gets none of what is left. Review all,
 a deck's review, a category's review, the counts on the page and Today's
 card all use this rule, so they offer the same cards. A card's first review
-is counted per deck and day in `_hub/.state/new-cards.json`, which is never
-committed and holds only today; the review comments cannot tell a first
+is counted per card file and day in `_hub/.state/new-cards.json`, which is
+never committed and holds only today; the review comments cannot tell a first
 review from a later one, so the count is kept rather than worked out.
+
+**A focus.** A list of categories, `<Glossary>/<Category>`, in
+`_hub/flashcards.md` beside the number a day, kept until changed:
+
+    ---
+    new_per_day: 15
+    focus:
+      - Computer Science/Networking
+      - eye2gene/Imaging
+    ---
+
+With one, new cards come only from those categories, evenly between them
+whichever glossary each is in, and a glossary's own cap does not apply. When
+they run out the day has fewer new cards; the other decks do not fill in.
+Reviews already due still come from every category. An item matching no
+category of a deck whose cards are on is ignored, and if none match there is
+no focus. Changing it mid-day keeps the day's total, which is why first
+reviews are counted per card file. Set from **Choose focus** on the Flashcards
+page: every chip becomes a toggle, and one **Save focus** writes the list.
 
 **A missed day costs new cards, not more cards.** Each review overdue (due
 before today) holds back one of the day's new cards, the last that would

@@ -2,9 +2,10 @@
  * New cards per day: how many cards never reviewed may join the reviews
  * today, and which ones.
  *
- * Cards are let in by pool: a folder whose new cards are counted together,
- * which is a glossary's deck (see `decks.ts`). The pools may share one
- * number a day between them, and each may have a limit of its own.
+ * Cards are let in by pool: a scope (a folder or one card file) whose new
+ * cards are counted together, which is a glossary's deck or, under a focus,
+ * one category (see `decks.ts`). The pools may share one number a day
+ * between them, and each may have a limit of its own.
  * `releaseNew` does the choosing, a card at a time to whichever pool has
  * begun the fewest today, for `dueCards`, so turning another glossary's
  * cards on changes the mix rather than the total. This module also says how
@@ -17,10 +18,14 @@
  * day's allowance that goes unused is not carried over.
  *
  * Each first review
- * of a card is counted, per pool and day, in one small file:
+ * of a card is counted, per card file and day, in one small file:
  *
  *     _hub/.state/new-cards.json
- *     { "day": "2026-09-30", "introduced": { "deck/computer-science": 5 } }
+ *     { "day": "2026-09-30", "introduced": { "Flashcards/Computer Science/Cloud (cards).md": 5 } }
+ *
+ * Counting per file rather than per pool lets the pools change mid-day (a
+ * focus is set) without losing what was begun: a pool has begun the sum
+ * over the files in its scope, and the day's total is the sum over all.
  *
  * Why a record rather than reading it off the review comments: a card's
  * comment says when it was last answered, not when it was first, and a
@@ -40,12 +45,10 @@ import type { Vault } from '../vault/index';
 /** Where today's count of first reviews is kept. Never committed. */
 export const NEW_CARDS_PATH = `${config.hubFolder}/.state/new-cards.json`;
 
-/** A folder whose new cards are counted together. */
+/** A scope whose new cards are counted together. */
 export interface NewCardPool {
-	/** Its name in the day's count; unique among pools. */
-	key: string;
-	/** Vault-relative; the pools' folders never overlap. */
-	folder: string;
+	/** A vault-relative folder or one card file, per `inScope`; the pools' scopes never overlap. */
+	scope: string;
 	/** The most new cards it lets in a day on its own; null for no limit of its own. */
 	perDay: number | null;
 }
@@ -56,7 +59,7 @@ export interface NewCardPlan {
 	left: number;
 	/** Every pool, in the order ties go in. */
 	pools: Array<{
-		folder: string;
+		scope: string;
 		/** Cards it has had a first review of today. */
 		begun: number;
 		/** How many more its own limit lets in; null when it has none. */
@@ -67,15 +70,19 @@ export interface NewCardPlan {
 /**
  * Today's plan for new cards over `pools`: each pool's first reviews counted
  * on `day` and what its own limit leaves, never below 0; and, when `shared`
- * is a number, that many a day across them all less what they have begun
- * together. Reads one file; never writes.
+ * is a number, that many a day less every first review today, whether or
+ * not a pool holds it now. Reads one file; never writes.
  */
 export async function newCardPlan(vault: Vault, pools: NewCardPool[], day: string, shared: number | null = null): Promise<NewCardPlan> {
 	const counts = await introduced(vault, day);
-	const begun = pools.map((p) => counts[p.key] ?? 0);
+	const files = Object.entries(counts);
+	const total = files.reduce((sum, [, n]) => sum + n, 0);
 	return {
-		left: shared === null ? Infinity : Math.max(0, shared - begun.reduce((a, b) => a + b, 0)),
-		pools: pools.map((p, i) => ({ folder: p.folder, begun: begun[i], room: p.perDay === null ? null : Math.max(0, p.perDay - begun[i]) }))
+		left: shared === null ? Infinity : Math.max(0, shared - total),
+		pools: pools.map((p) => {
+			const begun = files.reduce((sum, [path, n]) => sum + (inScope(path, p.scope) ? n : 0), 0);
+			return { scope: p.scope, begun, room: p.perDay === null ? null : Math.max(0, p.perDay - begun) };
+		})
 	};
 }
 
@@ -97,14 +104,14 @@ export async function newCardPlan(vault: Vault, pools: NewCardPool[], day: strin
  * counted as `held`. Because the order is fixed, a held card is the same
  * card that joins once a review is caught up.
  *
- * A card in no pool's folder never joins.
+ * A card in no pool's scope never joins.
  */
 export function releaseNew(plan: NewCardPlan, unseen: Card[], overdue = 0): { cards: Set<Card>; held: number } {
 	const order: Card[] = [];
 	const turns = plan.pools.map((p) => ({
 		begun: p.begun,
 		room: p.room ?? Infinity,
-		queue: unseen.filter((c) => c.path.startsWith(`${p.folder}/`)),
+		queue: unseen.filter((c) => inScope(c.path, p.scope)),
 		next: 0
 	}));
 	for (let left = plan.left; left > 0; left--) {
@@ -120,21 +127,26 @@ export function releaseNew(plan: NewCardPlan, unseen: Card[], overdue = 0): { ca
 }
 
 /**
- * Count one card's first review on `day` against the pool whose folder
- * holds its note, `path`. A card in no pool counts for none.
+ * Whether `path` is `scope` itself or inside it as a folder, both
+ * vault-relative. The one place that says what a pool's scope holds. Pure.
+ */
+export function inScope(path: string, scope: string): boolean {
+	return path === scope || path.startsWith(`${scope.replace(/\/$/, '')}/`);
+}
+
+/**
+ * Count one card's first review on `day` against its note, `path`.
  *
  * Writes `NEW_CARDS_PATH`, dropping any other day's counts; a clash with
  * another review's write is retried. Never throws: a count that cannot be
  * written is lost, which lets one more card in today.
  */
-export async function recordIntroduced(vault: Vault, pools: NewCardPool[], path: string, day: string): Promise<void> {
-	const pool = pools.find((p) => path.startsWith(`${p.folder}/`));
-	if (!pool) return;
+export async function recordIntroduced(vault: Vault, path: string, day: string): Promise<void> {
 	try {
 		for (let attempt = 0; attempt < 3; attempt++) {
 			const note = await vault.read(NEW_CARDS_PATH);
 			const counts = readCounts(note.content, day);
-			counts[pool.key] = (counts[pool.key] ?? 0) + 1;
+			counts[path] = (counts[path] ?? 0) + 1;
 			const text = `${JSON.stringify({ day, introduced: counts }, null, '\t')}\n`;
 			if ((await vault.write(NEW_CARDS_PATH, text, note.hash)).ok) return;
 		}
@@ -143,7 +155,7 @@ export async function recordIntroduced(vault: Vault, pools: NewCardPool[], path:
 	}
 }
 
-/** The first reviews counted on `day`, by pool key; none for another day. */
+/** The first reviews counted on `day`, by card file (an older file's keys are decks, which still count in the day's total); none for another day. */
 async function introduced(vault: Vault, day: string): Promise<Record<string, number>> {
 	return readCounts((await vault.read(NEW_CARDS_PATH)).content, day);
 }
