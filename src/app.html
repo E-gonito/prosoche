@@ -4,14 +4,24 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
-		<!--
-			Installable on a phone home screen. Light theme only, so the colour
-			scheme is declared rather than left to the device: a dark-mode phone
-			must not tint a white app.
-		-->
+		<!-- Installable on a phone home screen. -->
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<meta name="theme-color" content="#ffffff" />
-		<meta name="color-scheme" content="light" />
+		<!--
+			The theme, set before the first paint so a dark page never flashes
+			white: the choice saved on this device, else the device's own
+			setting. $lib/client/theme takes over once the app runs, and must
+			agree with this on the key and the bar colours.
+		-->
+		<script>
+			(function () {
+				var saved = null;
+				try { saved = localStorage.getItem('hub:theme'); } catch (e) {}
+				var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+				if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1b1916');
+			})();
+		</script>
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<link rel="icon" href="%sveltekit.assets%/icon-192.png" type="image/png" sizes="192x192" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />

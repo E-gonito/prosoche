@@ -211,8 +211,8 @@
 	   lined up. The key that answers it stays monospaced, as keys do. */
 	.grade small { font-size: var(--t11); font-variant-numeric: tabular-nums; color: var(--muted); }
 	.grade em { position: absolute; top: var(--s1); right: 6px; font: 10px var(--mono); font-style: normal; color: var(--muted); }
-	.again { border-color: #e9c3c3; }
-	.easy { border-color: #bfe3cb; }
+	.again { border-color: color-mix(in srgb, var(--bad) 30%, var(--panel)); }
+	.easy { border-color: color-mix(in srgb, var(--ok) 30%, var(--panel)); }
 
 	.where { font-size: var(--t12); margin-top: 14px; }
 

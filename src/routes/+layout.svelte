@@ -12,12 +12,14 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import SyncBadge from '$lib/components/SyncBadge.svelte';
+	import ThemeButton from '$lib/components/ThemeButton.svelte';
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Mark from '$lib/components/Mark.svelte';
 	import { MODULES, SYSTEM, TABS, moduleFor, subItemFor, tabFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
+	import { theme } from '$lib/client/theme.svelte';
 
 	let { children, data } = $props();
 	let paletteKeys = $state('');
@@ -28,6 +30,8 @@
 	$effect(() => {
 		paletteKeys = keyLabel('mod+k');
 	});
+
+	$effect(() => theme.start());
 
 	// Any navigation closes the More sheet, whichever link was followed.
 	$effect(() => {
@@ -77,7 +81,7 @@
 					<Icon name={m.icon} /><span>{m.title}</span>
 				</a>
 			{/each}
-			<SyncBadge />
+			<div class="status"><SyncBadge /><ThemeButton /></div>
 		</div>
 	</nav>
 
@@ -85,6 +89,7 @@
 		<div class="bar">
 			<a class="brand" href="/today"><Mark />prosoche</a>
 			<button class="icon-btn" onclick={() => palette.show()} aria-label="Search or jump"><Icon name="search" size={20} /></button>
+			<ThemeButton size={20} />
 			<SyncBadge />
 		</div>
 		<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
@@ -192,7 +197,7 @@
 	.subs span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s3); border-top: 1px solid var(--line); }
-	.foot :global(.sync) { align-self: flex-start; margin: var(--s2) 10px 0; }
+	.status { display: flex; align-items: center; justify-content: space-between; margin: var(--s2) 6px 0 10px; }
 
 	main { min-width: 0; }
 

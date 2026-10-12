@@ -58,7 +58,8 @@ found it.
   Absolute paths exist only inside the vault module.
 - Dates are `YYYY-MM-DD` strings. A calendar day is a label, not an instant.
 - Times are minutes since midnight once parsed.
-- Light theme only.
+- Light and dark themes. Colours are tokens in `src/app.css`, never hex in a
+  component, so both themes follow (see `docs/design.md`).
 
 ## Where it runs
 

@@ -40,4 +40,31 @@ test.describe('the shell', () => {
 		await page.keyboard.press('Control+k');
 		await expect(page.getByRole('dialog').getByRole('combobox').or(page.getByPlaceholder(/search|jump|type/i)).first()).toBeVisible();
 	});
+
+	test('the moon turns the lights off, and the choice outlives a reload', async ({ page }) => {
+		await page.goto('/notes');
+		const html = page.locator('html');
+		await expect(html).toHaveAttribute('data-theme', 'light');
+		const button = page.getByRole('navigation', { name: 'Modules' }).first().getByTestId('theme');
+		await expect(button).toHaveAttribute('aria-pressed', 'false');
+
+		await button.click();
+		await expect(html).toHaveAttribute('data-theme', 'dark');
+		await expect(button).toHaveAttribute('aria-pressed', 'true');
+		const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+		expect(paper).toBe('rgb(27, 25, 22)');
+
+		// The head script applies it before the app runs, so nothing flashes.
+		await page.reload();
+		await expect(html).toHaveAttribute('data-theme', 'dark');
+
+		await page.getByRole('navigation', { name: 'Modules' }).first().getByTestId('theme').click();
+		await expect(html).toHaveAttribute('data-theme', 'light');
+	});
+
+	test('until the button is pressed, a dark device gets the dark theme', async ({ page }) => {
+		await page.emulateMedia({ colorScheme: 'dark' });
+		await page.goto('/notes');
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+	});
 });

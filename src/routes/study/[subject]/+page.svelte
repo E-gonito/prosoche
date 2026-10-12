@@ -217,8 +217,8 @@
 		font: inherit; font-size: var(--t13); cursor: pointer;
 	}
 	.pill:hover:not(:disabled) { border-color: var(--accent); }
-	.pill[aria-current='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
-	.pill[aria-current='true'] .muted, .pill[aria-current='true'] .n { color: #fff; opacity: 0.85; }
+	.pill[aria-current='true'] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+	.pill[aria-current='true'] .muted, .pill[aria-current='true'] .n { color: var(--on-accent); opacity: 0.85; }
 	.pill .n { color: var(--muted); font-weight: 600; }
 	.pill.finished .name { text-decoration: line-through; }
 	.pill .soon { font-size: var(--t11); font-weight: 600; padding: 1px 6px; border-radius: var(--r-pill); background: var(--soft); color: var(--text); }

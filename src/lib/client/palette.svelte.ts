@@ -20,6 +20,7 @@ import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
 import { noteHref } from '$lib/shared/links';
 import { all, install, type Shortcut } from '$lib/client/shortcuts.svelte';
+import { theme } from '$lib/client/theme.svelte';
 
 interface PaletteRow {
 	id: string;
@@ -289,6 +290,14 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 						return result.ok ? result.value.message : result.message;
 					}
 				})
+		},
+		{
+			keys: '',
+			description: 'Toggle dark mode',
+			run: () => {
+				theme.toggle();
+				palette.close();
+			}
 		},
 		{
 			keys: '',

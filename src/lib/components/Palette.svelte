@@ -243,7 +243,7 @@
 		border-radius: 5px;
 		padding: 1px 6px;
 	}
-	mark { background: #fef08a; color: inherit; border-radius: 2px; }
+	mark { background: var(--mark); color: inherit; border-radius: 2px; }
 	.empty { margin: var(--s3) 6px; }
 
 	@media (max-width: 720px) {

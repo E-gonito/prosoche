@@ -1,6 +1,6 @@
 /*
- * Design tokens: paper and ink. Light theme only. See docs/design.md, which a
- * test reads alongside this file.
+ * Design tokens: paper and ink, in a light and a dark theme. See
+ * docs/design.md, which a test reads alongside this file.
  */
 @import '@fontsource-variable/source-serif-4/opsz.css';
 @import '@fontsource-variable/source-serif-4/opsz-italic.css';
@@ -17,6 +17,8 @@
 	/* Deep teal for anything you can press; sand for an aside worth reading. */
 	--accent: #2e6b85;
 	--accent-soft: #e3eef2;
+	/* Text drawn on an --accent fill. */
+	--on-accent: #fff;
 	--sand: #efe6da;
 	--sand-edge: #b07a3a;
 
@@ -27,6 +29,12 @@
 	--ok: #3f7d4e;
 	--warn: #a8641c;
 	--bad: #b3372b;
+	/* Pale washes of the three states, behind a line that has one. */
+	--ok-soft: #e4efe5;
+	--warn-soft: #f6ead9;
+	--bad-soft: #fdecea;
+	/* A highlighter stroke over matched text. */
+	--mark: #fef08a;
 
 	--serif: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
 	--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
@@ -67,6 +75,8 @@
 	--field: #fffdf9;
 	--focus: 2px solid var(--accent);
 
+	color-scheme: light;
+
 	/* The shell's furniture, measured once. */
 	--rail-w: 232px;
 	--header-h: 52px;
@@ -75,6 +85,42 @@
 	--read-w: 860px;
 	/* Everything the shell puts above and below a page on a desktop. */
 	--page-chrome: calc(var(--s6) * 2);
+}
+
+/*
+ * The dark theme: the same desk at night. Only the colours change; every
+ * other token is the light theme's. `data-theme` is set on <html> by the
+ * script in app.html before the first paint, and by `$lib/client/theme`
+ * after, so nothing here reads the device's preference itself.
+ */
+:root[data-theme='dark'] {
+	--bg: #1b1916;
+	--panel: #23201c;
+	--soft: #2c2823;
+	--line: #3a352e;
+	--text: #ebe4d9;
+	--muted: #a39889;
+	--accent: #6aa8c2;
+	--accent-soft: #1d3440;
+	--on-accent: #13191c;
+	--sand: #2f2820;
+	--sand-edge: #cf9a5c;
+
+	--q4: #7d746b;
+	--ok: #74b384;
+	--warn: #d79a52;
+	--bad: #e0705f;
+	--ok-soft: #1f3024;
+	--warn-soft: #36291a;
+	--bad-soft: #3a211d;
+	--mark: #5c4d16;
+
+	--shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+	--field: #1f1c19;
+
+	color-scheme: dark;
 }
 
 /*
@@ -206,8 +252,8 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 }
 .btn:hover { background: var(--soft); text-decoration: none; }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover:not(:disabled) { background: #265a70; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, #000); }
 .btn.ghost { border-color: transparent; background: none; color: var(--muted); }
 .btn.ghost:hover { background: var(--soft); color: var(--text); }
 .btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
@@ -250,7 +296,7 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01e
 	background: var(--field);
 	font-size: var(--t11);
 	line-height: 1;
-	color: #fff;
+	color: var(--on-accent);
 	cursor: pointer;
 }
 .box:hover { border-color: var(--accent); }
@@ -277,7 +323,7 @@ dialog::backdrop { background: rgba(42, 38, 34, 0.35); }
 	z-index: 50;
 	pointer-events: none;
 	background: var(--text);
-	color: #fff;
+	color: var(--bg);
 	border-radius: var(--r-sm);
 	padding: var(--s1) 9px;
 	font-size: var(--t12);
@@ -353,8 +399,8 @@ textarea.field { resize: vertical; min-height: 72px; line-height: 1.5; }
 	color: var(--accent);
 	vertical-align: middle;
 }
-.badge.ok { background: #e4efe5; color: var(--ok); }
-.badge.warn { background: #f6ead9; color: var(--warn); }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
 .badge.muted { background: var(--soft); color: var(--muted); }
 
 .num { font-variant-numeric: tabular-nums; }

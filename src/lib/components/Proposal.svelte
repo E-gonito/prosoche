@@ -136,7 +136,7 @@
 	.summary { margin: 0 0 var(--s3); }
 	.stopped {
 		border: 1px solid var(--bad);
-		background: #fef2f2;
+		background: var(--bad-soft);
 		border-radius: var(--r-md);
 		padding: 10px var(--s3);
 		margin-bottom: var(--s3);
@@ -145,7 +145,7 @@
 	.refusals { list-style: none; margin: 6px 0 0; padding: 0; font-size: var(--t12); }
 	.refusals li { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; flex-wrap: wrap; }
 	.edit { border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px var(--s3); margin-bottom: 10px; }
-	.edit.refused { border-color: var(--bad); background: #fffafa; }
+	.edit.refused { border-color: var(--bad); background: var(--bad-soft); }
 	header { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.tick { display: flex; align-items: center; gap: 6px; }
 	.kind { font-size: var(--t11); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
@@ -165,8 +165,8 @@
 		word-break: break-word;
 	}
 	.line { display: block; }
-	.line.add { background: #e7f6ec; }
-	.line.remove { background: #fdecea; }
+	.line.add { background: var(--ok-soft); }
+	.line.remove { background: var(--bad-soft); }
 	footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: var(--s1); }
 	.note { font-size: var(--t12); }
 </style>

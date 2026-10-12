@@ -440,7 +440,7 @@
 		-webkit-user-select: none;
 		cursor: grab;
 	}
-	.card:hover { border-color: #d6cbbb; }
+	.card:hover { border-color: color-mix(in srgb, var(--line), var(--text) 12%); }
 	.card:focus-within { border-color: var(--accent); }
 	.card.lifted { opacity: 0.35; }
 	.card.done .title { text-decoration: line-through; color: var(--muted); }

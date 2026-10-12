@@ -1,9 +1,9 @@
 # Design
 
-Paper and ink: warm, personal, calm. One file, `src/app.css`, holds the tokens
-and the shared classes; a component's own `<style>` holds only its own
-business. A unit test reads this page and `src/app.css` together, so a token
-named here and missing there fails the build. Light theme only.
+Paper and ink: warm, personal, calm. `src/app.css` holds the tokens and the
+shared classes; a component's `<style>` holds only its own business, never a
+hex colour, since dark mode (`ThemeButton`) redefines the colour tokens. A test
+reads this page with `src/app.css`, so a token named here and missing there fails.
 
 ## Tokens
 
@@ -18,10 +18,11 @@ Teal is for anything you can press; sand is for an aside worth reading. Both
 come from the meeting-primer artifact the author already liked.
 
 ```css
---accent: #2e6b85; --accent-soft: #e3eef2;
+--accent: #2e6b85; --accent-soft: #e3eef2; --on-accent: #fff;
 --sand: #efe6da; --sand-edge: #b07a3a;
 --q1: #c2553f; --q2: #2e6b85; --q3: #c8962b; --q4: #a39a90;
 --ok: #3f7d4e; --warn: #a8641c; --bad: #b3372b;
+--ok-soft: #e4efe5; --warn-soft: #f6ead9; --bad-soft: #fdecea; --mark: #fef08a;
 ```
 
 Type. Headings are Source Serif 4, self-hosted through
@@ -40,8 +41,7 @@ Spacing on a four-pixel step, radii, elevation and fields:
 ```css
 --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
 --r-sm: 6px; --r-md: 8px; --r: 10px; --r-lg: 12px; --r-pill: 999px;
---shadow: …; --shadow-lg: …;
---field: #fffdf9; --focus: 2px solid var(--accent);
+--shadow: …; --shadow-lg: …; --field: #fffdf9; --focus: 2px solid var(--accent);
 ```
 
 The shell's furniture, measured once:

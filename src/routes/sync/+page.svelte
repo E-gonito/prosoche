@@ -298,10 +298,10 @@
 	.path { font: var(--t12) var(--mono); }
 	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s4); align-items: start; }
 	.msg { margin-bottom: 14px; }
-	.msg.ok { border-color: #a7f3d0; background: #f0fdf4; }
-	.msg.bad { border-color: #fca5a5; background: #fff7f7; }
+	.msg.ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--panel)); background: var(--ok-soft); }
+	.msg.bad { border-color: color-mix(in srgb, var(--bad) 40%, var(--panel)); background: var(--bad-soft); }
 	.err { color: var(--bad); font-size: var(--t13); margin: 10px 0 0; }
-	.bad-card { border-color: #fca5a5; background: #fff7f7; }
+	.bad-card { border-color: color-mix(in srgb, var(--bad) 40%, var(--panel)); background: var(--bad-soft); }
 
 	.pick { border: 1px solid var(--line); border-radius: var(--r-md); max-height: 320px; overflow: auto; margin-bottom: 10px; }
 	.row {

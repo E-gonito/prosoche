@@ -190,7 +190,7 @@
 		min-width: 52px; min-height: 40px; padding: 0 var(--s3); border: 1px solid var(--line); border-radius: var(--r-pill);
 		background: var(--panel); color: var(--text); font: inherit; font-size: var(--t13); cursor: pointer;
 	}
-	.chip-btn[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+	.chip-btn[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 	.actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
 	.actions .btn { min-height: 44px; }

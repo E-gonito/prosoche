@@ -212,7 +212,7 @@
 		min-width: 0;
 	}
 	.dot { margin-top: 6px; }
-	.dot.sent { --dot: #b3372b; }
+	.dot.sent { --dot: var(--bad); }
 	.dot.matches { --dot: var(--accent); }
 	.dot.type { --dot: var(--sand-edge); }
 	.dot.received { --dot: #6a5aab; }
@@ -240,7 +240,7 @@
 		font-size: var(--t20);
 		font-weight: 600;
 	}
-	.value.sent { color: #b3372b; }
+	.value.sent { color: var(--bad); }
 	.value.matches { color: var(--accent); }
 	.value.type { color: var(--sand-edge); }
 	.value.received { color: #6a5aab; }
