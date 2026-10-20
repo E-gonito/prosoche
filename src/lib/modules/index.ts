@@ -52,7 +52,8 @@ export const MODULES: Module[] = [
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
 	{ id: 'date', title: 'Date', icon: 'calendar', href: '/date', private: true },
-	{ id: 'notes', title: 'Notes', icon: 'book-open', href: '/notes', tab: true }
+	{ id: 'notes', title: 'Notes', icon: 'book-open', href: '/notes', tab: true },
+	{ id: 'tactics', title: 'Tactics', icon: 'crosshair', href: '/tactics' }
 ];
 
 /** The system pages, pinned to the foot of the rail, away from the modules. */

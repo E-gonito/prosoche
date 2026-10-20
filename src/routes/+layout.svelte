@@ -20,6 +20,7 @@
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
 	import { theme } from '$lib/client/theme.svelte';
+	import { rail } from '$lib/client/rail.svelte';
 
 	let { children, data } = $props();
 	let paletteKeys = $state('');
@@ -32,6 +33,7 @@
 	});
 
 	$effect(() => theme.start());
+	$effect(() => rail.start());
 
 	// Any navigation closes the More sheet, whichever link was followed.
 	$effect(() => {
@@ -59,12 +61,29 @@
 			{#each modules as m (m.id)}
 				{@const subs = data.sub[m.id] ?? []}
 				{@const on = subItemFor(subs, page.url.pathname)}
-				<!-- A module is the current page only when none of its sub-items is. -->
-				<a href={m.href} aria-current={current?.id === m.id && !on ? 'page' : undefined}>
-					<Icon name={m.icon} /><span>{m.title}</span>
-				</a>
-				{#if subs.length}
-					<div class="subs" data-testid="sub-{m.id}">
+				{@const folded = subs.length > 0 && rail.isFolded(m.id)}
+				<!-- A module is the current page only when none of its sub-items is
+				     showing as current; a folded group lights its module instead. -->
+				<div class="row">
+					<a href={m.href} aria-current={current?.id === m.id && (!on || folded) ? 'page' : undefined}>
+						<Icon name={m.icon} /><span>{m.title}</span>
+					</a>
+					{#if subs.length}
+						<button
+							class="fold"
+							class:folded
+							onclick={() => rail.toggle(m.id)}
+							aria-expanded={!folded}
+							aria-controls="sub-{m.id}"
+							aria-label="{folded ? 'Show' : 'Hide'} {m.title}'s {subs.length} {subs.length === 1 ? 'item' : 'items'}"
+							data-testid="fold-{m.id}"
+						>
+							<Icon name="chevron-down" size={14} />
+						</button>
+					{/if}
+				</div>
+				{#if subs.length && !folded}
+					<div class="subs" id="sub-{m.id}" data-testid="sub-{m.id}">
 						{#each subs as item (item.href)}
 							<a href={item.href} aria-current={on === item ? 'page' : undefined}>
 								<i class="dot" style="--dot: {item.color}"></i><span>{item.title}</span>
@@ -192,6 +211,29 @@
 	.rail a[aria-current='page'] :global(svg) { color: var(--accent); }
 
 	.modules { display: flex; flex-direction: column; gap: 2px; }
+	.row { position: relative; }
+	.row a { padding-right: 32px; }
+	/* The chevron sits over the row's right end, apart from the link. */
+	.fold {
+		position: absolute;
+		top: 50%;
+		right: 4px;
+		transform: translateY(-50%);
+		display: grid;
+		place-items: center;
+		width: 24px;
+		height: 24px;
+		border: 0;
+		border-radius: var(--r-sm);
+		background: none;
+		color: var(--muted);
+		cursor: pointer;
+		opacity: 0.6;
+	}
+	.fold:hover, .fold:focus-visible { background: var(--soft); color: var(--text); opacity: 1; }
+	.fold.folded { opacity: 1; }
+	.fold :global(svg) { transition: transform 0.15s; }
+	.fold.folded :global(svg) { transform: rotate(-90deg); }
 	.subs { display: flex; flex-direction: column; gap: 1px; margin: 0 0 var(--s1) 18px; padding-left: var(--s2); border-left: 1px solid var(--line); }
 	.subs a { font-size: var(--t13); padding: 5px 10px; }
 	.subs span, .modules span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

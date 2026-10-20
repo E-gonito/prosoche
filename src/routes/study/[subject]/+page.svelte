@@ -11,11 +11,20 @@
 	 * Done beside it and what to read for it, then every step in order.
 	 * Ticking a step is the ordinary task rewrite. Below it all, the
 	 * subject's principles, `Principles.md`, read rendered and edited raw.
+	 *
+	 * Starting is made as small as it can be: the step's estimate, first move
+	 * and parts (its `est::`, `first::` and `part::` sub-bullets) show on the
+	 * Now card; Plan with Claude drafts them as a proposal to accept; Tutor
+	 * prompt gives a prompt to paste into Claude Code in the step's repo, for a
+	 * Socratic tutor that hints rather than answers. A goal with late steps
+	 * offers to move them back onto the calendar, keeping their gaps.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import MasterNote from '$lib/components/MasterNote.svelte';
+	import Draft from '$lib/components/Draft.svelte';
+	import { tutorCommand, tutorPrompt } from '$lib/shared/tutor';
 	import { api, editTask } from '$lib/client/api';
 	import { dueLabel } from '$lib/shared/kanban';
 	import { daysBetween } from '$lib/shared/time';
@@ -59,6 +68,61 @@
 		busy = false;
 		if (result.ok) await invalidateAll();
 		else problem = result.message;
+	}
+
+	/** The open steps whose date has passed, and how far the earliest is behind. */
+	const late = $derived.by(() => {
+		const open = focus?.steps.filter((s) => (s.state === 'now' || s.state === 'later') && s.daysLeft !== null && s.daysLeft < 0) ?? [];
+		return { count: open.length, by: open.length ? -Math.min(...open.map((s) => s.daysLeft!)) : 0 };
+	});
+
+	async function replan() {
+		if (busy || !focus) return;
+		busy = true;
+		problem = '';
+		const result = await api('/api/study/replan', { subject: data.subject.slug, goal: focus.name });
+		busy = false;
+		if (result.ok) await invalidateAll();
+		else problem = result.message;
+	}
+
+	let tutoring = $state(false);
+	let copied = $state('');
+	const prompt = $derived(
+		focus && now
+			? tutorPrompt({
+					subject: data.subject.name,
+					goal: focus.name,
+					step: now.task.text,
+					due: now.task.due,
+					details: now.details,
+					repo: focus.repo,
+					reading: focus.resources.map((r) => (r.url ? `${r.title} (${r.url})` : r.title))
+				})
+			: ''
+	);
+	const command = $derived(tutorCommand(focus?.repo ?? null));
+
+	/**
+	 * Copy `text`. The page is served over plain http on the tailnet, where
+	 * the async clipboard API is not offered, so a hidden selection and the
+	 * older copy command stand in for it.
+	 */
+	async function copy(text: string, what: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			const area = document.createElement('textarea');
+			area.value = text;
+			area.style.position = 'fixed';
+			area.style.opacity = '0';
+			document.body.appendChild(area);
+			area.select();
+			document.execCommand('copy');
+			area.remove();
+		}
+		copied = what;
+		setTimeout(() => (copied = ''), 2000);
 	}
 
 	async function tick(task: Task, done: boolean) {
@@ -126,6 +190,15 @@
 			<p class="facts small muted">
 				<span class="num" data-testid="focus-progress">{focus.done} of {focus.total} steps done</span>
 			</p>
+			{#if late.count}
+				<div class="behind" data-testid="behind">
+					<span>
+						{late.count} {late.count === 1 ? 'step is' : 'steps are'} late. Replanning moves this goal's open steps {late.by}
+						{late.by === 1 ? 'day' : 'days'} later, keeping the gaps between them.
+					</span>
+					<button class="btn small" disabled={busy} onclick={replan} data-testid="replan">Replan from today</button>
+				</div>
+			{/if}
 
 			{#if now}
 				<div class="now" data-testid="step-now">
@@ -136,11 +209,49 @@
 						{/if}
 					</p>
 					<p class="task">{@render words(now.task.text)}</p>
+					{#if now.details.est || now.details.first}
+						<p class="start" data-testid="step-start">
+							{#if now.details.est}<span class="est num" data-testid="step-est"><Icon name="clock" size={14} /> about {now.details.est}</span>{/if}
+							{#if now.details.first}<span class="first" data-testid="step-first"><b>First:</b> {@render words(now.details.first)}</span>{/if}
+						</p>
+					{/if}
+					{#if now.details.parts.length}
+						<ol class="parts" data-testid="step-parts">
+							{#each now.details.parts as part, i (i)}<li>{@render words(part)}</li>{/each}
+						</ol>
+					{/if}
 					<div class="actions">
 						<button class="btn primary" disabled={busy} onclick={() => tick(now.task, true)} data-testid="step-done">
 							<Icon name="check" size={15} /> Done
 						</button>
+						<button class="btn" aria-expanded={tutoring} onclick={() => (tutoring = !tutoring)} data-testid="tutor-open">Tutor prompt</button>
 					</div>
+					<div class="plan">
+						<Draft
+							label={now.details.parts.length ? 'Plan again with Claude' : 'Plan with Claude'}
+							title="Claude drafts an estimate, a first move and short parts for this step. Nothing is written until you accept."
+							endpoint="/api/study/plan"
+							request={{ subject: data.subject.slug, line: now.task.line }}
+							ondone={() => invalidateAll()}
+						/>
+					</div>
+					{#if tutoring}
+						<div class="tutor" data-testid="tutor">
+							<p class="small">
+								Paste this into Claude Code{focus.repo ? ' in the repo' : ''}. It will hint and ask rather than answer, and handle the setup for you.
+							</p>
+							{#if command}
+								<div class="cmd">
+									<code data-testid="tutor-command">{command}</code>
+									<button class="btn small" onclick={() => copy(command, 'command')}>{copied === 'command' ? 'Copied' : 'Copy'}</button>
+								</div>
+							{:else}
+								<p class="small muted">Add a <code>repo::</code> line under this goal's heading in Goals.md, such as <code>repo:: ~/dev/leyline-front</code>, and the prompt will point Claude at it.</p>
+							{/if}
+							<textarea class="field" readonly rows="10" value={prompt} onfocus={(e) => e.currentTarget.select()} data-testid="tutor-prompt"></textarea>
+							<button class="btn primary small" onclick={() => copy(prompt, 'prompt')} data-testid="tutor-copy">{copied === 'prompt' ? 'Copied' : 'Copy prompt'}</button>
+						</div>
+					{/if}
 				</div>
 			{:else if focus.total > 0}
 				<div class="now finished" data-testid="goal-finished">
@@ -184,6 +295,9 @@
 								<span class="n num">{step.state === 'skipped' ? '–' : numberOf(step)}</span>
 								<span class="text">{@render words(step.task.text)}</span>
 							</label>
+							{#if step.details.est && step.state !== 'done' && step.state !== 'skipped'}
+								<span class="step-est num small">{step.details.est}</span>
+							{/if}
 							{#if step.task.due && step.state !== 'done' && step.state !== 'skipped'}
 								<span class="due num small" class:late={step.daysLeft !== null && step.daysLeft < 0}>{dueLabel(step.task.due, data.today)}</span>
 							{/if}
@@ -261,5 +375,19 @@
 	.steps .is-now { font-weight: 600; }
 
 	.more { margin-top: var(--s4); }
+
+	.start { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0 0 var(--s3); font-size: var(--t14); }
+	.est { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+	.first b { font-weight: 600; }
+	.parts { margin: 0 0 var(--s3); padding-left: 1.4em; font-size: var(--t14); line-height: 1.5; }
+	.plan { margin-top: var(--s2); }
+	.tutor { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; }
+	.tutor p { margin: 0; }
+	.tutor textarea { width: 100%; font: var(--t12)/1.5 var(--mono); }
+	.cmd { display: flex; align-items: center; gap: var(--s2); }
+	.behind { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-top: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--bad-soft); color: var(--bad); font-size: var(--t13); }
+	.behind span { flex: 1; min-width: 200px; }
+	.steps .step-est { flex: none; color: var(--muted); white-space: nowrap; padding-top: 1px; margin-left: auto; }
+	.steps .step-est + .due { margin-left: var(--s2); }
 	.principles { margin-top: var(--s5); }
 </style>

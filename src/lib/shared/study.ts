@@ -107,9 +107,21 @@ export type ReadingOp =
 	| { kind: 'move'; line: number; group: number; index: number }
 	| { kind: 'delete'; line: number };
 
+/**
+ * What makes a step easy to start, from its sub-bullets in `Goals.md` (see
+ * `server/study/steps.ts`): roughly how long it takes, the very first thing
+ * to do, and the short parts it breaks into.
+ */
+export interface StepDetails {
+	est: string | null;
+	first: string | null;
+	parts: string[];
+}
+
 /** One milestone of the goal in focus, as a step: done, the one to do now, one for later, or skipped. */
 export interface FocusStep {
 	task: Task;
+	details: StepDetails;
 	state: 'done' | 'now' | 'later' | 'skipped';
 	/** Days from today to the step's due date, negative once it has passed; null with no date. */
 	daysLeft: number | null;
@@ -129,6 +141,8 @@ export interface StudyFocus extends GoalRef {
 	daysLeft: number | null;
 	/** Its milestones in file order. */
 	steps: FocusStep[];
+	/** Where its work happens, from `repo::` under its heading, for the tutor prompt; null with none. */
+	repo: string | null;
 	/** Reading items for it, Reading first, then To read. */
 	resources: Array<ReadingItem & { group: 'Reading' | 'To read' }>;
 }

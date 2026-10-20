@@ -48,7 +48,9 @@ export type FeatureId =
 	| 'glossary-lookup'
 	| 'glossary-scan'
 	| 'dating-insights'
-	| 'commit-message';
+	| 'commit-message'
+	| 'tactics-suggest'
+	| 'study-plan';
 
 /**
  * The two controls the user picks, plus the two limits that bound a run.
@@ -89,7 +91,11 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	// Kept low because a read on a private log is a small, occasional ask.
 	'dating-insights': { model: 'claude-sonnet-5-5', effort: 'low', budgetUsd: 0.15, timeoutSeconds: 90 },
 	// One line from a few diffs: the cheapest model is enough.
-	'commit-message': { model: 'claude-haiku-4-5-20251001', effort: 'low', budgetUsd: 0.05, timeoutSeconds: 60 }
+	'commit-message': { model: 'claude-haiku-4-5-20251001', effort: 'low', budgetUsd: 0.05, timeoutSeconds: 60 },
+	// One scenario note in, a few short fields and maybe a small map out.
+	'tactics-suggest': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
+	// One step of a study goal: an estimate, a first move and a few parts.
+	'study-plan': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.2, timeoutSeconds: 120 }
 };
 
 export const FEATURE_LABELS: Record<FeatureId, string> = {
@@ -97,7 +103,9 @@ export const FEATURE_LABELS: Record<FeatureId, string> = {
 	'glossary-lookup': 'Glossary look-up',
 	'glossary-scan': 'Glossary scan',
 	'dating-insights': 'Dating insights',
-	'commit-message': 'Commit message'
+	'commit-message': 'Commit message',
+	'tactics-suggest': 'Tactics scenario suggestions',
+	'study-plan': 'Plan a study step'
 };
 
 /** The caps G7 enforces, whatever an individual feature's row asks for. */

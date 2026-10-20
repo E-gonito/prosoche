@@ -41,6 +41,12 @@ export const config = {
 	 * prosoche's.
 	 */
 	flashcardFolder: 'Flashcards',
+	/**
+	 * Folder at the vault root holding the tactics trainer's notes:
+	 * `Scenarios/<id>.md`, one drill each, and `Attempts/<YYYY-MM>.md`, the
+	 * log of every answer, which is the trainer's only state.
+	 */
+	tacticsFolder: 'Tactics',
 
 	git: {
 		/**

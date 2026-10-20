@@ -4,21 +4,38 @@ test.describe('the shell', () => {
 	test('the rail lists every module and the workspaces under Workspaces', async ({ page }) => {
 		await page.goto('/notes');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
-		await expect(rail.locator('.modules > a')).toHaveText(['Today', 'Glossary', 'Flashcards', 'Workspaces', 'Study', 'Date', 'Notes']);
+		await expect(rail.locator('.modules > .row > a')).toHaveText(['Today', 'Glossary', 'Flashcards', 'Workspaces', 'Study', 'Date', 'Notes', 'Tactics']);
 		// The fixture's Study subject is not a workspace: only Work sits under
 		// Workspaces, and Study sits under Study.
 		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Work']);
 		await expect(rail.getByTestId('sub-study').locator('a')).toHaveText(['Study']);
 		// The one glossary is Glossaries/Work.md, so it alone sits under Glossary.
 		await expect(rail.getByTestId('sub-glossary').locator('a')).toHaveText(['Work']);
-		await expect(rail.locator('.modules > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
+		await expect(rail.locator('.modules > .row > a', { hasText: 'Notes' })).toHaveAttribute('aria-current', 'page');
+	});
+
+	test('a group folds behind its chevron, and stays folded on this device', async ({ page }) => {
+		await page.goto('/w/work/log');
+		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
+		await expect(rail.getByTestId('sub-w')).toBeVisible();
+		await rail.getByTestId('fold-w').click();
+		await expect(rail.getByTestId('sub-w')).toHaveCount(0);
+		await expect(rail.getByTestId('fold-w')).toHaveAttribute('aria-expanded', 'false');
+		// Folded, the module stands in for the workspace you are on.
+		await expect(rail.locator('.modules > .row > a', { hasText: 'Workspaces' })).toHaveAttribute('aria-current', 'page');
+		// The other groups are untouched.
+		await expect(rail.getByTestId('sub-glossary')).toBeVisible();
+		await page.reload();
+		await expect(rail.getByTestId('sub-w')).toHaveCount(0);
+		await rail.getByTestId('fold-w').click();
+		await expect(rail.getByTestId('sub-w').locator('a')).toHaveText(['Work']);
 	});
 
 	test('a sub-item, not its module, is current on its own pages', async ({ page }) => {
 		await page.goto('/glossary/work');
 		const rail = page.getByRole('navigation', { name: 'Modules' }).first();
 		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).toHaveAttribute('aria-current', 'page');
-		await expect(rail.locator('.modules > a', { hasText: 'Glossary' })).not.toHaveAttribute('aria-current', 'page');
+		await expect(rail.locator('.modules > .row > a', { hasText: 'Glossary' })).not.toHaveAttribute('aria-current', 'page');
 		await page.goto('/w/work/log');
 		await expect(rail.getByTestId('sub-w').getByRole('link', { name: 'Work' })).toHaveAttribute('aria-current', 'page');
 		await expect(rail.getByTestId('sub-glossary').getByRole('link', { name: 'Work' })).not.toHaveAttribute('aria-current', 'page');

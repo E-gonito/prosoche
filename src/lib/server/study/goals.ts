@@ -29,6 +29,7 @@ import { parseNote } from '../parse/note';
 import { setFrontmatterField } from '../parse/frontmatter';
 import { FIELD, parseTaskLine, toTask } from '../parse/task';
 import { appendUnderHeading } from '../sections';
+import { goalRepo, replanGoal, stepDetails, type StepDetails } from './steps';
 import { slugify } from '$lib/shared/slug';
 import type { GoalRef } from '$lib/shared/study';
 import type { Task } from '$lib/shared/task';
@@ -43,6 +44,10 @@ export interface Goal {
 	target: string | null;
 	/** In file order, same as everywhere else the hub reads a task list. */
 	milestones: Task[];
+	/** Each milestone's details, in the same order (see `steps.ts`). */
+	details: StepDetails[];
+	/** `repo::` under the heading, or null. */
+	repo: string | null;
 }
 
 export interface GoalsNote {
@@ -99,7 +104,8 @@ export function parseGoals(content: string, path = ''): GoalsNote {
 				const task = parseTaskLine(lines[l], l);
 				if (task && !task.fenced) milestones.push(toTask(task, path));
 			}
-			return { title: h.title, line: h.line, target, milestones };
+			const details = milestones.map((m) => stepDetails(content, m.line));
+			return { title: h.title, line: h.line, target, milestones, details, repo: goalRepo(content, h.line) };
 		});
 
 	return { focus, goals };
@@ -249,4 +255,29 @@ export async function addMilestone(
 
 	const task = parseTaskLine(content.split('\n')[line], line);
 	return { ok: true, task: toTask(task!, path) };
+}
+
+/**
+ * Move a goal's late steps back onto the calendar (see `replanGoal`): every
+ * open dated step of `goal` later by the same number of days, so the
+ * earliest late one is due `today`. Only the 📅 dates, and `target::` when a
+ * step would pass it, change; written against the note as read. Refuses
+ * `no-goal` for a goal not in the note and `nothing-late` when none of its
+ * steps is late. Answers how far the steps moved and how many did.
+ */
+export async function replan(
+	vault: Vault,
+	path: string,
+	goal: string,
+	today: string
+): Promise<{ ok: true; shift: number; steps: number } | { ok: false; reason: 'no-goal' | 'nothing-late' | 'conflict' }> {
+	const note = await vault.read(path);
+	const parsed = parseGoals(note.content, path);
+	const found = findGoal(goalRefs(parsed), goal);
+	const heading = found ? parsed.goals.find((g) => g.title === found.name) : null;
+	if (!note.exists || !heading) return { ok: false, reason: 'no-goal' };
+	const planned = replanGoal(note.content, heading.line, today);
+	if (!planned) return { ok: false, reason: 'nothing-late' };
+	const written = await vault.write(path, planned.content, note.hash);
+	return written.ok ? { ok: true, shift: planned.shift, steps: planned.steps } : { ok: false, reason: 'conflict' };
 }

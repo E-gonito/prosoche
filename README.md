@@ -61,7 +61,7 @@ New here? [`docs/getting-started.md`](docs/getting-started.md) takes you from
 
 ## Modules
 
-Seven tabs, drawn from one registry (`src/lib/modules/index.ts`):
+Eight tabs, drawn from one registry (`src/lib/modules/index.ts`):
 
 - **Today** — the day and the week around it: the timeline, board cards to
   drag onto it, an inbox card and an evening review.
@@ -77,6 +77,8 @@ Seven tabs, drawn from one registry (`src/lib/modules/index.ts`):
 - **Date** — a private counter ledger, person profiles and scored like forecasts under a gitignored
   `Private/` folder.
 - **Notes** — a read-only Obsidian viewer with search and backlinks.
+- **Tactics** — timed decision drills for Ready or Not and Bodycam, from
+  scenario notes in `Tactics/`, graded and logged back to the vault.
 
 Beside them: an **Inbox** for triaging captures, **Sync** for git, and
 **Settings** for the AI layer.

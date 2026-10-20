@@ -88,8 +88,9 @@ export function focusOn(summary: StudySummary, today: string): StudyFocus | null
 	const at = named ? summary.goalRefs.indexOf(named) : Math.max(0, goals.findIndex((g) => g.milestones.some(isOpen)));
 	const goal = goals[at];
 	const now = goal.milestones.find(isOpen) ?? null;
-	const steps = goal.milestones.map((task: Task): FocusStep => ({
+	const steps = goal.milestones.map((task: Task, i): FocusStep => ({
 		task,
+		details: goal.details[i] ?? { est: null, first: null, parts: [] },
 		state: task === now ? 'now' : isDone(task) ? 'done' : isSkipped(task) ? 'skipped' : 'later',
 		daysLeft: task.due ? daysBetween(today, task.due) : null
 	}));
@@ -106,6 +107,7 @@ export function focusOn(summary: StudySummary, today: string): StudyFocus | null
 		chosen: named !== null,
 		daysLeft: goal.target && /^\d{4}-\d{2}-\d{2}$/.test(goal.target) ? daysBetween(today, goal.target) : null,
 		steps,
+		repo: goal.repo,
 		resources
 	};
 }

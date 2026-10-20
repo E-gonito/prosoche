@@ -550,6 +550,34 @@ the reading items for the goal, Reading before To read, and every step in
 order, each tickable, a cancelled one shown struck through and left out of
 the count. A goal picked and finished says so and offers the next.
 
+**Starting a step is made as small as it can be.** A step can carry
+sub-bullets that say how long it takes, the very first thing to do, and
+the short parts it breaks into; a goal can say where its work happens:
+
+    ## Rust via leyline-front
+    target:: 2026-12-13
+    repo:: ~/dev/leyline-front
+    - [ ] Exercise 1: implement PCG32 📅 2026-10-25
+    	- est:: 2h
+    	- first:: Run `cargo test rng` and read the first failing test
+    	- part:: Read Rust book chapter 3
+
+The Now card shows the estimate and the first move above the step's
+parts, and the step list shows each estimate beside its date. **Plan with
+Claude** drafts the estimate, first move and parts for the step on the Now
+card, from the goals note, the subject's principles and its reading; it is
+a proposal, shown as a diff, written only when you accept, and only those
+sub-bullets of that one step change. **Tutor prompt** gives a prompt to
+paste into Claude Code, with the command to open it in the goal's repo: it
+tells Claude the step, its plan and its reading, and to tutor Socratically,
+asking and hinting rather than answering, while doing the setup and other
+chores itself. The prompt is a template filled in the browser; no model
+runs to make it. When a goal's steps are late, **Replan from today** moves
+every open dated step of that goal later by the same number of days, so the
+earliest late one is due today and the gaps between them stay as planned.
+Done and skipped steps keep their dates, and `target::` moves only if a step
+would now pass it.
+
 **Reading list** is `Reading List.md`, which prosoche owns as it owns a
 workspace's `Board.md`: it is a board in the Obsidian Kanban plugin's
 format, with columns To read, Reading, Paused and Done, so it opens as a
@@ -734,6 +762,87 @@ read-only, from the folders named in the workspace file.
 `sandbox="allow-scripts"` and nothing more — never `allow-same-origin` — so a
 page's own script can run but can never reach this origin's cookies, storage
 or anything outside its frame.
+
+## Tactics
+
+Tactics is a trainer for decisions in Ready or Not and Bodycam: what to do
+with a suspect whose weapon is down, which angle to clear first, where to
+stand, under a clock. It trains judgement, not aim. Everything it knows is
+in `Tactics/` at the vault root.
+
+**A scenario is one note** in `Tactics/Scenarios/`, any depth, with
+`type: tactic-scenario` frontmatter (id, game, drill, tags, difficulty,
+time limit, provenance, source, the patch it was checked on, status) and
+`##` sections: Situation, an optional Map, Options for a choice drill,
+Answer, and Why. The full format is at the top of
+`src/lib/server/parse/scenario.ts`. Options that break the rules of
+engagement go in `roe_violation: [A]`. A Map is a ` ```tactic-map ` fence of
+JSON, drawn top-down with walls, doors, labelled angles and people. Each
+kind of person has its own shape and a text label for their state, so the
+map reads without colour. A note that does not read is listed on the
+Tactics page with every problem found in it, and is never served.
+
+**Drills.** A choice drill (`threat-call`, `hold-peek` or `squad-command`)
+asks for one lettered option; `clear-order` asks for the map's angles in the
+order you would clear them, picked on the map or by number, with Backspace
+to undo. `recall` scenarios are read but never served: free recall belongs
+to Flashcards.
+
+**Missions** are 8, 10 or 12 drills. A Ready or Not or a Bodycam mission
+also includes the shared CQB scenarios; My AARs serves only your own
+(`provenance: own-aar`). Only approved scenarios are served unless
+**Include drafts** is ticked. The drills are drawn by weight: one minus the
+accuracy of the scenario's weakest tag, plus a bonus if you have never
+answered it, plus one if it is due. Due-ness comes from replaying its past
+answers through the same FSRS scheduler the flashcards use (in time counts as
+Good, late as Hard, wrong or out of time as Again). A harder scenario on a
+tag is held back until your last five answers at the level below are 80%
+right, and no more than two drills in a row share a first tag.
+
+**Scoring.** Right within the time limit scores 100. Right within twice the
+limit scores 60: a slow right answer beats a fast wrong one, on purpose.
+Wrong scores 0, and at twice the limit the drill times out at 0. The mission
+grade is S from a mean of 95, A from 85, B from 70, C from 55, and otherwise
+D. Any ROE violation caps it at D, whatever the points, because that is how
+Ready or Not grades. **The clock times deciding, not reading.** Each drill
+opens with its situation, and its map unless the map is the question, with
+no clock running. Space shows the options, or a clear-order drill's map, and
+starts the clock, because in game you already see the room. Every number is in `TACTICS` in
+`src/lib/shared/tactics.ts`. While a drill is on screen, 1 to 9 and A to I
+answer it, and the app's own single-key shortcuts are off.
+
+**After each drill** you see the verdict and the right answer, never the
+Why. **The debrief** gives the grade, any ROE violation in red, each miss
+with a box to write why you think you got it wrong before **Show the why**
+reveals it, each tag's accuracy before and after, and each drill's time
+against its limit. A Why's provenance and source are shown with it, and so
+is whether it was checked in game.
+
+**The attempt log** is the trainer's only state: one line per answer in
+`Tactics/Attempts/<YYYY-MM>.md`, appended once when a mission ends, and
+never rewritten:
+
+    - 2026-10-20T21:14:03 cqb-0002 answer:: B result:: in-time correct:: true ms:: 2310 roe:: false mission:: m-20261020-211403 device:: pc
+
+The server judges each answer again before writing it, and takes the time
+from the browser. Accuracy per tag is a moving average (each answer weighs
+0.3, and a tag starts at 50%), replayed from the log each time. A mission
+abandoned partway writes nothing.
+
+**Approving.** A scenario page shows its answer and Why. **Approve** sets
+`status: approved`, and that line only. It refuses while the Why is empty or
+still marked `> [!suggestion]`: the Why has to be in your words. Nothing a
+model drafts can approve a scenario. **Retire** keeps the note but takes it
+out of every mission.
+
+**Starter drafts.** On an empty `Tactics/`, **Add the starter drafts**
+writes eight shared CQB scenarios, built on the deaths you listed (unchecked
+angles, peeking the same angle again, reloading in the open, the doorway
+behind you), plus `Tactics/To verify in game.md`, a checklist of Ready or
+Not rules-of-engagement claims to test before any of them becomes a
+scenario. Each starter is `provenance: inferred` and `status: draft`, with
+its Why marked as a suggestion. The button never overwrites a note that is
+already there.
 
 ## Inbox
 

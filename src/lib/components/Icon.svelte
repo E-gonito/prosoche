@@ -29,6 +29,7 @@
 		'chevron-left',
 		'chevron-right',
 		'clock',
+		'crosshair',
 		'edit',
 		'external-link',
 		'file',
@@ -73,6 +74,7 @@
 		'chevron-left': ['m15 18-6-6 6-6'],
 		'chevron-right': ['m9 18 6-6-6-6'],
 		clock: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'M12 6v6l4 2'],
+		crosshair: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'M22 12h-4', 'M6 12H2', 'M12 6V2', 'M12 22v-4'],
 		edit: [
 			'M21.17 6.81a1 1 0 0 0-3.98-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.63l4.35-1.32a2 2 0 0 0 .83-.5z',
 			'm15 5 4 4'

@@ -253,3 +253,15 @@ function strList(value: unknown): string[] {
 	if (typeof value === 'string') return [value];
 	return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
+
+/**
+ * True for a note named `Goals.md` outside the private folder, the daily
+ * notes and the hub's own folder: the only kind of file planning a study
+ * step may write. Pure.
+ */
+export function isGoalsPath(path: string): boolean {
+	const parts = path.split('/');
+	if (parts.length < 2 || parts[parts.length - 1] !== 'Goals.md') return false;
+	if (parts.some((p) => p === '..' || p.startsWith('.'))) return false;
+	return !([config.privateFolder, config.dailyNote.folder, config.hubFolder] as string[]).includes(parts[0]);
+}

@@ -32,6 +32,8 @@
 import { config } from '../config';
 import { dailyNotePath, shiftDay, type DayKey } from '../daily';
 import { isGlossaryPath } from '../glossary';
+import { isScenarioPath } from '../tactics/paths';
+import { isGoalsPath } from '../study/subjects';
 import type { Vault } from '../vault/index';
 import {
 	checkBlastRadius,
@@ -113,6 +115,19 @@ export function policyFor(
 		// glossary in `Glossaries/`.
 		case 'glossary-lookup':
 			return wrap(extra.filter(isGlossaryPath).slice(0, 1), { maxFiles: 1 });
+
+		// A tactics suggestion revises one scenario note, the one the draft
+		// names, and only a note in the scenarios folder. It can never touch
+		// `status:`: the proposal is built by `ai/tactics-drafts.ts`, which
+		// copies that line across, and approving is a separate human step.
+		case 'tactics-suggest':
+			return wrap(extra.filter(isScenarioPath).slice(0, 1), { maxFiles: 1 });
+
+		// Planning a study step writes the sub-bullets under one step of one
+		// subject's `Goals.md`. The destination comes back from the browser,
+		// so it is held to its kind: at worst another subject's Goals.md.
+		case 'study-plan':
+			return wrap(extra.filter(isGoalsPath).slice(0, 1), { maxFiles: 1 });
 
 		// A glossary scan proposes no edit: its candidates go to a person, and
 		// the terms they keep are written by `addScannedTerms`, the accept step.
