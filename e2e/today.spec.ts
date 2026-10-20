@@ -67,6 +67,10 @@ test.describe('Today', () => {
 
 	test('a click on an empty time on the desktop offers the same choice', async ({ page }) => {
 		const scroll = page.getByTestId('timeline-scroll');
+		// The timeline opens scrolled to the current time, which from 10:40 to
+		// 18:00 is inside the fixture's Client project block. Its top, before
+		// the first block at 09:30, is empty whatever the time of day.
+		await scroll.evaluate((el) => (el.scrollTop = 0));
 		const box = (await scroll.boundingBox())!;
 		await page.mouse.click(box.x + box.width - 20, box.y + 10);
 		await expect(page.getByTestId('schedule-sheet')).toContainText('What goes at');
