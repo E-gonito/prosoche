@@ -368,12 +368,12 @@ describe('the study link and the scan, on disk', () => {
 	});
 
 	it.each([
-		['---\nflashcards: true\n---\n', { on: true, perDay: null }],
-		['---\nflashcards: false\nstudy: cs\n---\n', { on: false, perDay: null }],
-		['---\nstudy: cs\nnew_per_day: 5\n---\n', { on: true, perDay: 5 }],
-		['---\nstudy:\n---\n', { on: false, perDay: null }],
-		['---\nflashcards: true\nnew_per_day: lots\n---\n', { on: true, perDay: null }],
-		['# Glossary\n', { on: false, perDay: null }]
+		['---\nflashcards: true\n---\n', { on: true, perDay: null, pronounce: null }],
+		['---\nflashcards: false\nstudy: cs\n---\n', { on: false, perDay: null, pronounce: null }],
+		['---\nstudy: cs\nnew_per_day: 5\n---\n', { on: true, perDay: 5, pronounce: null }],
+		['---\nstudy:\n---\n', { on: false, perDay: null, pronounce: null }],
+		['---\nflashcards: true\nnew_per_day: lots\n---\n', { on: true, perDay: null, pronounce: null }],
+		['# Glossary\n', { on: false, perDay: null, pronounce: null }]
 	])('reads the card settings of %j', (content, expected) => {
 		expect(cardSettings(content)).toEqual(expected);
 	});
@@ -470,5 +470,14 @@ describe('the study link and the scan, on disk', () => {
 		const racing = new Racing(dir);
 		expect(await addScannedTerms(racing, REF, { entries: [entry()], complete: true }, '2026-09-29')).toMatchObject({ ok: false, reason: 'conflict' });
 		expect((await vault.read(PATH)).content).toBe(edited);
+	});
+});
+
+describe('cardSettings pronounce', () => {
+	it('reads a language code, and nothing else, as the glossary’s pronunciation', () => {
+		expect(cardSettings('---\npronounce: tl\n---\n').pronounce).toBe('tl');
+		expect(cardSettings('---\npronounce: Tagalog\n---\n').pronounce).toBeNull();
+		expect(cardSettings('---\nflashcards: true\n---\n').pronounce).toBeNull();
+		expect(cardSettings('# Glossary\n').pronounce).toBeNull();
 	});
 });

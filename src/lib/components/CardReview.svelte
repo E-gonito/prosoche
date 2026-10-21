@@ -15,15 +15,19 @@
 	import { applyShift, gradeCard } from '$lib/client/flashcards';
 	import type { Card } from '$lib/shared/flashcards';
 	import Icon from '$lib/components/Icon.svelte';
+	import Pronounce from '$lib/components/Pronounce.svelte';
 
 	let {
 		cards,
 		today,
-		onfinish
+		onfinish,
+		pronounce = []
 	}: {
 		cards: Card[];
 		today: string;
 		onfinish?: () => void;
+		/** Decks whose words can be heard: card folder and language code. */
+		pronounce?: Array<{ folder: string; code: string }>;
 	} = $props();
 
 	let queue = $state<Card[]>([]);
@@ -50,6 +54,16 @@
 	});
 
 	const card = $derived(queue[at] ?? null);
+	/** The word to hear for this card, if its deck has a language: see the markup. Pure. */
+	const hear = $derived.by(() => {
+		const deck = card ? pronounce.find((p) => card.path.startsWith(`${p.folder}/`)) : undefined;
+		if (!card || !deck) return null;
+		const first = (text: string) => text.split('\n')[0].trim();
+		const q = first(card.question);
+		const a = first(card.answer);
+		const word = q.length <= a.length ? q : a;
+		return word ? { term: word, code: deck.code, always: word === q } : null;
+	});
 	const done = $derived(started && card === null);
 	/** Total attempts left, so a lapsed card coming round again is counted. */
 	const left = $derived(queue.length - at);
@@ -128,6 +142,12 @@
 			{/if}
 		</button>
 
+		<!-- The word to hear is the shorter side of a glossary card. On a card that
+		     asks for the word from its meaning it is the answer, so it waits for the reveal. -->
+		{#if hear}
+			{#if hear.always || revealed}<p class="hear"><Pronounce term={hear.term} code={hear.code} /></p>{/if}
+		{/if}
+
 		{#if revealed}
 			<div class="grades" data-testid="grades">
 				{#each previews as preview, i (preview.grade)}
@@ -159,6 +179,7 @@
 
 <style>
 	.session { max-width: 680px; margin: 0 auto; }
+	.hear { margin: var(--s3) 0 0; text-align: center; }
 	.progress { height: 4px; border-radius: 2px; background: var(--soft); overflow: hidden; }
 	.progress i { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
 	.meta { display: flex; gap: 10px; font-size: var(--t12); color: var(--muted); margin: var(--s2) 0 var(--s3); }

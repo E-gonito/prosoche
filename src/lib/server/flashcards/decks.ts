@@ -69,6 +69,8 @@ interface Deck {
 	folder: string;
 	/** Its glossary's `new_per_day:`, capping its share; null for none. */
 	perDay: number | null;
+	/** Its glossary's `pronounce:` language code, or null. */
+	pronounce: string | null;
 }
 
 /** One category of a deck: one card file. */
@@ -104,8 +106,8 @@ interface DeckView {
 export async function decks(vault: Vault, workspaces: Workspace[]): Promise<Deck[]> {
 	const out: Deck[] = [];
 	for (const g of await glossaries(vault, workspaces)) {
-		const { on, perDay } = cardSettings((await vault.read(g.path)).content);
-		if (on) out.push({ name: g.name, slug: g.slug, color: g.color, folder: deckFolder(g.name), perDay });
+		const { on, perDay, pronounce } = cardSettings((await vault.read(g.path)).content);
+		if (on) out.push({ name: g.name, slug: g.slug, color: g.color, folder: deckFolder(g.name), perDay, pronounce });
 	}
 	return out;
 }
@@ -234,17 +236,20 @@ export async function flashcardsOverview(
  * decks taking turns; or, with `filter.deck` (a slug), that deck's; and with
  * `filter.category` too, that category's, matched ignoring case. At most 200
  * cards; `total` is every card in what was asked for. Null for a deck or a
- * category there is not. Never writes.
+ * category there is not. `pronounce` lists the decks whose words can be heard
+ * said (their card folder and language code), for matching a card by its path.
+ * Never writes.
  */
 export async function deckReview(
 	vault: Vault,
 	workspaces: Workspace[],
 	day: string,
 	filter: { deck?: string; category?: string } = {}
-): Promise<{ cards: Card[]; total: number; deck: { name: string; slug: string } | null; category: string | null } | null> {
+): Promise<{ cards: Card[]; total: number; deck: { name: string; slug: string } | null; category: string | null; pronounce: Array<{ folder: string; code: string }> } | null> {
 	const all = await decks(vault, workspaces);
 	const queue = await deckQueue(vault, all, day, await flashcardSettings(vault));
-	if (!filter.deck) return { cards: queue.cards.slice(0, SESSION), total: queue.total, deck: null, category: null };
+	const pronounce = all.flatMap((d) => (d.pronounce ? [{ folder: d.folder, code: d.pronounce }] : []));
+	if (!filter.deck) return { cards: queue.cards.slice(0, SESSION), total: queue.total, deck: null, category: null, pronounce };
 
 	const deck = all.find((d) => d.slug === filter.deck);
 	if (!deck) return null;
@@ -255,7 +260,7 @@ export async function deckReview(
 
 	const cards = queue.cards.filter((c) => (file ? c.path === file.path : inDeck(deck, c.path)));
 	const total = file ? file.cards : files.reduce((sum, f) => sum + f.cards, 0);
-	return { cards: cards.slice(0, SESSION), total, deck: { name: deck.name, slug: deck.slug }, category: file ? categoryOfFile(file.path) : null };
+	return { cards: cards.slice(0, SESSION), total, deck: { name: deck.name, slug: deck.slug }, category: file ? categoryOfFile(file.path) : null, pronounce };
 }
 
 /**

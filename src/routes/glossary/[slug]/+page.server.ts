@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { linkHref, renderNote } from '$server/render';
 import { readLede } from '$server/parse/note';
-import { findGlossary, loadGlossary, noteFolders } from '$server/glossary';
+import { cardSettings, findGlossary, loadGlossary, noteFolders } from '$server/glossary';
 import { scanPlan } from '$server/ai/glossary-drafts';
 import { loadSettings } from '$server/ai/settings';
 import { glossaryCardsState } from '$server/flashcards/glossary-cards';
@@ -44,6 +44,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	return {
 		glossary: { name: ref.name, slug: ref.slug, color: ref.color, path: ref.path, description: readLede(glossary.content) },
 		entries,
+		/** The language code its words can be heard in, or null. */
+		pronounce: cardSettings(glossary.content).pronounce,
 		categories: [...new Set(glossary.entries.map((e) => e.category).filter((c): c is string => Boolean(c)))],
 		cards: await glossaryCardsState(vault, ref.path),
 		folders: await noteFolders(vault),

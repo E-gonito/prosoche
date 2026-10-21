@@ -29,7 +29,7 @@
 			<a class="btn" href="/flashcards">Back to flashcards</a>
 		</div>
 	{:else}
-		<CardReview cards={data.cards} today={data.today} />
+		<CardReview cards={data.cards} today={data.today} pronounce={data.pronounce} />
 	{/if}
 </div>
 

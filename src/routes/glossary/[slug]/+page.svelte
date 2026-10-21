@@ -17,6 +17,7 @@
 	 */
 	import { afterNavigate, invalidateAll } from '$app/navigation';
 	import Draft from '$lib/components/Draft.svelte';
+	import Pronounce from '$lib/components/Pronounce.svelte';
 	import DetailsHeader from '$lib/components/DetailsHeader.svelte';
 	import GlossaryScan from '$lib/components/GlossaryScan.svelte';
 	import { api } from '$lib/client/api';
@@ -237,6 +238,7 @@
 					{:else}
 						<h3>
 							{entry.term}
+							{#if data.pronounce}<Pronounce term={entry.term} code={data.pronounce} />{/if}
 							{#if entry.pending}<span class="badge warn">To look up</span>{/if}
 							<span class="actions">
 								<button class="btn ghost small" onclick={() => edit(entry)} data-testid="edit-term-open">Edit</button>

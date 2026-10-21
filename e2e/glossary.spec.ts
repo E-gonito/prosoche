@@ -16,6 +16,22 @@ const PAST = (() => {
  * looked up, MLflow waiting. The Work workspace names it with
  * `glossary: Work`; Study names no glossary.
  */
+test.describe('Hearing a glossary', () => {
+	test.beforeEach(async ({ request }) => {
+		await resetVault(request);
+	});
+
+	test('a glossary that sets pronounce: links each term to Forvo, and one that does not shows nothing', async ({ page }) => {
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('forvo')).toHaveCount(0);
+
+		const path = join(VAULT, 'Glossaries/Work.md');
+		writeFileSync(path, `---\npronounce: tl\n---\n${vaultFile('Glossaries/Work.md')}`);
+		await page.goto('/glossary/work');
+		await expect(page.getByTestId('forvo').first()).toHaveAttribute('href', 'https://forvo.com/word/dvc/#tl');
+	});
+});
+
 test.describe('Glossary', () => {
 	test.beforeEach(async ({ request }) => {
 		await resetVault(request);

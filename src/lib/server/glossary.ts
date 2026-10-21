@@ -47,6 +47,7 @@ import { isDayKey } from './daily';
 import { ENTRY_LIMITS, MAX_NEW_ENTRIES, type ScannedEntry } from '$lib/shared/glossary';
 import { conflict, invalid, rewrite, type Written } from './rewrite';
 import { slugify } from '$lib/shared/slug';
+import { isLanguageCode } from '$lib/shared/pronounce';
 import type { Workspace } from './workspaces';
 import { hashContent, type Vault } from './vault/index';
 
@@ -175,12 +176,14 @@ export async function loadGlossary(vault: Vault, path: string): Promise<Glossary
  * without the key that still names a study subject, `study: <slug>`, from
  * when cards lived in Study, reads as on, so its cards carry on. `perDay`
  * is `new_per_day:` as a whole number, or null for none or anything else.
+ * `pronounce` is the language code (`tl`) that turns on hearing its words said
+ * aloud (see `shared/pronounce.ts`), or null for none or anything else.
  */
-export function cardSettings(content: string): { on: boolean; perDay: number | null } {
+export function cardSettings(content: string): { on: boolean; perDay: number | null; pronounce: string | null } {
 	const fm = parseNote(content).frontmatter;
 	const on = 'flashcards' in fm ? fm.flashcards === true || fm.flashcards === 'true' : typeof fm.study === 'string' && fm.study.trim() !== '';
 	const n = typeof fm.new_per_day === 'number' ? fm.new_per_day : typeof fm.new_per_day === 'string' && /^\s*\d+\s*$/.test(fm.new_per_day) ? Number(fm.new_per_day) : NaN;
-	return { on, perDay: Number.isInteger(n) && n >= 0 ? n : null };
+	return { on, perDay: Number.isInteger(n) && n >= 0 ? n : null, pronounce: isLanguageCode(fm.pronounce) ? fm.pronounce : null };
 }
 
 /**
