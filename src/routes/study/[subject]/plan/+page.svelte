@@ -22,6 +22,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import StudyTabs from '$lib/components/StudyTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import StepText from '$lib/components/StepText.svelte';
 	import MasterNote from '$lib/components/MasterNote.svelte';
 	import Draft from '$lib/components/Draft.svelte';
 	import { tutorCommand, tutorPrompt } from '$lib/shared/tutor';
@@ -53,9 +54,6 @@
 		if (days > 1) return `in ${days} days`;
 		return days === -1 ? '1 day late' : `${-days} days late`;
 	}
-
-	/** Step text in pieces, so `inline code` shows as code rather than backticks. */
-	const pieces = (text: string) => text.split(/(`[^`]+`)/).filter(Boolean).map((p) => (p.startsWith('`') && p.endsWith('`') && p.length > 2 ? { code: true, text: p.slice(1, -1) } : { code: false, text: p }));
 
 	let busy = $state(false);
 	let problem = $state('');
@@ -137,7 +135,7 @@
 </script>
 
 {#snippet words(text: string)}
-	{#each pieces(text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}
+	<StepText {text} />
 {/snippet}
 
 <svelte:head><title>Plan · {data.subject.name} · Study · prosoche</title></svelte:head>

@@ -7,6 +7,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
+	import StepText from '$lib/components/StepText.svelte';
 	import { api } from '$lib/client/api';
 	import type { Outcome } from '$lib/shared/study';
 
@@ -65,7 +66,6 @@
 		else await goto(base, { invalidateAll: true });
 	}
 
-	const pieces = (text: string) => text.split(/(`[^`]+`)/).filter(Boolean).map((p) => (p.startsWith('`') && p.endsWith('`') && p.length > 2 ? { code: true, text: p.slice(1, -1) } : { code: false, text: p }));
 </script>
 
 <svelte:head><title>{clock} · {data.subject.name} · prosoche</title></svelte:head>
@@ -81,8 +81,8 @@
 		<section class="card" data-testid="session">
 			<p class="caps"><i class="dot" style="--dot: {data.subject.color}"></i>{data.subject.name}</p>
 			<p class="clock num" class:over={left < 0} data-testid="clock" aria-live="off">{clock}</p>
-			<h1 data-testid="session-step">{#each pieces(session.step.text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</h1>
-			{#if session.step.first}<p class="start"><b>Start with:</b> {#each pieces(session.step.first) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</p>{/if}
+			<h1 data-testid="session-step"><StepText text={session.step.text} /></h1>
+			{#if session.step.first}<p class="start"><b>Start with:</b> <StepText text={session.step.first} /></p>{/if}
 
 			<textarea class="field" rows="4" bind:value={scratch} placeholder="Scratch: what you tried, what got stuck" aria-label="Scratch" data-testid="scratch"></textarea>
 

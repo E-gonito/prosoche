@@ -25,3 +25,27 @@ export function relativeDay(day: string, today: string): string {
 	if (diff < -1 && diff >= -7) return `in ${-diff} days`;
 	return day;
 }
+
+/** One run of a step's words: plain text, `inline code`, or a [[wikilink]]. */
+export type StepPiece = { text: string; code?: true; href?: string };
+
+/**
+ * A step's words in pieces, so `inline code` shows as code and a [[wikilink]]
+ * as a link rather than as raw punctuation. A link to `Glossaries/<Name>`
+ * opens that glossary; any other opens the note. `[[target|label]]` shows its
+ * label. Pure.
+ */
+export function stepPieces(text: string): StepPiece[] {
+	return text
+		.split(/(`[^`]+`|\[\[[^\]]+\]\])/)
+		.filter(Boolean)
+		.map((part): StepPiece => {
+			if (part.length > 2 && part.startsWith('`') && part.endsWith('`')) return { text: part.slice(1, -1), code: true };
+			const link = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]$/.exec(part);
+			if (!link) return { text: part };
+			const target = link[1].trim().replace(/\.md$/, '');
+			const name = target.split('/').pop() ?? target;
+			const glossary = /^Glossaries\/[^/]+$/.test(target);
+			return { text: link[2]?.trim() || name, href: glossary ? `/glossary/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}` : noteHref(`${target}.md`) };
+		});
+}

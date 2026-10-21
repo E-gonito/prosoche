@@ -7,6 +7,7 @@
 	 * the reading list and the rest are on Plan, one link away.
 	 */
 	import { goto } from '$app/navigation';
+	import StepText from '$lib/components/StepText.svelte';
 	import { api } from '$lib/client/api';
 
 	let { data } = $props();
@@ -16,9 +17,6 @@
 	const mine = $derived(data.running?.subject === data.subject.slug);
 	const elsewhere = $derived(data.running && !mine ? data.running : null);
 	const hours = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
-
-	/** Step text in pieces, so `inline code` shows as code rather than backticks. */
-	const pieces = (text: string) => text.split(/(`[^`]+`)/).filter(Boolean).map((p) => (p.startsWith('`') && p.endsWith('`') && p.length > 2 ? { code: true, text: p.slice(1, -1) } : { code: false, text: p }));
 
 	let busy = $state(false);
 	let problem = $state('');
@@ -55,8 +53,8 @@
 			<p class="muted">One session runs at a time.</p>
 			<a class="btn primary go" href="/study/{elsewhere.subject}/session">Go to it</a>
 		{:else if step}
-			<h1 data-testid="step-now">{#each pieces(step.task.text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</h1>
-			{#if step.details.first}<p class="start" data-testid="step-start"><b>Start with:</b> {#each pieces(step.details.first) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</p>{/if}
+			<h1 data-testid="step-now"><StepText text={step.task.text} /></h1>
+			{#if step.details.first}<p class="start" data-testid="step-start"><b>Start with:</b> <StepText text={step.details.first} /></p>{/if}
 			<button class="btn primary go" disabled={busy} onclick={start} data-testid="start">Start</button>
 		{:else}
 			<h1>Nothing open here</h1>
