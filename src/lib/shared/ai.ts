@@ -50,6 +50,7 @@ export type FeatureId =
 	| 'dating-insights'
 	| 'commit-message'
 	| 'tactics-suggest'
+	| 'tactics-generate'
 	| 'study-plan';
 
 /**
@@ -94,6 +95,8 @@ export const FEATURE_DEFAULTS: Record<FeatureId, RunSettings> = {
 	'commit-message': { model: 'claude-haiku-4-5-20251001', effort: 'low', budgetUsd: 0.05, timeoutSeconds: 60 },
 	// One scenario note in, a few short fields and maybe a small map out.
 	'tactics-suggest': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.25, timeoutSeconds: 120 },
+	// Up to five new scenarios, each a short situation, options and a map.
+	'tactics-generate': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.5, timeoutSeconds: 240 },
 	// One step of a study goal: an estimate, a first move and a few parts.
 	'study-plan': { model: 'claude-sonnet-5-5', effort: 'medium', budgetUsd: 0.2, timeoutSeconds: 120 }
 };
@@ -105,6 +108,7 @@ export const FEATURE_LABELS: Record<FeatureId, string> = {
 	'dating-insights': 'Dating insights',
 	'commit-message': 'Commit message',
 	'tactics-suggest': 'Tactics scenario suggestions',
+	'tactics-generate': 'Tactics new scenarios',
 	'study-plan': 'Plan a study step'
 };
 

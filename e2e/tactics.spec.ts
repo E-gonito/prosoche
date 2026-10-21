@@ -135,4 +135,29 @@ Not aimed at anyone, and no command given yet.
 		await expect(page.getByTestId('scenario-status')).toContainText('approved');
 		expect(vaultFile(path)).toBe(mine.replace('status: draft', 'status: approved'));
 	});
+
+	test('an after-action review becomes a draft scenario in your words', async ({ page }) => {
+		await page.goto('/tactics/aar');
+		await page.getByTestId('aar-map').fill('Warehouse');
+		await page.getByTestId('aar-happened').fill('Peeked the same angle twice and got shot.');
+		await page.getByTestId('aar-did').fill('Peeked again');
+		await page.getByTestId('aar-should').fill('Swung wide from the other side');
+		await page.getByTestId('aar-tags').fill('bodycam.peek');
+		await page.getByTestId('aar-save').click();
+
+		await expect(page).toHaveURL(/\/tactics\/scenario\/bc-0001$/);
+		await expect(page.getByTestId('scenario-status')).toContainText('draft');
+		expect(vaultFile('Tactics/Scenarios/bc-0001.md')).toContain('Swung wide from the other side');
+		expect(vaultFile('Tactics/AAR Template.md')).toContain('After-action review');
+	});
+
+	test('an after-action review that says the same twice is refused', async ({ page }) => {
+		await page.goto('/tactics/aar');
+		await page.getByTestId('aar-happened').fill('It went wrong.');
+		await page.getByTestId('aar-did').fill('Peek');
+		await page.getByTestId('aar-should').fill('peek');
+		await page.getByTestId('aar-tags').fill('bodycam.peek');
+		await page.getByTestId('aar-save').click();
+		await expect(page.getByTestId('aar-problem')).toContainText('the same');
+	});
 });

@@ -123,6 +123,12 @@ export function policyFor(
 		case 'tactics-suggest':
 			return wrap(extra.filter(isScenarioPath).slice(0, 1), { maxFiles: 1 });
 
+		// New scenarios are new notes in the scenarios folder, at most five a
+		// run, each an `append` to a path the draft chose as free. An append
+		// only ever adds, so a forged path can at worst add to a scenario.
+		case 'tactics-generate':
+			return wrap(extra.filter(isScenarioPath).slice(0, 5), { maxFiles: 5 });
+
 		// Planning a study step writes the sub-bullets under one step of one
 		// subject's `Goals.md`. The destination comes back from the browser,
 		// so it is held to its kind: at worst another subject's Goals.md.

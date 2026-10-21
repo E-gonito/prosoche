@@ -844,6 +844,20 @@ scenario. Each starter is `provenance: inferred` and `status: draft`, with
 its Why marked as a suggestion. The button never overwrites a note that is
 already there.
 
+**More scenarios.** Two routes, neither bulk-generated.
+**Write an after-action review** (`/tactics/aar`) takes what happened, what
+you did and what you should have done, and writes `Tactics/AAR/<day>
+<map>.md` and a draft scenario from it: two options in your words, your
+correction as the answer, `provenance: own-aar`, an empty Why for you to
+fill. It also writes `Tactics/AAR Template.md` if missing, for writing one in
+Obsidian. **Generate with Claude** drafts up to five scenarios for the
+selected game, around your weakest tags, and **Suggest improvements** on a
+draft's page proposes a sharper situation, extra wrong options, tags, a map
+and a suggested Why. Both go through the proposal gate: you tick what to
+keep, they are `inferred` drafts with the Why marked as a suggestion, the
+Answer and `status:` are never touched, `roe.*` tags and threat-call drills
+are never drafted, and approving stays your button alone.
+
 ## Inbox
 
 The triage page for `Inbox/Capture.md`: every line not yet dealt with,

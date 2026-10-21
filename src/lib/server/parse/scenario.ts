@@ -39,8 +39,11 @@ import {
 	GAMES,
 	PROVENANCES,
 	STATUSES,
+	type DrillKind,
+	type Game,
 	type Option,
 	type Point,
+	type Provenance,
 	type Scenario,
 	type TacticMap
 } from '$lib/shared/tactics';
@@ -156,6 +159,67 @@ export function parseScenario(content: string, path: string): ScenarioRead {
 			roeViolation
 		}
 	};
+}
+
+/** What a new scenario note is written from. */
+export interface NewScenario {
+	id: string;
+	game: Game;
+	drill: DrillKind;
+	tags: string[];
+	difficulty: number;
+	timeLimitS: number;
+	provenance: Provenance;
+	source: string;
+	created: string;
+	situation: string;
+	map: TacticMap | null;
+	/** A choice drill's options, lettered A, B, … in this order; empty for clear-order. */
+	options: string[];
+	/** The `## Answer` line: a letter, or angle ids in order. */
+	answer: string;
+	/** Empty to leave the Why for you; marked `> [!suggestion]` when `whySuggested`. */
+	why: string;
+	whySuggested: boolean;
+}
+
+/**
+ * A new scenario note, always `status: draft`: the one writer of the format
+ * this module reads, so a note it writes reads back as the same scenario.
+ * Free text that would start a heading is escaped. Pure.
+ */
+export function scenarioNote(s: NewScenario): string {
+	const safe = (text: string) => text.trim().replace(/^([ \t]*)#/gm, '$1\\#');
+	const one = (text: string) => text.replace(/\s+/g, ' ').trim();
+	const why = s.why.trim() ? (s.whySuggested ? `> [!suggestion]\n${safe(s.why).split('\n').map((l) => `> ${l}`.trimEnd()).join('\n')}` : safe(s.why)) : '';
+	return [
+		'---',
+		'type: tactic-scenario',
+		`id: ${s.id}`,
+		`game: ${s.game}`,
+		`drill: ${s.drill}`,
+		`tags: [${s.tags.join(', ')}]`,
+		`difficulty: ${s.difficulty}`,
+		`time_limit_s: ${s.timeLimitS}`,
+		`provenance: ${s.provenance}`,
+		`source: ${JSON.stringify(one(s.source))}`,
+		'verified_version: ""',
+		'status: draft',
+		`created: ${s.created}`,
+		'---',
+		'',
+		'## Situation',
+		safe(s.situation),
+		'',
+		...(s.map ? ['## Map', '```tactic-map', JSON.stringify(s.map), '```', ''] : []),
+		...(s.options.length ? ['## Options', ...s.options.map((o, i) => `- ${String.fromCharCode(65 + i)}: ${one(o)}`), ''] : []),
+		'## Answer',
+		one(s.answer),
+		'',
+		'## Why',
+		...(why ? [why] : []),
+		''
+	].join('\n');
 }
 
 /**

@@ -9,6 +9,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
+	import Draft from '$lib/components/Draft.svelte';
 	import { noteHref } from '$lib/shared/links';
 	import TacticMap from '$lib/components/tactics/TacticMap.svelte';
 	import type { Status } from '$lib/shared/tactics';
@@ -64,6 +65,17 @@
 			{#if s.status !== 'draft'}<button class="btn small" disabled={busy} onclick={() => setStatus('draft')}>Back to draft</button>{/if}
 			{#if s.status !== 'retired'}<button class="btn small ghost" disabled={busy} onclick={() => setStatus('retired')}>Retire</button>{/if}
 		</div>
+		{#if s.status === 'draft'}
+			<div class="suggest">
+				<Draft
+					label="Suggest improvements"
+					title="Claude proposes a sharper situation, more options, tags and a map. Your answer and Why are never touched."
+					endpoint="/api/tactics/suggest"
+					request={{ id: s.id }}
+					ondone={() => invalidateAll()}
+				/>
+			</div>
+		{/if}
 		{#if blocked && s.status !== 'approved'}<p class="hint">{blocked}</p>{/if}
 		{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 
@@ -103,6 +115,7 @@
 </div>
 
 <style>
+	.suggest { margin-top: var(--s2); }
 	.status-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.spacer { flex: 1; }
 	.options { list-style: none; padding: 0; display: grid; gap: 6px; }

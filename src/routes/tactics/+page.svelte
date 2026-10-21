@@ -5,6 +5,7 @@
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
+	import Draft from '$lib/components/Draft.svelte';
 	import { noteHref } from '$lib/shared/links';
 	import { TACTICS, type Mode } from '$lib/shared/tactics';
 
@@ -99,6 +100,21 @@
 			<p class="hint">Keys: <b>1</b>–<b>9</b> or <b>A</b>–<b>I</b> pick an option, and <b>1</b>–<b>9</b> pick an angle in order; <b>Backspace</b> undoes the last angle; <b>Space</b> moves on.</p>
 		</section>
 
+		<section class="sheet more" data-testid="make-scenarios">
+			<p class="label">Make more scenarios</p>
+			<div class="row">
+				<a class="btn" href="/tactics/aar" data-testid="aar-link">Write an after-action review</a>
+				<Draft
+					label="Generate with Claude"
+					title="Claude drafts new scenarios as inferred drafts for the selected game. Nothing is written until you accept, and you approve each one yourself."
+					endpoint="/api/tactics/generate"
+					request={{ game: mode === 'aar-review' ? 'shared' : mode, tags: weakest.slice(0, 3).map((t) => t.tag), count: 3 }}
+					ondone={() => invalidateAll()}
+				/>
+			</div>
+			<p class="hint">Generated drafts are guesses from Claude, not facts. They stay drafts until you rewrite the Why and approve.</p>
+		</section>
+
 		<p class="label">Weakest tags</p>
 		{#if data.attempts === 0}
 			<p class="hint">Play a mission and your weakest tags show here. Every tag starts at {pct(TACTICS.prior)}.</p>
@@ -155,7 +171,8 @@
 </div>
 
 <style>
-	.start { margin-bottom: var(--s5); }
+	.start, .more { margin-bottom: var(--s5); }
+	.more .label { margin-top: 0; }
 	.start .label { margin-top: 0; }
 	.chip .n { color: var(--muted); font-size: var(--t12); }
 	.row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); margin-top: var(--s3); }
