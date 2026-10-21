@@ -92,6 +92,47 @@ test.describe('Cute', () => {
 		await expect(page.getByTestId('filed')).toContainText('Added to Yaku Neko');
 	});
 
+	test('several chosen at once are filed together, in order, after leaving one out', async ({ page }) => {
+		const before = images();
+		await page.getByTestId('file-input').setInputFiles([
+			{ name: 'one.png', mimeType: 'image/png', buffer: await png(11, 11) },
+			{ name: 'two.png', mimeType: 'image/png', buffer: await png(12, 12) },
+			{ name: 'three.gif', mimeType: 'image/gif', buffer: await sharp({ create: { width: 3, height: 3, channels: 3, background: '#39f' } }).gif().toBuffer() }
+		]);
+		await expect(page.getByTestId('batch').getByTestId('preview')).toHaveCount(3);
+		await expect(page.getByTestId('drop')).toContainText('Where do these 3 go?');
+		await page.getByTestId('leave-out').nth(1).click();
+		await expect(page.getByTestId('batch').getByTestId('preview')).toHaveCount(2);
+
+		await page.getByTestId('add-here').filter({ hasText: 'Yaku Neko' }).click();
+		await expect(page.getByTestId('filed')).toContainText('Added 2 images to Yaku Neko');
+		await expect(page.getByTestId('preview')).toHaveCount(0);
+		const added = images().filter((n) => !before.includes(n));
+		expect(added).toHaveLength(2);
+		const lines = vaultFile('Cute/Yaku Neko.md').slice(NOTE.length).trimEnd().split('\n');
+		expect(lines).toHaveLength(2);
+		expect(lines[0]).toMatch(/\.webp\]\]$/);
+		expect(lines[1]).toMatch(/\.gif\]\]$/);
+		expect(vaultFile('Cute/Yaku Neko.md').startsWith(NOTE)).toBe(true);
+	});
+
+	test('a dropped batch makes one new character holding all of them', async ({ page }) => {
+		await page.evaluate(
+			async ({ a, b }) => {
+				const dt = new DataTransfer();
+				dt.items.add(new File([new Uint8Array(a)], 'a.png', { type: 'image/png' }));
+				dt.items.add(new File([new Uint8Array(b)], 'b.png', { type: 'image/png' }));
+				document.querySelector('[data-testid="drop"]')!.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+			},
+			{ a: [...(await png(9, 9))], b: [...(await png(8, 8))] }
+		);
+		await page.getByTestId('new-character').fill('Mochi');
+		await page.getByTestId('create-character').click();
+		await expect(page.getByTestId('filed')).toContainText('Added 2 images to Mochi');
+		expect(vaultFile('Cute/Mochi.md').trimEnd().split('\n')).toHaveLength(2);
+		await expect(page.getByTestId('character').filter({ hasText: 'Mochi' })).toContainText('2 images');
+	});
+
 	test('Cancel and a name already taken write nothing', async ({ page }) => {
 		const before = images();
 		await deliver(page, 'paste', await png(10, 10));
@@ -138,15 +179,18 @@ test.describe('Cute on a phone', () => {
 		await request.post('/api/sync', { data: { action: 'rebuild' } });
 	});
 
-	test('offers a photo rather than drop or paste, and files the one chosen', async ({ page }) => {
+	test('offers photos rather than drop or paste, and files several chosen at once', async ({ page }) => {
 		await page.goto('/cute');
 		await expect(page.getByText('from your photos')).toBeVisible();
-		await expect(page.getByText('Drop an image here')).toBeHidden();
-		await expect(page.getByText('Choose a photo')).toBeVisible();
-		await expect(page.getByText('Choose a file')).toBeHidden();
-		await page.getByTestId('file-input').setInputFiles({ name: 'IMG_0001.png', mimeType: 'image/png', buffer: await png(20, 20) });
+		await expect(page.getByText('Drop images here')).toBeHidden();
+		await expect(page.getByText('Choose photos')).toBeVisible();
+		await expect(page.getByText('Choose files')).toBeHidden();
+		await page.getByTestId('file-input').setInputFiles([
+			{ name: 'IMG_0001.png', mimeType: 'image/png', buffer: await png(20, 20) },
+			{ name: 'IMG_0002.png', mimeType: 'image/png', buffer: await png(21, 21) }
+		]);
 		await page.getByTestId('add-here').first().click();
-		await expect(page.getByTestId('filed')).toContainText('Added to Yaku Neko');
+		await expect(page.getByTestId('filed')).toContainText('Added 2 images to Yaku Neko');
 	});
 
 	test('a sideways swipe in the viewer moves between pictures', async ({ page }) => {

@@ -6,6 +6,9 @@ renamed the character Yaku Neko. One change from below: the upload sends the
 image's own bytes, typed `image/*`, with the character in the query, rather
 than a form, because SvelteKit refuses a cross-site-looking form post and,
 behind Tailscale, cannot always tell it is not one.
+Later the same day: the box takes a batch (several chosen, dropped or
+pasted at once, the phone's picker included), any one of which can be left
+out, and one tap files them all to one character, one request per image.
 **default** marks a choice the author was not asked about.
 
 ## Why
