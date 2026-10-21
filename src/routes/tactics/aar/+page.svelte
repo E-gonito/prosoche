@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * After-action review: what happened, what you did, what you should have
-	 * done. Saving writes the review and a draft scenario made from it, in
+	 * done. Saving writes the review and a scenario made from it, in
 	 * your words, which you read and approve like any other.
 	 */
 	import { goto } from '$app/navigation';
@@ -46,7 +46,7 @@
 <div class="page">
 	<div class="title">
 		<h1>After-action review</h1>
-		<p>Write down the moment that went wrong. It becomes a draft drill with your correction as the answer.</p>
+		<p>Write down the moment that went wrong. It becomes a drill with your correction as the answer, in your missions straight away.</p>
 	</div>
 
 	<form class="sheet form" onsubmit={save} data-testid="aar-form">

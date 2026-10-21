@@ -104,8 +104,6 @@ export interface Scenario {
 export interface ScenarioView extends Scenario {
 	situationHtml: string;
 	whyHtml: string;
-	/** The Why as markdown to edit: a suggestion comes out of its callout, to keep or reword. */
-	whyText: string;
 }
 
 /**

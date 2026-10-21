@@ -213,13 +213,12 @@
 	<div class="title">
 		<a class="crumb" href="/tactics">Tactics</a>
 		<h1>{phase === 'debrief' ? 'Debrief' : 'Mission'}</h1>
-		{#if data.drafts}<p class="draft-note">Includes drafts you have not checked yet.</p>{/if}
 	</div>
 
 	{#if data.drills.length === 0}
 		<div class="empty big" data-testid="mission-empty">
 			<h2>Nothing to drill</h2>
-			<p class="muted">No scenarios fit this mission. Approve some, or include drafts.</p>
+			<p class="muted">No scenarios fit this mission. Generate some, or write an after-action review.</p>
 			<a class="btn" href="/tactics">Back to Tactics</a>
 		</div>
 	{:else if phase === 'ready'}
@@ -388,7 +387,6 @@
 
 <style>
 	.mission { max-width: 760px; }
-	.draft-note { color: var(--warn); }
 	kbd { font: 10px var(--mono); border: 1px solid currentColor; border-radius: 3px; padding: 1px 4px; margin-left: 6px; opacity: 0.7; }
 	.ready h2 { font-family: var(--serif); }
 

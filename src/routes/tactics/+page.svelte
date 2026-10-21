@@ -1,7 +1,8 @@
 <script lang="ts">
 	/**
 	 * Tactics: choose a mission, see which tags are weakest, and browse the
-	 * scenarios in `Tactics/Scenarios/`, drafts and problems included.
+	 * scenarios in `Tactics/Scenarios/`, problems included. Every scenario not
+	 * retired plays, generated drafts too: there is no approving step.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
@@ -21,14 +22,11 @@
 
 	let mode = $state<Mode>('bodycam');
 	let length = $state(TACTICS.length.default);
-	// svelte-ignore state_referenced_locally
-	let drafts = $state(data.pools.bodycam.approved === 0);
 	let adding = $state(false);
 	let problem = $state('');
 
-	const pool = $derived(drafts ? data.pools[mode].withDrafts : data.pools[mode].approved);
-	const hasDrafts = $derived(data.scenarios.some((s) => s.status === 'draft'));
-	const start = $derived(`/tactics/mission?mode=${mode}&n=${length}${drafts ? '&drafts=1' : ''}`);
+	const pool = $derived(data.pools[mode]);
+	const start = $derived(`/tactics/mission?mode=${mode}&n=${length}`);
 	const weakest = $derived(data.tags.slice(0, 6));
 
 	async function addStarters() {
@@ -55,11 +53,11 @@
 		<div class="empty big" data-testid="tactics-empty">
 			<h2>No scenarios yet</h2>
 			<p class="muted">
-				Starter drafts are eight shared CQB scenarios, built on the deaths you listed. They are written by prosoche,
-				not by you, so each one is <code>provenance: inferred</code> and <code>status: draft</code>, and its Why is
-				marked as a suggestion. They also come with a list of Ready or Not rules-of-engagement claims to check in game.
+				The starters are eight shared CQB scenarios, built on the deaths you listed, ready to play. They are written by
+				prosoche, not checked in game, so each is <code>provenance: inferred</code>. They also come with a list of Ready
+				or Not rules-of-engagement claims to check in game.
 			</p>
-			<button class="btn primary" onclick={addStarters} disabled={adding} data-testid="add-starters">{adding ? 'Adding…' : 'Add the starter drafts'}</button>
+			<button class="btn primary" onclick={addStarters} disabled={adding} data-testid="add-starters">{adding ? 'Adding…' : 'Add the starter scenarios'}</button>
 			{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 		</div>
 	{:else}
@@ -69,7 +67,7 @@
 				{#each Object.keys(MODE_LABEL) as m (m)}
 					{@const key = m as Mode}
 					<button type="button" class="chip" class:on={mode === key} role="radio" aria-checked={mode === key} onclick={() => (mode = key)} data-testid="mode-{key}">
-						{MODE_LABEL[key]}<span class="n num">{drafts ? data.pools[key].withDrafts : data.pools[key].approved}</span>
+						{MODE_LABEL[key]}<span class="n num">{data.pools[key]}</span>
 					</button>
 				{/each}
 			</div>
@@ -82,21 +80,12 @@
 						{#each [8, 10, 12] as n (n)}<option value={n}>{n}</option>{/each}
 					</select>
 				</label>
-				{#if hasDrafts}
-					<label class="check">
-						<input type="checkbox" bind:checked={drafts} data-testid="include-drafts" />
-						Include drafts
-					</label>
-				{/if}
 				{#if pool > 0}
 					<a class="btn primary go" href={start} data-testid="start-mission">Start {Math.min(pool, length)} drills</a>
 				{:else}
-					<span class="muted small go">{drafts || !hasDrafts ? 'No scenarios for this mode yet.' : 'Nothing approved here yet. Include drafts, or approve some.'}</span>
+					<span class="muted small go">No scenarios for this mode yet. Generate some below.</span>
 				{/if}
 			</div>
-			{#if drafts}
-				<p class="hint warn-text">Drafts have not been checked by you, so treat their answers as guesses to test, not as fact.</p>
-			{/if}
 			<p class="hint">Keys: <b>1</b>–<b>9</b> or <b>A</b>–<b>I</b> pick an option, and <b>1</b>–<b>9</b> pick an angle in order; <b>Backspace</b> undoes the last angle; <b>Space</b> moves on.</p>
 		</section>
 
@@ -106,13 +95,13 @@
 				<a class="btn" href="/tactics/aar" data-testid="aar-link">Write an after-action review</a>
 				<Draft
 					label="Generate with Claude"
-					title="Claude drafts new scenarios as inferred drafts for the selected game. Nothing is written until you accept, and you approve each one yourself."
+					title="Claude drafts new scenarios for the selected game. Nothing is written until you accept; then they play straight away."
 					endpoint="/api/tactics/generate"
 					request={{ game: mode === 'aar-review' ? 'shared' : mode, tags: weakest.slice(0, 3).map((t) => t.tag), count: 3 }}
 					ondone={() => invalidateAll()}
 				/>
 			</div>
-			<p class="hint">Generated drafts are guesses from Claude, not facts. They stay drafts until you read the Why, keep or reword it, and approve.</p>
+			<p class="hint">Generated scenarios are Claude's best guess, not checked in game. They join your missions as soon as you accept them; retire any that turn out wrong.</p>
 		</section>
 
 		<p class="label">Weakest tags</p>
@@ -141,18 +130,12 @@
 					<a href="/tactics/scenario/{s.id}"><code>{s.id}</code></a>
 					<span class="small">{s.drill}</span>
 					<span class="muted small tags-inline">{s.tags.join(' ')}</span>
-					<span class="badge {s.status === 'approved' ? 'ok' : s.status === 'draft' ? 'warn' : 'muted'}">{s.status}</span>
+					{#if s.status === 'retired'}<span class="badge muted">retired</span>{/if}
 					<span class="badge muted">{s.provenance}</span>
 				</li>
 			{/each}
 		</ul>
-		{#if hasDrafts}
-			<p class="hint">
-				A draft becomes part of a normal mission once you approve it. Open one, read its answer and Why, keep or reword
-				the Why, and approve.
-			</p>
-			<button class="btn small" onclick={addStarters} disabled={adding}>Add any missing starter drafts</button>
-		{/if}
+		<button class="btn small" onclick={addStarters} disabled={adding}>Add any missing starter scenarios</button>
 
 		{#if data.problems.length}
 			<p class="label">Do not read</p>
@@ -178,7 +161,6 @@
 	.row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); margin-top: var(--s3); }
 	.row label { display: flex; align-items: center; gap: var(--s2); font-size: var(--t14); }
 	.go { margin-left: auto; }
-	.warn-text { color: var(--warn); }
 	.tags { list-style: none; padding: 0; margin: 0 0 var(--s5); }
 	.tags li { display: grid; grid-template-columns: 160px 1fr 48px 90px; align-items: center; gap: var(--s3); }
 	.bar { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; }

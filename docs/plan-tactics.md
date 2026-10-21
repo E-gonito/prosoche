@@ -240,6 +240,14 @@ above. The palette conflict needed no shared change: the drill page catches
 keys in the capture phase and the global handler skips a key that has
 already been handled.
 
+**2026-10-21: no approving.** Approving each draft, even with a box to keep
+the suggested Why, was too much friction, so the second approval in 4.1 is
+gone. Every scenario that is not retired plays, generated drafts included,
+and the Include drafts switch is gone with it. **Retire** is the one
+judgement left, for a scenario that proves wrong in game. Generated
+scenarios still need the proposal's accept before they are written, because
+CLAUDE.md requires an accept step for any model write.
+
 ## 5. Open questions
 
 The five from the brief:

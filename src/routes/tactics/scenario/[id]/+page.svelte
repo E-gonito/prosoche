@@ -1,12 +1,8 @@
 <script lang="ts">
 	/**
-	 * One scenario, answer and Why shown, to review before approving it.
-	 *
-	 * Approving is yours alone: it is a button here and a line in Obsidian,
-	 * and no model code path can press it. While the Why is empty or still a
-	 * suggestion, the Why is a box to keep or reword, and approving saves it
-	 * as yours in the same write. Retire takes a scenario out of every
-	 * mission without deleting it.
+	 * One scenario, answer and Why shown. It plays in missions as it is,
+	 * generated or not; there is nothing to approve. Retire takes a wrong one
+	 * out of every mission without deleting it, and Bring back undoes that.
 	 */
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/client/api';
@@ -21,18 +17,12 @@
 	let problem = $state('');
 
 	const s = $derived(data.scenario);
-	/** True while the Why is not yet yours, so approving goes through the box under Why. */
-	const needsWhy = $derived(!!s && s.status !== 'approved' && (!s.why || s.whySuggested));
-	let why = $state('');
-	$effect.pre(() => {
-		why = data.scenario?.whyText ?? '';
-	});
 
-	async function setStatus(status: Status, withWhy?: string) {
+	async function setStatus(status: Status) {
 		if (!s || busy) return;
 		busy = true;
 		problem = '';
-		const result = await api('/api/tactics/status', { id: s.id, status, ...(withWhy === undefined ? {} : { why: withWhy }) });
+		const result = await api('/api/tactics/status', { id: s.id, status });
 		busy = false;
 		if (result.ok) await invalidateAll();
 		else problem = result.message;
@@ -61,15 +51,15 @@
 		</div>
 	{:else if s}
 		<div class="status-row" data-testid="scenario-status">
-			<span class="badge {s.status === 'approved' ? 'ok' : s.status === 'draft' ? 'warn' : 'muted'}">{s.status}</span>
+			{#if s.status === 'retired'}<span class="badge muted">retired</span>{/if}
 			<span class="badge muted">{s.provenance}</span>
 			<span class="muted small">{s.verifiedVersion ? `Checked on ${s.verifiedVersion}` : 'Not checked in game'}</span>
 			<span class="spacer"></span>
-			{#if s.status !== 'approved' && !needsWhy}
-				<button class="btn primary small" disabled={busy} onclick={() => setStatus('approved')} data-testid="approve">Approve</button>
+			{#if s.status === 'retired'}
+				<button class="btn small" disabled={busy} onclick={() => setStatus('draft')} data-testid="unretire">Bring back</button>
+			{:else}
+				<button class="btn small ghost" disabled={busy} onclick={() => setStatus('retired')} title="Take it out of every mission; the note stays." data-testid="retire">Retire</button>
 			{/if}
-			{#if s.status !== 'draft'}<button class="btn small" disabled={busy} onclick={() => setStatus('draft')}>Back to draft</button>{/if}
-			{#if s.status !== 'retired'}<button class="btn small ghost" disabled={busy} onclick={() => setStatus('retired')}>Retire</button>{/if}
 		</div>
 		{#if s.status === 'draft'}
 			<div class="suggest">
@@ -82,7 +72,6 @@
 				/>
 			</div>
 		{/if}
-		{#if needsWhy}<p class="hint">To approve, read the Why below, keep it or put it in your own words, and approve it there.</p>{/if}
 		{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 
 		<p class="label">Situation</p>
@@ -111,13 +100,7 @@
 		{/if}
 
 		<p class="label">Why</p>
-		{#if needsWhy}
-			<div class="why-edit">
-				{#if s.whySuggested}<p class="small muted">Suggested by prosoche, not checked by you. Approving makes it yours: it is saved without the suggestion mark.</p>{/if}
-				<textarea class="field" rows="7" bind:value={why} placeholder="Why the answer is right, in your words." aria-label="Why" data-testid="why-text"></textarea>
-				<button class="btn primary small" disabled={busy || !why.trim()} onclick={() => setStatus('approved', why)} data-testid="approve-why">Approve with this Why</button>
-			</div>
-		{:else if s.whyHtml}<div class="prose">{@html s.whyHtml}</div>{:else}<p class="muted">Not written yet.</p>{/if}
+		{#if s.whyHtml}<div class="prose">{@html s.whyHtml}</div>{:else}<p class="muted">Not written yet.</p>{/if}
 
 		<p class="label">Source</p>
 		<p class="small">{s.source || 'None given.'}</p>
@@ -127,8 +110,6 @@
 
 <style>
 	.suggest { margin-top: var(--s2); }
-	.why-edit { display: grid; gap: var(--s2); justify-items: start; }
-	.why-edit textarea { width: 100%; font: inherit; line-height: 1.5; resize: vertical; }
 	.status-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 	.spacer { flex: 1; }
 	.options { list-style: none; padding: 0; display: grid; gap: 6px; }

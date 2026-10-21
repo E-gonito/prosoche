@@ -4,9 +4,9 @@
  *
  * Nothing in this file writes to the vault, and nothing it proposes is a
  * fact. New scenarios are `provenance: inferred`, `status: draft`, with the
- * Why marked `> [!suggestion]`, so none of them is served in a normal
- * mission until you have rewritten its Why and approved it (see
- * `tactics/index.ts`, `setStatus`). The model answers in fields; our code
+ * Why marked `> [!suggestion]`, and play in missions as soon as you accept
+ * the proposal that writes them; retire one that proves wrong in game. The
+ * model answers in fields; our code
  * writes the notes with `scenarioNote`, and every one is read back through
  * `parseScenario` before it is offered, so a malformed draft is dropped
  * rather than written.
@@ -211,7 +211,7 @@ export function generateProposal(
 			continue;
 		}
 		ids.add(id);
-		edits.push({ id: newId('edit'), kind: 'append', path, text: note, reason: `A new draft scenario, ${id}: inferred, for you to check in game before approving.` });
+		edits.push({ id: newId('edit'), kind: 'append', path, text: note, reason: `A new scenario, ${id}: inferred, not checked in game. It plays once accepted.` });
 	}
 	if (!edits.length) return { proposal: null, dropped };
 	return {
@@ -220,7 +220,7 @@ export function generateProposal(
 			id: newId('generate'),
 			feature: 'tactics-generate',
 			stamp,
-			summary: `${edits.length} new draft scenario${edits.length === 1 ? '' : 's'}${dropped ? ` (${dropped} dropped for not reading as a scenario)` : ''}. Each is inferred and needs your Why before it can be approved.`,
+			summary: `${edits.length} new scenario${edits.length === 1 ? '' : 's'}${dropped ? ` (${dropped} dropped for not reading as a scenario)` : ''}. Each is inferred, not checked in game, and plays once accepted.`,
 			edits,
 			accepted: []
 		}
@@ -357,7 +357,7 @@ export function suggestProposal(scenario: Scenario, note: { content: string; has
 				path: scenario.path,
 				text,
 				expectedHash: note.hash,
-				reason: 'Suggestions for a draft. Your answer and its status are unchanged; a suggested Why stays marked until you rewrite it.'
+				reason: 'Suggestions for this scenario. Your answer and its status are unchanged.'
 			}
 		],
 		accepted: []

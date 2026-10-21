@@ -4,9 +4,9 @@ import { dirname, join } from 'node:path';
 import { resetVault, VAULT, vaultFile, waitForFile } from './helpers';
 
 /**
- * Tactics, from an empty `Tactics/`: the starter drafts, a mission played
- * on the keyboard and logged, an ROE violation capping the grade, and an
- * approval that refuses until the Why is yours.
+ * Tactics, from an empty `Tactics/`: the starter scenarios played as they
+ * are, on the keyboard, and logged; an ROE violation capping the grade; and
+ * retiring one out of every mission.
  */
 
 const now = new Date();
@@ -23,15 +23,16 @@ test.describe('Tactics', () => {
 		await resetVault(request);
 	});
 
-	test('adds the starter drafts, and plays a mission of them on the keyboard', async ({ page }) => {
+	test('adds the starter scenarios, and plays a mission of them on the keyboard with nothing to approve', async ({ page }) => {
 		await page.goto('/tactics');
 		await page.getByTestId('add-starters').click();
 		await expect(page.getByTestId('scenario-list').locator('li')).toHaveCount(8);
 		expect(vaultFile('Tactics/To verify in game.md')).toContain('# To verify in game');
 
-		// Nothing is approved, so a mission needs the drafts.
+		// Drafts play as they are: there is no approving step and no switch for it.
 		await page.getByTestId('mode-bodycam').click();
-		await expect(page.getByTestId('include-drafts')).toBeChecked();
+		await expect(page.getByTestId('include-drafts')).toHaveCount(0);
+		await expect(page.getByTestId('mode-bodycam')).toContainText('8');
 		await page.getByTestId('start-mission').click();
 		await page.getByTestId('mission-begin').click();
 
@@ -117,41 +118,26 @@ Not aimed at anyone, and no command given yet.
 		expect(await waitForFile(LOG, (c) => c.includes('ron-0001 answer:: A result:: wrong correct:: false') && c.includes('roe:: true'))).toBe(true);
 	});
 
-	test('approves a draft from the page, its suggested Why reworded and kept as yours', async ({ page, request }) => {
+	test('retiring a scenario takes it out of missions, changing only its status, and Bring back undoes it', async ({ page, request }) => {
 		await request.post('/api/tactics/starters', { data: {} });
 		const path = 'Tactics/Scenarios/cqb-0002.md';
 		const before = vaultFile(path);
 		await expect(async () => {
 			await page.goto('/tactics/scenario/cqb-0002');
-			await expect(page.getByTestId('why-text')).toBeVisible({ timeout: 1000 });
+			await expect(page.getByTestId('retire')).toBeVisible({ timeout: 1000 });
 		}).toPass();
 		await expect(page.getByTestId('approve')).toHaveCount(0);
-		const suggested = await page.getByTestId('why-text').inputValue();
-		expect(suggested.length).toBeGreaterThan(20);
-		expect(suggested).not.toContain('[!suggestion]');
-		expect(suggested).not.toMatch(/^>/m);
 
-		await page.getByTestId('why-text').fill(`${suggested}\n\nMy note: check the near door first.`);
-		await page.getByTestId('approve-why').click();
-		await expect(page.getByTestId('scenario-status')).toContainText('approved');
-		await expect(page.getByTestId('why-text')).toHaveCount(0);
-		const head = before.slice(0, before.indexOf('## Why\n') + '## Why\n'.length).replace('status: draft', 'status: approved');
-		expect(vaultFile(path)).toBe(`${head}${suggested}\n\nMy note: check the near door first.\n`);
-	});
+		await page.getByTestId('retire').click();
+		await expect(page.getByTestId('scenario-status')).toContainText('retired');
+		expect(vaultFile(path)).toBe(before.replace('status: draft', 'status: retired'));
+		await page.goto('/tactics');
+		await expect(page.getByTestId('mode-bodycam')).toContainText('7');
 
-	test('approves a draft whose Why was written in Obsidian, changing only its status', async ({ page, request }) => {
-		await request.post('/api/tactics/starters', { data: {} });
-		const path = 'Tactics/Scenarios/cqb-0002.md';
-
-		const mine = vaultFile(path).replace(/## Why\n[\s\S]*$/, '## Why\nTwo doorways, one gun.\n');
-		write(path, mine);
-		await expect(async () => {
-			await page.goto('/tactics/scenario/cqb-0002');
-			await expect(page.getByTestId('approve')).toBeEnabled({ timeout: 1000 });
-		}).toPass();
-		await page.getByTestId('approve').click();
-		await expect(page.getByTestId('scenario-status')).toContainText('approved');
-		expect(vaultFile(path)).toBe(mine.replace('status: draft', 'status: approved'));
+		await page.goto('/tactics/scenario/cqb-0002');
+		await page.getByTestId('unretire').click();
+		await expect(page.getByTestId('retire')).toBeVisible();
+		expect(vaultFile(path)).toBe(before);
 	});
 
 	test('an after-action review becomes a draft scenario in your words', async ({ page }) => {
@@ -164,8 +150,9 @@ Not aimed at anyone, and no command given yet.
 		await page.getByTestId('aar-save').click();
 
 		await expect(page).toHaveURL(/\/tactics\/scenario\/bc-0001$/);
-		await expect(page.getByTestId('scenario-status')).toContainText('draft');
+		await expect(page.getByTestId('retire')).toBeVisible();
 		expect(vaultFile('Tactics/Scenarios/bc-0001.md')).toContain('Swung wide from the other side');
+		expect(vaultFile('Tactics/Scenarios/bc-0001.md')).toContain('status: draft');
 		expect(vaultFile('Tactics/AAR Template.md')).toContain('After-action review');
 	});
 

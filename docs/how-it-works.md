@@ -790,8 +790,8 @@ to Flashcards.
 
 **Missions** are 8, 10 or 12 drills. A Ready or Not or a Bodycam mission
 also includes the shared CQB scenarios; My AARs serves only your own
-(`provenance: own-aar`). Only approved scenarios are served unless
-**Include drafts** is ticked. The drills are drawn by weight: one minus the
+(`provenance: own-aar`). Every scenario that is not retired is served,
+drafts included: there is no approving step. The drills are drawn by weight: one minus the
 accuracy of the scenario's weakest tag, plus a bonus if you have never
 answered it, plus one if it is due. Due-ness comes from replaying its past
 answers through the same FSRS scheduler the flashcards use (in time counts as
@@ -829,15 +829,14 @@ from the browser. Accuracy per tag is a moving average (each answer weighs
 0.3, and a tag starts at 50%), replayed from the log each time. A mission
 abandoned partway writes nothing.
 
-**Approving.** A scenario page shows its answer and Why. **Approve** sets
-`status: approved`, and that line only. While the Why is empty or still
-marked `> [!suggestion]`, the page shows it in a box instead, out of its
-callout: keep it or reword it, and **Approve with this Why** writes it as the
-`## Why` body, without the mark, and sets the status in one write. Every
-other line keeps its bytes. Nothing a model drafts can approve a scenario. **Retire** keeps the note but takes it
-out of every mission.
+**Retiring.** A scenario page shows its answer and Why. There is nothing to
+approve: a generated scenario plays as it is. **Retire** sets
+`status: retired`, and that line only, which keeps the note but takes it out
+of every mission, for one that proves wrong in game; **Bring back** sets it
+to `draft` again. `status: approved`, written in Obsidian, still reads and
+plays like a draft.
 
-**Starter drafts.** On an empty `Tactics/`, **Add the starter drafts**
+**Starter scenarios.** On an empty `Tactics/`, **Add the starter scenarios**
 writes eight shared CQB scenarios, built on the deaths you listed (unchecked
 angles, peeking the same angle again, reloading in the open, the doorway
 behind you), plus `Tactics/To verify in game.md`, a checklist of Ready or
@@ -846,7 +845,7 @@ scenario. Each starter is `provenance: inferred` and `status: draft`, with
 its Why marked as a suggestion. The button never overwrites a note that is
 already there.
 
-**More scenarios.** Two routes, neither bulk-generated.
+**More scenarios.** Two routes.
 **Write an after-action review** (`/tactics/aar`) takes what happened, what
 you did and what you should have done, and writes `Tactics/AAR/<day>
 <map>.md` and a draft scenario from it: two options in your words, your
@@ -856,9 +855,10 @@ Obsidian. **Generate with Claude** drafts up to five scenarios for the
 selected game, around your weakest tags, and **Suggest improvements** on a
 draft's page proposes a sharper situation, extra wrong options, tags, a map
 and a suggested Why. Both go through the proposal gate: you tick what to
-keep, they are `inferred` drafts with the Why marked as a suggestion, the
-Answer and `status:` are never touched, `roe.*` tags and threat-call drills
-are never drafted, and approving stays your button alone.
+keep, and the kept ones are written only when you accept. They are `inferred`
+drafts with the Why marked as a suggestion and play straight away; the
+Answer and `status:` are never touched by a suggestion, and `roe.*` tags and
+threat-call drills are never drafted.
 
 ## Inbox
 
