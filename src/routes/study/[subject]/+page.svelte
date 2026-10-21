@@ -6,7 +6,7 @@
 	 * by the subject's active goal. Nothing here asks for a choice. The goals,
 	 * the reading list and the rest are on Plan, one link away.
 	 */
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import StepText from '$lib/components/StepText.svelte';
 	import { api } from '$lib/client/api';
 
@@ -20,6 +20,23 @@
 
 	let busy = $state(false);
 	let problem = $state('');
+
+	/** The active goal's open steps whose date has passed, and how far the earliest is behind. */
+	const late = $derived.by(() => {
+		const open = data.study.focus?.steps.filter((s) => (s.state === 'now' || s.state === 'later') && s.daysLeft !== null && s.daysLeft < 0) ?? [];
+		return { count: open.length, by: open.length ? -Math.min(...open.map((s) => s.daysLeft!)) : 0 };
+	});
+
+	/** Move the late steps' dates later so the earliest is due today, keeping the gaps between them. */
+	async function replan() {
+		if (!data.study.focus) return;
+		busy = true;
+		problem = '';
+		const result = await api('/api/study/replan', { subject: data.subject.slug, goal: data.study.focus.name });
+		busy = false;
+		if (result.ok) await invalidateAll();
+		else problem = result.message;
+	}
 
 	async function start() {
 		busy = true;
@@ -60,6 +77,12 @@
 			<h1>Nothing open here</h1>
 			<p class="muted">Add a step in <a href="{base}/plan">Plan</a> and it will appear here.</p>
 		{/if}
+		{#if late.count && !mine}
+			<p class="late small muted" data-testid="late">
+				{late.count} {late.count === 1 ? 'date has' : 'dates have'} passed, the oldest by {late.by} {late.by === 1 ? 'day' : 'days'}.
+				<button type="button" class="link" disabled={busy} onclick={replan} data-testid="replan">Move the dates to today</button>
+			</p>
+		{/if}
 		{#if problem}<p class="problem" role="status">{problem}</p>{/if}
 	</section>
 
@@ -76,5 +99,7 @@
 	h1 { margin: 0 0 var(--s3); font: 600 var(--t24)/1.3 var(--serif); }
 	.start { margin: 0 0 var(--s5); font-size: var(--t16); line-height: 1.5; }
 	.go { min-height: 48px; padding: 0 var(--s6); font-size: var(--t16); display: inline-flex; align-items: center; margin-top: var(--s3); }
+	.late { margin: var(--s4) 0 0; }
+	.link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
 	.week { text-align: center; margin-top: var(--s4); }
 </style>

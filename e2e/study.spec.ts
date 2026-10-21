@@ -231,6 +231,19 @@ test.describe('A study session', () => {
 		await expect(page.getByTestId('study-now-go')).toHaveText('Continue');
 	});
 
+	test('late dates are moved to today from the card, in the goal’s file only', async ({ page }) => {
+		await page.goto(BASE);
+		await expect(page.getByTestId('late')).toHaveCount(0);
+
+		writeFileSync(`${VAULT}/${GOALS}`, vaultFile(GOALS).replace('📅 2026-11-20', `📅 ${shift(TODAY, -3)}`));
+		await page.reload();
+		await expect(page.getByTestId('late')).toContainText('1 date has passed, the oldest by 3 days');
+		await page.getByTestId('replan').click();
+
+		await expect(page.getByTestId('late')).toHaveCount(0);
+		expect(vaultFile(GOALS)).toContain(`📅 ${TODAY}`);
+	});
+
 	test('a running session sends the card to Continue, and the session page without one goes back', async ({ page }) => {
 		await page.goto(`${BASE}/session`);
 		await expect(page).toHaveURL(BASE);
