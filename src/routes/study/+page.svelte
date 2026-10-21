@@ -21,6 +21,18 @@
 		return result;
 	}
 
+	/** Start a session on the subject the card names, and go straight to it. */
+	async function startNow(slug: string) {
+		saving = true;
+		problem = '';
+		const result = await api('/api/study/session', { action: 'start', subject: slug });
+		if (result.ok) await goto(`/study/${slug}/session`, { invalidateAll: true });
+		else {
+			problem = result.message;
+			saving = false;
+		}
+	}
+
 	async function create(event: Event) {
 		event.preventDefault();
 		if (!name.trim() || saving) return;
@@ -41,6 +53,22 @@
 		<h1>Study</h1>
 		<p>One subject per thing you are learning, each with its own goals and reading.</p>
 	</div>
+
+	{#if data.now}
+		{@const now = data.now}
+		<section class="sheet next" data-testid="study-now">
+			<p class="caps"><i class="dot" style="--dot: {now.color}"></i>{now.running ? 'Running now' : now.at !== null ? `Next block, ${String(Math.floor(now.at / 60)).padStart(2, '0')}:${String(now.at % 60).padStart(2, '0')}` : 'Next block'} · {now.name} · {now.minutes} min</p>
+			<h2>{now.step ?? 'Nothing open here yet'}</h2>
+			{#if now.running}
+				<a class="btn primary" href="/study/{now.slug}/session" data-testid="study-now-go">Continue</a>
+			{:else if now.step}
+				<button class="btn primary" disabled={saving} onclick={() => startNow(now.slug)} data-testid="study-now-go">Start</button>
+				<a class="small" href="/study/{now.slug}">See the step</a>
+			{:else}
+				<a class="btn primary" href="/study/{now.slug}/plan" data-testid="study-now-go">Plan it</a>
+			{/if}
+		</section>
+	{/if}
 
 	<p class="label">Subjects</p>
 	{#if data.subjects.length === 0}
@@ -87,6 +115,9 @@
 </div>
 
 <style>
+	.next { margin-bottom: var(--s5); }
+	.next .caps { margin: 0 0 var(--s2); color: var(--muted); font-size: var(--t13); display: flex; align-items: center; gap: var(--s2); }
+	.next h2 { margin: 0 0 var(--s3); font: 600 var(--t20)/1.35 var(--serif); }
 
 	.subjects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s4); }
 	/* The whole card opens the subject, through its name's link stretched over

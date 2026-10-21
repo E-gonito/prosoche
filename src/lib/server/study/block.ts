@@ -48,18 +48,39 @@ function mentions(text: string, name: string): boolean {
 }
 
 /**
- * The first open task in `content`, in file order, whose words mention one of
- * `names` (a subject's name and aliases). Null when there is none.
+ * Every open task in `content`, in file order, whose words mention one of
+ * `names` (a subject's name and aliases).
  *
  * Skips ticked and cancelled tasks, and anything inside a code fence, so the
  * Backlog never matches. A name must stand alone as a word: "Rust" does not
  * match "Trust". Pure.
  */
+export function blocksFor(content: string, names: string[]): Block[] {
+	return scanTasks(content)
+		.filter((t) => !t.fenced && OPEN_STATUSES.includes(t.status) && names.some((name) => mentions(t.text, name)))
+		.map(toBlock);
+}
+
+/** The first of `blocksFor`, or null. Pure. */
 export function blockFor(content: string, names: string[]): Block | null {
-	const found = scanTasks(content).find(
-		(t) => !t.fenced && OPEN_STATUSES.includes(t.status) && names.some((name) => mentions(t.text, name))
-	);
-	return found ? toBlock(found) : null;
+	return blocksFor(content, names)[0] ?? null;
+}
+
+/**
+ * The block to study next: the one a person would reach for now. Of every
+ * open block for any of `subjects`, the timed one still running or yet to
+ * come that starts soonest; failing that, one with no times, in file order;
+ * failing that, the latest that has already ended. Null when no subject has a
+ * block today. `nowMin` is minutes since midnight. Pure.
+ */
+export function nextBlock<S extends { names: string[] }>(content: string, subjects: S[], nowMin: number): { subject: S; block: Block } | null {
+	const all = subjects.flatMap((subject) => blocksFor(content, subject.names).map((block) => ({ subject, block })));
+	const timed = all.filter((b) => b.block.startMin !== null && b.block.endMin !== null);
+	const ahead = timed.filter((b) => b.block.endMin! > nowMin).sort((a, b) => a.block.startMin! - b.block.startMin!);
+	if (ahead.length) return ahead[0];
+	const untimed = all.filter((b) => b.block.startMin === null || b.block.endMin === null);
+	if (untimed.length) return untimed[0];
+	return timed.sort((a, b) => b.block.endMin! - a.block.endMin!)[0] ?? null;
 }
 
 function toBlock(t: TaskLine): Block {

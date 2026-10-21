@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockFor, blockMinutes, loggedSessions, outcomeLine, withBullet, DEFAULT_MINUTES } from './block';
+import { blockFor, blockMinutes, nextBlock, loggedSessions, outcomeLine, withBullet, DEFAULT_MINUTES } from './block';
 
 const NOTE = [
 	'# Tasks',
@@ -75,5 +75,36 @@ describe('outcomeLine and loggedSessions', () => {
 
 	it('does not read an ordinary bullet as a session', () => {
 		expect(loggedSessions('- Meeting: notes, 5m')).toEqual([]);
+	});
+});
+
+describe('nextBlock', () => {
+	const subjects = [
+		{ slug: 'fullstack', names: ['Fullstack'] },
+		{ slug: 'systems', names: ['Systems'] },
+		{ slug: 'rust', names: ['Rust', 'leyline-frontline'] }
+	];
+	const day = ['# Tasks', '- [ ] 09:00 - 09:30 Study Systems', '- [ ] 17:00 - 17:30 Study Fullstack', '- [ ] 20:30 - 23:00 leyline-frontline', '- [ ] Study Systems later'].join('\n');
+	const at = (h: number, m = 0) => nextBlock(day, subjects, h * 60 + m)?.subject.slug;
+
+	it('is the soonest block still to come', () => {
+		expect(at(8)).toBe('systems');
+		expect(at(12)).toBe('fullstack');
+		expect(at(18)).toBe('rust');
+	});
+
+	it('counts a block in progress as next', () => {
+		expect(at(17, 10)).toBe('fullstack');
+	});
+
+	it('falls back to a block with no times, then to the latest that has ended', () => {
+		expect(at(23, 30)).toBe('systems');
+		const timedOnly = '- [ ] 09:00 - 09:30 Study Systems\n- [ ] 17:00 - 17:30 Study Fullstack';
+		expect(nextBlock(timedOnly, subjects, 20 * 60)?.subject.slug).toBe('fullstack');
+	});
+
+	it('is null when nothing is blocked', () => {
+		expect(nextBlock('- [ ] Meditate', subjects, 600)).toBeNull();
+		expect(nextBlock('- [x] 09:00 - 09:30 Study Systems', subjects, 600)).toBeNull();
 	});
 });

@@ -216,6 +216,21 @@ test.describe('A study session', () => {
 		await expect(page.getByTestId('week')).toContainText('0 sessions');
 	});
 
+	test('/study offers the next block’s step with one Start, and nothing when nothing is blocked', async ({ page }) => {
+		await page.goto('/study');
+		await expect(page.getByTestId('study-now')).toHaveCount(0);
+
+		withBlock();
+		await page.goto('/study');
+		await expect(page.getByTestId('study-now')).toContainText('Two practice exams');
+		await page.getByTestId('study-now-go').click();
+		await expect(page).toHaveURL(`${BASE}/session`);
+
+		await page.goto('/study');
+		await expect(page.getByTestId('study-now')).toContainText('Running now');
+		await expect(page.getByTestId('study-now-go')).toHaveText('Continue');
+	});
+
 	test('a running session sends the card to Continue, and the session page without one goes back', async ({ page }) => {
 		await page.goto(`${BASE}/session`);
 		await expect(page).toHaveURL(BASE);
