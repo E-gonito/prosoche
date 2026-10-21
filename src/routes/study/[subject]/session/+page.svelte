@@ -82,7 +82,7 @@
 			<p class="caps"><i class="dot" style="--dot: {data.subject.color}"></i>{data.subject.name}</p>
 			<p class="clock num" class:over={left < 0} data-testid="clock" aria-live="off">{clock}</p>
 			<h1 data-testid="session-step">{#each pieces(session.step.text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</h1>
-			{#if session.step.first}<p class="start"><b>Start with:</b> {session.step.first}</p>{/if}
+			{#if session.step.first}<p class="start"><b>Start with:</b> {#each pieces(session.step.first) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</p>{/if}
 
 			<textarea class="field" rows="4" bind:value={scratch} placeholder="Scratch: what you tried, what got stuck" aria-label="Scratch" data-testid="scratch"></textarea>
 

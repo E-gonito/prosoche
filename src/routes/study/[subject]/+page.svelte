@@ -56,7 +56,7 @@
 			<a class="btn primary go" href="/study/{elsewhere.subject}/session">Go to it</a>
 		{:else if step}
 			<h1 data-testid="step-now">{#each pieces(step.task.text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</h1>
-			{#if step.details.first}<p class="start" data-testid="step-start"><b>Start with:</b> {step.details.first}</p>{/if}
+			{#if step.details.first}<p class="start" data-testid="step-start"><b>Start with:</b> {#each pieces(step.details.first) as piece, i (i)}{#if piece.code}<code>{piece.text}</code>{:else}{piece.text}{/if}{/each}</p>{/if}
 			<button class="btn primary go" disabled={busy} onclick={start} data-testid="start">Start</button>
 		{:else}
 			<h1>Nothing open here</h1>
