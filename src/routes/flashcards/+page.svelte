@@ -29,21 +29,30 @@
 		else problem = result.message;
 	}
 
-	// What the focus draws from, by the name the chips show.
-	const focusNames = $derived(data.decks.flatMap((d) => d.categories.filter((c) => c.focused).map((c) => c.name)));
+	// What the focus draws from, by the name the chips show, with its daily number when it has one.
+	const focusNames = $derived(
+		data.decks.flatMap((d) => d.categories.filter((c) => c.focused).map((c) => (data.amounts[c.key] ? `${c.name} (${data.amounts[c.key]})` : c.name)))
+	);
 
 	let choosing = $state(false);
 	let picked = $state<string[]>([]);
+	/** The most new cards a day each picked category may give, by its key; blank or 0 for no number. */
+	let amounts = $state<Record<string, number | null>>({});
+	/** What the numbers add up to, against the day's number. */
+	const allocated = $derived(picked.reduce((sum, key) => sum + (amounts[key] || 0), 0));
+	const unnumbered = $derived(picked.filter((key) => !amounts[key]).length);
 
 	function choose() {
 		picked = [...data.focus];
+		amounts = { ...data.amounts };
 		problem = '';
 		choosing = true;
 	}
 
 	const toggle = (key: string) => (picked = picked.includes(key) ? picked.filter((k) => k !== key) : [...picked, key]);
 
-	async function saveFocus(focus: string[]) {
+	async function saveFocus(keys: string[]) {
+		const focus = keys.map((key) => (amounts[key] ? { key, amount: amounts[key] } : key));
 		if (saving) return;
 		saving = true;
 		problem = '';
@@ -97,7 +106,10 @@
 		{/if}
 	</p>
 	{#if choosing}
-		<p class="hint choosing">Tap the categories new cards should come from. Reviews already due still come from every category.</p>
+		<p class="hint choosing">
+			Tap the categories new cards should come from, and give each a number to take at most that many a day. A category with no number
+			takes its turn with whatever the numbered ones leave. Reviews already due still come from every category.
+		</p>
 	{/if}
 	{#if data.decks.length === 0}
 		<p class="empty">No glossary makes flashcards yet. Turn them on from a <a href="/glossary">glossary</a>'s page.</p>
@@ -114,9 +126,14 @@
 					<nav class="categories" aria-label="{deck.name} categories" data-testid="deck-categories">
 						{#each deck.categories as category (category.name)}
 							{#if choosing}
-								<button type="button" class="chip pick" class:on={picked.includes(category.key)} aria-pressed={picked.includes(category.key)} onclick={() => toggle(category.key)} data-testid="pick-category">
-									{category.name}<span class="n num">{category.cards}</span>
-								</button>
+								<span class="pickwrap">
+									<button type="button" class="chip pick" class:on={picked.includes(category.key)} aria-pressed={picked.includes(category.key)} onclick={() => toggle(category.key)} data-testid="pick-category">
+										{category.name}<span class="n num">{category.cards}</span>
+									</button>
+									{#if picked.includes(category.key)}
+										<input class="field amt num" type="number" min="1" max="500" step="1" placeholder="a day" bind:value={amounts[category.key]} aria-label="New {category.name} cards a day" data-testid="category-amount" />
+									{/if}
+								</span>
 							{:else}
 								<a class="chip" class:on={category.focused} class:idle={category.ready === 0} href={review(deck.slug, category.name)} title="{category.cards} {category.cards === 1 ? 'card' : 'cards'}">
 									{category.name}<span class="n num">{category.ready}</span>
@@ -131,7 +148,9 @@
 
 	{#if choosing}
 		<div class="bar" data-testid="focus-bar">
-			<span class="muted small">{picked.length ? `${picked.length} chosen` : 'None chosen'}</span>
+			<span class="muted small" class:over={allocated > data.perDay} data-testid="allocated">
+				{#if !picked.length}None chosen{:else}{picked.length} chosen{#if allocated}, {allocated} of {data.perDay} a day numbered{#if unnumbered}, the rest shared between {unnumbered}{/if}{#if allocated > data.perDay}. Over {data.perDay}: only {data.perDay} will be let in{/if}{/if}{/if}
+			</span>
 			<button type="button" class="btn ghost" onclick={() => (choosing = false)} disabled={saving}>Cancel</button>
 			<button type="button" class="btn" onclick={() => saveFocus([])} disabled={saving || data.focus.length === 0} data-testid="clear-focus">Clear</button>
 			<button type="button" class="btn primary" onclick={() => saveFocus(picked)} disabled={saving || picked.length === 0} data-testid="save-focus">{saving ? 'Saving…' : 'Save focus'}</button>
@@ -172,6 +191,9 @@
 	.chip.pick { min-height: 40px; padding: 6px 14px; background: var(--panel); font-family: inherit; cursor: pointer; }
 	.chip.pick.on { background: var(--accent-soft); }
 	.choosing { margin: 0 0 var(--s3); }
+	.pickwrap { display: inline-flex; align-items: center; gap: 4px; }
+	.amt { width: 5.5em; min-height: 40px; }
+	.over { color: var(--warn); font-weight: 600; }
 
 	/* Stays in reach while a long list of chips scrolls. */
 	.bar {

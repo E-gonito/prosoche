@@ -68,6 +68,23 @@ test.describe('Flashcards', () => {
 		await expect(page.getByTestId('due-count')).toHaveText('15');
 	});
 
+	test('a category can be given a number a day, shown against the day’s number, and written beside it', async ({ page }) => {
+		await page.getByTestId('choose-focus').click();
+		await page.getByTestId('pick-category').filter({ hasText: 'Naming' }).click();
+		await page.getByTestId('pick-category').filter({ hasText: 'Protocols' }).click();
+		await expect(page.getByTestId('category-amount')).toHaveCount(2);
+		await page.getByTestId('category-amount').first().fill('1');
+		await expect(page.getByTestId('allocated')).toContainText('1 of 15 a day numbered, the rest shared between 1');
+		await page.getByTestId('save-focus').click();
+
+		expect(await waitForFile('_hub/flashcards.md', (c) => /focus:\n {2}- "Networks\/Naming: 1"\n {2}- Networks\/Protocols\n/.test(c))).toBe(true);
+		await expect(page.getByTestId('focus-line')).toHaveText('New cards today come only from Naming (1), Protocols.');
+
+		// The number is still there to change on the next visit.
+		await page.getByTestId('choose-focus').click();
+		await expect(page.getByTestId('category-amount').first()).toHaveValue('1');
+	});
+
 	test('a category’s review grades its card and rewrites the legacy comment as FSRS state', async ({ page }) => {
 		const before = vaultFile(PROTOCOLS);
 		await page.getByTestId('deck').filter({ hasText: 'Networks' }).getByRole('link', { name: /^Protocols/ }).click();

@@ -127,6 +127,12 @@ export interface FlashcardSettings {
 	perDay: number;
 	/** The focus as written, `<Glossary>/<Category>` items, stale ones included; empty for none. */
 	focus: string[];
+	/**
+	 * The most new cards a day a focused category may take, by its item, for
+	 * those that give a number (`Tagalog/Greetings: 8`). A category with none
+	 * takes its turn with the rest.
+	 */
+	amounts: Record<string, number>;
 }
 
 /**
@@ -142,7 +148,31 @@ export async function flashcardSettings(vault: Vault): Promise<FlashcardSettings
 function readSettings(content: string): FlashcardSettings {
 	const { new_per_day, focus } = parseNote(content, FLASHCARD_SETTINGS_PATH).frontmatter;
 	const items = Array.isArray(focus) ? focus : typeof focus === 'string' ? [focus] : [];
-	return { perDay: count(new_per_day) ?? NEW_PER_DAY, focus: items.filter((i): i is string => typeof i === 'string' && i.trim() !== '').map((i) => i.trim()) };
+	const keys: string[] = [];
+	const amounts: Record<string, number> = {};
+	for (const item of items) {
+		const [key, amount] = focusItem(item);
+		if (!key) continue;
+		keys.push(key);
+		if (amount !== null) amounts[key] = amount;
+	}
+	return { perDay: count(new_per_day) ?? NEW_PER_DAY, focus: keys, amounts };
+}
+
+/**
+ * One `focus:` entry as a category and an optional daily amount. It may be
+ * written `Tagalog/Greetings`, `"Tagalog/Greetings: 8"` or, unquoted, as YAML
+ * reads it, the one-key map `Tagalog/Greetings: 8`. Anything else, a zero or a
+ * fraction included, gives no amount; no key at all gives ''. Pure.
+ */
+function focusItem(item: unknown): [key: string, amount: number | null] {
+	if (item && typeof item === 'object' && !Array.isArray(item)) {
+		const [entry] = Object.entries(item);
+		return entry ? [entry[0].trim(), count(entry[1]) || null] : ['', null];
+	}
+	if (typeof item !== 'string') return ['', null];
+	const written = /^(.+?)\s*:\s*(\d+)$/.exec(item.trim());
+	return written ? [written[1].trim(), count(written[2]) || null] : [item.trim(), null];
 }
 
 type SettingsSet = ({ ok: true } & FlashcardSettings) | { ok: false; reason: 'invalid' | 'conflict' };
@@ -150,7 +180,9 @@ type SettingsSet = ({ ok: true } & FlashcardSettings) | { ok: false; reason: 'in
 /**
  * Change the settings: `perDay`, a whole number from 0 to 500 given as a
  * number or digits, and/or `focus`, a list of `<Glossary>/<Category>` items
- * (an empty list clears it). A field left out stays as it is.
+ * (an empty list clears it), each a string, `"<Glossary>/<Category>: 8"` for
+ * at most 8 new cards a day from it, or `{ key, amount }`. A field left out
+ * stays as it is.
  *
  * Rewrites only the keys given in `_hub/flashcards.md`, every other byte
  * kept, or creates the file when there is none. Refuses as `invalid` a
@@ -169,8 +201,20 @@ export async function setFlashcardSettings(vault: Vault, workspaces: Workspace[]
 	}
 	if (patch.focus !== undefined) {
 		const known = await categoryFiles(vault, await decks(vault, workspaces));
-		if (!Array.isArray(patch.focus) || !patch.focus.every((item) => typeof item === 'string' && known.has(item))) return { ok: false, reason: 'invalid' };
-		text = setFrontmatterField(text, 'focus', [...new Set<string>(patch.focus)]);
+		if (!Array.isArray(patch.focus)) return { ok: false, reason: 'invalid' };
+		const chosen = new Map<string, number | null>();
+		for (const item of patch.focus) {
+			// `{ key, amount }` from the page, or a string as the file writes it.
+			const api = item && typeof item === 'object' && 'key' in item ? (item as { key?: unknown; amount?: unknown }) : null;
+			const [key, parsed] = api ? [typeof api.key === 'string' ? api.key.trim() : '', null] : focusItem(item);
+			const given = api?.amount;
+			// A number that is there but not a whole one of 1 or more is a mistake, not "no number".
+			const wanted = api && given !== undefined && given !== null ? count(given) || null : parsed;
+			const bad = api && given !== undefined && given !== null && wanted === null;
+			if (!known.has(key) || bad || (wanted !== null && wanted > MOST_PER_DAY)) return { ok: false, reason: 'invalid' };
+			chosen.set(key, wanted);
+		}
+		text = setFrontmatterField(text, 'focus', [...chosen].map(([key, amount]) => (amount === null ? key : `${key}: ${amount}`)));
 	}
 	const written = await vault.write(FLASHCARD_SETTINGS_PATH, text, note.hash);
 	return written.ok ? { ok: true, ...readSettings(text) } : { ok: false, reason: 'conflict' };
@@ -200,13 +244,14 @@ async function categoryFiles(vault: Vault, all: Deck[]): Promise<Map<string, str
  * and in all, and each of its categories with its cards and those ready;
  * the totals across decks, with the new cards held back while reviews are
  * overdue; the new cards a day; and the focus in force, as the
- * `<Glossary>/<Category>` items that matched. Never writes.
+ * `<Glossary>/<Category>` items that matched, with the daily amount some give.
+ * Never writes.
  */
 export async function flashcardsOverview(
 	vault: Vault,
 	workspaces: Workspace[],
 	day: string
-): Promise<{ decks: DeckView[]; due: number; fresh: number; held: number; perDay: number; focus: string[] }> {
+): Promise<{ decks: DeckView[]; due: number; fresh: number; held: number; perDay: number; focus: string[]; amounts: Record<string, number> }> {
 	const all = await decks(vault, workspaces);
 	const settings = await flashcardSettings(vault);
 	const queue = await deckQueue(vault, all, day, settings);
@@ -228,7 +273,7 @@ export async function flashcardsOverview(
 			})
 		};
 	});
-	return { decks: views, due: queue.due, fresh: queue.fresh, held: queue.held, perDay: settings.perDay, focus: queue.focus };
+	return { decks: views, due: queue.due, fresh: queue.fresh, held: queue.held, perDay: settings.perDay, focus: queue.focus, amounts: settings.amounts };
 }
 
 /**
@@ -273,7 +318,7 @@ export async function deckReview(
 async function deckQueue(vault: Vault, all: Deck[], day: string, settings: FlashcardSettings): Promise<CardQueue & { focus: string[] }> {
 	const files = await categoryFiles(vault, all);
 	const focus = [...new Set(settings.focus)].filter((item) => files.has(item));
-	const pools = focus.length ? focus.map((item): NewCardPool => ({ scope: files.get(item)!, perDay: null })) : all.map(poolOf);
+	const pools = focus.length ? focus.map((item): NewCardPool => ({ scope: files.get(item)!, perDay: settings.amounts[item] ?? null })) : all.map(poolOf);
 	const plan = await newCardPlan(vault, pools, day, settings.perDay);
 	const queue = await dueCards(vault, { on: day, folders: all.map((d) => d.folder), newCards: plan, dealBy: all.map((d) => d.folder), limit: Infinity });
 	return { ...queue, focus };

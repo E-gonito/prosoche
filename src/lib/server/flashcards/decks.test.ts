@@ -92,7 +92,7 @@ describe('decks', () => {
 	it('has nothing to review with no decks', async () => {
 		expect(await flashcardsOverview(vault, [], TODAY).then((o) => o.decks.length)).toBe(3);
 		for (const name of ['Computer Science', 'Filipino', 'Wisdom']) await vault.remove(`Glossaries/${name}.md`);
-		expect(await flashcardsOverview(vault, [], TODAY)).toEqual({ decks: [], due: 0, fresh: 0, held: 0, perDay: 15, focus: [] });
+		expect(await flashcardsOverview(vault, [], TODAY)).toEqual({ decks: [], due: 0, fresh: 0, held: 0, perDay: 15, focus: [], amounts: {} });
 	});
 
 	it('holds a new card back for each review overdue, so a missed day adds none', async () => {
@@ -161,6 +161,33 @@ describe('a focus on new cards', () => {
 		expect(await fresh()).toEqual([0, 10, 0]);
 	});
 
+	it('lets in exactly the amount a category names, up to the day’s number', async () => {
+		await settings('new_per_day: 10\nfocus:\n  - "Filipino/Tagalog: 6"\n  - "Wisdom/Stoicism: 3"\n  - "Computer Science/Cloud: 1"');
+		const overview = await flashcardsOverview(vault, [], TODAY);
+		expect(overview.amounts).toEqual({ 'Filipino/Tagalog': 6, 'Wisdom/Stoicism': 3, 'Computer Science/Cloud': 1 });
+		expect(overview.decks.map((d) => d.fresh)).toEqual([1, 6, 3]);
+	});
+
+	it('cuts a total of amounts that is over the day’s number back to it, evenly', async () => {
+		await settings('new_per_day: 6\nfocus:\n  - "Filipino/Tagalog: 5"\n  - "Wisdom/Stoicism: 5"');
+		expect(await fresh()).toEqual([0, 3, 3]);
+	});
+
+	it('gives fewer than the day’s number when the amounts add up to less', async () => {
+		await settings('new_per_day: 15\nfocus:\n  - "Filipino/Tagalog: 4"\n  - "Wisdom/Stoicism: 2"');
+		expect(await fresh()).toEqual([0, 4, 2]);
+	});
+
+	it('lets a category with no number take what the numbered ones leave', async () => {
+		await settings('new_per_day: 10\nfocus:\n  - "Filipino/Tagalog: 2"\n  - Wisdom/Stoicism');
+		expect(await fresh()).toEqual([0, 2, 8]);
+	});
+
+	it('reads the amount however YAML has it: a map, or a quoted string', async () => {
+		await settings('focus:\n  - Filipino/Tagalog: 4\n  - "Wisdom/Stoicism: 2"');
+		expect(await flashcardSettings(vault)).toMatchObject({ focus: ['Filipino/Tagalog', 'Wisdom/Stoicism'], amounts: { 'Filipino/Tagalog': 4, 'Wisdom/Stoicism': 2 } });
+	});
+
 	it('still has the reviews due from categories out of focus', async () => {
 		await settings('focus:\n  - Wisdom/Stoicism');
 		const overview = await flashcardsOverview(vault, [], TODAY);
@@ -183,19 +210,19 @@ describe('the settings', () => {
 	});
 
 	it('is fifteen and no focus until the settings say otherwise', async () => {
-		expect(await flashcardSettings(vault)).toEqual({ perDay: 15, focus: [] });
+		expect(await flashcardSettings(vault)).toEqual({ perDay: 15, focus: [], amounts: {} });
 		await vault.write(FLASHCARD_SETTINGS_PATH, '---\nnew_per_day: lots\n---\n');
 		expect((await flashcardSettings(vault)).perDay).toBe(15);
 		await vault.write(FLASHCARD_SETTINGS_PATH, '---\nnew_per_day: "8"\nfocus:\n  - A/B\n  - C/D\n---\n');
-		expect(await flashcardSettings(vault)).toEqual({ perDay: 8, focus: ['A/B', 'C/D'] });
+		expect(await flashcardSettings(vault)).toEqual({ perDay: 8, focus: ['A/B', 'C/D'], amounts: {} });
 	});
 
 	it('creates the settings file, then changes only its one line', async () => {
-		expect(await setFlashcardSettings(vault, [], { perDay: 12 })).toEqual({ ok: true, perDay: 12, focus: [] });
+		expect(await setFlashcardSettings(vault, [], { perDay: 12 })).toEqual({ ok: true, perDay: 12, focus: [], amounts: {} });
 		expect((await flashcardSettings(vault)).perDay).toBe(12);
 
 		await vault.write(FLASHCARD_SETTINGS_PATH, '---\ntheme: x\nnew_per_day: 12\n---\n\nMy notes.\n');
-		expect(await setFlashcardSettings(vault, [], { perDay: '0' })).toEqual({ ok: true, perDay: 0, focus: [] });
+		expect(await setFlashcardSettings(vault, [], { perDay: '0' })).toEqual({ ok: true, perDay: 0, focus: [], amounts: {} });
 		expect((await vault.read(FLASHCARD_SETTINGS_PATH)).content).toBe('---\ntheme: x\nnew_per_day: 0\n---\n\nMy notes.\n');
 	});
 
@@ -216,7 +243,8 @@ describe('the settings', () => {
 			expect(await setFlashcardSettings(vault, [], { focus: ['Networks/Protocols', 'Networks/Naming'] })).toEqual({
 				ok: true,
 				perDay: 9,
-				focus: ['Networks/Protocols', 'Networks/Naming']
+				focus: ['Networks/Protocols', 'Networks/Naming'],
+				amounts: {}
 			});
 			expect((await vault.read(FLASHCARD_SETTINGS_PATH)).content).toBe(
 				'---\ntheme: x\nnew_per_day: 9\nfocus:\n  - Networks/Protocols\n  - Networks/Naming\n---\n\nMy notes.\n'
@@ -225,8 +253,18 @@ describe('the settings', () => {
 			expect((await vault.read(FLASHCARD_SETTINGS_PATH)).content).toBe('---\ntheme: x\nnew_per_day: 9\nfocus:\n---\n\nMy notes.\n');
 		});
 
+		it('writes an amount beside its category, and reads it back', async () => {
+			const set = await setFlashcardSettings(vault, [], { focus: [{ key: 'Networks/Protocols', amount: 8 }, 'Networks/Naming: 3', 'Networks/Naming'] });
+			expect(set).toMatchObject({ ok: true, focus: ['Networks/Protocols', 'Networks/Naming'], amounts: { 'Networks/Protocols': 8 } });
+			expect((await vault.read(FLASHCARD_SETTINGS_PATH)).content).toMatch(/focus:\n {2}- "Networks\/Protocols: 8"\n {2}- Networks\/Naming\n/);
+		});
+
+		it.each([[{ key: 'Networks/Naming', amount: 0 }], [{ key: 'Networks/Naming', amount: 2.5 }], [{ key: 'Networks/Naming', amount: 501 }], [{ key: 'Nowhere/Gone', amount: 3 }]])('refuses %j', async (item) => {
+			expect(await setFlashcardSettings(vault, [], { focus: [item] })).toEqual({ ok: false, reason: 'invalid' });
+		});
+
 		it('creates the file with just the focus, the number a day left to its default', async () => {
-			expect(await setFlashcardSettings(vault, [], { focus: ['Networks/Naming'] })).toEqual({ ok: true, perDay: 15, focus: ['Networks/Naming'] });
+			expect(await setFlashcardSettings(vault, [], { focus: ['Networks/Naming'] })).toEqual({ ok: true, perDay: 15, focus: ['Networks/Naming'], amounts: {} });
 			expect((await vault.read(FLASHCARD_SETTINGS_PATH)).content).toMatch(/^---\nfocus:\n {2}- Networks\/Naming\n---\n/);
 		});
 
