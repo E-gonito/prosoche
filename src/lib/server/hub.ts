@@ -12,6 +12,7 @@ import { Vault, type FileChange } from './vault/index';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
+import { loadGraphs, type Graph } from './graph/graphs';
 import { adoptStudyWorkspaces, loadSubjects, type Subject } from './study/subjects';
 
 /**
@@ -88,6 +89,8 @@ export interface Hub {
 	workspace(slug: unknown): Promise<Workspace | null>;
 	/** Study subject definitions from `_hub/subjects/`, re-read on demand. */
 	subjects(): Promise<Subject[]>;
+	/** Graph definitions from `_hub/graphs/`, re-read on demand. */
+	graphs(): Promise<Graph[]>;
 }
 
 let instance: Promise<Hub> | null = null;
@@ -172,7 +175,8 @@ function start(): Promise<Hub> {
 		rebuild,
 		workspaces,
 		workspace: async (slug) => (await workspaces()).find((w) => w.slug === slug) ?? null,
-		subjects: () => loadSubjects(vault)
+		subjects: () => loadSubjects(vault),
+		graphs: () => loadGraphs(vault)
 	};
 	return built.then(() => h);
 }

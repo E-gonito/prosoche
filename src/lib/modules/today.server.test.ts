@@ -46,7 +46,8 @@ describe('TODAY_CARDS never names a private module', () => {
 		subscribe: () => () => {},
 		rebuild: async () => 0,
 		workspaces: async () => loadWorkspaces(vault),
-		subjects: async () => loadSubjects(vault)
+		subjects: async () => loadSubjects(vault),
+		graphs: async () => [],
 	});
 
 	it('produces cards whose module is never marked private in MODULES', async () => {
@@ -93,7 +94,8 @@ describe('flashcardsDue, the one shipped contributor', () => {
 		subscribe: () => () => {},
 		rebuild: async () => 0,
 		workspaces: async () => loadWorkspaces(vault),
-		subjects: async () => loadSubjects(vault)
+		subjects: async () => loadSubjects(vault),
+		graphs: async () => [],
 	});
 
 	it('is absent when nothing is due', async () => {
@@ -153,7 +155,8 @@ describe('studyNext', () => {
 		subscribe: () => () => {},
 		rebuild: async () => 0,
 		workspaces: async () => loadWorkspaces(vault),
-		subjects: async () => loadSubjects(vault)
+		subjects: async () => loadSubjects(vault),
+		graphs: async () => [],
 	});
 	const study = async (day = '2026-10-02') => (await todayCards({ day, hub: fakeHub() })).find((c) => c.module === 'study');
 
