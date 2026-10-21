@@ -143,6 +143,39 @@ export class Vault {
 	}
 
 	/**
+	 * Read a file's bytes, for the formats the vault holds beside markdown,
+	 * such as images. Null when it is not there, or is outside the public
+	 * scope: like `read`, this never shows the private folder. Never throws.
+	 */
+	async readBytes(path: string): Promise<Uint8Array | null> {
+		if (isPrivate(path) || isIgnored(path)) return null;
+		try {
+			return new Uint8Array(await readFile(toAbsolute(path, this.root)));
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Write a new binary file, creating parent folders as needed, and mark it
+	 * for sync like any write. Only ever creates: a path that already holds a
+	 * file is refused with `exists` and left as it is, because a binary file
+	 * has no lines to guard an edit by. Throws `ScopeError` for a path in the
+	 * private folder; a private image has no caller yet.
+	 */
+	async writeBytes(path: string, bytes: Uint8Array): Promise<{ ok: true } | { ok: false; reason: 'exists' }> {
+		if (isPrivate(path)) throw new ScopeError(path);
+		const absolute = toAbsolute(path, this.root);
+		if (await stat(absolute).then(() => true, () => false)) return { ok: false, reason: 'exists' };
+		await mkdir(dirname(absolute), { recursive: true });
+		await writeFile(absolute, bytes, { flag: 'wx' });
+		this.ownWrites.set(path, Date.now());
+		this.sync.markDirty(path);
+		this.emit({ path, kind: 'added', self: true });
+		return { ok: true };
+	}
+
+	/**
 	 * Delete one note.
 	 *
 	 * The one removal the vault offers, for the rare file a user asks to be

@@ -248,3 +248,31 @@ describe('hasPrivate', () => {
 		expect(await vault.hasPrivate()).toBe(true);
 	});
 });
+
+describe('readBytes and writeBytes', () => {
+	const BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 255, 10, 13]);
+
+	it('round-trips bytes exactly, creating folders', async () => {
+		expect(await vault.writeBytes('Cute/images/a.png', BYTES)).toEqual({ ok: true });
+		expect(await vault.readBytes('Cute/images/a.png')).toEqual(BYTES);
+	});
+
+	it('never overwrites a file that is there', async () => {
+		await vault.writeBytes('Cute/images/a.png', BYTES);
+		expect(await vault.writeBytes('Cute/images/a.png', new Uint8Array([1]))).toEqual({ ok: false, reason: 'exists' });
+		expect(await vault.readBytes('Cute/images/a.png')).toEqual(BYTES);
+	});
+
+	it('reads a missing file as null, and never the private folder', async () => {
+		expect(await vault.readBytes('nope.png')).toBeNull();
+		await mkdir(join(root, 'Private'), { recursive: true });
+		await writeFile(join(root, 'Private/x.png'), 'x');
+		expect(await vault.readBytes('Private/x.png')).toBeNull();
+		await expect(vault.writeBytes('Private/y.png', BYTES)).rejects.toThrow();
+	});
+
+	it('refuses a path that escapes the vault', async () => {
+		await expect(vault.writeBytes('../out.png', BYTES)).rejects.toThrow();
+		expect(await vault.readBytes('../etc/passwd')).toBeNull();
+	});
+});

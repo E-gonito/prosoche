@@ -18,7 +18,10 @@ there is meant to serve the app any more.
 
 The unit sets `PORT=3100`, `HOST=0.0.0.0`, `HUB_VAULT=/srv/vault` and
 `HUB_DB=/var/lib/prosoche/index.db`, and a drop-in adds `HUB_CLAUDE_BIN`
-(see The AI features).
+(see The AI features). A second drop-in,
+`/etc/systemd/system/prosoche.service.d/body-limit.conf`, sets
+`BODY_SIZE_LIMIT=30M`: the Cute tab uploads images of up to 25 MB, and
+adapter-node refuses any request body over 512 KB without it.
 
 ## Deploying
 
