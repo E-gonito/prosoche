@@ -52,7 +52,7 @@ export const MODULES: Module[] = [
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
 	{ id: 'graph', title: 'Graph', icon: 'network', href: '/graph' },
-	{ id: 'cute', title: 'Cute', icon: 'heart', href: '/cute' },
+	{ id: 'cute', title: 'Cute', icon: 'cat', href: '/cute' },
 	{ id: 'date', title: 'Date', icon: 'calendar', href: '/date', private: true },
 	{ id: 'notes', title: 'Notes', icon: 'book-open', href: '/notes', tab: true },
 	{ id: 'tactics', title: 'Tactics', icon: 'crosshair', href: '/tactics' }
