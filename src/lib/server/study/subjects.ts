@@ -44,6 +44,11 @@ const STUDY_ROOT = 'Study';
 /** A subject, with where its files are and which notes it covers. */
 export interface Subject extends SubjectRef {
 	scope: StudyScope;
+	/**
+	 * Other words a daily-note block may use for this subject (`aliases:` in
+	 * its file): `leyline-front` for Rust. The name itself always counts.
+	 */
+	aliases: string[];
 	/** Its definition file, `_hub/subjects/<slug>.md`. */
 	path: string;
 	files: {
@@ -219,6 +224,7 @@ export function readSubject(path: string, content: string): Subject {
 		color: str(fm.color) ?? '#6b7280',
 		home,
 		scope: { folders: folders.length ? folders : [home], tags: tag ? [tag] : [] },
+		aliases: strList(fm.aliases),
 		path,
 		files: {
 			goals: `${home}/Goals.md`,

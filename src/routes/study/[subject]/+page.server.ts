@@ -1,26 +1,22 @@
 import { hub } from '$server/hub';
-import { parseNote } from '$server/parse/note';
-import { renderNote } from '$server/render';
+import { blockFor, blockMinutes } from '$server/study/block';
+import { dailyNotePath } from '$server/daily';
+import { readSession, weekOf } from '$server/study/session';
 import type { PageServerLoad } from './$types';
 
 /**
- * What only the Overview shows: the subject's principles note,
- * `<home>/Principles.md`, the rules the user studies it by. Sent both as its
- * raw bytes, for the editor, and rendered, for reading; a missing one is
- * empty with `exists: false`, and the first save creates it. The goals come
- * from the layout. Never writes.
+ * What the session card needs beyond the layout's goals: how long today's
+ * block for this subject says to study, this week's sessions, and the session
+ * running now, whichever subject's it is. Never writes.
  */
 export const load: PageServerLoad = async ({ parent }) => {
-	const [{ subject }, { vault, index }] = await Promise.all([parent(), hub()]);
-	const path = subject.files.principles;
-	const note = await vault.read(path);
+	const [{ subject, today }, { vault }] = await Promise.all([parent(), hub()]);
+	const note = await vault.read(dailyNotePath(today));
+	const block = note.exists ? blockFor(note.content, [subject.name, ...subject.aliases]) : null;
 	return {
-		principles: {
-			path,
-			exists: note.exists,
-			raw: note.content,
-			hash: note.hash,
-			html: note.content.trim() ? renderNote(index, parseNote(note.content, path).body) : ''
-		}
+		minutes: blockMinutes(block),
+		fromBlock: block !== null && block.startMin !== null,
+		week: await weekOf(vault, subject, today),
+		running: await readSession(vault)
 	};
 };

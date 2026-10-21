@@ -73,6 +73,7 @@ describe('the reading list file', () => {
 		color: '#000',
 		home: 'Study/CS',
 		scope: { folders: ['Study/CS'] },
+		aliases: [],
 		path: '_hub/subjects/cs.md',
 		files: { goals: 'Study/CS/Goals.md', reading: 'Study/CS/Reading List.md', principles: 'Study/CS/Principles.md' }
 	};

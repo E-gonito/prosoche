@@ -150,14 +150,18 @@ export interface StudyFocus extends GoalRef {
 /** One tab of a subject's own tab bar. Every one always shows. */
 interface StudyTab {
 	title: string;
-	/** The path under `/study/<subject>`: '' for Overview. */
+	/** The path under `/study/<subject>`: '' for the Session. */
 	path: string;
 }
 
 /** A subject's tabs, in order. A fresh subject shows all of them, to be filled in. */
 export const STUDY_TABS: StudyTab[] = [
-	{ title: 'Overview', path: '' },
+	{ title: 'Session', path: '' },
+	{ title: 'Plan', path: '/plan' },
 	{ title: 'Notes', path: '/notes' },
 	{ title: 'Goals', path: '/goals' },
 	{ title: 'Reading list', path: '/reading' }
 ];
+
+/** How a study session ended: the step done, progress made, or no work done. */
+export type Outcome = 'done' | 'progress' | 'skipped';

@@ -45,8 +45,11 @@ test.describe('Study index', () => {
 		const file = vaultFile('_hub/subjects/filipino.md');
 		expect(file).toContain('\nfolders:\n  - "Study/Filipino"\n  - "Languages/Filipino"\n');
 		expect(vaultFile('_hub/workspaces/filipino.md')).toBe('');
-		// Every tab shows, even for a subject with nothing in it yet.
-		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Overview', 'Notes', 'Goals', 'Reading list']);
+		// A subject with nothing in it opens on its card, which says so.
+		await expect(page.getByTestId('session-card')).toContainText('Nothing open here');
+		// Every tab shows on its other pages, even for a subject with nothing in it yet.
+		await page.getByTestId('plan-link').click();
+		await expect(page.getByTestId('study-tabs').getByRole('link')).toHaveText(['Session', 'Plan', 'Notes', 'Goals', 'Reading list']);
 	});
 
 
@@ -60,10 +63,10 @@ test.describe('Study index', () => {
 	});
 });
 
-test.describe('Subject overview', () => {
+test.describe('Subject plan', () => {
 	test.beforeEach(async ({ page, request }) => {
 		await resetVault(request);
-		await page.goto(BASE);
+		await page.goto(`${BASE}/plan`);
 	});
 
 
@@ -147,6 +150,78 @@ test.describe('Today', () => {
 		await card.getByRole('link', { name: /Two practice exams/ }).click();
 		await expect(page).toHaveURL(BASE);
 		await expect(page.getByTestId('step-now')).toContainText('Two practice exams');
+	});
+});
+
+test.describe('A study session', () => {
+	const NOTE = `Journal/${TODAY.slice(0, 4)}/${TODAY.slice(5, 7)}/${TODAY.slice(8, 10)}.md`;
+	const BLOCK = '- [ ] 17:00 - 17:30 Study `Q2`';
+
+	/** Today's note with a Study block under # Tasks. */
+	function withBlock(): string {
+		const before = vaultFile(NOTE);
+		writeFileSync(`${VAULT}/${NOTE}`, before.replace('# Tasks\n', `# Tasks\n${BLOCK}\n`));
+		return before.replace('# Tasks\n', `# Tasks\n${BLOCK}\n`);
+	}
+
+	test.beforeEach(async ({ request }) => {
+		await resetVault(request);
+	});
+
+	test('the card shows one step and Start, nothing to choose', async ({ page }) => {
+		withBlock();
+		await page.goto(BASE);
+		await expect(page.getByTestId('session-card')).toContainText('30 min from your block');
+		await expect(page.getByTestId('step-now')).toContainText('Two practice exams');
+		await expect(page.getByTestId('start')).toBeVisible();
+		await expect(page.getByTestId('goal-pill')).toHaveCount(0);
+		await expect(page.getByTestId('week')).toContainText('0 sessions');
+	});
+
+	test('Start, +15 min, then Done ticks the step and the block, and logs one line', async ({ page }) => {
+		const before = withBlock();
+		const goals = vaultFile(GOALS);
+		await page.goto(BASE);
+		await page.getByTestId('start').click();
+
+		await expect(page).toHaveURL(`${BASE}/session`);
+		await expect(page.getByTestId('clock')).toContainText(/^\d+:\d\d$/);
+		await page.getByTestId('scratch').fill('traced the vpc');
+		await page.getByTestId('extend').click();
+		await expect.poll(() => vaultFile(NOTE)).toContain('17:00 - 17:45 Study');
+
+		await page.getByTestId('end-done').click();
+		await expect(page).toHaveURL(BASE);
+		const note = vaultFile(NOTE);
+		expect(note).toBe(
+			before.replace(BLOCK, '- [x] 17:00 - 17:45 Study `Q2`\n\t- Study: Two practice exams, 1m, done · traced the vpc')
+		);
+		expect(vaultFile(GOALS)).toBe(goals.replace('- [ ] Two practice exams', '- [x] Two practice exams'));
+		await expect(page.getByTestId('week')).toContainText('1 session');
+	});
+
+	test('Didn’t get to it logs but ticks nothing, and the session survives a reload until ended', async ({ page }) => {
+		withBlock();
+		const goals = vaultFile(GOALS);
+		await page.goto(BASE);
+		await page.getByTestId('start').click();
+		await expect(page).toHaveURL(`${BASE}/session`);
+		await page.reload();
+		await expect(page.getByTestId('session')).toBeVisible();
+		await page.getByTestId('end-skipped').click();
+
+		await expect(page).toHaveURL(BASE);
+		expect(vaultFile(NOTE)).toContain('- [ ] 17:00 - 17:30 Study `Q2`\n\t- Study: Two practice exams, 1m, skipped');
+		expect(vaultFile(GOALS)).toBe(goals);
+		await expect(page.getByTestId('week')).toContainText('0 sessions');
+	});
+
+	test('a running session sends the card to Continue, and the session page without one goes back', async ({ page }) => {
+		await page.goto(`${BASE}/session`);
+		await expect(page).toHaveURL(BASE);
+		await page.getByTestId('start').click();
+		await page.goto(BASE);
+		await expect(page.getByTestId('continue')).toBeVisible();
 	});
 });
 
@@ -271,13 +346,13 @@ test.describe('Phone layout', () => {
 		await expect(page.getByTestId('subject-card')).toBeVisible();
 	});
 
-	test('a subject’s Overview puts the step to do now on the first screen, with room to tap', async ({ page }) => {
+	test('a subject’s session card puts Start on the first screen, with room to tap', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.goto(BASE);
 
-		const done = page.getByTestId('step-done');
-		await expect(done).toBeInViewport();
-		expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(40);
+		const start = page.getByTestId('start');
+		await expect(start).toBeInViewport();
+		expect((await start.boundingBox())!.height).toBeGreaterThanOrEqual(40);
 		// The goals row scrolls on its own; the page never scrolls sideways.
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 	});
