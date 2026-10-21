@@ -16,7 +16,9 @@
  *  - Recording a mission only appends lines to a log file, against the hash
  *    it read, so a line written meanwhile from elsewhere is never lost.
  *  - Changing a scenario's status rewrites its `status:` line and nothing
- *    else. No model code path calls it: approving is yours.
+ *    else, or, when you approve with a Why you have kept or reworded, that
+ *    line and the `## Why` body. No model code path calls it: approving is
+ *    yours.
  *  - Adding the starter drafts creates files that are not there and never
  *    overwrites one.
  */
@@ -212,22 +214,66 @@ export async function recordMission(
 
 /**
  * Set scenario `id`'s status to `status`, rewriting its `status:` line and
- * nothing else, against the note as it was read. Approving checks the note
- * as it would read once approved, so a missing or still-suggested `## Why`
- * refuses (`invalid`, with the problems) and nothing is written. Refuses
- * `not-found` for an id not in the library and `conflict` if the note
- * changed under it. No model code path calls this.
+ * nothing else, against the note as it was read. `why`, when given, is the
+ * Why as you have read and kept it: it replaces the `## Why` section's body
+ * (see `withWhy`) in the same write, which is how a suggested Why becomes
+ * yours from the page. Approving checks the note as it would read once
+ * approved, so a missing or still-suggested `## Why` refuses (`invalid`,
+ * with the problems) and nothing is written; so does a `why` that is empty
+ * or holds a `## ` heading. Refuses `not-found` for an id not in the library
+ * and `conflict` if the note changed under it. No model code path calls this.
  */
-export async function setStatus(vault: Vault, id: unknown, status: unknown): Promise<{ ok: true; status: Status } | (Refusal & { errors?: string[] })> {
+export async function setStatus(
+	vault: Vault,
+	id: unknown,
+	status: unknown,
+	why?: unknown
+): Promise<{ ok: true; status: Status } | (Refusal & { errors?: string[] })> {
 	if (!STATUSES.includes(status as Status)) return { ok: false, reason: 'invalid', message: 'A status is draft, approved or retired.' };
+	if (why !== undefined && (typeof why !== 'string' || !why.trim())) return { ok: false, reason: 'invalid', message: 'Write the Why first.' };
+	if (typeof why === 'string' && /^##[ \t]/m.test(why)) return { ok: false, reason: 'invalid', message: 'The Why cannot hold a `## ` heading; that would start a new section.' };
 	const scenario = (await loadLibrary(vault)).scenarios.find((s) => s.id === id);
 	if (!scenario) return { ok: false, reason: 'not-found', message: 'There is no such scenario, or it does not read. Fix it first.' };
 	const note = await vault.read(scenario.path);
-	const next = setFrontmatterField(note.content, 'status', status as Status);
+	const kept = typeof why === 'string' ? withWhy(note.content, why) : note.content;
+	const next = setFrontmatterField(kept, 'status', status as Status);
 	const check = parseScenario(next, scenario.path);
 	if (!check.ok) return { ok: false, reason: 'invalid', message: check.errors.join(' '), errors: check.errors };
 	const written = await vault.write(scenario.path, next, note.hash);
 	return written.ok ? { ok: true, status: status as Status } : { ok: false, reason: 'conflict' };
+}
+
+/**
+ * `content` with the body of its `## Why` section, every line from the
+ * heading to the next `## ` heading outside a code fence (or the end),
+ * replaced by `why` trimmed, and one blank line kept before a section that
+ * follows. Every other line keeps its bytes. A note with no `## Why` gets
+ * one at the end. Pure.
+ */
+export function withWhy(content: string, why: string): string {
+	const lines = content.split('\n');
+	const body = why.replace(/\r\n?/g, '\n').trim().split('\n');
+	let i = 0;
+	if (lines[0] === '---') i = lines.indexOf('---', 1) + 1 || lines.length;
+	let fence: string | null = null;
+	let start = -1;
+	let end = lines.length;
+	for (; i < lines.length; i++) {
+		const f = /^[ \t]*(```|~~~)/.exec(lines[i]);
+		if (f) {
+			fence = fence === null ? f[1] : f[1] === fence ? null : fence;
+			continue;
+		}
+		if (fence !== null || !/^##[ \t]/.test(lines[i])) continue;
+		if (start >= 0) {
+			end = i;
+			break;
+		}
+		if (/^##[ \t]+why[ \t]*$/i.test(lines[i])) start = i;
+	}
+	if (start < 0) return `${content.replace(/\n*$/, '\n')}\n## Why\n${body.join('\n')}\n`;
+	const rest = lines.slice(end);
+	return [...lines.slice(0, start + 1), ...body, '', ...rest].join('\n');
 }
 
 /**
@@ -267,7 +313,8 @@ export const STARTER_PATHS = Object.keys(STARTERS);
  */
 export function viewOf(scenario: Scenario, index: { resolveLink(target: string): string | null }): ScenarioView {
 	const why = scenario.why.replace(/^[ \t]*>[ \t]*\[!suggestion\][^\n]*\n?/im, '');
-	return { ...scenario, situationHtml: renderNote(index, scenario.situation), whyHtml: why.trim() ? renderNote(index, why) : '' };
+	const whyText = scenario.whySuggested ? why.replace(/^[ \t]*>[ \t]?/gm, '').trim() : scenario.why;
+	return { ...scenario, situationHtml: renderNote(index, scenario.situation), whyHtml: why.trim() ? renderNote(index, why) : '', whyText };
 }
 
 function byId(scenarios: readonly Scenario[]): Map<string, Scenario> {

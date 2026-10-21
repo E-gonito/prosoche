@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Vault } from '../vault/index';
-import { addStarters, loadAttempts, loadLibrary, missionPool, overview, planMission, recordMission, setStatus, STARTER_PATHS } from './index';
+import { addStarters, loadAttempts, loadLibrary, missionPool, overview, planMission, recordMission, setStatus, STARTER_PATHS, withWhy } from './index';
 import { seeded } from './sampler';
 
 let dir: string;
@@ -126,9 +126,39 @@ describe('setStatus', () => {
 		expect(await setStatus(vault, 'cqb-0002', 'retired')).toEqual({ ok: true, status: 'retired' });
 	});
 
+	it('approves with a kept Why, replacing only the Why body and the status line', async () => {
+		const before = (await vault.read(path)).content;
+		const result = await setStatus(vault, 'cqb-0002', 'approved', 'Two doorways, one gun.\n\nCheck the near one first.');
+		expect(result).toEqual({ ok: true, status: 'approved' });
+		const after = (await vault.read(path)).content;
+		const head = before.slice(0, before.indexOf('## Why\n') + '## Why\n'.length);
+		expect(after).toBe(head.replace('status: draft', 'status: approved') + 'Two doorways, one gun.\n\nCheck the near one first.\n');
+		expect((await loadLibrary(vault)).scenarios.find((s) => s.id === 'cqb-0002')).toMatchObject({ status: 'approved', whySuggested: false });
+	});
+
+	it('will not approve with a Why that is empty, still suggested or holds a section heading, and writes nothing', async () => {
+		const before = (await vault.read(path)).content;
+		for (const why of ['  ', '> [!suggestion]\n> Mine now?', 'Fine.\n## Options\n- A: sneaky', 42]) {
+			expect(await setStatus(vault, 'cqb-0002', 'approved', why)).toMatchObject({ ok: false, reason: 'invalid' });
+		}
+		expect((await vault.read(path)).content).toBe(before);
+	});
+
 	it('refuses an unknown status or scenario', async () => {
 		expect(await setStatus(vault, 'cqb-0002', 'live')).toMatchObject({ ok: false, reason: 'invalid' });
 		expect(await setStatus(vault, 'nope', 'retired')).toMatchObject({ ok: false, reason: 'not-found' });
+	});
+});
+
+describe('withWhy', () => {
+	const note = '---\nid: x\n---\n\n## Situation\nA hall.\n\n## Why\n> [!suggestion]\n> Old.\n\n## Penalty\nroe_violation: [A]\n';
+	it.each([
+		['a Why with a section after it', note, 'Mine.', '---\nid: x\n---\n\n## Situation\nA hall.\n\n## Why\nMine.\n\n## Penalty\nroe_violation: [A]\n'],
+		['a Why last in the note', '## Situation\nA.\n\n## Why\nOld.\n', '  Mine.\r\nTwo.  ', '## Situation\nA.\n\n## Why\nMine.\nTwo.\n'],
+		['a `## Why` inside a fence, not a heading', '## Situation\n```\n## Why\n```\n## Why\nOld.\n', 'Mine.', '## Situation\n```\n## Why\n```\n## Why\nMine.\n'],
+		['a note with no Why', '## Situation\nA.', 'Mine.', '## Situation\nA.\n\n## Why\nMine.\n']
+	])('%s', (_, content, why, expected) => {
+		expect(withWhy(content, why)).toBe(expected);
 	});
 });
 

@@ -117,18 +117,36 @@ Not aimed at anyone, and no command given yet.
 		expect(await waitForFile(LOG, (c) => c.includes('ron-0001 answer:: A result:: wrong correct:: false') && c.includes('roe:: true'))).toBe(true);
 	});
 
-	test('approves a draft only once its Why is in your words', async ({ page, request }) => {
+	test('approves a draft from the page, its suggested Why reworded and kept as yours', async ({ page, request }) => {
 		await request.post('/api/tactics/starters', { data: {} });
 		const path = 'Tactics/Scenarios/cqb-0002.md';
+		const before = vaultFile(path);
 		await expect(async () => {
 			await page.goto('/tactics/scenario/cqb-0002');
-			await expect(page.getByTestId('approve')).toBeDisabled({ timeout: 1000 });
+			await expect(page.getByTestId('why-text')).toBeVisible({ timeout: 1000 });
 		}).toPass();
+		await expect(page.getByTestId('approve')).toHaveCount(0);
+		const suggested = await page.getByTestId('why-text').inputValue();
+		expect(suggested.length).toBeGreaterThan(20);
+		expect(suggested).not.toContain('[!suggestion]');
+		expect(suggested).not.toMatch(/^>/m);
+
+		await page.getByTestId('why-text').fill(`${suggested}\n\nMy note: check the near door first.`);
+		await page.getByTestId('approve-why').click();
+		await expect(page.getByTestId('scenario-status')).toContainText('approved');
+		await expect(page.getByTestId('why-text')).toHaveCount(0);
+		const head = before.slice(0, before.indexOf('## Why\n') + '## Why\n'.length).replace('status: draft', 'status: approved');
+		expect(vaultFile(path)).toBe(`${head}${suggested}\n\nMy note: check the near door first.\n`);
+	});
+
+	test('approves a draft whose Why was written in Obsidian, changing only its status', async ({ page, request }) => {
+		await request.post('/api/tactics/starters', { data: {} });
+		const path = 'Tactics/Scenarios/cqb-0002.md';
 
 		const mine = vaultFile(path).replace(/## Why\n[\s\S]*$/, '## Why\nTwo doorways, one gun.\n');
 		write(path, mine);
 		await expect(async () => {
-			await page.reload();
+			await page.goto('/tactics/scenario/cqb-0002');
 			await expect(page.getByTestId('approve')).toBeEnabled({ timeout: 1000 });
 		}).toPass();
 		await page.getByTestId('approve').click();

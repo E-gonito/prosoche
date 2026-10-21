@@ -830,9 +830,11 @@ from the browser. Accuracy per tag is a moving average (each answer weighs
 abandoned partway writes nothing.
 
 **Approving.** A scenario page shows its answer and Why. **Approve** sets
-`status: approved`, and that line only. It refuses while the Why is empty or
-still marked `> [!suggestion]`: the Why has to be in your words. Nothing a
-model drafts can approve a scenario. **Retire** keeps the note but takes it
+`status: approved`, and that line only. While the Why is empty or still
+marked `> [!suggestion]`, the page shows it in a box instead, out of its
+callout: keep it or reword it, and **Approve with this Why** writes it as the
+`## Why` body, without the mark, and sets the status in one write. Every
+other line keeps its bytes. Nothing a model drafts can approve a scenario. **Retire** keeps the note but takes it
 out of every mission.
 
 **Starter drafts.** On an empty `Tactics/`, **Add the starter drafts**

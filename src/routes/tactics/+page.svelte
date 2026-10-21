@@ -112,7 +112,7 @@
 					ondone={() => invalidateAll()}
 				/>
 			</div>
-			<p class="hint">Generated drafts are guesses from Claude, not facts. They stay drafts until you rewrite the Why and approve.</p>
+			<p class="hint">Generated drafts are guesses from Claude, not facts. They stay drafts until you read the Why, keep or reword it, and approve.</p>
 		</section>
 
 		<p class="label">Weakest tags</p>
@@ -148,8 +148,8 @@
 		</ul>
 		{#if hasDrafts}
 			<p class="hint">
-				A draft becomes part of a normal mission once you approve it, and you can only approve it once its Why is in
-				your own words.
+				A draft becomes part of a normal mission once you approve it. Open one, read its answer and Why, keep or reword
+				the Why, and approve.
 			</p>
 			<button class="btn small" onclick={addStarters} disabled={adding}>Add any missing starter drafts</button>
 		{/if}
