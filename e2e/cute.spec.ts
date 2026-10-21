@@ -125,3 +125,44 @@ test.describe('Cute', () => {
 		expect((await page.request.get('/cute/media/Yaku%20Neko.md')).status()).toBe(404);
 	});
 });
+
+test.describe('Cute on a phone', () => {
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+	test.beforeEach(async ({ request }) => {
+		await resetVault(request);
+		mkdirSync(join(VAULT, 'Cute/images'), { recursive: true });
+		writeFileSync(join(VAULT, 'Cute/Yaku Neko.md'), NOTE);
+		writeFileSync(join(VAULT, 'Cute/images/Pasted image 1.png'), await png(4, 4));
+		writeFileSync(join(VAULT, 'Cute/images/Pasted image 2.png'), await png(4, 4));
+		await request.post('/api/sync', { data: { action: 'rebuild' } });
+	});
+
+	test('offers a photo rather than drop or paste, and files the one chosen', async ({ page }) => {
+		await page.goto('/cute');
+		await expect(page.getByText('from your photos')).toBeVisible();
+		await expect(page.getByText('Drop an image here')).toBeHidden();
+		await expect(page.getByText('Choose a photo')).toBeVisible();
+		await expect(page.getByText('Choose a file')).toBeHidden();
+		await page.getByTestId('file-input').setInputFiles({ name: 'IMG_0001.png', mimeType: 'image/png', buffer: await png(20, 20) });
+		await page.getByTestId('add-here').first().click();
+		await expect(page.getByTestId('filed')).toContainText('Added to Yaku Neko');
+	});
+
+	test('a sideways swipe in the viewer moves between pictures', async ({ page }) => {
+		await page.goto('/cute/yaku-neko');
+		await page.getByTestId('picture').nth(1).click();
+		const img = page.getByTestId('viewer').locator('img');
+		await expect(img).toHaveAttribute('src', '/cute/media/Pasted%20image%202.png');
+		const swipe = (from: number, to: number) =>
+			page.getByTestId('viewer').evaluate((el, [from, to]) => {
+				const touch = (x: number) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 400 });
+				el.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(from)], changedTouches: [touch(from)], bubbles: true }));
+				el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(to)], bubbles: true }));
+			}, [from, to]);
+		await swipe(300, 100);
+		await expect(img).toHaveAttribute('src', '/cute/media/Pasted%20image%201.png');
+		await swipe(100, 300);
+		await expect(img).toHaveAttribute('src', '/cute/media/Pasted%20image%202.png');
+	});
+});

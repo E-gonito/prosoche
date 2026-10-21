@@ -2,7 +2,8 @@
 	/**
 	 * Cute: every character as a tile, and a box on top to file a new image.
 	 *
-	 * Drop a file on the box, paste one anywhere on the page, or choose one.
+	 * Drop a file on the box, paste one anywhere on the page, or choose one
+	 * (all a phone can do, so a touch screen is only offered that).
 	 * The box shows it and the grid turns into the choice of where it goes:
 	 * each tile reads "Add here", and a New character tile comes first. One tap
 	 * files it (`/api/cute`, the image's own bytes), which converts a screenshot to WebP and appends
@@ -123,8 +124,9 @@
 				<button type="button" class="btn ghost" onclick={cancel} disabled={busy} data-testid="cancel">Cancel</button>
 			</div>
 		{:else}
-			<p><b>Drop an image here</b>, or press <kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</p>
-			<button type="button" class="btn" onclick={() => input?.click()} data-testid="choose-file">Choose a file</button>
+			<p class="pointer"><b>Drop an image here</b>, or press <kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</p>
+			<p class="touch"><b>Add a screenshot or GIF</b> from your photos.</p>
+			<button type="button" class="btn" onclick={() => input?.click()} data-testid="choose-file"><span class="pointer">Choose a file</span><span class="touch">Choose a photo</span></button>
 		{/if}
 		<input bind:this={input} class="hidden" type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => take(e.currentTarget.files?.[0], false)} data-testid="file-input" />
 	</div>
@@ -188,6 +190,13 @@
 	.what { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); }
 	kbd { font: inherit; font-size: var(--t13); padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); }
 	.hidden { display: none; }
+	/* A phone can neither drop a file nor paste outside a text box, so it is told to choose one. */
+	.touch { display: none; }
+	@media (hover: none) and (pointer: coarse) {
+		.pointer { display: none; }
+		.touch { display: inline; }
+		p.touch { display: block; }
+	}
 	.done { margin: 0 0 var(--s3); }
 
 	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s3); }

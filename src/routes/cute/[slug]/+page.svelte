@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
 	 * One character: every picture in its note, newest first, as a grid. Tap
-	 * one to see it full size, GIFs playing; arrow keys move between them and
-	 * Escape closes. Filing a new one happens on the Cute page.
+	 * one to see it full size, GIFs playing; arrow keys or a sideways swipe move
+	 * between them and Escape closes. Filing a new one happens on the Cute page.
 	 */
 	import { noteHref } from '$lib/shared/links';
 
@@ -25,6 +25,16 @@
 		if (open === null) return;
 		if (event.key === 'ArrowRight') step(1);
 		if (event.key === 'ArrowLeft') step(-1);
+	}
+
+	/** Where a touch began, so a sideways swipe can page like the arrow keys. */
+	let touchX: number | null = null;
+
+	function onTouchEnd(event: TouchEvent) {
+		if (touchX === null) return;
+		const dx = event.changedTouches[0].clientX - touchX;
+		touchX = null;
+		if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
 	}
 </script>
 
@@ -52,7 +62,14 @@
 	</div>
 </div>
 
-<dialog bind:this={dialog} class="viewer" onclose={() => (open = null)} data-testid="viewer">
+<dialog
+	bind:this={dialog}
+	class="viewer"
+	onclose={() => (open = null)}
+	ontouchstart={(e) => (touchX = e.touches[0].clientX)}
+	ontouchend={onTouchEnd}
+	data-testid="viewer"
+>
 	{#if open !== null && data.pictures[open]}
 		{@const picture = data.pictures[open]}
 		<img src={picture.src} alt={picture.label} referrerpolicy="no-referrer" />
