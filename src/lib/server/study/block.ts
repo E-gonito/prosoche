@@ -83,7 +83,8 @@ export function nextBlock<S extends { names: string[] }>(content: string, subjec
 	return timed.sort((a, b) => b.block.endMin! - a.block.endMin!)[0] ?? null;
 }
 
-function toBlock(t: TaskLine): Block {
+/** A scanned task as a `Block`: times become minutes since midnight (`24:00` is 1440). Pure. */
+export function toBlock(t: TaskLine): Block {
 	return { line: t.line, blockEnd: t.blockEnd, raw: t.raw, startMin: t.start ? toMinutes(t.start) : null, endMin: t.end ? toMinutes(t.end) : null };
 }
 
@@ -132,4 +133,16 @@ export function loggedSessions(content: string): LoggedSession[] {
 		if (m && OUTCOMES.includes(m[3] as Outcome)) out.push({ subject: m[1], minutes: Number(m[2]), outcome: m[3] as Outcome });
 	}
 	return out;
+}
+
+/**
+ * True when a logged-session sub-bullet (the `loggedSessions` format, any
+ * outcome) sits under `block`, between its line + 1 and its `blockEnd`. A
+ * block with one has been worked on or deliberately skipped. Lines outside
+ * that range are never looked at. Pure.
+ */
+export function hasLoggedSession(content: string, block: Pick<Block, 'line' | 'blockEnd'>): boolean {
+	const lines = content.split('\n');
+	for (let i = block.line + 1; i <= block.blockEnd && i < lines.length; i++) if (LOGGED.test(lines[i])) return true;
+	return false;
 }

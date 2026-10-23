@@ -26,6 +26,7 @@
 	import { formatMinutes } from '$lib/shared/time';
 	import { editTask, planOnDay } from '$lib/client/api';
 	import { displayText, isDone, isSkipped, type Task } from '$lib/shared/task';
+	import { startLink } from '$lib/shared/focus-now';
 	import { drag as listDrag, registerDropZone, zoneAt } from '$lib/client/drag.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { TodayEvent } from '$lib/shared/today';
@@ -556,6 +557,7 @@
 				{@const task = p.item.task}
 				{@const done = isDone(task) || isSkipped(task)}
 				{@const owner = ownerOf(task)}
+				{@const starting = startLink(task, day, dayPath, isToday)}
 				<div
 					class="block q{task.quadrant ?? 0}"
 					data-testid="block"
@@ -563,6 +565,7 @@
 					data-start={p.startMin}
 					data-end={p.endMin}
 					class:done
+					class:startable={starting !== null}
 					class:busy={busy.has(task.line)}
 					class:active={drag?.task.line === task.line}
 					class:compact={(p.endMin - p.startMin) * PX_PER_MIN < COMPACT_BELOW_PX}
@@ -593,6 +596,19 @@
 						></span>{/if}</div>
 					<div class="block-label">{displayText(task.text)}</div>
 					{#if task.quadrant}<span class="q q{task.quadrant} q-badge">Q{task.quadrant}</span>{/if}
+					{#if starting}
+						<!-- A link, so it needs the same two guards as the ✕: no drag from its press, no open from its click. -->
+						<a
+							class="play"
+							data-testid="timeline-start"
+							href={starting}
+							title="Start this block: just a few minutes"
+							aria-label="Start {displayText(task.text)}"
+							onpointerdown={(e) => e.stopPropagation()}
+							onclick={(e) => e.stopPropagation()}
+							onkeydown={(e) => e.stopPropagation()}
+						><Icon name="play" size={12} /></a>
+					{/if}
 					<button
 						class="clear"
 						data-testid="clear-time"
@@ -656,6 +672,10 @@
 	@media (pointer: coarse) {
 		.block { touch-action: pan-y; }
 		.handle, .clear { display: none; }
+		.block.startable { padding-right: 38px; }
+		.play { opacity: 0.8; right: 4px; width: 28px; height: 28px; }
+		.block.startable .q-badge { right: 36px; }
+		.block.compact.startable .play { right: 4px; width: 28px; height: 24px; }
 		.hint.fine { display: none; }
 		.hint.coarse { display: block; }
 	}
@@ -829,4 +849,29 @@
 	.block:focus-within .clear { opacity: 1; }
 	.clear:hover { background: var(--soft); color: var(--bad); }
 	.block.compact .clear { top: 50%; right: 2px; width: 16px; height: 16px; transform: translateY(-50%); }
+
+	/*
+	 * Start, beside the ✕ and shown on the same terms: out of the way until the
+	 * block is pointed at or focused. On a phone, where the ✕ is gone and
+	 * nothing is pointed at, it is always there and a thumb's size (see the
+	 * coarse rules above). The block reserves its room so text never runs under it.
+	 */
+	.play {
+		position: absolute;
+		top: 3px;
+		right: 23px;
+		width: 18px;
+		height: 18px;
+		border-radius: 4px;
+		color: var(--muted);
+		opacity: 0;
+		display: grid;
+		place-items: center;
+	}
+	.play:hover { background: var(--soft); color: var(--accent); text-decoration: none; }
+	.block:hover .play,
+	.block:focus-within .play { opacity: 1; }
+	.block.startable .q-badge { right: 46px; }
+	.block.compact.startable { padding-right: 44px; }
+	.block.compact .play { top: 50%; right: 20px; width: 16px; height: 16px; transform: translateY(-50%); }
 </style>

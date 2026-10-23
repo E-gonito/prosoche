@@ -1,4 +1,5 @@
 import { today } from '$server/daily';
+import { focusSettings } from '$server/focus/settings';
 import { endSession, extendSession, startSession } from '$server/study/session';
 import { studySummary } from '$server/study/summary';
 import { subjectOf } from '$server/study/subjects';
@@ -25,7 +26,7 @@ export const POST = route(async ({ body, hub }) => {
 	}
 	const subject = subjectOf(await hub.subjects(), body.subject);
 	if (!subject) return noSubject();
-	if (body.action === 'start') return startSession(hub.vault, subject, await studySummary(hub.vault, subject), today(new Date(now)), now);
+	if (body.action === 'start') return startSession(hub.vault, subject, await studySummary(hub.vault, subject), today(new Date(now)), now, (await focusSettings(hub.vault)).warmupMin);
 	if (body.action === 'end') {
 		const outcome = str(body.outcome);
 		if (!outcome || !OUTCOMES.includes(outcome)) return refuse('invalid', 'outcome must be done, progress or skipped');

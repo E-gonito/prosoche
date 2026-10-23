@@ -184,7 +184,7 @@ test.describe('A study session', () => {
 		await page.goto(BASE);
 		await page.getByTestId('start').click();
 
-		await expect(page).toHaveURL(`${BASE}/session`);
+		await expect(page).toHaveURL('/focus');
 		await expect(page.getByTestId('clock')).toContainText(/^\d+:\d\d$/);
 		await page.getByTestId('scratch').fill('traced the vpc');
 		await page.getByTestId('extend').click();
@@ -205,7 +205,7 @@ test.describe('A study session', () => {
 		const goals = vaultFile(GOALS);
 		await page.goto(BASE);
 		await page.getByTestId('start').click();
-		await expect(page).toHaveURL(`${BASE}/session`);
+		await expect(page).toHaveURL('/focus');
 		await page.reload();
 		await expect(page.getByTestId('session')).toBeVisible();
 		await page.getByTestId('end-skipped').click();
@@ -224,7 +224,7 @@ test.describe('A study session', () => {
 		await page.goto('/study');
 		await expect(page.getByTestId('study-now')).toContainText('Two practice exams');
 		await page.getByTestId('study-now-go').click();
-		await expect(page).toHaveURL(`${BASE}/session`);
+		await expect(page).toHaveURL('/focus');
 
 		await page.goto('/study');
 		await expect(page.getByTestId('study-now')).toContainText('Running now');

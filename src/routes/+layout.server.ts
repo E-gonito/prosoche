@@ -1,6 +1,7 @@
 import { hub } from '$server/hub';
 import { glossaries } from '$server/glossary';
 import { characters } from '$server/cute';
+import { nowStrip } from '$server/focus/now';
 import type { SubItem } from '$lib/modules';
 import type { LayoutServerLoad } from './$types';
 
@@ -11,8 +12,14 @@ import type { LayoutServerLoad } from './$types';
  * only: the rail is a way in, not a report. `hasPrivate` says whether the
  * vault has a private folder, so a private module is only drawn where it
  * has somewhere to keep its data.
+ *
+ * `now` is the now strip (a running session, or the block that is soon or
+ * due, or null). It is the one part of this loader that goes stale in
+ * minutes, so it is tagged `prosoche:now` and the strip reloads it alone with
+ * `invalidate('prosoche:now')`.
  */
-export const load: LayoutServerLoad = async () => {
+export const load: LayoutServerLoad = async ({ depends }) => {
+	depends('prosoche:now');
 	const { vault, workspaces, subjects, graphs } = await hub();
 	const all = await workspaces();
 	const sub: Record<string, SubItem[]> = {
@@ -22,5 +29,5 @@ export const load: LayoutServerLoad = async () => {
 		graph: (await graphs()).map((g) => ({ href: `/graph/${g.slug}`, title: g.name, color: g.color })),
 		cute: (await characters(vault)).map((c) => ({ href: `/cute/${c.slug}`, title: c.name, color: '#d16b95' }))
 	};
-	return { sub, hasPrivate: await vault.hasPrivate() };
+	return { sub, hasPrivate: await vault.hasPrivate(), now: await nowStrip(vault, new Date()) };
 };

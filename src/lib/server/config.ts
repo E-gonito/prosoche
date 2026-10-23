@@ -8,6 +8,50 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+/** What `HUB_VAPID_*` asked for: nothing, a working setup, or a mistake. */
+export type PushConfig =
+	| { state: 'off' }
+	| { state: 'on'; publicKey: string; privateKey: string; subject: string }
+	| { state: 'invalid'; problem: string };
+
+/** URL-safe base64 (the form `web-push generate-vapid-keys` prints) and how many bytes it must decode to. */
+function vapidKey(value: string, bytes: number): boolean {
+	return /^[A-Za-z0-9_-]+$/.test(value) && Buffer.from(value, 'base64url').length === bytes;
+}
+
+/**
+ * Read the Web Push settings out of an environment.
+ *
+ * Inputs: `HUB_VAPID_PUBLIC`, `HUB_VAPID_PRIVATE` and `HUB_VAPID_SUBJECT`
+ * (a `mailto:` or `https:` address the push services can contact). Output:
+ * `off` when none of the keys is set, `on` when both keys and a subject are
+ * set and well formed, and otherwise `invalid` with a sentence saying what to
+ * fix. Blank counts as unset. Never throws and never returns a half-working
+ * setup: one key without the other, a subject that is neither `mailto:` nor
+ * `https:`, or a key of the wrong length is `invalid`, so push is never
+ * quietly off because of a typo. Pure.
+ */
+export function readPushConfig(env: Record<string, string | undefined>): PushConfig {
+	const publicKey = env.HUB_VAPID_PUBLIC?.trim() ?? '';
+	const privateKey = env.HUB_VAPID_PRIVATE?.trim() ?? '';
+	const subject = env.HUB_VAPID_SUBJECT?.trim() ?? '';
+	if (!publicKey && !privateKey) {
+		return subject
+			? { state: 'invalid', problem: 'HUB_VAPID_SUBJECT is set but HUB_VAPID_PUBLIC and HUB_VAPID_PRIVATE are not. Set both keys, or unset the subject.' }
+			: { state: 'off' };
+	}
+	if (!publicKey || !privateKey) {
+		const missing = publicKey ? 'HUB_VAPID_PRIVATE' : 'HUB_VAPID_PUBLIC';
+		return { state: 'invalid', problem: `${missing} is not set. Push needs both HUB_VAPID_PUBLIC and HUB_VAPID_PRIVATE; make them with: npx web-push generate-vapid-keys` };
+	}
+	if (!/^(mailto:[^\s@]+@[^\s@]+|https:\/\/[^\s/]+.*)$/.test(subject)) {
+		return { state: 'invalid', problem: 'HUB_VAPID_SUBJECT must be a mailto: or https: address, such as mailto:you@example.com. The push services require one.' };
+	}
+	if (!vapidKey(publicKey, 65)) return { state: 'invalid', problem: 'HUB_VAPID_PUBLIC is not a VAPID public key. Make a pair with: npx web-push generate-vapid-keys' };
+	if (!vapidKey(privateKey, 32)) return { state: 'invalid', problem: 'HUB_VAPID_PRIVATE is not a VAPID private key. Make a pair with: npx web-push generate-vapid-keys' };
+	return { state: 'on', publicKey, privateKey, subject };
+}
+
 export const config = {
 	/** Absolute path to the Obsidian vault working copy. */
 	vaultPath: process.env.HUB_VAULT ?? join(homedir(), 'vault'),
@@ -100,5 +144,14 @@ export const config = {
 	 * tailnet address. Empty means not set up: the nav and palette entry are
 	 * left out entirely rather than pointing somewhere that will not answer.
 	 */
-	t3Url: process.env.HUB_T3_URL ?? ''
+	t3Url: process.env.HUB_T3_URL ?? '',
+
+	/**
+	 * Web Push for nudges, from `HUB_VAPID_PUBLIC`, `HUB_VAPID_PRIVATE` and
+	 * `HUB_VAPID_SUBJECT`; see `readPushConfig`. Unset means push is off. A
+	 * mistake does not stop the server (it would take the planner down for
+	 * an optional feature): it is carried as `invalid`, and `notify.ts`
+	 * reports it in Settings and in the log.
+	 */
+	push: readPushConfig(process.env)
 } as const;

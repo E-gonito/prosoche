@@ -14,6 +14,8 @@ import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
 import { loadGraphs, type Graph } from './graph/graphs';
 import { adoptStudyWorkspaces, loadSubjects, type Subject } from './study/subjects';
+import { startNudges } from './focus/nudge';
+import { announcePush } from './notify';
 
 /**
  * Keep an index true to a vault, and hand back the way to rebuild it.
@@ -109,13 +111,14 @@ const SHUTDOWN_GRACE_MS = 10_000;
  * committed would be left behind uncommitted.
  *
  * On that event: commits and pushes what this app wrote, stops the watcher,
- * closes the index and exits. A push that hangs is given
+ * stops the nudge loop, closes the index and exits. A push that hangs is given
  * `SHUTDOWN_GRACE_MS`; anything it leaves uncommitted stays on disk and
  * shows on the Sync page. Never runs before the server has stopped taking
  * requests, so no save can land after the last commit.
  */
-function stopOnShutdown(vault: Vault, index: NoteIndex): void {
+function stopOnShutdown(vault: Vault, index: NoteIndex, stopNudges: () => void): void {
 	process.once('sveltekit:shutdown', () => {
+		stopNudges();
 		const grace = new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS).unref());
 		const closed = vault.close().catch((e) => console.error('[hub] could not commit before stopping', e));
 		void Promise.race([closed, grace]).finally(() => {
@@ -144,7 +147,10 @@ function start(): Promise<Hub> {
 	const index = new NoteIndex(config.dbPath);
 
 	const rebuild = indexVault(vault, index);
-	stopOnShutdown(vault, index);
+	// Set once the first build is done and the loop starts; a shutdown before
+	// then has nothing to stop.
+	let stopNudges = () => {};
+	stopOnShutdown(vault, index, () => stopNudges());
 
 	const built = rebuild().then(
 		async (ms) => {

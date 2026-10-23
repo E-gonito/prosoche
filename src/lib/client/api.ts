@@ -14,6 +14,7 @@
  * would be a second copy of types that already exist, kept in step by hand.
  */
 
+import { invalidate } from '$app/navigation';
 import type { Task, TaskStatus } from '$lib/shared/task';
 
 /**
@@ -81,9 +82,14 @@ function locate(task: Task) {
 	return { path: task.path, line: task.line, expectedRaw: task.raw };
 }
 
-/** Apply an edit to one task line. Returns the task as now written. */
+/**
+ * Apply an edit to one task line. Returns the task as now written, and on
+ * success refreshes the now strip, since a ticked or moved block changes what
+ * is due.
+ */
 export async function editTask(task: Task, edit: TaskEdit): Promise<Result<Task>> {
 	const result = await api<{ task: Task }>('/api/task', { ...locate(task), ...edit });
+	if (result.ok) void invalidate('prosoche:now');
 	return result.ok ? { ok: true, value: result.value.task } : result;
 }
 

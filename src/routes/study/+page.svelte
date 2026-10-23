@@ -26,7 +26,7 @@
 		saving = true;
 		problem = '';
 		const result = await api('/api/study/session', { action: 'start', subject: slug });
-		if (result.ok) await goto(`/study/${slug}/session`, { invalidateAll: true });
+		if (result.ok) await goto('/focus', { invalidateAll: true });
 		else {
 			problem = result.message;
 			saving = false;
@@ -60,7 +60,7 @@
 			<p class="caps"><i class="dot" style="--dot: {now.color}"></i>{now.running ? 'Running now' : now.at !== null ? `Next block, ${String(Math.floor(now.at / 60)).padStart(2, '0')}:${String(now.at % 60).padStart(2, '0')}` : 'Next block'} · {now.name} · {now.minutes} min</p>
 			<h2>{now.step ?? 'Nothing open here yet'}</h2>
 			{#if now.running}
-				<a class="btn primary" href="/study/{now.slug}/session" data-testid="study-now-go">Continue</a>
+				<a class="btn primary" href="/focus" data-testid="study-now-go">Continue</a>
 			{:else if now.step}
 				<button class="btn primary" disabled={saving} onclick={() => startNow(now.slug)} data-testid="study-now-go">Start</button>
 				<a class="small" href="/study/{now.slug}">See the step</a>

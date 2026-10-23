@@ -90,6 +90,47 @@ If the sign-in lapses, sign in again from the Proxmox host: run
 `runuser -u app -- /home/app/.local/bin/claude auth status`. When the CLI is
 missing, the features say so and name `HUB_CLAUDE_BIN`.
 
+## Notifications (Web Push)
+
+Nudges reach a phone or laptop as Web Push. Browsers allow that only on a
+secure origin, so each device has to open prosoche at its HTTPS address (the
+Tailscale Serve name), not the plain `http://` one.
+
+1. Make a key pair, anywhere with the repo checked out:
+   `npx web-push generate-vapid-keys`.
+2. Put three variables in a drop-in, as
+   `/etc/systemd/system/prosoche.service.d/push.conf`, or in a file named by
+   `EnvironmentFile=` that is not in git:
+
+   ```ini
+   [Service]
+   Environment=HUB_VAPID_PUBLIC=<public key>
+   Environment=HUB_VAPID_PRIVATE=<private key>
+   Environment=HUB_VAPID_SUBJECT=mailto:you@example.com
+   ```
+
+   The subject must be a `mailto:` or `https:` address; push services insist
+   on one. Keep the private key out of git and out of the vault. Keep the
+   drop-in readable by root only, and run `systemctl daemon-reload` then
+   `systemctl restart prosoche`.
+3. On each device, open the HTTPS address, go to Settings, Notifications, and
+   choose **Turn on for this device**. **Send a test** checks it.
+
+Settings says in words when push is off or misconfigured (one key without the
+other, a subject that is not `mailto:` or `https:`), and the journal logs it
+at boot. Subscriptions are kept in `_hub/.state/push.json`, which is not in
+git, so a new server needs its devices to turn it on again. Changing the key
+pair does the same: old subscriptions stop working, so remove them in Settings
+and subscribe again.
+
+The nudge loop runs inside the server: every 30 seconds it looks at today's
+note and sends the nudges that are owed (ten minutes before a block, at its
+start, ten minutes after, and one "Today has no plan yet" push). What it has
+sent today is kept in `_hub/.state/nudges.json`, so a restart does not repeat a
+nudge; a push that fails is logged and not retried. Run only one copy of the
+server against a vault, or every nudge goes out twice. Lead times, the
+warm-up and the "no plan" time are set in Settings, Focus.
+
 ## Reaching it from `dev`
 
 A Tailscale grant lets `100.106.156.121` reach `100.104.242.57` on port 22 and

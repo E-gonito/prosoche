@@ -3,7 +3,7 @@ import { readLede } from '$server/parse/note';
 import { studySummary, subjectCard } from '$server/study/summary';
 import { dailyNotePath, today } from '$server/daily';
 import { blockMinutes, nextBlock } from '$server/study/block';
-import { readSession } from '$server/study/session';
+import { readSession } from '$server/focus/session';
 import { focusOn } from '$server/study/summary';
 import { noteHref } from '$lib/shared/links';
 import type { PageServerLoad } from './$types';
@@ -26,18 +26,19 @@ export const load: PageServerLoad = async () => {
 	const running = await readSession(vault);
 	const note = await vault.read(dailyNotePath(day));
 	const found = running || !note.exists ? null : nextBlock(note.content, subjects.map((s) => ({ ...s, names: [s.name, ...s.aliases] })), now.getHours() * 60 + now.getMinutes());
-	const target = running ? subjects.find((s) => s.slug === running.subject) : found?.subject;
+	const studying = running?.kind === 'study' ? running : null;
+	const target = studying ? subjects.find((s) => s.slug === studying.subject) : found?.subject;
 	const focus = target && !running ? focusOn(await studySummary(vault, target), day) : null;
-	const step = running ? running.step.text : (focus?.steps.find((s) => s.state === 'now')?.task.text ?? null);
+	const step = studying ? studying.step.text : (focus?.steps.find((s) => s.state === 'now')?.task.text ?? null);
 	return {
 		now: target
 			? {
 					slug: target.slug,
 					name: target.name,
 					color: target.color,
-					running: Boolean(running),
+					running: Boolean(studying),
 					step,
-					minutes: running ? running.minutes : blockMinutes(found?.block ?? null),
+					minutes: studying ? studying.minutes : blockMinutes(found?.block ?? null),
 					at: found?.block.startMin ?? null
 				}
 			: null,

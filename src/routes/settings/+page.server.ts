@@ -3,6 +3,8 @@ import { today } from '$server/daily';
 import { recentRuns, spentOn } from '$server/ai/audit';
 import { loadSettings, SETTINGS_PATH } from '$server/ai/settings';
 import { listSnapshots } from '$server/ai/undo';
+import { devices, pushStatus } from '$server/notify';
+import { focusSettings } from '$server/focus/settings';
 import { cliConfig } from '$server/ai/cli';
 import { availableModels } from '$server/ai/models';
 import type { PageServerLoad } from './$types';
@@ -28,6 +30,10 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	return {
+		/** Whether the server can send pushes (and why not), and the devices that would get one. */
+		push: { status: pushStatus(), devices: await devices(vault) },
+		/** How long a start commits to, how early and late nudges go, and when "no plan yet" is said. */
+		focus: await focusSettings(vault),
 		settings,
 		/** Claude Code's own model list, so a new model needs no release here. */
 		models,

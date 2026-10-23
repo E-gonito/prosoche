@@ -42,7 +42,7 @@
 		busy = true;
 		problem = '';
 		const result = await api('/api/study/session', { action: 'start', subject: data.subject.slug });
-		if (result.ok) await goto(`${base}/session`, { invalidateAll: true });
+		if (result.ok) await goto('/focus', { invalidateAll: true });
 		else {
 			problem = result.message;
 			busy = false;
@@ -63,12 +63,12 @@
 
 		{#if mine}
 			<h1>A session is running</h1>
-			<p class="muted">Started on “{data.running?.step.text}”.</p>
-			<a class="btn primary go" href="{base}/session" data-testid="continue">Continue</a>
+			<p class="muted">Started on “{data.running?.step}”.</p>
+			<a class="btn primary go" href="/focus" data-testid="continue">Continue</a>
 		{:else if elsewhere}
 			<h1>Finish {elsewhere.name} first</h1>
 			<p class="muted">One session runs at a time.</p>
-			<a class="btn primary go" href="/study/{elsewhere.subject}/session">Go to it</a>
+			<a class="btn primary go" href="/focus">Go to it</a>
 		{:else if step}
 			<h1 data-testid="step-now"><StepText text={step.task.text} /></h1>
 			{#if step.details.first}<p class="start" data-testid="step-start"><b>Start with:</b> <StepText text={step.details.first} /></p>{/if}

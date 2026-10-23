@@ -18,6 +18,7 @@
 		type FeatureId
 	} from '$lib/shared/ai';
 	import { api } from '$lib/client/api';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
@@ -28,6 +29,109 @@
 	let saved = $state('');
 	let problem = $state('');
 	let busy = $state(false);
+
+	// Notifications. The server says whether it can send; the browser says
+	// whether this page may ask for permission and whether it already has.
+	type Device = { endpoint: string; label: string; addedAt: string };
+	// svelte-ignore state_referenced_locally
+	let devices = $state<Device[]>(data.push.devices);
+	let secure = $state(true);
+	let permission = $state<NotificationPermission | 'unsupported'>('default');
+	let here = $state<string | null>(null);
+	let pushNote = $state('');
+	let pushBusy = $state(false);
+
+	onMount(async () => {
+		secure = window.isSecureContext;
+		permission = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window ? Notification.permission : 'unsupported';
+		if (secure && permission !== 'unsupported') here = (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.endpoint ?? null;
+	});
+
+	/** "Chrome on Android": enough to tell a phone from a laptop in a list. */
+	function deviceLabel(): string {
+		const ua = navigator.userAgent;
+		const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+		const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'this device';
+		return `${browser} on ${os}`;
+	}
+
+	/** The server's key arrives as URL-safe base64; `subscribe` wants the bytes. */
+	function keyBytes(key: string): Uint8Array<ArrayBuffer> {
+		const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/'));
+		return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+	}
+
+	async function refreshDevices() {
+		const result = await api<{ devices: Device[] }>('/api/push');
+		if (result.ok) devices = result.value.devices;
+	}
+
+	async function turnOn() {
+		if (!data.push.status.configured) return;
+		pushBusy = true;
+		pushNote = '';
+		try {
+			permission = await Notification.requestPermission();
+			if (permission !== 'granted') return;
+			const registration = await navigator.serviceWorker.ready;
+			const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(data.push.status.publicKey) });
+			const result = await api('/api/push', { action: 'subscribe', subscription: subscription.toJSON(), label: deviceLabel() });
+			if (result.ok) here = subscription.endpoint;
+			else pushNote = result.message;
+			await refreshDevices();
+		} catch (e) {
+			pushNote = `Could not turn notifications on: ${e instanceof Error ? e.message : e}`;
+		} finally {
+			pushBusy = false;
+		}
+	}
+
+	async function remove(endpoint: string) {
+		pushBusy = true;
+		const result = await api('/api/push', { action: 'unsubscribe', endpoint });
+		if (result.ok && endpoint === here) {
+			await (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.unsubscribe();
+			here = null;
+		}
+		pushNote = result.ok ? '' : result.message;
+		await refreshDevices();
+		pushBusy = false;
+	}
+
+	async function sendTest() {
+		pushBusy = true;
+		const result = await api<{ sent: number; failed: number; removed: number }>('/api/push', { action: 'test' });
+		pushNote = !result.ok
+			? result.message
+			: result.value.sent
+				? `Sent to ${result.value.sent} device${result.value.sent === 1 ? '' : 's'}.`
+				: result.value.failed
+					? 'It could not be delivered. The server log says why.'
+					: 'No device is subscribed yet.';
+		await refreshDevices();
+		pushBusy = false;
+	}
+
+	// Focus. Each field saves when it changes, as a patch of just that field;
+	// the server answers the settings as it wrote them, so a refused value
+	// snaps back to what is stored.
+	const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+	// svelte-ignore state_referenced_locally
+	let focus = $state({ warmupMin: data.focus.warmupMin, windDownMin: data.focus.rules.windDownMin, followUpMin: data.focus.rules.followUpMin, planBy: hhmm(data.focus.planByMin) });
+	let focusNote = $state('');
+	let focusProblem = $state('');
+
+	async function saveFocus(patch: Partial<typeof focus>) {
+		focusNote = '';
+		focusProblem = '';
+		const result = await api<{ warmupMin: number; rules: { windDownMin: number; followUpMin: number }; planByMin: number }>('/api/focus/settings', patch);
+		if (result.ok) {
+			focus = { warmupMin: result.value.warmupMin, windDownMin: result.value.rules.windDownMin, followUpMin: result.value.rules.followUpMin, planBy: hhmm(result.value.planByMin) };
+			focusNote = 'Saved.';
+		} else {
+			focusProblem = result.message;
+		}
+	}
 
 	const features = $derived(Object.keys(settings.features) as FeatureId[]);
 
@@ -64,6 +168,65 @@
 	<h1>Settings</h1>
 	<p><span class="path">{data.settingsPath}</span></p>
 </div>
+
+<section class="card" data-testid="notifications">
+	<h3>Notifications</h3>
+	{#if !data.push.status.configured}
+		<p class="bad" data-testid="push-reason">{data.push.status.reason}</p>
+	{:else if !secure}
+		<p class="bad">
+			This page is on a plain http address, and browsers only allow notifications on a secure one. Open prosoche at its https address
+			(see <code>docs/deploy.md</code>) and turn them on from there.
+		</p>
+	{:else if permission === 'unsupported'}
+		<p class="bad">This browser cannot receive push notifications.</p>
+	{:else if permission === 'denied'}
+		<p class="bad">
+			Notifications are blocked for this site. Allow them in the browser's site settings (the padlock or tune icon by the address),
+			then reload this page.
+		</p>
+	{:else if here && devices.some((d) => d.endpoint === here)}
+		<p>Notifications are on for this device.</p>
+	{:else}
+		<p>Get a nudge outside the app when a block is about to start.</p>
+		<button class="btn primary" disabled={pushBusy} onclick={turnOn} data-testid="push-on">Turn on for this device</button>
+	{/if}
+
+	{#if devices.length}
+		<ul class="snaps" data-testid="push-devices">
+			{#each devices as d (d.endpoint)}
+				<li>
+					<span class="files">{d.label}{d.endpoint === here ? ' (this device)' : ''}</span>
+					<span class="when">{d.addedAt.slice(0, 10)}</span>
+					<button class="btn" disabled={pushBusy} onclick={() => remove(d.endpoint)}>Remove</button>
+				</li>
+			{/each}
+		</ul>
+		{#if data.push.status.configured}
+			<p><button class="btn" disabled={pushBusy} onclick={sendTest} data-testid="push-test">Send a test</button></p>
+		{/if}
+	{:else if data.push.status.configured}
+		<p class="muted">No device is subscribed.</p>
+	{/if}
+	{#if pushNote}<p class="hint" data-testid="push-note">{pushNote}</p>{/if}
+</section>
+
+<section class="card" data-testid="focus-settings">
+	<h3>Focus</h3>
+	<div class="kv">
+		<b>Warm-up</b>
+		<span><input type="number" min="1" max="60" bind:value={focus.warmupMin} onchange={() => saveFocus({ warmupMin: focus.warmupMin })} data-testid="focus-warmup" aria-label="Warm-up minutes" /> minutes of "just a few minutes" after Start</span>
+		<b>Wind-down nudge</b>
+		<span><input type="number" min="1" max="60" bind:value={focus.windDownMin} onchange={() => saveFocus({ windDownMin: focus.windDownMin })} data-testid="focus-wind-down" aria-label="Minutes before a block for the wind-down nudge" /> minutes before a block</span>
+		<b>Follow-up nudge</b>
+		<span><input type="number" min="1" max="60" bind:value={focus.followUpMin} onchange={() => saveFocus({ followUpMin: focus.followUpMin })} data-testid="focus-follow-up" aria-label="Minutes after a block starts for the follow-up nudge" /> minutes after it starts</span>
+		<b>No plan yet</b>
+		<span><input type="time" bind:value={focus.planBy} onchange={() => saveFocus({ planBy: focus.planBy })} data-testid="focus-plan-by" aria-label="Time to mention a day with no plan" /> if today has no timed block by then</span>
+	</div>
+	{#if focusNote}<p class="ok" data-testid="focus-saved">{focusNote}</p>{/if}
+	{#if focusProblem}<p class="bad" data-testid="focus-problem">{focusProblem}</p>{/if}
+	<p class="hint">Saved to <code>_hub/focus.md</code> as you change them.</p>
+</section>
 
 <section class="card">
 	<h3>Kill switch</h3>

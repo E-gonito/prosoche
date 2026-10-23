@@ -7,7 +7,9 @@
 	 * workspaces under Workspaces, the glossaries under Glossary. On a phone
 	 * it is a bar under the header, pinned to the top with it, holding
 	 * `TABS` (the modules marked `tab`, and the evening review) and More,
-	 * which opens a sheet with everything else, workspaces included.
+	 * which opens a sheet with everything else, workspaces included. The now
+	 * strip (what is running, due or soon) sits under Search on the rail and as
+	 * a slim line under the phone header bar.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
@@ -16,11 +18,13 @@
 	import Palette from '$lib/components/Palette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Mark from '$lib/components/Mark.svelte';
+	import NowStrip from '$lib/components/NowStrip.svelte';
 	import { MODULES, SYSTEM, TABS, moduleFor, subItemFor, tabFor } from '$lib/modules';
 	import { palette } from '$lib/client/palette.svelte';
 	import { keyLabel } from '$lib/client/shortcuts.svelte';
 	import { theme } from '$lib/client/theme.svelte';
 	import { rail } from '$lib/client/rail.svelte';
+	import { now } from '$lib/client/now.svelte';
 
 	let { children, data } = $props();
 	let paletteKeys = $state('');
@@ -34,6 +38,15 @@
 
 	$effect(() => theme.start());
 	$effect(() => rail.start());
+
+	// The now strip's clock and reloads run once however many strips are drawn;
+	// its title prefix stays off /focus, which manages its own title.
+	$effect(() => now.set(data.now));
+	$effect(() => now.start());
+	$effect(() => {
+		now.titles = page.url.pathname !== '/focus';
+	});
+	$effect(() => now.syncTitle());
 
 	// Any navigation closes the More sheet, whichever link was followed.
 	$effect(() => {
@@ -56,6 +69,8 @@
 			<span>Search or jump</span>
 			{#if paletteKeys}<kbd>{paletteKeys}</kbd>{/if}
 		</button>
+
+		<NowStrip strip={data.now} variant="rail" />
 
 		<div class="modules">
 			{#each modules as m (m.id)}
@@ -111,6 +126,7 @@
 			<ThemeButton size={20} />
 			<SyncBadge />
 		</div>
+		<NowStrip strip={data.now} variant="bar" />
 		<nav class="tabbar" aria-label="Modules" data-testid="tabbar">
 			{#each TABS as m (m.href)}
 				<a href={m.href} aria-current={tab === m ? 'page' : undefined}>
