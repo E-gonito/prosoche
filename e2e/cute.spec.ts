@@ -41,7 +41,8 @@ test.describe('Cute', () => {
 		writeFileSync(join(VAULT, 'Cute/images/Pasted image 1.png'), await png(4, 4));
 		writeFileSync(join(VAULT, 'Cute/images/Pasted image 2.png'), await png(4, 4));
 		await request.post('/api/sync', { data: { action: 'rebuild' } });
-		await page.goto('/cute');
+		// Paste and drop listeners exist only once the page has hydrated.
+		await page.goto('/cute', { waitUntil: 'networkidle' });
 	});
 
 	test('shows each character with its cover and count, and none of the grid is a choice until there is an image', async ({ page }) => {
@@ -180,7 +181,8 @@ test.describe('Cute on a phone', () => {
 	});
 
 	test('offers photos rather than drop or paste, and files several chosen at once', async ({ page }) => {
-		await page.goto('/cute');
+		// Paste and drop listeners exist only once the page has hydrated.
+		await page.goto('/cute', { waitUntil: 'networkidle' });
 		await expect(page.getByText('from your photos')).toBeVisible();
 		await expect(page.getByText('Drop images here')).toBeHidden();
 		await expect(page.getByText('Choose photos')).toBeVisible();
