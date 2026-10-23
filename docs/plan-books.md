@@ -1,6 +1,25 @@
 # Plan: Books
 
-Written 2026-10-23, after a conversation with the author. Not built yet.
+Written 2026-10-23, after a conversation with the author. Built the same
+day, with these differences from what follows:
+
+- The files are on a shelf outside the vault (`HUB_BOOKS`), not in
+  `_hub/.books/` (decision 1).
+- The frame also has `allow-forms`, because the Rust book's quiz answers are
+  forms; the CSP's `form-action 'none'` still stops any submission. Each
+  chapter's CSP also carries `sandbox`, so a chapter opened in a tab of its
+  own is just as walled off as one in the reader.
+- The Rust book's quizzes do not remember answers on their own site: mdbook-quiz
+  only does that when a quiz's tag has `data-quiz-cache-answers`. Prosoche
+  adds it to a saved site's quiz tags as it serves them, so answers are kept
+  in the book's storage and follow the author between devices.
+- pdf.js's CMaps, standard fonts, colour profiles and WASM decoders are
+  served from `/pdfjs/` (`vite.config.ts`).
+- The Rust book's code-editor workers cannot start in an opaque-origin frame.
+  The book's 223 quiz questions are multiple choice, tracing and short
+  answer, and none of those tried started an editor. A question that does
+  would fail to load its editor.
+
 **default** marks a choice the author was not asked about; **open** marks one
 that is theirs to make before the step that needs it.
 

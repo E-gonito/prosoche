@@ -76,10 +76,11 @@ const files = {
  * a default function that returns `{ path: content }`. One shared file being
  * appended to by several people is how fixtures end up contradicting each
  * other; a file each keeps them separable and lets a phase's data be read on
- * its own.
+ * its own. A `make-*.mjs` file is a builder a spec imports (a PDF, an EPUB),
+ * not vault notes, so it is left out.
  */
 const extras = existsSync(join(import.meta.dirname, 'fixtures'))
-	? readdirSync(join(import.meta.dirname, 'fixtures')).filter((f) => f.endsWith('.mjs')).sort()
+	? readdirSync(join(import.meta.dirname, 'fixtures')).filter((f) => f.endsWith('.mjs') && !f.startsWith('make-')).sort()
 	: [];
 for (const name of extras) {
 	const module = await import(pathToFileURL(join(import.meta.dirname, 'fixtures', name)).href);

@@ -173,8 +173,12 @@
 <svelte:window {onmessage} />
 
 <div class="html-reader">
-	<!-- No allow-same-origin, ever: the book's page must stay an opaque origin. -->
-	<iframe bind:this={frame} title={manifest.title} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" data-testid="book-frame"></iframe>
+	<!--
+		No allow-same-origin, ever: the book's page must stay an opaque origin.
+		allow-forms lets a quiz's answer form fire its submit handler; the
+		chapter's CSP (form-action 'none') still stops any form from going anywhere.
+	-->
+	<iframe bind:this={frame} title={manifest.title} sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" data-testid="book-frame"></iframe>
 	{#if chapters.length > 1}
 		<nav class="steps" aria-label="Chapters">
 			<button class="btn small" disabled={index <= 0} onclick={() => step(-1)} data-testid="prev-chapter">&lsaquo; Previous</button>

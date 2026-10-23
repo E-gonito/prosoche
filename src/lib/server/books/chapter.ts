@@ -17,6 +17,7 @@ import { ShelfPathError, type Shelf } from '../vault/shelf';
 import type { BookFormat, BookManifest } from '$lib/shared/books';
 import { bridgeScript } from './bridge';
 import { HTML_ROOT } from './manifest';
+import { fileResponse } from './range';
 import { readStorage, type StorageItems } from './storage';
 
 /** Content type by file extension. Anything else is `application/octet-stream`. */
@@ -67,8 +68,12 @@ const isPage = (type: string): boolean => type === 'text/html' || type === 'appl
  * Scripts: only the bridge (by `nonce`), and, for a book allowed its own
  * scripts, files from its own folder, with `unsafe-eval` and wasm for what a
  * code editor such as Monaco needs. No connections at all (`connect-src
- * 'none'`), so a book cannot call prosoche's API or the internet; no forms;
- * no frames of its own. Pure.
+ * 'none'`), so a book cannot call prosoche's API or the internet; no form
+ * may submit anywhere; no frames of its own. And `sandbox`, the same
+ * allowances the reader's iframe gives, so the page has an opaque origin even
+ * when someone opens its address in a tab of its own rather than in the
+ * reader: without it, a book's script loaded top-level would run as
+ * prosoche and could drive prosoche's own pages. Pure.
  */
 export function contentSecurityPolicy(nonce: string, scripts: boolean): string {
 	return [
@@ -83,7 +88,8 @@ export function contentSecurityPolicy(nonce: string, scripts: boolean): string {
 		"form-action 'none'",
 		"base-uri 'none'",
 		"frame-src 'none'",
-		"frame-ancestors 'self'"
+		"frame-ancestors 'self'",
+		'sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox'
 	].join('; ');
 }
 
@@ -161,13 +167,20 @@ function normalise(path: string): string | null {
 	return parts.includes('..') ? null : parts.join('/');
 }
 
-/** `Range: bytes=a-b` or `bytes=a-` as numbers; null for no range, a suffix range or anything else. */
-function parseRange(header: string | null): { start: number; end?: number } | null {
-	const m = header && /^bytes=(\d+)-(\d*)$/.exec(header.trim());
-	if (!m) return null;
-	const start = Number(m[1]);
-	const end = m[2] === '' ? undefined : Number(m[2]);
-	return Number.isSafeInteger(start) && (end === undefined || Number.isSafeInteger(end)) && (end === undefined || end >= start) ? { start, end } : null;
+/**
+ * Turn on a quiz's own memory of its answers. An mdBook quiz
+ * (`.quiz-placeholder`, from mdbook-quiz) keeps the answers in
+ * `localStorage` only when its tag carries `data-quiz-cache-answers`, and a
+ * book may leave it off, as the interactive Rust book does; then a reload
+ * starts every quiz again. Prosoche's `localStorage` is the book's own,
+ * kept on the server, so remembering is what the author wants: the
+ * attribute is added to each placeholder tag that lacks it. Nothing else in
+ * the page changes. Pure.
+ */
+export function rememberQuizzes(html: string): string {
+	return html.replace(/<[a-z][a-z0-9-]*\b[^>]*\bclass\s*=\s*["'][^"']*\bquiz-placeholder\b[^"']*["'][^>]*>/gi, (tag) =>
+		/\bdata-quiz-cache-answers\s*=/i.test(tag) ? tag : tag.replace(/\s*\/?>$/, (end) => ` data-quiz-cache-answers="true"${end}`)
+	);
 }
 
 /**
@@ -201,24 +214,13 @@ export async function serveChapter(shelf: Shelf, manifest: BookManifest, path: s
 				const xml = type === 'application/xhtml+xml';
 				const source = Buffer.from(bytes).toString('latin1');
 				const storage = await readStorage(shelf, manifest.id);
-				const page = injectBridge(source, { nonce, storage, book: { id: manifest.id, format: manifest.format }, xml, scripts });
+				const page = injectBridge(manifest.format === 'site' ? rememberQuizzes(source) : source, { nonce, storage, book: { id: manifest.id, format: manifest.format }, xml, scripts });
 				if (!xml && !/<meta[^>]+charset/i.test(source.slice(0, 4096))) headers['Content-Type'] = 'text/html; charset=utf-8';
 				return new Response(Buffer.from(page, 'latin1'), { headers });
 			}
 
-			const range = parseRange(request.headers.get('range'));
-			const stream = await shelf.stream(manifest.id, file, range ?? undefined);
-			if (!stream) {
-				// Not found, or a range starting past the end: a file that is there answers 416.
-				const probe = range && (await shelf.stream(manifest.id, file, { start: 0, end: 0 }));
-				if (!probe) continue;
-				await probe.body.cancel();
-				return new Response(null, { status: 416, headers: { ...headers, 'Content-Range': `bytes */${probe.size}` } });
-			}
-			headers['Accept-Ranges'] = 'bytes';
-			headers['Content-Length'] = String(stream.size === 0 ? 0 : stream.end - stream.start + 1);
-			if (range) headers['Content-Range'] = `bytes ${stream.start}-${stream.end}/${stream.size}`;
-			return new Response(stream.body, { status: range ? 206 : 200, headers });
+			const response = await fileResponse(shelf, manifest.id, file, request, headers);
+			if (response) return response;
 		}
 		return null;
 	} catch (e) {

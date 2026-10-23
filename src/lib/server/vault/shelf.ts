@@ -137,6 +137,12 @@ export class Shelf {
 		return { body: Readable.toWeb(node) as unknown as ReadableStream<Uint8Array>, size, start, end: Math.max(end, start - 1), mtimeMs: info.mtimeMs };
 	}
 
+	/** A file's size and modification time, or null when it is not there (or is a folder). */
+	async info(id: string, path: string): Promise<{ size: number; mtimeMs: number } | null> {
+		const found = await stat(this.at(id, path)).catch(() => null);
+		return found?.isFile() ? { size: found.size, mtimeMs: found.mtimeMs } : null;
+	}
+
 	/** Every file in a book's folder, relative to it and sorted. Empty for a book that is not there. */
 	async files(id: string): Promise<string[]> {
 		const base = this.at(id, '');

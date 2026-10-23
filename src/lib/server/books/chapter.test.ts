@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Shelf } from '../vault/shelf';
 import type { BookManifest } from '$lib/shared/books';
 import { bridgeScript } from './bridge';
-import { chapterHeaders, contentSecurityPolicy, contentType, injectBridge, serveChapter } from './chapter';
+import { chapterHeaders, contentSecurityPolicy, contentType, injectBridge, serveChapter, rememberQuizzes } from './chapter';
 import { HTML_ROOT, STORAGE } from './manifest';
 
 const opts = (over: Partial<Parameters<typeof injectBridge>[1]> = {}) => ({ nonce: 'N0nce', storage: {}, book: { id: 'abcdef0123456789', format: 'epub' as const }, xml: false, scripts: false, ...over });
@@ -109,7 +109,7 @@ describe('contentSecurityPolicy', () => {
 	});
 	it('cuts every other door', () => {
 		const csp = contentSecurityPolicy('abc', true);
-		for (const d of ["default-src 'none'", "connect-src 'none'", "form-action 'none'", "base-uri 'none'", "frame-src 'none'", "frame-ancestors 'self'"]) expect(csp).toContain(d);
+		for (const d of ["default-src 'none'", "connect-src 'none'", "form-action 'none'", "base-uri 'none'", "frame-src 'none'", "frame-ancestors 'self'", 'sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox']) expect(csp).toContain(d);
 	});
 });
 
@@ -220,7 +220,10 @@ describe('serveChapter', () => {
 		const past = (await get(manifest(), 'f.woff2', { range: 'bytes=50-60' }))!;
 		expect(past.status).toBe(416);
 		expect(past.headers.get('content-range')).toBe('bytes */10');
-		const whole = (await get(manifest(), 'f.woff2', { range: 'bytes=-3' }))!;
+		const suffix = (await get(manifest(), 'f.woff2', { range: 'bytes=-3' }))!;
+		expect(suffix.status).toBe(206);
+		expect(await suffix.text()).toBe('789');
+		const whole = (await get(manifest(), 'f.woff2', { range: 'items=0-1' }))!;
 		expect(whole.status).toBe(200);
 	});
 
@@ -241,5 +244,17 @@ describe('serveChapter', () => {
 		expect(res.headers.get('content-type')).toBe('text/html');
 		const bytes = new Uint8Array(await res.arrayBuffer());
 		expect(bytes.at(-1)).toBe(0xe9);
+	});
+});
+
+describe('rememberQuizzes', () => {
+	it.each([
+		['<div class="quiz-placeholder" data-quiz-name="&quot;a&quot;">', '<div class="quiz-placeholder" data-quiz-name="&quot;a&quot;" data-quiz-cache-answers="true">'],
+		["<div data-x class='box quiz-placeholder big'/>", `<div data-x class='box quiz-placeholder big' data-quiz-cache-answers="true"/>`],
+		['<div class="quiz-placeholder" data-quiz-cache-answers="false">', '<div class="quiz-placeholder" data-quiz-cache-answers="false">'],
+		['<div class="quiz-placeholders">', '<div class="quiz-placeholders">'],
+		['<p>quiz-placeholder</p>', '<p>quiz-placeholder</p>']
+	])('%s', (html, expected) => {
+		expect(rememberQuizzes(html)).toBe(expected);
 	});
 });

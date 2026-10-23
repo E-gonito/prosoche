@@ -216,14 +216,3 @@ ${points}
 </ncx>
 `;
 }
-
-/**
- * `e2e/make-vault.mjs` imports every `.mjs` in this folder and calls its
- * default export for vault files. This is a builder of books, not of vault
- * notes, so it contributes none.
- *
- * @returns {Record<string, string>}
- */
-export default function noVaultFiles() {
-	return {};
-}

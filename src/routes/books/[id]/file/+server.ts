@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { hub } from '$server/hub';
 import { isBookId } from '$server/books/id';
 import { ORIGINAL, readManifest } from '$server/books/manifest';
-import { parseRange } from '$server/books/range';
+import { fileResponse } from '$server/books/range';
 import type { RequestHandler } from './$types';
 
 /**
@@ -17,28 +17,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const { shelf } = await hub();
 	const manifest = isBookId(params.id) ? await readManifest(shelf, params.id) : null;
 	if (!manifest || manifest.format !== 'pdf') error(404, 'That book is not here.');
-
-	// The size comes from opening the file for its first byte, then closing it.
-	const probe = await shelf.stream(manifest.id, ORIGINAL.pdf, { start: 0, end: 0 });
-	if (!probe) error(404, 'That book is not here.');
-	await probe.body.cancel().catch(() => undefined);
-	const { size } = probe;
-
-	const asked = parseRange(request.headers.get('range'), size);
-	const headers: Record<string, string> = {
-		'content-type': 'application/pdf',
-		'accept-ranges': 'bytes',
-		'cache-control': 'private, max-age=3600',
-		'x-content-type-options': 'nosniff'
-	};
-	if (asked.kind === 'unsatisfiable') return new Response(null, { status: 416, headers: { ...headers, 'content-range': `bytes */${size}` } });
-
-	const part = asked.kind === 'range' ? await shelf.stream(manifest.id, ORIGINAL.pdf, asked) : await shelf.stream(manifest.id, ORIGINAL.pdf);
-	if (!part) error(404, 'That book is not here.');
-	headers['content-length'] = String(size === 0 ? 0 : part.end - part.start + 1);
-	if (asked.kind === 'range') {
-		headers['content-range'] = `bytes ${part.start}-${part.end}/${size}`;
-		return new Response(part.body, { status: 206, headers });
-	}
-	return new Response(part.body, { status: 200, headers });
+	const response = await fileResponse(shelf, manifest.id, ORIGINAL.pdf, request, {
+		'Content-Type': 'application/pdf',
+		'Cache-Control': 'private, max-age=3600',
+		'X-Content-Type-Options': 'nosniff'
+	});
+	if (!response) error(404, 'That book is not here.');
+	return response;
 };

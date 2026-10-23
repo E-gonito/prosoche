@@ -130,7 +130,7 @@ async function open(page: Page, id: string, chapter: string) {
 	await page.route('**/__frame', (route) =>
 		route.fulfill({
 			contentType: 'text/html',
-			body: `<!DOCTYPE html><html><body style="margin:0"><iframe id="f" style="width:900px;height:600px;border:0" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
+			body: `<!DOCTYPE html><html><body style="margin:0"><iframe id="f" style="width:900px;height:600px;border:0" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
 <script>
 	window.log = [];
 	const f = document.getElementById('f');
@@ -369,7 +369,7 @@ test.describe('HtmlReader, the real component, around the same frame', () => {
 		await page.goto(`/books/${EPUB}`);
 		const iframe = page.getByTestId('book-frame');
 		const sandbox = await iframe.getAttribute('sandbox');
-		expect(sandbox!.split(' ').sort()).toEqual(['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-scripts']);
+		expect(sandbox!.split(' ').sort()).toEqual(['allow-forms', 'allow-popups', 'allow-popups-to-escape-sandbox', 'allow-scripts']);
 
 		const frame = page.frameLocator('[data-testid=book-frame]');
 		await expect(frame.locator('h1')).toHaveText('First chapter');

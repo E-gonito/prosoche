@@ -190,7 +190,18 @@
 				if (disposed) return;
 				pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 				TextLayerClass = pdfjs.TextLayer;
-				loadingTask = pdfjs.getDocument({ url: `/books/${id}/file`, disableAutoFetch: true, disableStream: true, rangeChunkSize: 262144 });
+				loadingTask = pdfjs.getDocument({
+					url: `/books/${id}/file`,
+					disableAutoFetch: true,
+					disableStream: true,
+					rangeChunkSize: 262144,
+					// Served by the `pdfjs-data` plugin in vite.config.ts.
+					cMapUrl: '/pdfjs/cmaps/',
+					cMapPacked: true,
+					standardFontDataUrl: '/pdfjs/standard_fonts/',
+					iccUrl: '/pdfjs/iccs/',
+					wasmUrl: '/pdfjs/wasm/'
+				});
 				const opened = await loadingTask.promise;
 				// Cleanup has already destroyed the loading task, and the document with it.
 				if (disposed) return;
