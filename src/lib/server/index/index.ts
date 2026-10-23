@@ -24,6 +24,15 @@ interface SearchHit {
 	snippet: string;
 }
 
+/** A match inside a book's text: which book, where (a place as text), and the words around it. */
+export interface BookTextHit {
+	book: string;
+	place: string;
+	label: string;
+	/** Matching text with the query terms marked by «» so the UI can highlight. */
+	snippet: string;
+}
+
 interface IndexHealth {
 	notes: number;
 	tasks: number;
@@ -192,6 +201,45 @@ export class NoteIndex {
 				.all(ftsQuery(trimmed), limit) as SearchHit[];
 		} catch {
 			// A query FTS5 cannot parse is a miss, not a server error.
+			return [];
+		}
+	}
+
+	/**
+	 * Replace everything the index holds of one book's text with `entries`, in
+	 * one transaction, so a search never sees half a book. `place` is a place
+	 * as text (`p. 412`). Not touched by `rebuild`: book text comes from the
+	 * shelf, not the vault.
+	 */
+	putBookText(book: string, entries: Array<{ place: string; label: string; text: string }>): void {
+		const insert = this.db.prepare('INSERT INTO book_fts (book,place,label,text) VALUES (?,?,?,?)');
+		this.db.transaction(() => {
+			this.db.prepare('DELETE FROM book_fts WHERE book = ?').run(book);
+			for (const e of entries) insert.run(book, e.place, e.label, e.text);
+		})();
+	}
+
+	/** Remove a book's text. Safe for a book that was never indexed. */
+	forgetBookText(book: string): void {
+		this.db.prepare('DELETE FROM book_fts WHERE book = ?').run(book);
+	}
+
+	/**
+	 * Full-text search over books' text, best matches first, optionally within
+	 * one `book`. Words are prefix-matched as in `search`. A query FTS5 cannot
+	 * parse is no hits, never an error.
+	 */
+	searchBookText(query: string, opts: { book?: string; limit?: number } = {}): BookTextHit[] {
+		const trimmed = query.trim();
+		if (!trimmed) return [];
+		try {
+			return this.db
+				.prepare(
+					`SELECT book, place, label, snippet(book_fts, 3, '«', '»', '…', 14) AS snippet
+					 FROM book_fts WHERE book_fts MATCH ? ${opts.book ? 'AND book = ?' : ''} ORDER BY rank LIMIT ?`
+				)
+				.all(...[ftsQuery(trimmed), ...(opts.book ? [opts.book] : []), opts.limit ?? 30]) as BookTextHit[];
+		} catch {
 			return [];
 		}
 	}

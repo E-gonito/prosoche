@@ -1,0 +1,1 @@
+window.search = { loaded: true };

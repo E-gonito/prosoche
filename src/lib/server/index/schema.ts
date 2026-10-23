@@ -64,6 +64,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
   path UNINDEXED, title, body, tokenize = 'porter unicode61'
 );
 
+-- The text of books, one row per PDF page or HTML section. Filled from the
+-- alone. place is a place as placeText writes it.
+-- alone. \`place\` is a place as \`placeText\` writes it.
+CREATE VIRTUAL TABLE IF NOT EXISTS book_fts USING fts5(
+  book UNINDEXED, place UNINDEXED, label UNINDEXED, text, tokenize = 'porter unicode61'
+);
+
 -- Files the parser could not fully understand, surfaced as index health
 -- rather than swallowed.
 CREATE TABLE IF NOT EXISTS problems (

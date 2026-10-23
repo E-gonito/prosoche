@@ -76,6 +76,25 @@ module's data (`Private/Dating/Ledger.md` and `Private/Dating/People/`) exists
 only in this container. Unless Proxmox backs up LXC 108, nothing else holds a copy. Moving
 the app to another machine means copying `Private/` over by hand, as `app`.
 
+## Books
+
+The Books tab keeps each book's own files (PDFs, EPUBs, saved sites and the
+text pulled out for search) on a shelf outside the vault, so git and the file
+watcher never see them. Only each book's note, `Books/<Title>.md`, is in the
+vault.
+
+- `HUB_BOOKS` is the shelf's folder. In production it is
+  `/var/lib/prosoche/books`, owned by the app user (`install -d -o app -g app
+  /var/lib/prosoche/books`). Without it the shelf is under the user's
+  `~/.local/share/prosoche/books`.
+- `BODY_SIZE_LIMIT` must be raised to `500M` in the existing
+  `body-limit.conf` drop-in. A book upload is the file's own bytes, and
+  adapter-node refuses any body over the limit; 500 MB matches
+  `config.books.maxBytes`.
+- The shelf is not in git and not in the vault's sync. Unless Proxmox backs
+  up the container, the files exist only there; a lost file is added again
+  and finds its note, place and highlights by its id.
+
 ## The AI features
 
 Claude Code is installed for the user `app` at `/home/app/.local/bin/claude`

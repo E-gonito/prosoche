@@ -9,12 +9,15 @@
 	import FileTree from '$lib/components/FileTree.svelte';
 	import Capture from '$lib/components/Capture.svelte';
 	import { noteHref, relativeDay } from '$lib/shared/links';
+	import { bookHitHref } from '$lib/shared/book-links';
+	import { placeText, type BookHit } from '$lib/shared/books';
 
 	let { data } = $props();
 
 	type Hit = { path: string; title: string; snippet: string };
 	let query = $state('');
 	let hits = $state<Hit[]>([]);
+	let books = $state<BookHit[]>([]);
 	let problem = $state('');
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -24,13 +27,17 @@
 		const q = query.trim();
 		if (!q) {
 			hits = [];
+			books = [];
 			return;
 		}
 		timer = setTimeout(async () => {
-			const result = await api<{ hits: Hit[] }>(`/api/search?q=${encodeURIComponent(q)}`);
+			const result = await api<{ hits: Hit[]; books?: BookHit[] }>(`/api/search?q=${encodeURIComponent(q)}`);
 			hits = result.ok ? result.value.hits : [];
+			books = result.ok ? (result.value.books ?? []) : [];
 		}, 150);
 	}
+
+	const placeKey = (hit: BookHit) => placeText(hit.place);
 
 	/** The index marks matches with «»; drawn here as highlights. */
 	function marked(snippet: string): string {
@@ -67,9 +74,22 @@
 					<span class="snippet">{@html marked(hit.snippet)}</span>
 				</a>
 			{:else}
-				<p class="empty">Nothing matches “{query.trim()}”.</p>
+				{#if !books.length}<p class="empty">Nothing matches “{query.trim()}”.</p>{/if}
 			{/each}
 		</div>
+		{#if books.length}
+			<p class="label">In books</p>
+			<div class="sheet rows results" data-testid="book-search-results">
+				{#each books as hit (hit.book + placeKey(hit))}
+					<a class="hit" href={bookHitHref(hit, query)}>
+						<b>{hit.title}</b>
+						<span class="muted small">{hit.label}</span>
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						<span class="snippet">{@html marked(hit.snippet)}</span>
+					</a>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 
 	<p class="label">Capture</p>

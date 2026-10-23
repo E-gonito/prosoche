@@ -9,6 +9,8 @@
 import { config } from './config';
 import { NoteIndex } from './index/index';
 import { Vault, type FileChange } from './vault/index';
+import { Shelf } from './vault/shelf';
+import { reindexBooks } from './books/search';
 import { GitSync } from './vault/git-sync';
 import { loadWorkspaces, seedWorkspaces, type Workspace } from './workspaces';
 import { followGlossaryCards, syncAllGlossaryCards } from './flashcards/glossary-cards';
@@ -81,6 +83,8 @@ export function indexVault(vault: Vault, index: NoteIndex): () => Promise<number
 export interface Hub {
 	vault: Vault;
 	index: NoteIndex;
+	/** Where books' own files live, outside the vault; see `vault/shelf.ts`. */
+	shelf: Shelf;
 	/** Subscribe to vault changes, e.g. to feed a server-sent event stream. */
 	subscribe(listener: (change: FileChange) => void): () => void;
 	/** Throw away the index and build it again from the markdown. */
@@ -145,6 +149,7 @@ function start(): Promise<Hub> {
 	const sync = new GitSync(config.vaultPath);
 	const vault = new Vault(config.vaultPath, sync);
 	const index = new NoteIndex(config.dbPath);
+	const shelf = new Shelf();
 
 	const rebuild = indexVault(vault, index);
 	// Set once the first build is done and the loop starts; a shutdown before
@@ -169,6 +174,7 @@ function start(): Promise<Hub> {
 			sync.start();
 			announcePush();
 			stopNudges = startNudges(vault);
+			void reindexBooks(shelf, index).catch((e) => console.error('[books] reindexing failed', e));
 		},
 		(e) => {
 			console.error('[hub] initial index failed', e);
@@ -179,6 +185,7 @@ function start(): Promise<Hub> {
 	const h: Hub = {
 		vault,
 		index,
+		shelf,
 		subscribe: (l) => vault.subscribe(l),
 		rebuild,
 		workspaces,

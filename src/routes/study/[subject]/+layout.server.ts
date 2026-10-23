@@ -3,6 +3,8 @@ import { hub } from '$server/hub';
 import { today } from '$server/daily';
 import { studySummary, subjectView } from '$server/study/summary';
 import { readLede } from '$server/parse/note';
+import { listBooks } from '$server/books/library';
+import { bookForLink, bookLink, type BookLink } from '$server/books/links';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -31,7 +33,7 @@ const OLD_TABS: Record<string, string> = {
  * to the Flashcards page; anything else is a 404.
  */
 export const load: LayoutServerLoad = async ({ params, url }) => {
-	const { vault, subjects: readSubjects } = await hub();
+	const { vault, shelf, subjects: readSubjects } = await hub();
 	const subjects = await readSubjects();
 	const subject = subjects.find((s) => s.slug === params.subject);
 	if (subject) {
@@ -41,12 +43,25 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 		void url.pathname;
 		const day = today();
 		const definition = await vault.read(subject.path);
+		const study = subjectView(await studySummary(vault, subject), day);
+		const books = await listBooks(vault, shelf);
+		// Reading-list links that name a book's note open the book instead.
+		const bookLinks: Record<string, BookLink> = {};
+		for (const group of study.reading.groups) {
+			for (const item of group.items) {
+				const book = bookForLink(item.url, books);
+				if (book && item.url) bookLinks[item.url] = bookLink(book);
+			}
+		}
 		return {
 			subject,
 			// What the heading shows, from the subject's own file.
 			details: { name: subject.name, description: readLede(definition.content), color: subject.color },
 			today: day,
-			study: subjectView(await studySummary(vault, subject), day)
+			study,
+			bookLinks,
+			// For the reading list's "From your books" choice.
+			books: books.map((b) => ({ title: b.title, note: b.note }))
 		};
 	}
 

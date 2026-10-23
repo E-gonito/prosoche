@@ -62,6 +62,7 @@ export const MODULES: Module[] = [
 	{ id: 'flashcards', title: 'Flashcards', icon: 'layers', href: '/flashcards' },
 	{ id: 'w', title: 'Workspaces', icon: 'briefcase', href: '/w', tab: true },
 	{ id: 'study', title: 'Study', icon: 'graduation-cap', href: '/study' },
+	{ id: 'books', title: 'Books', icon: 'book', href: '/books' },
 	{ id: 'graph', title: 'Graph', icon: 'network', href: '/graph' },
 	{ id: 'cute', title: 'Cute', icon: 'cat', href: '/cute' },
 	{ id: 'date', title: 'Date', icon: 'calendar', href: '/date', private: true },

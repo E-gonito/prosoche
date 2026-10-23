@@ -99,6 +99,8 @@ export interface BookSummary {
 	source: string;
 	/** Where the author is, from the note's `at:`; null when they have not opened it. */
 	at: Place | null;
+	/** `placeLabel(at, manifest)`: what to call where the author is. Null when `at` is. */
+	atLabel: string | null;
 	/** `read_at:` from the note, `YYYY-MM-DD`, or null. */
 	readAt: string | null;
 	/** False when the note is there but its files are not: the book must be uploaded again. */
@@ -131,8 +133,9 @@ export function placeText(place: Place): string {
 /**
  * Read a place back from `placeText`'s form. Null for anything else: a page
  * that is not a whole number from 1, an empty chapter, one starting with `/`
- * or holding a `..` segment, or anything with a space before `#` that is not
- * a page. Pure; never throws.
+ * or holding a `..` segment, one whose file name has no extension, or
+ * anything with a line break or tab. A chapter may have spaces in its path
+ * (`OEBPS/Chapter 1.xhtml`). Pure; never throws.
  */
 export function parsePlace(text: unknown): Place | null {
 	if (typeof text !== 'string') return null;
@@ -142,12 +145,31 @@ export function parsePlace(text: unknown): Place | null {
 		const n = Number(page[1]);
 		return Number.isSafeInteger(n) && n >= 1 ? { kind: 'page', page: n } : null;
 	}
-	if (!t || /\s/.test(t.split('#')[0])) return null;
+	if (!t || /[\n\r\t]/.test(t)) return null;
 	const hash = t.indexOf('#');
 	const chapter = hash < 0 ? t : t.slice(0, hash);
 	const anchor = hash < 0 ? '' : t.slice(hash + 1);
 	if (!chapter || chapter.startsWith('/') || chapter.split('/').some((s) => s === '..' || s === '.' || s === '')) return null;
+	// A chapter is a file: its name has an extension (`.html`, `.xhtml`), which is
+	// what tells `ch 3.xhtml` from a few words that only look like a place.
+	if (!/\.[a-z0-9]{1,8}$/i.test(chapter)) return null;
 	return anchor ? { kind: 'html', chapter, anchor } : { kind: 'html', chapter };
+}
+
+/**
+ * What to call a place for a person: `p. 412 of 1,120` (or `p. 412` without
+ * a page count), or the title of the contents entry for that chapter (the
+ * one with the same anchor if there is one, else the chapter's first), else
+ * the chapter's file name without its extension. Pure.
+ */
+export function placeLabel(place: Place, manifest?: Pick<BookManifest, 'pages' | 'contents'> | null): string {
+	if (place.kind === 'page') return manifest?.pages ? `p. ${place.page.toLocaleString('en-GB')} of ${manifest.pages.toLocaleString('en-GB')}` : `p. ${place.page.toLocaleString('en-GB')}`;
+	const inChapter = (manifest?.contents ?? []).filter((c) => c.place.kind === 'html' && c.place.chapter === place.chapter);
+	const exact = inChapter.find((c) => c.place.kind === 'html' && c.place.anchor === place.anchor);
+	const entry = exact ?? inChapter.find((c) => c.place.kind === 'html' && !c.place.anchor) ?? inChapter[0];
+	if (entry) return entry.title;
+	const file = place.chapter.split('/').pop() ?? place.chapter;
+	return file.replace(/\.x?html?$/i, '');
 }
 
 /** Whether two places are the same spot. Pure. */

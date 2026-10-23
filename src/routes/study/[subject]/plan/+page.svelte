@@ -270,7 +270,10 @@
 					{#each focus.resources as item (item.line)}
 						<li>
 							<Icon name="book-open" size={14} />
-							{#if item.url}<a href={item.url} target="_blank" rel="noreferrer">{item.title}</a>{:else}<span>{item.title}</span>{/if}
+							{#if item.url && data.bookLinks[item.url]}
+								<a href={data.bookLinks[item.url].href}>{item.title}</a>
+								{#if data.bookLinks[item.url].at}<span class="small muted">{data.bookLinks[item.url].at}</span>{/if}
+							{:else if item.url}<a href={item.url} target="_blank" rel="noreferrer">{item.title}</a>{:else}<span>{item.title}</span>{/if}
 							{#if item.group === 'Reading'}<span class="badge">Reading</span>{/if}
 						</li>
 					{/each}

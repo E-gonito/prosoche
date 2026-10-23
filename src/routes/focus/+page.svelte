@@ -128,6 +128,7 @@
 			{#if session.kind === 'study'}
 				<h1 data-testid="session-step"><StepText text={session.step.text} /></h1>
 				{#if session.step.first}<p class="start"><b>Start with:</b> <StepText text={session.step.first} /></p>{/if}
+				{#if data.book}<p class="start" data-testid="focus-book"><b>Continue:</b> <a href={data.book.href}>{data.book.title}{data.book.at ? `, ${data.book.at}` : ''}</a></p>{/if}
 				{#if session.step.est}<p class="est">About {session.step.est}</p>{/if}
 			{:else}
 				<h1 data-testid="session-step"><StepText text={session.block.text} /></h1>

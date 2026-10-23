@@ -19,6 +19,8 @@ import { MODULES, REVIEW, SYSTEM, type Link } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
 import { noteHref } from '$lib/shared/links';
+import { bookHitHref } from '$lib/shared/book-links';
+import { placeText, type BookHit } from '$lib/shared/books';
 import { all, install, type Shortcut } from '$lib/client/shortcuts.svelte';
 import { theme } from '$lib/client/theme.svelte';
 
@@ -49,6 +51,8 @@ interface VaultRows {
 	notes: Array<{ path: string; title: string; snippet: string }>;
 	tasks: Array<{ path: string; line: number; text: string; quadrant: number | null; positions: number[] }>;
 	workspaces: Array<{ slug: string; name: string; color: string; positions: number[] }>;
+	/** Hits inside books; the group is left out when the server sends none. */
+	books?: BookHit[];
 }
 
 const EMPTY: VaultRows = { notes: [], tasks: [], workspaces: [] };
@@ -97,6 +101,16 @@ class PaletteState {
 		),
 		...this.vault.notes.map((n) =>
 			row({ id: `note:${n.path}`, group: 'Notes', title: n.title, hint: n.snippet || n.path, href: noteHref(n.path) })
+		),
+		...(this.vault.books ?? []).map((b) =>
+			row({
+				id: `book:${b.book}:${placeText(b.place)}`,
+				group: 'In books',
+				title: `${b.title} · ${b.label}`,
+				// The index marks matches with «»; the palette highlights its own way.
+				hint: b.snippet.replace(/«|»/g, ''),
+				href: bookHitHref(b, this.query)
+			})
 		),
 		...this.vault.tasks.map((t) =>
 			row({

@@ -116,6 +116,22 @@
 
 	<p class="label">Add to the list</p>
 	<form class="form" onsubmit={add} data-testid="reading-add">
+		{#if data.books.length}
+			<select
+				class="field book"
+				value=""
+				onchange={(e) => {
+					const book = data.books.find((b) => b.note === e.currentTarget.value);
+					if (book) draft = { ...draft, title: book.title, url: book.note, kind: 'book' };
+					e.currentTarget.value = '';
+				}}
+				aria-label="From your books"
+				data-testid="add-from-books"
+			>
+				<option value="">From your books…</option>
+				{#each data.books as book (book.note)}<option value={book.note}>{book.title}</option>{/each}
+			</select>
+		{/if}
 		{@render fields(draft, 'add')}
 		<select class="field group" bind:value={draftGroup} aria-label="Status" data-testid="add-group">
 			{#each current.groups as group, g (g)}<option value={g}>{group.title}</option>{/each}
@@ -142,7 +158,11 @@
 					{:else}
 						<div class="item" class:done={item.done} data-testid="reading-item">
 							<div class="main">
-								{#if item.url}
+								{#if item.url && data.bookLinks[item.url]}
+									{@const book = data.bookLinks[item.url]}
+									<a class="item-title" href={book.href} data-testid="reading-book">{item.title} <Icon name="book-open" size={12} /></a>
+									<span class="small muted">{book.at ? `Read · ${book.at}` : 'Read'}</span>
+								{:else if item.url}
 									<a class="item-title" href={item.url} target="_blank" rel="noreferrer">{item.title} <Icon name="external-link" size={12} /></a>
 								{:else}
 									<span class="item-title">{item.title}</span>
@@ -200,6 +220,7 @@
 	.form { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s4); }
 	.form .title-field { flex: 2; min-width: 180px; }
 	.form .url { flex: 2; min-width: 160px; }
+	.form .book { flex-basis: 100%; }
 	.form .kind, .form .group { flex: none; width: 110px; }
 	.form .goal { flex: 1; min-width: 140px; }
 	.form.edit { margin: 0; }

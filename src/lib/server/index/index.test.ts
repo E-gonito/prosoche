@@ -265,3 +265,74 @@ describe('schema changes', () => {
 		}
 	});
 });
+
+describe('book text', () => {
+	const entries = [
+		{ place: 'p. 1', label: 'p. 1', text: 'Computer systems move bytes between registers and memory.' },
+		{ place: 'p. 2', label: 'p. 2', text: 'The linker resolves symbols across relocatable object files.' }
+	];
+
+	it('finds a page, with the match marked, by prefix and by stem', () => {
+		index.putBookText('csapp-1234', entries);
+		expect(index.searchBookText('linking symbol')).toHaveLength(1);
+		const found = index.searchBookText('link symb');
+		expect(found).toHaveLength(1);
+		expect(found[0]).toMatchObject({ book: 'csapp-1234', place: 'p. 2', label: 'p. 2' });
+		expect(found[0].snippet).toContain('«symbols»');
+		expect(index.searchBookText('registers')[0].place).toBe('p. 1');
+	});
+
+	it('replaces a book\'s rows whole and leaves other books alone', () => {
+		index.putBookText('book-aaaa', entries);
+		index.putBookText('book-bbbb', [{ place: 'ch1.html#a', label: 'A', text: 'The linker again.' }]);
+		index.putBookText('book-aaaa', [{ place: 'p. 9', label: 'p. 9', text: 'Nothing but caches.' }]);
+		expect(index.searchBookText('registers')).toEqual([]);
+		expect(index.searchBookText('caches').map((h) => h.place)).toEqual(['p. 9']);
+		expect(index.searchBookText('linker').map((h) => h.book)).toEqual(['book-bbbb']);
+	});
+
+	it('limits a search to one book and to a count', () => {
+		index.putBookText('book-aaaa', entries);
+		index.putBookText('book-bbbb', [{ place: 'p. 5', label: 'p. 5', text: 'The linker again.' }]);
+		expect(index.searchBookText('linker', { book: 'book-bbbb' }).map((h) => h.book)).toEqual(['book-bbbb']);
+		expect(index.searchBookText('linker', { limit: 1 })).toHaveLength(1);
+	});
+
+	it('forgets a book, and forgetting an unknown one is fine', () => {
+		index.putBookText('book-aaaa', entries);
+		index.forgetBookText('book-aaaa');
+		index.forgetBookText('never-here');
+		expect(index.searchBookText('linker')).toEqual([]);
+	});
+
+	it('answers no hits for an empty or unparsable query', () => {
+		index.putBookText('book-aaaa', entries);
+		expect(index.searchBookText('   ')).toEqual([]);
+		expect(index.searchBookText('"')).toEqual([]);
+		expect(index.searchBookText('AND OR NOT (')).toEqual(expect.any(Array));
+	});
+
+	it('survives a rebuild of the vault, which is not where it comes from', () => {
+		index.putBookText('book-aaaa', entries);
+		index.rebuild([{ path: 'a.md', content: '# A\nlinker' }]);
+		expect(index.searchBookText('linker')).toHaveLength(1);
+		expect(index.search('linker')).toHaveLength(1);
+	});
+
+	it('is added to a database made before the table existed', () => {
+		const file = join(tmpdir(), `prosoche-books-${Date.now()}.db`);
+		try {
+			const old = new NoteIndex(file);
+			old.close();
+			const raw = new Database(file);
+			raw.exec('DROP TABLE book_fts');
+			raw.close();
+			const reopened = new NoteIndex(file);
+			reopened.putBookText('book-aaaa', entries);
+			expect(reopened.searchBookText('linker')).toHaveLength(1);
+			reopened.close();
+		} finally {
+			for (const suffix of ['', '-wal', '-shm']) rmSync(`${file}${suffix}`, { force: true });
+		}
+	});
+});

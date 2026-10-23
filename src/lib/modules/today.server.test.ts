@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NoteIndex } from '$server/index/index';
 import { Vault } from '$server/vault/index';
+import { Shelf } from '$server/vault/shelf';
 import { loadWorkspaces } from '$server/workspaces';
 import { loadSubjects } from '$server/study/subjects';
 import { TODAY_CARDS, todayCards } from './today.server';
@@ -42,6 +43,7 @@ describe('TODAY_CARDS never names a private module', () => {
 	const fakeHub = (): Hub => ({
 		vault,
 		index,
+		shelf: new Shelf(join(root, '.shelf')),
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
@@ -90,6 +92,7 @@ describe('flashcardsDue, the one shipped contributor', () => {
 	const fakeHub = (): Hub => ({
 		vault,
 		index,
+		shelf: new Shelf(join(root, '.shelf')),
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,
@@ -151,6 +154,7 @@ describe('studyNext', () => {
 	const fakeHub = (): Hub => ({
 		vault,
 		index,
+		shelf: new Shelf(join(root, '.shelf')),
 		workspace: async () => null,
 		subscribe: () => () => {},
 		rebuild: async () => 0,

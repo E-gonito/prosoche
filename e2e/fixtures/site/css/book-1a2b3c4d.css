@@ -1,0 +1,8 @@
+@import "theme.css";
+@import url('print-notes.css') print;
+@font-face {
+  font-family: "Lantern Sans";
+  src: url("../fonts/lantern-sans.woff2") format("woff2");
+}
+body { font-family: "Lantern Sans", sans-serif; background: url(../img/lantern.png) no-repeat top right; }
+.inline-icon { background: url(data:image/gif;base64,R0lGODlhAQABAAAAACw=); }
