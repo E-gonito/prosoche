@@ -167,6 +167,8 @@ function start(): Promise<Hub> {
 			void syncAllGlossaryCards(vault).catch((e) => console.error('[hub] syncing glossary cards failed', e));
 			vault.watch();
 			sync.start();
+			announcePush();
+			stopNudges = startNudges(vault);
 		},
 		(e) => {
 			console.error('[hub] initial index failed', e);
