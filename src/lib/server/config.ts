@@ -146,6 +146,29 @@ export const config = {
 	 */
 	t3Url: process.env.HUB_T3_URL ?? '',
 
+	books: {
+		/**
+		 * Where the books' own files live: PDFs, EPUBs, saved sites and what
+		 * is pulled out of them. Outside the vault on purpose, so git, the
+		 * watcher and Obsidian never see a 100 MB file; what is worth keeping
+		 * (the place, the highlights) is in each book's note instead. See
+		 * `vault/shelf.ts` and `docs/plan-books.md`.
+		 */
+		path: process.env.HUB_BOOKS ?? join(homedir(), '.local/share/prosoche/books'),
+		/** Folder at the vault root holding one note per book: `Books/CS:APP.md`. */
+		folder: 'Books',
+		/** The largest file one upload may be. The server's `BODY_SIZE_LIMIT` must be at least this. */
+		maxBytes: 500 * 1024 * 1024,
+		/** An upload or saved site that would leave less than this free on the disk is refused. */
+		keepFreeBytes: 500 * 1024 * 1024,
+		/**
+		 * Let a book's URL be on this machine or a private network. Only the
+		 * e2e suite sets it, to save a site it serves itself; a real server
+		 * never fetches its own network on a user's say-so.
+		 */
+		allowLocalFetch: process.env.HUB_BOOKS_ALLOW_LOCAL === '1'
+	},
+
 	/**
 	 * Web Push for nudges, from `HUB_VAPID_PUBLIC`, `HUB_VAPID_PRIVATE` and
 	 * `HUB_VAPID_SUBJECT`; see `readPushConfig`. Unset means push is off. A
