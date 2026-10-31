@@ -21,9 +21,9 @@
 	let returnTo: HTMLElement | null = null;
 
 	// One listener for the whole app, started and stopped with this component.
-	// The layout's own load already resolved HUB_T3_URL; reused rather than
-	// asked for again.
-	$effect(() => palette.install(page.data.t3Url));
+	// The layout's own load already read the links; reused rather than asked
+	// for again.
+	$effect(() => palette.install(page.data.links));
 
 	// Focus follows the box while it is open, and goes back where it came from
 	// when it closes, so the palette never strands the keyboard.

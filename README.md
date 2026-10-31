@@ -83,6 +83,9 @@ Eight tabs, drawn from one registry (`src/lib/modules/index.ts`):
 Beside them: an **Inbox** for triaging captures, **Sync** for git, and
 **Settings** for the AI layer.
 
+Above those, any outside links listed in `_hub/links.md`, one
+`- [Proxmox](https://192.168.1.10:8006)` item each, which open in a new tab.
+
 ## Running it
 
 Requires Node 22 or newer and a vault on the same machine.
@@ -99,7 +102,7 @@ HUB_VAULT=~/vault npm run dev      # http://localhost:5173
 | `HUB_UNDO` | `~/.local/state/hub/undo` | Snapshots taken before any AI write |
 | `HUB_PEOPLE_FOLDER` | `People` | Where a person note is created |
 | `HUB_GCAL_ICS` | — | Google Calendar's secret address in iCal format. Absent means no calendar events on Today |
-| `HUB_T3_URL` | — | Base URL of a T3 Code web client on this machine. Absent means no "T3 Code" entry in the nav or palette |
+| `HUB_T3_URL` | — | Base URL of a T3 Code web client on this machine. Set, it is one more outside link beside those in `_hub/links.md` |
 | `PORT`, `HOST` | `3000`, `0.0.0.0` | For the built server |
 
 No secret is ever written into the vault or this repository; a feature that

@@ -15,7 +15,7 @@
  */
 
 import { goto } from '$app/navigation';
-import { MODULES, REVIEW, SYSTEM } from '$lib/modules';
+import { MODULES, REVIEW, SYSTEM, type Link } from '$lib/modules';
 import { fuzzyParts, fuzzySort } from '$lib/shared/fuzzy';
 import { api } from '$lib/client/api';
 import { noteHref } from '$lib/shared/links';
@@ -113,11 +113,11 @@ class PaletteState {
 	/**
 	 * Install the commands as the app's key bindings. Call once, from the one
 	 * component that draws the palette; the returned function undoes it.
-	 * `t3Url` is '' when `HUB_T3_URL` is unset, which leaves the command out
-	 * entirely rather than registering one that opens nothing useful.
+	 * `links` are the layout's outside links, `_hub/links.md`, one command
+	 * each; none means no such commands.
 	 */
-	install(t3Url = ''): () => void {
-		return install(commands(this, t3Url));
+	install(links: Link[] = []): () => void {
+		return install(commands(this, links));
 	}
 
 	/** Open on the command list, with the box empty and the first row chosen. */
@@ -242,7 +242,7 @@ const GO_KEYS: Record<string, string> = { today: 't', glossary: 'l', w: 'w', stu
  * registry answers both questions the app has about a command: what key runs
  * it, and what to show in the list.
  */
-function commands(palette: PaletteState, t3Url: string): Shortcut[] {
+function commands(palette: PaletteState, links: Link[]): Shortcut[] {
 	const go = (href: string) => () => {
 		palette.close();
 		void goto(href);
@@ -259,9 +259,8 @@ function commands(palette: PaletteState, t3Url: string): Shortcut[] {
 		...SYSTEM.map((m) => ({ keys: GO_KEYS[m.id] ?? '', description: `Go to ${m.title}`, run: go(m.href) })),
 		// Today's own second page, so not in the loops above.
 		{ keys: 'r', description: 'Review the day', run: go(REVIEW.href) },
-		// Only offered when HUB_T3_URL is set; opens in a new tab because the
-		// paired WebSocket session belongs to that origin, not this one.
-		...(t3Url ? [{ keys: '', description: 'T3 Code', run: () => window.open(t3Url, '_blank', 'noopener') }] : []),
+		// Each in a new tab: they are other apps, with their own sessions.
+		...links.map((link) => ({ keys: '', description: `Open ${link.title}`, run: () => window.open(link.href, '_blank', 'noopener') })),
 		{
 			keys: 'c',
 			description: 'Quick capture',

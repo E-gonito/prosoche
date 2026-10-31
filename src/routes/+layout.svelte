@@ -9,7 +9,8 @@
 	 * `TABS` (the modules marked `tab`, and the evening review) and More,
 	 * which opens a sheet with everything else, workspaces included. The now
 	 * strip (what is running, due or soon) sits under Search on the rail and as
-	 * a slim line under the phone header bar.
+	 * a slim line under the phone header bar. Outside links, `_hub/links.md`,
+	 * sit at the top of the rail's foot and in More, and open in a new tab.
 	 */
 	import '../app.css';
 	import { page } from '$app/state';
@@ -110,6 +111,11 @@
 		</div>
 
 		<div class="foot">
+			{#each data.links as link (link.href)}
+				<a href={link.href} target="_blank" rel="noopener" data-testid="link">
+					<Icon name="external-link" /><span>{link.title}</span>
+				</a>
+			{/each}
 			{#each SYSTEM as m (m.id)}
 				<a href={m.href} aria-current={current?.id === m.id ? 'page' : undefined}>
 					<Icon name={m.icon} /><span>{m.title}</span>
@@ -154,6 +160,14 @@
 				<div class="list">
 					{#each data.sub.w as item (item.href)}
 						<a href={item.href}><i class="dot" style="--dot: {item.color}"></i>{item.title}</a>
+					{/each}
+				</div>
+			{/if}
+			{#if data.links.length}
+				<p class="label">Links</p>
+				<div class="list">
+					{#each data.links as link (link.href)}
+						<a href={link.href} target="_blank" rel="noopener"><Icon name="external-link" />{link.title}</a>
 					{/each}
 				</div>
 			{/if}

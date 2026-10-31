@@ -44,6 +44,17 @@ export interface SubItem {
 	color: string;
 }
 
+/**
+ * A place outside prosoche, one click from the rail's foot, the phone's More
+ * sheet and the palette: a Proxmox console, a router. From `_hub/links.md`,
+ * so the root layout's loader supplies them; see `server/links.ts`.
+ */
+export interface Link {
+	title: string;
+	/** Always `http:` or `https:`. Opens in a new tab. */
+	href: string;
+}
+
 /** In the order the rail draws them. */
 export const MODULES: Module[] = [
 	{ id: 'today', title: 'Today', icon: 'sun', href: '/today', tab: true },
