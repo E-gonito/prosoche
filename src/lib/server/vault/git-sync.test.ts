@@ -123,3 +123,61 @@ describe('an explicit commit', () => {
 		await rm(root, { recursive: true, force: true });
 	});
 });
+
+describe('a pull with local changes', () => {
+	async function setup() {
+		const root = await mkdtemp(join(tmpdir(), 'prosoche-sync-'));
+		const remote = join(root, 'remote.git');
+		const ours = join(root, 'ours');
+		const theirs = join(root, 'theirs');
+		const git = (dir: string, ...args: string[]) =>
+			execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { stdio: 'pipe' })
+				.toString()
+				.trim();
+		execFileSync('git', ['init', '-q', '--bare', '-b', 'master', remote]);
+		execFileSync('git', ['init', '-q', '-b', 'master', ours]);
+		git(ours, 'config', 'user.name', 't');
+		git(ours, 'config', 'user.email', 't@t');
+		git(ours, 'remote', 'add', 'origin', remote);
+		await writeFile(join(ours, 'Book.md'), 'place:: 1\n');
+		await writeFile(join(ours, 'Journal.md'), '# Day\n');
+		git(ours, 'add', '-A');
+		git(ours, 'commit', '-q', '-m', 'seed');
+		git(ours, 'push', '-q', '-u', 'origin', 'master');
+		execFileSync('git', ['clone', '-q', remote, theirs]);
+		return { root, ours, theirs, git };
+	}
+
+	it('brings in remote commits and keeps uncommitted edits, as after a restart', async () => {
+		const { root, ours, theirs, git } = await setup();
+		await writeFile(join(theirs, 'Journal.md'), '# Day\n\nFrom the Mac.\n');
+		git(theirs, 'commit', '-q', '-am', 'vault sync');
+		git(theirs, 'push', '-q', 'origin', 'master');
+		// Modified on disk but not in `dirty`: what a restart leaves behind.
+		await writeFile(join(ours, 'Book.md'), 'place:: 42\n');
+
+		const status = await new GitSync(ours).pull();
+
+		expect(status.error).toBeNull();
+		expect(await readFile(join(ours, 'Journal.md'), 'utf8')).toBe('# Day\n\nFrom the Mac.\n');
+		expect(await readFile(join(ours, 'Book.md'), 'utf8')).toBe('place:: 42\n');
+		expect(git(ours, 'stash', 'list')).toBe('');
+		await rm(root, { recursive: true, force: true });
+	});
+
+	it('reports, and never loses, an edit that clashes with an incoming one', async () => {
+		const { root, ours, theirs, git } = await setup();
+		await writeFile(join(theirs, 'Book.md'), 'place:: 7\n');
+		git(theirs, 'commit', '-q', '-am', 'vault sync');
+		git(theirs, 'push', '-q', 'origin', 'master');
+		await writeFile(join(ours, 'Book.md'), 'place:: 42\n');
+
+		const status = await new GitSync(ours).pull();
+
+		expect(status.error).not.toBeNull();
+		const onDisk = await readFile(join(ours, 'Book.md'), 'utf8');
+		const stashed = git(ours, 'stash', 'list') ? git(ours, 'show', 'stash@{0}:Book.md') : '';
+		expect(onDisk.includes('place:: 42') || stashed === 'place:: 42').toBe(true);
+		await rm(root, { recursive: true, force: true });
+	});
+});

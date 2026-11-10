@@ -103,16 +103,8 @@ export class GitSync implements SyncProvider {
 
 	pull(): Promise<SyncStatus> {
 		return this.serialise(async () => {
-			await this.git.fetch();
-			await this.dropIncomingTransient();
-			// Naming the remote and branch explicitly: a vault whose branch has
-			// no upstream configured would otherwise fail with git's "no
-			// tracking information" error, which is not the user's problem.
-			const result = await this.git.pull('origin', config.git.branch, ['--rebase']);
-			this.state.lastPull = new Date();
-			this.state.conflicts = [];
+			await this.rebaseOnRemote();
 			this.state.error = null;
-			if (result.files.length) this.state.lastPull = new Date();
 			// Pushed here rather than left for the next commit, because the
 			// next commit comes only after the user changes something, and
 			// until then every other device keeps re-committing the state.
@@ -296,11 +288,7 @@ export class GitSync implements SyncProvider {
 	/** Pull inside an already-serialised operation. Records conflicts instead of throwing. */
 	private async pullInline(): Promise<void> {
 		try {
-			await this.git.fetch();
-			await this.dropIncomingTransient();
-			await this.git.pull('origin', config.git.branch, ['--rebase']);
-			this.state.lastPull = new Date();
-			this.state.conflicts = [];
+			await this.rebaseOnRemote();
 		} catch (e) {
 			const s = await this.git.status().catch(() => null);
 			if (s?.conflicted.length) {
@@ -308,6 +296,35 @@ export class GitSync implements SyncProvider {
 				await this.git.rebase(['--abort']).catch(() => {});
 			}
 			this.state.error = message(e);
+		}
+	}
+
+	/**
+	 * Fetch and rebase onto the remote branch. Throws when that leaves a
+	 * conflict, after recording the conflicted paths.
+	 *
+	 * Uncommitted edits are stashed around the rebase. Without that, any file
+	 * modified but not yet committed (the debounce window, or edits a restart
+	 * left behind after emptying `dirty`) makes every pull refuse until someone
+	 * commits. When re-applying the stash clashes with an incoming change, git
+	 * still exits 0 and leaves conflict markers on disk with the edit kept in
+	 * the stash; this throws so that nothing commits those markers.
+	 */
+	private async rebaseOnRemote(): Promise<void> {
+		await this.git.fetch();
+		await this.dropIncomingTransient();
+		// Naming the remote and branch explicitly: a vault whose branch has
+		// no upstream configured would otherwise fail with git's "no
+		// tracking information" error, which is not the user's problem.
+		await this.git.pull('origin', config.git.branch, ['--rebase', '--autostash']);
+		this.state.lastPull = new Date();
+		const { conflicted } = await this.git.status();
+		this.state.conflicts = conflicted;
+		if (conflicted.length) {
+			throw new Error(
+				`Your uncommitted edits to ${conflicted.join(', ')} clash with changes pulled from the remote. ` +
+					'Your version is kept in `git stash`; resolve the file, then run `git stash drop`.'
+			);
 		}
 	}
 
